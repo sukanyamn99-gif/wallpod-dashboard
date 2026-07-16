@@ -1,0 +1,83 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  BarChart3,
+  Boxes,
+  CalendarCheck,
+  LineChart,
+  PackageX,
+  Receipt,
+  LogOut,
+} from "lucide-react";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
+import { signOut } from "@/app/login/actions";
+import type { Profile } from "@/lib/types";
+
+const navItems = [
+  { title: "Sales Dashboard", url: "/dashboard/sales", icon: LineChart },
+  { title: "GP Dashboard", url: "/dashboard/gp", icon: BarChart3 },
+  { title: "AR Dashboard", url: "/dashboard/ar", icon: Receipt },
+  { title: "Inventory Dashboard", url: "/dashboard/inventory", icon: Boxes },
+  { title: "Dead Stock Dashboard", url: "/dashboard/dead-stock", icon: PackageX },
+  { title: "บันทึกนัดหมาย (Check-in)", url: "/dashboard/visits", icon: CalendarCheck },
+];
+
+export function AppSidebar({ profile }: { profile: Profile }) {
+  const pathname = usePathname();
+
+  return (
+    <Sidebar>
+      <SidebarHeader className="px-4 py-3">
+        <p className="text-sm font-semibold">WALLPOD Owner Dashboard</p>
+        <p className="text-xs text-muted-foreground">คูนเว จำกัด</p>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>เมนู</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navItems.map((item) => (
+                <SidebarMenuItem key={item.url}>
+                  <SidebarMenuButton
+                    isActive={pathname === item.url}
+                    render={
+                      <Link href={item.url}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    }
+                  />
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter className="gap-2 px-4 py-3">
+        <p className="text-sm font-medium">{profile.full_name}</p>
+        <p className="text-xs text-muted-foreground">{profile.role}</p>
+        {profile.id !== "demo" && (
+          <form action={signOut}>
+            <SidebarMenuButton type="submit" className="w-full">
+              <LogOut />
+              <span>ออกจากระบบ</span>
+            </SidebarMenuButton>
+          </form>
+        )}
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
