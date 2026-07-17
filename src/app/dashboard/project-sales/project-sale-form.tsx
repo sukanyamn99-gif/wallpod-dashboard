@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/select";
 import { createProjectSale } from "./actions";
 import { formatTHB } from "@/lib/format";
-import type { CustomerType, PaymentStatus, ProductCategory, SalesRep } from "@/lib/types";
+import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomplete";
+import type { Customer, CustomerType, PaymentStatus, ProductCategory, SalesRep } from "@/lib/types";
 
 const initialState = { error: null as string | null };
 
@@ -46,9 +47,16 @@ interface ItemRow {
   amount: string;
 }
 
-export function ProjectSaleForm({ salesReps }: { salesReps: SalesRep[] }) {
+export function ProjectSaleForm({
+  salesReps,
+  customers,
+}: {
+  salesReps: SalesRep[];
+  customers: Customer[];
+}) {
   const nextRowKey = useRef(1);
   const [items, setItems] = useState<ItemRow[]>([{ key: 0, category: "", amount: "" }]);
+  const [customerName, setCustomerName] = useState("");
   const [installment2, setInstallment2] = useState(false);
   const [amount1, setAmount1] = useState("");
   const [amount2, setAmount2] = useState("");
@@ -57,6 +65,7 @@ export function ProjectSaleForm({ salesReps }: { salesReps: SalesRep[] }) {
     const result = await createProjectSale(formData);
     if (!result.error) {
       setItems([{ key: 0, category: "", amount: "" }]);
+      setCustomerName("");
       setInstallment2(false);
       setAmount1("");
       setAmount2("");
@@ -104,7 +113,15 @@ export function ProjectSaleForm({ salesReps }: { salesReps: SalesRep[] }) {
 
         <div className="space-y-2">
           <Label htmlFor="customer_name">ชื่อลูกค้า</Label>
-          <Input id="customer_name" name="customer_name" required placeholder="เช่น บจก. ABC" />
+          <CustomerAutocomplete
+            id="customer_name"
+            name="customer_name"
+            required
+            value={customerName}
+            onChange={setCustomerName}
+            customers={customers}
+            placeholder="เช่น บจก. ABC"
+          />
         </div>
 
         <div className="space-y-2">

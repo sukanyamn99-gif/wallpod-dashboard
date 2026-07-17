@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getSalesReps } from "@/lib/data/reference";
+import { getCustomers, getSalesReps } from "@/lib/data/reference";
 import { ProjectSaleForm } from "./project-sale-form";
 
 export default async function ProjectSalesPage() {
-  const salesReps = await getSalesReps();
+  const [salesReps, customers] = await Promise.all([getSalesReps(), getCustomers()]);
 
   return (
     <div className="space-y-6">
@@ -19,7 +19,7 @@ export default async function ProjectSalesPage() {
           <CardTitle>บันทึกงานขายใหม่</CardTitle>
         </CardHeader>
         <CardContent>
-          <ProjectSaleForm salesReps={salesReps} />
+          <ProjectSaleForm salesReps={salesReps} customers={customers} />
         </CardContent>
       </Card>
     </div>
