@@ -184,3 +184,35 @@ export function SalesRepPerformanceChart({
     </Card>
   );
 }
+
+export function WeeklySalesChart({ data }: { data: SalesDashboardData["weeklySales"] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>ยอดขายรายสัปดาห์ (8 สัปดาห์ล่าสุด)</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={data} margin={{ left: 8, right: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+            <XAxis
+              dataKey="weekLabel"
+              tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
+              axisLine={{ stroke: "var(--border)" }}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(v) => formatTHB(v)}
+              width={90}
+            />
+            <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--muted)" }} />
+            <Bar dataKey="value" fill="var(--chart-1)" radius={[4, 4, 0, 0]} maxBarSize={48} />
+          </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}

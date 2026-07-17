@@ -7,6 +7,60 @@ export interface ProjectDetail {
   initialData: ProjectSaleInitialData;
 }
 
+export interface ProjectSummary {
+  id: string;
+  jobNo: string | null;
+  projectDate: string;
+  customerName: string;
+  projectName: string;
+  salesRepName: string;
+  customerType: string;
+  preVat: number;
+  vat: number;
+  total: number;
+  status: string | null;
+  isCancelled: boolean;
+}
+
+export async function getAllProjectSales(): Promise<ProjectSummary[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = await createClient();
+
+  const { data: projects, error: projectsErr } = await supabase
+    .from("projects")
+    .select(
+      "id, job_no, project_date, project_name, customer_type, pre_vat, vat, total, is_cancelled, customers(name), sales_reps(name)",
+    )
+    .order("project_date", { ascending: false });
+  if (projectsErr) throw projectsErr;
+
+  const projectIds = (projects ?? []).map((p) => p.id);
+  const { data: payments, error: paymentsErr } = await supabase
+    .from("payments")
+    .select("project_id, status")
+    .in("project_id", projectIds)
+    .order("installment_no");
+  if (paymentsErr) throw paymentsErr;
+
+  return (projects ?? []).map((p) => ({
+    id: p.id,
+    jobNo: p.job_no,
+    projectDate: p.project_date,
+    // @ts-expect-error -- Supabase types the joined relation loosely here
+    customerName: p.customers?.name ?? "",
+    projectName: p.project_name,
+    // @ts-expect-error -- Supabase types the joined relation loosely here
+    salesRepName: p.sales_reps?.name ?? "",
+    customerType: p.customer_type,
+    preVat: Number(p.pre_vat),
+    vat: Number(p.vat),
+    total: Number(p.total),
+    status: (payments ?? []).find((pay) => pay.project_id === p.id)?.status ?? null,
+    isCancelled: p.is_cancelled,
+  }));
+}
+
 export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | null> {
   if (!isSupabaseConfigured()) return null;
 

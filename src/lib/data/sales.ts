@@ -1,8 +1,34 @@
+import { endOfWeek, format, isWithinInterval, startOfWeek, subWeeks } from "date-fns";
+import { th } from "date-fns/locale";
 import { isSupabaseConfigured, createClient } from "@/lib/supabase/server";
 import { mockCustomerTypes, mockProjects } from "@/lib/mock-data";
 import { getAllSaleReports, getTodaySaleReports } from "@/lib/data/sale-reports";
 import type { CustomerType, Project, SalesDashboardData, StagePercent } from "@/lib/types";
 import { STAGE_LABELS } from "@/lib/types";
+
+const WEEKS_TO_SHOW = 8;
+
+function getWeeklySales(projects: Project[]) {
+  const now = new Date();
+  const weeks = Array.from({ length: WEEKS_TO_SHOW }, (_, i) => {
+    const weekAnchor = subWeeks(now, WEEKS_TO_SHOW - 1 - i);
+    const start = startOfWeek(weekAnchor, { weekStartsOn: 1 });
+    const end = endOfWeek(weekAnchor, { weekStartsOn: 1 });
+    return { start, end };
+  });
+
+  return weeks.map(({ start, end }) => {
+    const inWeek = projects.filter((p) =>
+      isWithinInterval(new Date(p.project_date), { start, end }),
+    );
+    const weekLabel = `${format(start, "d", { locale: th })}-${format(end, "d MMM", { locale: th })}`;
+    return {
+      weekLabel,
+      value: inWeek.reduce((sum, p) => sum + p.pre_vat, 0),
+      count: inWeek.length,
+    };
+  });
+}
 
 async function fetchLiveProjects(): Promise<Project[]> {
   const supabase = await createClient();
@@ -104,6 +130,7 @@ export async function getSalesDashboardData(): Promise<SalesDashboardData> {
     pipelineByStage,
     customerTypeBreakdown,
     salesRepPerformance,
+    weeklySales: getWeeklySales(projects),
   };
 }
 

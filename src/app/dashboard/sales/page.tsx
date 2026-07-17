@@ -4,6 +4,7 @@ import {
   CustomerTypeChart,
   PipelineByStageChart,
   SalesRepPerformanceChart,
+  WeeklySalesChart,
 } from "@/components/dashboard/sales-charts";
 import { getSalesDashboardData } from "@/lib/data/sales";
 import { formatTHB } from "@/lib/format";
@@ -31,6 +32,7 @@ export default async function SalesDashboardPage() {
       </div>
 
       <SalesRepPerformanceChart data={data.salesRepPerformance} />
+      <WeeklySalesChart data={data.weeklySales} />
     </div>
   );
 }
