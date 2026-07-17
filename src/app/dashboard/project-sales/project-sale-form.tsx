@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createProjectSale } from "./actions";
+import { createProjectSale, updateProjectSale } from "./actions";
 import { formatTHB } from "@/lib/format";
 import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomplete";
 import type { Customer, CustomerType, PaymentStatus, ProductCategory, SalesRep } from "@/lib/types";
@@ -47,28 +47,74 @@ interface ItemRow {
   amount: string;
 }
 
+export interface ProjectSaleInitialData {
+  projectDate: string;
+  jobNo: string | null;
+  customerName: string;
+  projectName: string;
+  salesRepId: string;
+  customerType: string;
+  items: { category: string; amount: string }[];
+  costs: {
+    material_cost: string;
+    glue_cost: string;
+    cutting_cost: string;
+    install_cost: string;
+    parking_cost: string;
+    shipping_cost: string;
+  };
+  status: string;
+  invoiceNo1: string;
+  amount1: string;
+  paidDate1: string;
+  invoiceNo2: string;
+  amount2: string;
+  paidDate2: string;
+}
+
 export function ProjectSaleForm({
   salesReps,
   customers,
+  mode = "create",
+  projectId,
+  initialData,
 }: {
   salesReps: SalesRep[];
   customers: Customer[];
+  mode?: "create" | "edit";
+  projectId?: string;
+  initialData?: ProjectSaleInitialData;
 }) {
-  const nextRowKey = useRef(1);
-  const [items, setItems] = useState<ItemRow[]>([{ key: 0, category: "", amount: "" }]);
-  const [customerName, setCustomerName] = useState("");
-  const [installment2, setInstallment2] = useState(false);
-  const [amount1, setAmount1] = useState("");
-  const [amount2, setAmount2] = useState("");
+  const nextRowKey = useRef(initialData?.items.length ?? 1);
+  const [items, setItems] = useState<ItemRow[]>(
+    initialData?.items.length
+      ? initialData.items.map((it, i) => ({ key: i, category: it.category, amount: it.amount }))
+      : [{ key: 0, category: "", amount: "" }],
+  );
+  const [customerName, setCustomerName] = useState(initialData?.customerName ?? "");
+  const [installment2, setInstallment2] = useState(
+    Boolean(initialData?.amount2 || initialData?.invoiceNo2),
+  );
+  const [amount1, setAmount1] = useState(initialData?.amount1 ?? "");
+  const [amount2, setAmount2] = useState(initialData?.amount2 ?? "");
+  const [savedMessage, setSavedMessage] = useState(false);
 
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
-    const result = await createProjectSale(formData);
+    const result =
+      mode === "edit" && projectId
+        ? await updateProjectSale(projectId, formData)
+        : await createProjectSale(formData);
+
     if (!result.error) {
-      setItems([{ key: 0, category: "", amount: "" }]);
-      setCustomerName("");
-      setInstallment2(false);
-      setAmount1("");
-      setAmount2("");
+      if (mode === "create") {
+        setItems([{ key: 0, category: "", amount: "" }]);
+        setCustomerName("");
+        setInstallment2(false);
+        setAmount1("");
+        setAmount2("");
+      } else {
+        setSavedMessage(true);
+      }
     }
     return result;
   }, initialState);
@@ -89,12 +135,16 @@ export function ProjectSaleForm({
   }
   function updateRow(key: number, field: "category" | "amount", value: string) {
     setItems((prev) => prev.map((r) => (r.key === key ? { ...r, [field]: value } : r)));
+    setSavedMessage(false);
   }
 
   return (
     <form action={formAction} className="space-y-6">
       {state.error && (
         <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>
+      )}
+      {savedMessage && (
+        <p className="rounded-md bg-green-100 p-3 text-sm text-green-900">บันทึกการแก้ไขเรียบร้อย</p>
       )}
 
       {/* Section 1: job info */}
@@ -103,11 +153,24 @@ export function ProjectSaleForm({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="project_date">วันที่</Label>
-            <Input id="project_date" name="project_date" type="date" defaultValue={todayISO()} required />
+            <Input
+              id="project_date"
+              name="project_date"
+              type="date"
+              defaultValue={initialData?.projectDate ?? todayISO()}
+              required
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="job_no">JOB NO.</Label>
-            <Input id="job_no" name="job_no" defaultValue={suggestedJobNo()} placeholder="เช่น JB2607001" />
+            <Input
+              id="job_no"
+              name="job_no"
+              defaultValue={mode === "edit" ? initialData?.jobNo ?? "" : suggestedJobNo()}
+              readOnly={mode === "edit"}
+              className={mode === "edit" ? "bg-muted" : undefined}
+              placeholder="เช่น JB2607001"
+            />
           </div>
         </div>
 
@@ -118,7 +181,10 @@ export function ProjectSaleForm({
             name="customer_name"
             required
             value={customerName}
-            onChange={setCustomerName}
+            onChange={(v) => {
+              setCustomerName(v);
+              setSavedMessage(false);
+            }}
             customers={customers}
             placeholder="เช่น บจก. ABC"
           />
@@ -126,7 +192,13 @@ export function ProjectSaleForm({
 
         <div className="space-y-2">
           <Label htmlFor="project_name">ชื่องาน/โปรเจกต์</Label>
-          <Input id="project_name" name="project_name" required placeholder="เช่น โรงแรม XYZ ชั้น 3" />
+          <Input
+            id="project_name"
+            name="project_name"
+            required
+            defaultValue={initialData?.projectName}
+            placeholder="เช่น โรงแรม XYZ ชั้น 3"
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -135,6 +207,7 @@ export function ProjectSaleForm({
             <Select
               name="sales_rep_id"
               required
+              defaultValue={initialData?.salesRepId}
               items={salesReps.map((rep) => ({ value: rep.id, label: rep.name }))}
             >
               <SelectTrigger id="sales_rep_id" className="w-full">
@@ -151,7 +224,7 @@ export function ProjectSaleForm({
           </div>
           <div className="space-y-2">
             <Label htmlFor="customer_type">กลุ่มลูกค้า</Label>
-            <Select name="customer_type" required>
+            <Select name="customer_type" required defaultValue={initialData?.customerType}>
               <SelectTrigger id="customer_type" className="w-full">
                 <SelectValue placeholder="เลือก" />
               </SelectTrigger>
@@ -247,27 +320,27 @@ export function ProjectSaleForm({
         <div className="grid grid-cols-3 gap-4">
           <div className="space-y-2">
             <Label htmlFor="material_cost">ค่าวัสดุ</Label>
-            <Input id="material_cost" name="material_cost" type="number" min="0" step="0.01" placeholder="0" />
+            <Input id="material_cost" name="material_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.material_cost} placeholder="0" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="glue_cost">ค่ากาว</Label>
-            <Input id="glue_cost" name="glue_cost" type="number" min="0" step="0.01" placeholder="0" />
+            <Input id="glue_cost" name="glue_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.glue_cost} placeholder="0" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="cutting_cost">ค่าตัด</Label>
-            <Input id="cutting_cost" name="cutting_cost" type="number" min="0" step="0.01" placeholder="0" />
+            <Input id="cutting_cost" name="cutting_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.cutting_cost} placeholder="0" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="install_cost">ค่าติดตั้งผู้รับเหมา</Label>
-            <Input id="install_cost" name="install_cost" type="number" min="0" step="0.01" placeholder="0" />
+            <Input id="install_cost" name="install_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.install_cost} placeholder="0" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="parking_cost">ค่าที่จอดรถ</Label>
-            <Input id="parking_cost" name="parking_cost" type="number" min="0" step="0.01" placeholder="0" />
+            <Input id="parking_cost" name="parking_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.parking_cost} placeholder="0" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="shipping_cost">ค่าขนส่ง</Label>
-            <Input id="shipping_cost" name="shipping_cost" type="number" min="0" step="0.01" placeholder="0" />
+            <Input id="shipping_cost" name="shipping_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.shipping_cost} placeholder="0" />
           </div>
         </div>
       </div>
@@ -283,7 +356,7 @@ export function ProjectSaleForm({
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="invoice_no_1">เลขที่เอกสาร</Label>
-              <Input id="invoice_no_1" name="invoice_no_1" placeholder="IV..." />
+              <Input id="invoice_no_1" name="invoice_no_1" defaultValue={initialData?.invoiceNo1} placeholder="IV..." />
             </div>
             <div className="space-y-2">
               <Label htmlFor="amount_1">จำนวนเงิน</Label>
@@ -300,7 +373,7 @@ export function ProjectSaleForm({
             </div>
             <div className="space-y-2">
               <Label htmlFor="paid_date_1">วันที่รับชำระ</Label>
-              <Input id="paid_date_1" name="paid_date_1" type="date" />
+              <Input id="paid_date_1" name="paid_date_1" type="date" defaultValue={initialData?.paidDate1} />
             </div>
           </div>
         </div>
@@ -311,7 +384,7 @@ export function ProjectSaleForm({
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="invoice_no_2">เลขที่เอกสาร</Label>
-                <Input id="invoice_no_2" name="invoice_no_2" placeholder="IV..." />
+                <Input id="invoice_no_2" name="invoice_no_2" defaultValue={initialData?.invoiceNo2} placeholder="IV..." />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="amount_2">จำนวนเงิน</Label>
@@ -328,7 +401,7 @@ export function ProjectSaleForm({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="paid_date_2">วันที่รับชำระ</Label>
-                <Input id="paid_date_2" name="paid_date_2" type="date" />
+                <Input id="paid_date_2" name="paid_date_2" type="date" defaultValue={initialData?.paidDate2} />
               </div>
             </div>
           </div>
@@ -342,7 +415,7 @@ export function ProjectSaleForm({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="status">สถานะ</Label>
-            <Select name="status" required>
+            <Select name="status" required defaultValue={initialData?.status}>
               <SelectTrigger id="status" className="w-full">
                 <SelectValue placeholder="เลือก" />
               </SelectTrigger>
@@ -363,7 +436,7 @@ export function ProjectSaleForm({
       </div>
 
       <Button type="submit" disabled={pending}>
-        {pending ? "กำลังบันทึก..." : "บันทึกงานขาย"}
+        {pending ? "กำลังบันทึก..." : mode === "edit" ? "บันทึกการแก้ไข" : "บันทึกงานขาย"}
       </Button>
     </form>
   );
