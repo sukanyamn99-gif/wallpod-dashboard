@@ -5,6 +5,7 @@ import {
   MonthlySalesChart,
   PipelineByStageChart,
   ProductCategoryChart,
+  RepMonthlyPerformanceTable,
   SalesRepPerformanceChart,
 } from "@/components/dashboard/sales-charts";
 import { getSalesDashboardData } from "@/lib/data/sales";
@@ -33,6 +34,7 @@ export default async function SalesDashboardPage() {
       </div>
 
       <SalesRepPerformanceChart data={data.salesRepPerformance} />
+      <RepMonthlyPerformanceTable data={data.repMonthlyPerformance} />
       <MonthlySalesChart data={data.monthlySales} />
     </div>
   );

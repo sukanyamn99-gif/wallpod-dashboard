@@ -12,30 +12,56 @@ const PRODUCT_CATEGORIES: ProductCategory[] = [
   "WALLPOD", "ACOUSHEET", "ACOUSOFT", "ACUBOX", "CNC", "SERVICE", "WALLPAPER", "OTHER",
 ];
 
-function getMonthlySales(projects: Project[]) {
+function getMonthRange(projects: Project[]) {
   const now = new Date();
   const months = Array.from({ length: MONTHS_TO_SHOW }, (_, i) => {
     const monthAnchor = subMonths(now, MONTHS_TO_SHOW - 1 - i);
     const start = startOfMonth(monthAnchor);
     const end = endOfMonth(monthAnchor);
-    return { start, end };
+    return { start, end, label: format(start, "MMM yy", { locale: th }) };
   });
 
-  const rows = months.map(({ start, end }) => {
+  // Drop leading months with no sales at all — those precede the earliest
+  // recorded data and would otherwise show as a misleading empty bar/column.
+  const firstWithData = months.findIndex(
+    ({ start, end }) => projects.some((p) => isWithinInterval(new Date(p.project_date), { start, end })),
+  );
+  return firstWithData === -1 ? months : months.slice(firstWithData);
+}
+
+function getMonthlySales(projects: Project[], months: ReturnType<typeof getMonthRange>) {
+  return months.map(({ start, end, label }) => {
     const inMonth = projects.filter((p) =>
       isWithinInterval(new Date(p.project_date), { start, end }),
     );
     return {
-      monthLabel: format(start, "MMM yy", { locale: th }),
+      monthLabel: label,
       value: inMonth.reduce((sum, p) => sum + p.pre_vat, 0),
       count: inMonth.length,
     };
   });
+}
 
-  // Drop leading months with no sales at all — those precede the earliest
-  // recorded data and would otherwise show as a misleading empty bar.
-  const firstWithData = rows.findIndex((r) => r.count > 0);
-  return firstWithData === -1 ? rows : rows.slice(firstWithData);
+function getRepMonthlyPerformance(projects: Project[], months: ReturnType<typeof getMonthRange>) {
+  const repIds = Array.from(new Set(projects.map((p) => p.sales_rep_id)));
+  const rows = repIds
+    .map((id) => {
+      const repProjects = projects.filter((p) => p.sales_rep_id === id);
+      const values = months.map(({ start, end }) =>
+        repProjects
+          .filter((p) => isWithinInterval(new Date(p.project_date), { start, end }))
+          .reduce((sum, p) => sum + p.total, 0),
+      );
+      return {
+        salesRepId: id,
+        salesRepName: repProjects[0]?.sales_rep_name ?? "",
+        values,
+        total: values.reduce((sum, v) => sum + v, 0),
+      };
+    })
+    .sort((a, b) => b.total - a.total);
+
+  return { months: months.map((m) => m.label), rows };
 }
 
 async function fetchLiveProjects(): Promise<Project[]> {
@@ -157,6 +183,8 @@ export async function getSalesDashboardData(): Promise<SalesDashboardData> {
     })
     .sort((a, b) => b.totalValue - a.totalValue);
 
+  const months = getMonthRange(projects);
+
   return {
     totalPipelineValue,
     openProjectsCount,
@@ -165,7 +193,8 @@ export async function getSalesDashboardData(): Promise<SalesDashboardData> {
     customerTypeBreakdown,
     categoryBreakdown,
     salesRepPerformance,
-    monthlySales: getMonthlySales(projects),
+    monthlySales: getMonthlySales(projects, months),
+    repMonthlyPerformance: getRepMonthlyPerformance(projects, months),
   };
 }
 

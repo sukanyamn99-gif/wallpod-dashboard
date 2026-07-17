@@ -148,4 +148,8 @@ export interface SalesDashboardData {
   categoryBreakdown: { category: ProductCategory; value: number; count: number }[];
   salesRepPerformance: { salesRepId: string; salesRepName: string; totalValue: number; closedValue: number; projectCount: number }[];
   monthlySales: { monthLabel: string; value: number; count: number }[];
+  repMonthlyPerformance: {
+    months: string[];
+    rows: { salesRepId: string; salesRepName: string; values: number[]; total: number }[];
+  };
 }

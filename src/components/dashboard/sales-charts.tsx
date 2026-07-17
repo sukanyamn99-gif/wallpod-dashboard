@@ -14,6 +14,7 @@ import {
   YAxis,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatTHB } from "@/lib/format";
 import type { SalesDashboardData } from "@/lib/types";
 
@@ -216,6 +217,52 @@ export function SalesRepPerformanceChart({
             </Bar>
           </BarChart>
         </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function RepMonthlyPerformanceTable({
+  data,
+}: {
+  data: SalesDashboardData["repMonthlyPerformance"];
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>ผลงานรายเซลล์แยกตามเดือน</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="whitespace-nowrap">เซลล์</TableHead>
+                {data.months.map((m) => (
+                  <TableHead key={m} className="text-right whitespace-nowrap">
+                    {m}
+                  </TableHead>
+                ))}
+                <TableHead className="text-right whitespace-nowrap">รวม</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {data.rows.map((row) => (
+                <TableRow key={row.salesRepId}>
+                  <TableCell className="whitespace-nowrap font-medium">{row.salesRepName}</TableCell>
+                  {row.values.map((v, i) => (
+                    <TableCell key={i} className="text-right whitespace-nowrap">
+                      {v ? formatTHB(v) : "—"}
+                    </TableCell>
+                  ))}
+                  <TableCell className="text-right whitespace-nowrap font-medium">
+                    {formatTHB(row.total)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   );
