@@ -280,3 +280,32 @@ export async function updateProjectSale(projectId: string, formData: FormData) {
   revalidatePath("/dashboard/sales");
   return { error: null };
 }
+
+export async function setProjectCancelled(projectId: string, jobNo: string | null, cancelled: boolean) {
+  if (!isSupabaseConfigured()) {
+    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("projects").update({ is_cancelled: cancelled }).eq("id", projectId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/dashboard/project-sales/edit/${jobNo ?? ""}`);
+  revalidatePath("/dashboard/project-sales");
+  revalidatePath("/dashboard/sales");
+  return { error: null };
+}
+
+export async function deleteProjectSale(projectId: string) {
+  if (!isSupabaseConfigured()) {
+    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถลบได้ในโหมดทดลอง" };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("projects").delete().eq("id", projectId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/project-sales");
+  revalidatePath("/dashboard/sales");
+  return { error: null };
+}

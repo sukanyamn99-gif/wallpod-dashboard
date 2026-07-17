@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCustomers, getSalesReps } from "@/lib/data/reference";
 import { getProjectByJobNo } from "@/lib/data/project-sales";
 import { ProjectSaleForm } from "../../project-sale-form";
+import { DangerZone } from "../../danger-zone";
 
 export default async function EditProjectSalePage({
   params,
@@ -49,6 +50,10 @@ export default async function EditProjectSalePage({
           )}
         </CardContent>
       </Card>
+
+      {detail && (
+        <DangerZone projectId={detail.id} jobNo={decodedJobNo} isCancelled={detail.isCancelled} />
+      )}
     </div>
   );
 }

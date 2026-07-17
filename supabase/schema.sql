@@ -50,6 +50,7 @@ create table projects (
   pre_vat numeric(14,2) not null default 0,
   vat numeric(14,2) not null default 0,
   total numeric(14,2) generated always as (pre_vat + vat) stored,
+  is_cancelled boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

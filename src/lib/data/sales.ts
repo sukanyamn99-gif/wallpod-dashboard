@@ -10,7 +10,8 @@ async function fetchLiveProjects(): Promise<Project[]> {
     .from("projects")
     .select(
       "id, job_no, project_date, customer_id, project_name, sales_rep_id, customer_type, stage_percent, pre_vat, vat, total, customers(name), sales_reps(name)",
-    );
+    )
+    .eq("is_cancelled", false);
 
   if (error) throw error;
 

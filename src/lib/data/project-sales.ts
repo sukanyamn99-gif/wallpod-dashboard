@@ -3,6 +3,7 @@ import type { ProjectSaleInitialData } from "@/app/dashboard/project-sales/proje
 
 export interface ProjectDetail {
   id: string;
+  isCancelled: boolean;
   initialData: ProjectSaleInitialData;
 }
 
@@ -14,7 +15,7 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
   const { data: project, error: projectErr } = await supabase
     .from("projects")
     .select(
-      "id, job_no, project_date, customer_id, project_name, sales_rep_id, customer_type, pre_vat, vat, customers(name)",
+      "id, job_no, project_date, customer_id, project_name, sales_rep_id, customer_type, pre_vat, vat, is_cancelled, customers(name)",
     )
     .eq("job_no", jobNo)
     .maybeSingle();
@@ -36,6 +37,7 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
 
   return {
     id: project.id,
+    isCancelled: project.is_cancelled,
     initialData: {
       projectDate: project.project_date,
       jobNo: project.job_no,

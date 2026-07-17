@@ -17,6 +17,7 @@ export async function GET() {
     .select(
       "id, job_no, project_date, project_name, customer_type, pre_vat, vat, total, customers(name), sales_reps(name)",
     )
+    .eq("is_cancelled", false)
     .order("project_date", { ascending: true });
   if (projectsErr) return new Response(projectsErr.message, { status: 500 });
 
