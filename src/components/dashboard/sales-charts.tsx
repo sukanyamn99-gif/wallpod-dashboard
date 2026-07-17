@@ -185,18 +185,18 @@ export function SalesRepPerformanceChart({
   );
 }
 
-export function WeeklySalesChart({ data }: { data: SalesDashboardData["weeklySales"] }) {
+export function MonthlySalesChart({ data }: { data: SalesDashboardData["monthlySales"] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>ยอดขายรายสัปดาห์ (8 สัปดาห์ล่าสุด)</CardTitle>
+        <CardTitle>ยอดขายรายเดือน (8 เดือนล่าสุด)</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={280}>
           <BarChart data={data} margin={{ left: 8, right: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
             <XAxis
-              dataKey="weekLabel"
+              dataKey="monthLabel"
               tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
               axisLine={{ stroke: "var(--border)" }}
               tickLine={false}

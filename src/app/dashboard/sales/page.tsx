@@ -2,9 +2,9 @@ import { Briefcase, CalendarCheck2, CircleDollarSign, TrendingUp } from "lucide-
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import {
   CustomerTypeChart,
+  MonthlySalesChart,
   PipelineByStageChart,
   SalesRepPerformanceChart,
-  WeeklySalesChart,
 } from "@/components/dashboard/sales-charts";
 import { getSalesDashboardData } from "@/lib/data/sales";
 import { formatTHB } from "@/lib/format";
@@ -32,7 +32,7 @@ export default async function SalesDashboardPage() {
       </div>
 
       <SalesRepPerformanceChart data={data.salesRepPerformance} />
-      <WeeklySalesChart data={data.weeklySales} />
+      <MonthlySalesChart data={data.monthlySales} />
     </div>
   );
 }

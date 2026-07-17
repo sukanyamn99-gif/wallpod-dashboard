@@ -119,5 +119,5 @@ export interface SalesDashboardData {
   pipelineByStage: { stage: StagePercent; label: string; value: number; count: number }[];
   customerTypeBreakdown: { type: CustomerType; value: number; count: number }[];
   salesRepPerformance: { salesRepId: string; salesRepName: string; totalValue: number; closedValue: number; projectCount: number }[];
-  weeklySales: { weekLabel: string; value: number; count: number }[];
+  monthlySales: { monthLabel: string; value: number; count: number }[];
 }

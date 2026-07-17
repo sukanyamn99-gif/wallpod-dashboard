@@ -1,12 +1,12 @@
 import { Download, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getAllProjectSales } from "@/lib/data/project-sales";
+import { getFullProjectReport } from "@/lib/data/project-sales";
 import { JobSearchBox } from "./job-search-box";
 import { ProjectsTable } from "./projects-table";
 
 export default async function ProjectSalesPage() {
-  const projects = await getAllProjectSales();
+  const projects = await getFullProjectReport();
 
   return (
     <div className="space-y-6">
@@ -18,11 +18,11 @@ export default async function ProjectSalesPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" render={<a href="/api/export-projects" download />}>
+          <Button variant="outline" nativeButton={false} render={<a href="/api/export-projects" download />}>
             <Download className="h-4 w-4" />
             Export Excel
           </Button>
-          <Button render={<a href="/dashboard/project-sales/new" />}>
+          <Button nativeButton={false} render={<a href="/dashboard/project-sales/new" />}>
             <Plus className="h-4 w-4" />
             เพิ่ม Project
           </Button>
