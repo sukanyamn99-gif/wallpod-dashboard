@@ -48,7 +48,7 @@ export async function getSalesDashboardData(): Promise<SalesDashboardData> {
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const totalPipelineValue = projects.reduce((sum, p) => sum + p.total, 0);
+  const totalPipelineValue = projects.reduce((sum, p) => sum + p.pre_vat, 0);
   const openProjectsCount = projects.filter((p) => p.stage_percent < 100).length;
 
   const closedThisMonthValue = projects
