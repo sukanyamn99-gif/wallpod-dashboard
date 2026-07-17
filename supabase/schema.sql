@@ -51,6 +51,10 @@ create table projects (
   vat numeric(14,2) not null default 0,
   total numeric(14,2) generated always as (pre_vat + vat) stored,
   is_cancelled boolean not null default false,
+  production_status text check (production_status in (
+    'รอเงินมัดจำ','รออนุมัติแบบ','ทำแบบผลิต (Cutting)','เบิกแผ่น','กำลังผลิต','ผลิตเสร็จ',
+    'ส่งของแล้ว','ติดตั้งเสร็จ','รอใบส่งมอบ','จบงาน','เก็บเงินงวดสุดท้าย'
+  )),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

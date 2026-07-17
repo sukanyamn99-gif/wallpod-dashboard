@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import type { PaymentStatus, ProductCategory } from "@/lib/types";
+import type { PaymentStatus, ProductCategory, ProductionStatus } from "@/lib/types";
+import { PRODUCTION_STATUSES } from "@/lib/types";
 
 const PRODUCT_CATEGORIES: ProductCategory[] = [
   "WALLPOD", "ACOUSHEET", "ACOUSOFT", "ACUBOX", "CNC", "SERVICE", "WALLPAPER", "OTHER",
@@ -27,6 +28,7 @@ type ParsedForm = {
   projectName: string;
   salesRepId: string;
   customerType: string;
+  productionStatus: ProductionStatus | null;
   items: { category: string; amount: number }[];
   preVat: number;
   vat: number;
@@ -57,6 +59,11 @@ function parseForm(formData: FormData): { ok: false; error: string } | ParsedFor
   const projectName = str(formData.get("project_name"));
   const salesRepId = str(formData.get("sales_rep_id"));
   const customerType = str(formData.get("customer_type"));
+  const productionStatusRaw = str(formData.get("production_status"));
+  const productionStatus =
+    productionStatusRaw && PRODUCTION_STATUSES.includes(productionStatusRaw as ProductionStatus)
+      ? (productionStatusRaw as ProductionStatus)
+      : null;
 
   if (!customerName) return { ok: false, error: "กรุณากรอกชื่อลูกค้า" };
   if (!projectName) return { ok: false, error: "กรุณากรอกชื่องาน/โปรเจกต์" };
@@ -104,6 +111,7 @@ function parseForm(formData: FormData): { ok: false; error: string } | ParsedFor
     projectName,
     salesRepId,
     customerType,
+    productionStatus,
     items,
     preVat,
     vat,
@@ -196,6 +204,7 @@ export async function createProjectSale(formData: FormData) {
       project_name: parsed.projectName,
       sales_rep_id: parsed.salesRepId,
       customer_type: parsed.customerType,
+      production_status: parsed.productionStatus,
       stage_percent: 100,
       pre_vat: parsed.preVat,
       vat: parsed.vat,
@@ -247,6 +256,7 @@ export async function updateProjectSale(projectId: string, formData: FormData) {
       project_name: parsed.projectName,
       sales_rep_id: parsed.salesRepId,
       customer_type: parsed.customerType,
+      production_status: parsed.productionStatus,
       pre_vat: parsed.preVat,
       vat: parsed.vat,
     })

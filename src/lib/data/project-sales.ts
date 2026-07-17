@@ -21,6 +21,7 @@ export interface FullProjectRow {
   salesRepName: string;
   customerType: string;
   isCancelled: boolean;
+  productionStatus: string | null;
   itemsByCategory: Record<ProductCategory, number>;
   preVat: number;
   vat: number;
@@ -58,7 +59,7 @@ export async function getFullProjectReport(): Promise<FullProjectRow[]> {
   const { data: projects, error: projectsErr } = await supabase
     .from("projects")
     .select(
-      "id, job_no, project_date, project_name, customer_type, pre_vat, vat, total, is_cancelled, customers(name), sales_reps(name)",
+      "id, job_no, project_date, project_name, customer_type, pre_vat, vat, total, is_cancelled, production_status, customers(name), sales_reps(name)",
     )
     .order("project_date", { ascending: false });
   if (projectsErr) throw projectsErr;
@@ -111,6 +112,7 @@ export async function getFullProjectReport(): Promise<FullProjectRow[]> {
       salesRepName: p.sales_reps?.name ?? "",
       customerType: p.customer_type,
       isCancelled: p.is_cancelled,
+      productionStatus: p.production_status,
       itemsByCategory,
       preVat: Number(p.pre_vat),
       vat: Number(p.vat),
@@ -137,7 +139,7 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
   const { data: project, error: projectErr } = await supabase
     .from("projects")
     .select(
-      "id, job_no, project_date, customer_id, project_name, sales_rep_id, customer_type, pre_vat, vat, is_cancelled, customers(name)",
+      "id, job_no, project_date, customer_id, project_name, sales_rep_id, customer_type, pre_vat, vat, is_cancelled, production_status, customers(name)",
     )
     .eq("job_no", jobNo)
     .maybeSingle();
@@ -168,6 +170,7 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
       projectName: project.project_name,
       salesRepId: project.sales_rep_id,
       customerType: project.customer_type,
+      productionStatus: project.production_status ?? "",
       items: (items ?? []).map((it) => ({ category: it.product_category, amount: String(it.amount) })),
       costs: {
         material_cost: costs?.material_cost != null ? String(costs.material_cost) : "",

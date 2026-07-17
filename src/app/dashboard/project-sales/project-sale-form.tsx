@@ -17,6 +17,7 @@ import { createProjectSale, updateProjectSale } from "./actions";
 import { formatTHB } from "@/lib/format";
 import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomplete";
 import type { Customer, CustomerType, PaymentStatus, ProductCategory, SalesRep } from "@/lib/types";
+import { PRODUCTION_STATUSES } from "@/lib/types";
 
 const initialState = { error: null as string | null };
 
@@ -54,6 +55,7 @@ export interface ProjectSaleInitialData {
   projectName: string;
   salesRepId: string;
   customerType: string;
+  productionStatus: string;
   items: { category: string; amount: string }[];
   costs: {
     material_cost: string;
@@ -237,6 +239,25 @@ export function ProjectSaleForm({
               </SelectContent>
             </Select>
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="production_status">สถานะของงาน</Label>
+          <Select
+            name="production_status"
+            defaultValue={initialData?.productionStatus || undefined}
+          >
+            <SelectTrigger id="production_status" className="w-full">
+              <SelectValue placeholder="เลือกสถานะของงาน" />
+            </SelectTrigger>
+            <SelectContent>
+              {PRODUCTION_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

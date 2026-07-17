@@ -22,6 +22,7 @@ export async function GET() {
         "PROJECT NAME": p.projectName,
         "SALE": p.salesRepName,
         "Customer Type": p.customerType,
+        "สถานะของงาน": p.productionStatus ?? "",
       };
       for (const cat of PRODUCT_CATEGORIES) {
         row[cat] = p.itemsByCategory[cat] || "";

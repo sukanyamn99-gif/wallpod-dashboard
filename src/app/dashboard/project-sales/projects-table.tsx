@@ -26,7 +26,7 @@ const PRODUCT_CATEGORIES = [
   "WALLPOD", "ACOUSHEET", "ACOUSOFT", "ACUBOX", "CNC", "SERVICE", "WALLPAPER", "OTHER",
 ] as const;
 
-const TOTAL_COLUMNS = 33;
+const TOTAL_COLUMNS = 34;
 
 const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -75,6 +75,7 @@ function ProjectRow({ p }: { p: FullProjectRow }) {
       <TableCell className="whitespace-nowrap">{p.projectName}</TableCell>
       <TableCell className="whitespace-nowrap">{p.salesRepName}</TableCell>
       <TableCell className="whitespace-nowrap">{p.customerType}</TableCell>
+      <TableCell className="whitespace-nowrap">{p.productionStatus ?? "—"}</TableCell>
       {PRODUCT_CATEGORIES.map((cat) => (
         <Money key={cat} value={p.itemsByCategory[cat]} />
       ))}
@@ -236,6 +237,7 @@ export function ProjectsTable({ projects }: { projects: FullProjectRow[] }) {
               <TableHead className="whitespace-nowrap">PROJECT NAME</TableHead>
               <TableHead className="whitespace-nowrap">SALE</TableHead>
               <TableHead className="whitespace-nowrap">Customer Type</TableHead>
+              <TableHead className="whitespace-nowrap">สถานะของงาน</TableHead>
               {PRODUCT_CATEGORIES.map((cat) => (
                 <TableHead key={cat} className="text-right whitespace-nowrap">
                   {cat}
