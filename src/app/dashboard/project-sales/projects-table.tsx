@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -19,8 +19,79 @@ const PRODUCT_CATEGORIES = [
   "WALLPOD", "ACOUSHEET", "ACOUSOFT", "ACUBOX", "CNC", "SERVICE", "WALLPAPER", "OTHER",
 ] as const;
 
+const TOTAL_COLUMNS = 33;
+
+const THAI_MONTHS = [
+  "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+  "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
+];
+
 function Money({ value }: { value: number | null | undefined }) {
   return <TableCell className="text-right whitespace-nowrap">{value ? formatTHB(value) : "—"}</TableCell>;
+}
+
+function sumRows(rows: FullProjectRow[]) {
+  const counted = rows.filter((p) => !p.isCancelled);
+  return {
+    count: counted.length,
+    preVat: counted.reduce((s, p) => s + p.preVat, 0),
+    vat: counted.reduce((s, p) => s + p.vat, 0),
+    total: counted.reduce((s, p) => s + p.total, 0),
+    totalCost: counted.reduce((s, p) => s + (p.costs?.totalCost ?? 0), 0),
+    profit: counted.reduce((s, p) => s + (p.profit ?? 0), 0),
+    outstanding: counted.reduce((s, p) => s + (p.outstanding ?? 0), 0),
+  };
+}
+
+function ProjectRow({ p }: { p: FullProjectRow }) {
+  return (
+    <TableRow className={p.isCancelled ? "opacity-60" : undefined}>
+      <TableCell className="font-medium whitespace-nowrap">
+        {p.jobNo ? (
+          <Link
+            href={`/dashboard/project-sales/edit/${encodeURIComponent(p.jobNo)}`}
+            className="underline underline-offset-2"
+          >
+            {p.jobNo}
+          </Link>
+        ) : (
+          "—"
+        )}
+        {p.isCancelled && (
+          <Badge variant="destructive" className="ml-1">
+            ยกเลิก
+          </Badge>
+        )}
+      </TableCell>
+      <TableCell className="whitespace-nowrap">{p.projectDate}</TableCell>
+      <TableCell className="whitespace-nowrap">{p.customerName}</TableCell>
+      <TableCell className="whitespace-nowrap">{p.projectName}</TableCell>
+      <TableCell className="whitespace-nowrap">{p.salesRepName}</TableCell>
+      <TableCell className="whitespace-nowrap">{p.customerType}</TableCell>
+      {PRODUCT_CATEGORIES.map((cat) => (
+        <Money key={cat} value={p.itemsByCategory[cat]} />
+      ))}
+      <Money value={p.preVat} />
+      <Money value={p.vat} />
+      <Money value={p.total} />
+      <Money value={p.costs?.material} />
+      <Money value={p.costs?.glue} />
+      <Money value={p.costs?.cutting} />
+      <Money value={p.costs?.install} />
+      <Money value={p.costs?.parking} />
+      <Money value={p.costs?.shipping} />
+      <Money value={p.costs?.totalCost} />
+      <Money value={p.profit} />
+      <TableCell className="whitespace-nowrap">{p.invoiceNo1 ?? "—"}</TableCell>
+      <Money value={p.amount1} />
+      <TableCell className="whitespace-nowrap">{p.paidDate1 ?? "—"}</TableCell>
+      <TableCell className="whitespace-nowrap">{p.invoiceNo2 ?? "—"}</TableCell>
+      <Money value={p.amount2} />
+      <TableCell className="whitespace-nowrap">{p.paidDate2 ?? "—"}</TableCell>
+      <TableCell className="whitespace-nowrap">{p.status ?? "—"}</TableCell>
+      <Money value={p.outstanding} />
+    </TableRow>
+  );
 }
 
 export function ProjectsTable({ projects }: { projects: FullProjectRow[] }) {
@@ -38,20 +109,34 @@ export function ProjectsTable({ projects }: { projects: FullProjectRow[] }) {
     );
   }, [projects, query]);
 
-  const summary = useMemo(() => {
-    const counted = filtered.filter((p) => !p.isCancelled);
-    return {
-      count: counted.length,
-      preVat: counted.reduce((s, p) => s + p.preVat, 0),
-      vat: counted.reduce((s, p) => s + p.vat, 0),
-      total: counted.reduce((s, p) => s + p.total, 0),
-      totalCost: counted.reduce((s, p) => s + (p.costs?.totalCost ?? 0), 0),
-      profit: counted.reduce((s, p) => s + (p.profit ?? 0), 0),
-      outstanding: counted.reduce((s, p) => s + (p.outstanding ?? 0), 0),
-      byCategory: Object.fromEntries(
-        PRODUCT_CATEGORIES.map((cat) => [cat, counted.reduce((s, p) => s + p.itemsByCategory[cat], 0)]),
-      ) as Record<(typeof PRODUCT_CATEGORIES)[number], number>,
-    };
+  const summary = useMemo(() => sumRows(filtered), [filtered]);
+
+  // Group by calendar month (Jan → Dec, oldest year first) so each month's
+  // jobs sit together with their own subtotal — mirrors the "Week N" subtotal
+  // rows the original Excel sheet used, just at month granularity.
+  const monthGroups = useMemo(() => {
+    const groups = new Map<string, FullProjectRow[]>();
+    for (const p of filtered) {
+      const d = new Date(p.projectDate);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(p);
+    }
+    return Array.from(groups.keys())
+      .sort()
+      .map((key) => {
+        const [year, month] = key.split("-").map(Number);
+        const rows = groups
+          .get(key)!
+          .slice()
+          .sort((a, b) => a.projectDate.localeCompare(b.projectDate));
+        return {
+          key,
+          label: `${THAI_MONTHS[month - 1]} ${year}`,
+          rows,
+          subtotal: sumRows(rows),
+        };
+      });
   }, [filtered]);
 
   return (
@@ -133,58 +218,30 @@ export function ProjectsTable({ projects }: { projects: FullProjectRow[] }) {
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={26} className="text-center text-muted-foreground">
+                <TableCell colSpan={TOTAL_COLUMNS} className="text-center text-muted-foreground">
                   ไม่พบข้อมูล
                 </TableCell>
               </TableRow>
             )}
-            {filtered.map((p) => (
-              <TableRow key={p.id} className={p.isCancelled ? "opacity-60" : undefined}>
-                <TableCell className="font-medium whitespace-nowrap">
-                  {p.jobNo ? (
-                    <Link
-                      href={`/dashboard/project-sales/edit/${encodeURIComponent(p.jobNo)}`}
-                      className="underline underline-offset-2"
-                    >
-                      {p.jobNo}
-                    </Link>
-                  ) : (
-                    "—"
-                  )}
-                  {p.isCancelled && (
-                    <Badge variant="destructive" className="ml-1">
-                      ยกเลิก
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell className="whitespace-nowrap">{p.projectDate}</TableCell>
-                <TableCell className="whitespace-nowrap">{p.customerName}</TableCell>
-                <TableCell className="whitespace-nowrap">{p.projectName}</TableCell>
-                <TableCell className="whitespace-nowrap">{p.salesRepName}</TableCell>
-                <TableCell className="whitespace-nowrap">{p.customerType}</TableCell>
-                {PRODUCT_CATEGORIES.map((cat) => (
-                  <Money key={cat} value={p.itemsByCategory[cat]} />
+            {monthGroups.map((group) => (
+              <Fragment key={group.key}>
+                <TableRow className="bg-muted hover:bg-muted">
+                  <TableCell colSpan={TOTAL_COLUMNS} className="font-medium">
+                    {group.label} ({group.subtotal.count} งาน)
+                  </TableCell>
+                </TableRow>
+                {group.rows.map((p) => (
+                  <ProjectRow key={p.id} p={p} />
                 ))}
-                <Money value={p.preVat} />
-                <Money value={p.vat} />
-                <Money value={p.total} />
-                <Money value={p.costs?.material} />
-                <Money value={p.costs?.glue} />
-                <Money value={p.costs?.cutting} />
-                <Money value={p.costs?.install} />
-                <Money value={p.costs?.parking} />
-                <Money value={p.costs?.shipping} />
-                <Money value={p.costs?.totalCost} />
-                <Money value={p.profit} />
-                <TableCell className="whitespace-nowrap">{p.invoiceNo1 ?? "—"}</TableCell>
-                <Money value={p.amount1} />
-                <TableCell className="whitespace-nowrap">{p.paidDate1 ?? "—"}</TableCell>
-                <TableCell className="whitespace-nowrap">{p.invoiceNo2 ?? "—"}</TableCell>
-                <Money value={p.amount2} />
-                <TableCell className="whitespace-nowrap">{p.paidDate2 ?? "—"}</TableCell>
-                <TableCell className="whitespace-nowrap">{p.status ?? "—"}</TableCell>
-                <Money value={p.outstanding} />
-              </TableRow>
+                <TableRow className="bg-muted/50 hover:bg-muted/50 font-medium">
+                  <TableCell colSpan={TOTAL_COLUMNS}>
+                    รวม{group.label}: PRE.VAT {formatTHB(group.subtotal.preVat)} · VAT{" "}
+                    {formatTHB(group.subtotal.vat)} · รวมทั้งสิ้น {formatTHB(group.subtotal.total)} · ต้นทุน{" "}
+                    {formatTHB(group.subtotal.totalCost)} · กำไร {formatTHB(group.subtotal.profit)} · คงค้าง{" "}
+                    {formatTHB(group.subtotal.outstanding)}
+                  </TableCell>
+                </TableRow>
+              </Fragment>
             ))}
           </TableBody>
         </Table>
