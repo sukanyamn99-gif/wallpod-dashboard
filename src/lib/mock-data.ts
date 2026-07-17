@@ -1,4 +1,5 @@
-import type { Customer, CustomerType, Project, SalesRep, Visit } from "@/lib/types";
+import type { Customer, CustomerType, Project, SaleReport, SalesRep, Stage } from "@/lib/types";
+import { STAGE_PERCENT_BY_STAGE } from "@/lib/types";
 
 // Sample data so the dashboard is browsable before a real Supabase project
 // and Excel import are wired up. Shape matches the live schema in supabase/schema.sql.
@@ -69,8 +70,44 @@ export const mockCustomerTypes: CustomerType[] = [
   "Owner", "Designer", "Turnkey", "Contractor", "Corporate", "Dealer", "School",
 ];
 
-export const mockVisits: Visit[] = [
-  { id: "v1", sales_rep_id: "rep-1", sales_rep_name: "กิตติ", customer_id: "cus-1", customer_name: cusById["cus-1"].name, project_id: "p1", visit_date: new Date().toISOString().slice(0, 10), note: "นำเสนอตัวอย่างวัสดุ" },
-  { id: "v2", sales_rep_id: "rep-2", sales_rep_name: "นารี", customer_id: "cus-5", customer_name: cusById["cus-5"].name, project_id: "p5", visit_date: new Date().toISOString().slice(0, 10), note: "เก็บเงินงวดสุดท้าย" },
-  { id: "v3", sales_rep_id: "rep-3", sales_rep_name: "สมชาย", customer_id: "cus-3", customer_name: cusById["cus-3"].name, project_id: "p3", visit_date: new Date().toISOString().slice(0, 10), note: "สำรวจหน้างานเฟส 2" },
+function saleReport(r: {
+  id: string;
+  sales_rep_id: string;
+  customer_name: string;
+  project_name: string;
+  customer_type: CustomerType;
+  project_type: SaleReport["project_type"];
+  stage: Stage;
+  est_value: number;
+  location_text?: string;
+  next_action?: string;
+  note?: string;
+  hoursAgo: number;
+}): SaleReport {
+  const created = new Date();
+  created.setHours(created.getHours() - r.hoursAgo);
+  return {
+    id: r.id,
+    sales_rep_id: r.sales_rep_id,
+    sales_rep_name: repById[r.sales_rep_id],
+    customer_name: r.customer_name,
+    project_name: r.project_name,
+    customer_type: r.customer_type,
+    project_type: r.project_type,
+    stage: r.stage,
+    stage_percent: STAGE_PERCENT_BY_STAGE[r.stage],
+    est_value: r.est_value,
+    location_text: r.location_text ?? null,
+    next_action: r.next_action ?? null,
+    note: r.note ?? null,
+    created_at: created.toISOString(),
+  };
+}
+
+export const mockSaleReports: SaleReport[] = [
+  saleReport({ id: "sl1", sales_rep_id: "rep-1", customer_name: "บจก. สยามดีไซน์", project_name: "สตูดิโอบันทึกเสียง", customer_type: "Designer", project_type: "ออฟฟิศ", stage: "เจรจาต่อรอง", est_value: 420000, location_text: "https://maps.google.com/?q=13.7563,100.5018", next_action: "รอเซ็นสัญญาสัปดาห์หน้า", hoursAgo: 2 }),
+  saleReport({ id: "sl2", sales_rep_id: "rep-2", customer_name: "บจก. คอร์ปอเรท กรุ๊ป", project_name: "ห้องประชุมสำนักงานใหญ่", customer_type: "Corporate", project_type: "ออฟฟิศ", stage: "ปิดการขาย", est_value: 260000, next_action: "ส่งทีมติดตั้ง", hoursAgo: 4 }),
+  saleReport({ id: "sl3", sales_rep_id: "rep-3", customer_name: "บจก. เทิร์นคีย์ โปร", project_name: "คอนโด เฟส 2", customer_type: "Turnkey", project_type: "คอนโด", stage: "นำเสนอ", est_value: 950000, next_action: "นัดสำรวจหน้างานอีกครั้ง", hoursAgo: 6 }),
+  saleReport({ id: "sl4", sales_rep_id: "rep-1", customer_name: "ดีลเลอร์ภาคเหนือ", project_name: "โชว์รูมภาคเหนือ", customer_type: "Dealer", project_type: "อื่นๆ", stage: "ใบเสนอราคา", est_value: 150000, next_action: "รอลูกค้าอนุมัติงบ", hoursAgo: 20 }),
+  saleReport({ id: "sl5", sales_rep_id: "rep-2", customer_name: "โรงเรียนวัดสุทธิ", project_name: "ห้องดนตรี", customer_type: "School", project_type: "โรงเรียน", stage: "ไม่สำเร็จ", est_value: 180000, note: "งบไม่พอ เลื่อนไปปีหน้า", hoursAgo: 30 }),
 ];

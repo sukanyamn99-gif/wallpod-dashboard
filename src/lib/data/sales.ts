@@ -1,6 +1,6 @@
 import { isSupabaseConfigured, createClient } from "@/lib/supabase/server";
 import { mockCustomerTypes, mockProjects } from "@/lib/mock-data";
-import { getTodayVisits } from "@/lib/data/visits";
+import { getAllSaleReports, getTodaySaleReports } from "@/lib/data/sale-reports";
 import type { CustomerType, Project, SalesDashboardData, StagePercent } from "@/lib/types";
 import { STAGE_LABELS } from "@/lib/types";
 
@@ -39,7 +39,11 @@ async function getProjects(): Promise<Project[]> {
 }
 
 export async function getSalesDashboardData(): Promise<SalesDashboardData> {
-  const [projects, todayVisits] = await Promise.all([getProjects(), getTodayVisits()]);
+  const [projects, todaySaleReports, allSaleReports] = await Promise.all([
+    getProjects(),
+    getTodaySaleReports(),
+    getAllSaleReports(),
+  ]);
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -51,13 +55,15 @@ export async function getSalesDashboardData(): Promise<SalesDashboardData> {
     .filter((p) => p.stage_percent === 100 && new Date(p.project_date) >= monthStart)
     .reduce((sum, p) => sum + p.total, 0);
 
-  const stages: StagePercent[] = [10, 30, 50, 100];
+  // Pipeline funnel reflects live Sale Reports (self-reported by sales reps),
+  // not the historical `projects` import — the Excel data had no pre-close stages.
+  const stages: StagePercent[] = [10, 30, 50, 100, 0];
   const pipelineByStage = stages.map((stage) => {
-    const inStage = projects.filter((p) => p.stage_percent === stage);
+    const inStage = allSaleReports.filter((r) => r.stage_percent === stage);
     return {
       stage,
       label: STAGE_LABELS[stage],
-      value: inStage.reduce((sum, p) => sum + p.total, 0),
+      value: inStage.reduce((sum, r) => sum + r.est_value, 0),
       count: inStage.length,
     };
   });
@@ -92,7 +98,7 @@ export async function getSalesDashboardData(): Promise<SalesDashboardData> {
   return {
     totalPipelineValue,
     openProjectsCount,
-    todayVisitsCount: todayVisits.length,
+    todayVisitsCount: todaySaleReports.length,
     closedThisMonthValue,
     pipelineByStage,
     customerTypeBreakdown,

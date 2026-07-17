@@ -17,12 +17,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatTHB } from "@/lib/format";
 import type { SalesDashboardData } from "@/lib/types";
 
-const SEQUENTIAL_STAGE_COLORS = [
-  "var(--chart-seq-1)",
-  "var(--chart-seq-2)",
-  "var(--chart-seq-3)",
-  "var(--chart-seq-4)",
-];
+const STAGE_COLOR_BY_PERCENT: Record<number, string> = {
+  10: "var(--chart-seq-1)",
+  30: "var(--chart-seq-2)",
+  50: "var(--chart-seq-3)",
+  100: "var(--chart-seq-4)",
+  0: "var(--status-critical)",
+};
 
 const CATEGORICAL_COLORS = [
   "var(--chart-1)",
@@ -81,8 +82,8 @@ export function PipelineByStageChart({ data }: { data: SalesDashboardData["pipel
             />
             <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--muted)" }} />
             <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={64}>
-              {data.map((entry, i) => (
-                <Cell key={entry.stage} fill={SEQUENTIAL_STAGE_COLORS[i]} />
+              {data.map((entry) => (
+                <Cell key={entry.stage} fill={STAGE_COLOR_BY_PERCENT[entry.stage]} />
               ))}
             </Bar>
           </BarChart>

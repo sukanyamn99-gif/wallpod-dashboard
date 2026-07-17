@@ -32,7 +32,7 @@ const navItems = [
   { title: "AR Dashboard", url: "/dashboard/ar", icon: Receipt },
   { title: "Inventory Dashboard", url: "/dashboard/inventory", icon: Boxes },
   { title: "Dead Stock Dashboard", url: "/dashboard/dead-stock", icon: PackageX },
-  { title: "บันทึกนัดหมาย (Check-in)", url: "/dashboard/visits", icon: CalendarCheck },
+  { title: "Sale Report", url: "/dashboard/sale-report", icon: CalendarCheck },
 ];
 
 export function AppSidebar({ profile }: { profile: Profile }) {

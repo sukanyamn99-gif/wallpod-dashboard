@@ -7,14 +7,35 @@ export type CustomerType =
   | "Dealer"
   | "School";
 
-export type StagePercent = 10 | 30 | 50 | 100;
+export type StagePercent = 0 | 10 | 30 | 50 | 100;
 
 export const STAGE_LABELS: Record<StagePercent, string> = {
+  0: "ไม่สำเร็จ",
   10: "นำเสนอ",
   30: "ใบเสนอราคา",
   50: "เจรจาต่อรอง",
   100: "ปิดการขาย",
 };
+
+export type Stage = "นำเสนอ" | "ใบเสนอราคา" | "เจรจาต่อรอง" | "ปิดการขาย" | "ไม่สำเร็จ";
+
+export const STAGE_PERCENT_BY_STAGE: Record<Stage, StagePercent> = {
+  "นำเสนอ": 10,
+  "ใบเสนอราคา": 30,
+  "เจรจาต่อรอง": 50,
+  "ปิดการขาย": 100,
+  "ไม่สำเร็จ": 0,
+};
+
+export type ProjectType =
+  | "ออฟฟิศ"
+  | "โรงแรม"
+  | "โรงเรียน"
+  | "โรงพยาบาล"
+  | "บ้าน"
+  | "คอนโด"
+  | "ห้องซ้อมดนตรี"
+  | "อื่นๆ";
 
 export type Role =
   | "owner"
@@ -61,15 +82,21 @@ export interface Project {
   total: number;
 }
 
-export interface Visit {
+export interface SaleReport {
   id: string;
   sales_rep_id: string;
   sales_rep_name: string;
-  customer_id: string | null;
-  customer_name: string | null;
-  project_id: string | null;
-  visit_date: string;
+  customer_name: string;
+  project_name: string | null;
+  customer_type: CustomerType;
+  project_type: ProjectType;
+  stage: Stage;
+  stage_percent: StagePercent;
+  est_value: number;
+  location_text: string | null;
+  next_action: string | null;
   note: string | null;
+  created_at: string;
 }
 
 export interface SalesDashboardData {
