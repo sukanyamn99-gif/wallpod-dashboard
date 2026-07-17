@@ -6,6 +6,7 @@ import {
   BarChart3,
   Boxes,
   CalendarCheck,
+  ClipboardList,
   LineChart,
   PackageX,
   Receipt,
@@ -28,6 +29,7 @@ import type { Profile } from "@/lib/types";
 
 const navItems = [
   { title: "Sales Dashboard", url: "/dashboard/sales", icon: LineChart },
+  { title: "WALLPOD Project Sales", url: "/dashboard/project-sales", icon: ClipboardList },
   { title: "GP Dashboard", url: "/dashboard/gp", icon: BarChart3 },
   { title: "AR Dashboard", url: "/dashboard/ar", icon: Receipt },
   { title: "Inventory Dashboard", url: "/dashboard/inventory", icon: Boxes },

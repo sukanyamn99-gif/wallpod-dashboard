@@ -37,6 +37,18 @@ export type ProjectType =
   | "ห้องซ้อมดนตรี"
   | "อื่นๆ";
 
+export type ProductCategory =
+  | "WALLPOD"
+  | "ACOUSHEET"
+  | "ACOUSOFT"
+  | "ACUBOX"
+  | "CNC"
+  | "SERVICE"
+  | "WALLPAPER"
+  | "OTHER";
+
+export type PaymentStatus = "เก็บเงินเรียบร้อย" | "ชำระมาแล้ว 50%" | "รอชำระเงิน";
+
 export type Role =
   | "owner"
   | "manager"
