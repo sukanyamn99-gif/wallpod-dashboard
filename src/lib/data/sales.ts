@@ -17,7 +17,7 @@ function getMonthlySales(projects: Project[]) {
     return { start, end };
   });
 
-  return months.map(({ start, end }) => {
+  const rows = months.map(({ start, end }) => {
     const inMonth = projects.filter((p) =>
       isWithinInterval(new Date(p.project_date), { start, end }),
     );
@@ -27,6 +27,11 @@ function getMonthlySales(projects: Project[]) {
       count: inMonth.length,
     };
   });
+
+  // Drop leading months with no sales at all — those precede the earliest
+  // recorded data and would otherwise show as a misleading empty bar.
+  const firstWithData = rows.findIndex((r) => r.count > 0);
+  return firstWithData === -1 ? rows : rows.slice(firstWithData);
 }
 
 async function fetchLiveProjects(): Promise<Project[]> {

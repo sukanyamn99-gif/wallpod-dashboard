@@ -189,7 +189,7 @@ export function MonthlySalesChart({ data }: { data: SalesDashboardData["monthlyS
   return (
     <Card>
       <CardHeader>
-        <CardTitle>ยอดขายรายเดือน (8 เดือนล่าสุด)</CardTitle>
+        <CardTitle>ยอดขายรายเดือน ({data.length} เดือนล่าสุด)</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={280}>
