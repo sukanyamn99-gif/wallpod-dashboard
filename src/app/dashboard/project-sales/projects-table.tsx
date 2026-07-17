@@ -5,6 +5,13 @@ import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -94,10 +101,28 @@ function ProjectRow({ p }: { p: FullProjectRow }) {
   );
 }
 
+function monthKeyOf(dateStr: string) {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function monthLabelOf(key: string) {
+  const [year, month] = key.split("-").map(Number);
+  return `${THAI_MONTHS[month - 1]} ${year}`;
+}
+
 export function ProjectsTable({ projects }: { projects: FullProjectRow[] }) {
   const [query, setQuery] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState("all");
 
-  const filtered = useMemo(() => {
+  const monthOptions = useMemo(() => {
+    const keys = new Set(projects.map((p) => monthKeyOf(p.projectDate)));
+    return Array.from(keys)
+      .sort()
+      .map((key) => ({ value: key, label: monthLabelOf(key) }));
+  }, [projects]);
+
+  const searched = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return projects;
     return projects.filter(
@@ -109,6 +134,11 @@ export function ProjectsTable({ projects }: { projects: FullProjectRow[] }) {
     );
   }, [projects, query]);
 
+  const filtered = useMemo(() => {
+    if (selectedMonth === "all") return searched;
+    return searched.filter((p) => monthKeyOf(p.projectDate) === selectedMonth);
+  }, [searched, selectedMonth]);
+
   const summary = useMemo(() => sumRows(filtered), [filtered]);
 
   // Group by calendar month (Jan → Dec, oldest year first) so each month's
@@ -117,22 +147,20 @@ export function ProjectsTable({ projects }: { projects: FullProjectRow[] }) {
   const monthGroups = useMemo(() => {
     const groups = new Map<string, FullProjectRow[]>();
     for (const p of filtered) {
-      const d = new Date(p.projectDate);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      const key = monthKeyOf(p.projectDate);
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(p);
     }
     return Array.from(groups.keys())
       .sort()
       .map((key) => {
-        const [year, month] = key.split("-").map(Number);
         const rows = groups
           .get(key)!
           .slice()
           .sort((a, b) => a.projectDate.localeCompare(b.projectDate));
         return {
           key,
-          label: `${THAI_MONTHS[month - 1]} ${year}`,
+          label: monthLabelOf(key),
           rows,
           subtotal: sumRows(rows),
         };
@@ -141,12 +169,31 @@ export function ProjectsTable({ projects }: { projects: FullProjectRow[] }) {
 
   return (
     <div className="space-y-4">
-      <Input
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="ค้นหา JOB NO. / ลูกค้า / ชื่องาน / เซลล์"
-        className="max-w-sm"
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="ค้นหา JOB NO. / ลูกค้า / ชื่องาน / เซลล์"
+          className="max-w-sm"
+        />
+        <Select
+          value={selectedMonth}
+          onValueChange={(v) => setSelectedMonth(v as string)}
+          items={[{ value: "all", label: "ทุกเดือน" }, ...monthOptions]}
+        >
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="ทุกเดือน" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">ทุกเดือน</SelectItem>
+            {monthOptions.map((m) => (
+              <SelectItem key={m.value} value={m.value}>
+                {m.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       <div className="grid grid-cols-2 gap-3 rounded-md border p-4 text-sm sm:grid-cols-4">
         <div>
