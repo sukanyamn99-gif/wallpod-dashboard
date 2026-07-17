@@ -13,9 +13,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createProjectSale, NEW_CUSTOMER_VALUE } from "./actions";
+import { createProjectSale } from "./actions";
 import { formatTHB } from "@/lib/format";
-import type { Customer, CustomerType, PaymentStatus, ProductCategory, SalesRep } from "@/lib/types";
+import type { CustomerType, PaymentStatus, ProductCategory, SalesRep } from "@/lib/types";
 
 const initialState = { error: null as string | null };
 
@@ -46,16 +46,9 @@ interface ItemRow {
   amount: string;
 }
 
-export function ProjectSaleForm({
-  salesReps,
-  customers,
-}: {
-  salesReps: SalesRep[];
-  customers: Customer[];
-}) {
+export function ProjectSaleForm({ salesReps }: { salesReps: SalesRep[] }) {
   const nextRowKey = useRef(1);
   const [items, setItems] = useState<ItemRow[]>([{ key: 0, category: "", amount: "" }]);
-  const [customerId, setCustomerId] = useState("");
   const [installment2, setInstallment2] = useState(false);
   const [amount1, setAmount1] = useState("");
   const [amount2, setAmount2] = useState("");
@@ -64,7 +57,6 @@ export function ProjectSaleForm({
     const result = await createProjectSale(formData);
     if (!result.error) {
       setItems([{ key: 0, category: "", amount: "" }]);
-      setCustomerId("");
       setInstallment2(false);
       setAmount1("");
       setAmount2("");
@@ -111,32 +103,8 @@ export function ProjectSaleForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="customer_id">ลูกค้า</Label>
-          <Select
-            name="customer_id"
-            required
-            value={customerId}
-            onValueChange={(v) => setCustomerId(v ?? "")}
-            items={[
-              { value: NEW_CUSTOMER_VALUE, label: "+ ลูกค้าใหม่" },
-              ...customers.map((c) => ({ value: c.id, label: c.name })),
-            ]}
-          >
-            <SelectTrigger id="customer_id" className="w-full">
-              <SelectValue placeholder="เลือกลูกค้า" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NEW_CUSTOMER_VALUE}>+ ลูกค้าใหม่</SelectItem>
-              {customers.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {customerId === NEW_CUSTOMER_VALUE && (
-            <Input name="new_customer_name" placeholder="ชื่อลูกค้าใหม่" required className="mt-2" />
-          )}
+          <Label htmlFor="customer_name">ชื่อลูกค้า</Label>
+          <Input id="customer_name" name="customer_name" required placeholder="เช่น บจก. ABC" />
         </div>
 
         <div className="space-y-2">

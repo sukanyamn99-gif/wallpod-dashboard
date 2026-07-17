@@ -9,8 +9,6 @@ const PRODUCT_CATEGORIES: ProductCategory[] = [
 ];
 const PAYMENT_STATUSES: PaymentStatus[] = ["เก็บเงินเรียบร้อย", "ชำระมาแล้ว 50%", "รอชำระเงิน"];
 
-const NEW_CUSTOMER_VALUE = "__new__";
-
 function num(v: FormDataEntryValue | null): number {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
@@ -28,16 +26,12 @@ export async function createProjectSale(formData: FormData) {
 
   const projectDate = str(formData.get("project_date")) ?? new Date().toISOString().slice(0, 10);
   const jobNo = str(formData.get("job_no"));
-  const customerSelect = str(formData.get("customer_id"));
-  const newCustomerName = str(formData.get("new_customer_name"));
+  const customerName = str(formData.get("customer_name"));
   const projectName = str(formData.get("project_name"));
   const salesRepId = str(formData.get("sales_rep_id"));
   const customerType = str(formData.get("customer_type"));
 
-  if (!customerSelect) return { error: "กรุณาเลือกลูกค้า" };
-  if (customerSelect === NEW_CUSTOMER_VALUE && !newCustomerName) {
-    return { error: "กรุณากรอกชื่อลูกค้าใหม่" };
-  }
+  if (!customerName) return { error: "กรุณากรอกชื่อลูกค้า" };
   if (!projectName) return { error: "กรุณากรอกชื่องาน/โปรเจกต์" };
   if (!salesRepId) return { error: "กรุณาเลือกเซลล์" };
   if (!customerType) return { error: "กรุณาเลือกกลุ่มลูกค้า" };
@@ -77,11 +71,21 @@ export async function createProjectSale(formData: FormData) {
 
   const supabase = await createClient();
 
-  let customerId = customerSelect;
-  if (customerSelect === NEW_CUSTOMER_VALUE) {
+  // Match an existing customer by name (case-insensitive) so re-typing the same
+  // name reuses their record instead of creating a duplicate; otherwise create one.
+  const { data: existingCustomer, error: lookupErr } = await supabase
+    .from("customers")
+    .select("id")
+    .ilike("name", customerName)
+    .limit(1)
+    .maybeSingle();
+  if (lookupErr) return { error: `ค้นหาลูกค้าไม่สำเร็จ: ${lookupErr.message}` };
+
+  let customerId = existingCustomer?.id;
+  if (!customerId) {
     const { data: newCustomer, error: customerErr } = await supabase
       .from("customers")
-      .insert({ name: newCustomerName, customer_type: customerType })
+      .insert({ name: customerName, customer_type: customerType })
       .select("id")
       .single();
     if (customerErr) return { error: `สร้างลูกค้าใหม่ไม่สำเร็จ: ${customerErr.message}` };
@@ -148,5 +152,3 @@ export async function createProjectSale(formData: FormData) {
   revalidatePath("/dashboard/sales");
   return { error: null };
 }
-
-export { NEW_CUSTOMER_VALUE };
