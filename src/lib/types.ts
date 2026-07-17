@@ -114,10 +114,10 @@ export interface SaleReport {
 export interface SalesDashboardData {
   totalPipelineValue: number;
   openProjectsCount: number;
-  todayVisitsCount: number;
   closedThisMonthValue: number;
   pipelineByStage: { stage: StagePercent; label: string; value: number; count: number }[];
   customerTypeBreakdown: { type: CustomerType; value: number; count: number }[];
+  categoryBreakdown: { category: ProductCategory; value: number; count: number }[];
   salesRepPerformance: { salesRepId: string; salesRepName: string; totalValue: number; closedValue: number; projectCount: number }[];
   monthlySales: { monthLabel: string; value: number; count: number }[];
 }

@@ -1,4 +1,4 @@
-import type { Customer, CustomerType, Project, SaleReport, SalesRep, Stage } from "@/lib/types";
+import type { Customer, CustomerType, Project, ProductCategory, SaleReport, SalesRep, Stage } from "@/lib/types";
 import { STAGE_PERCENT_BY_STAGE } from "@/lib/types";
 
 // Sample data so the dashboard is browsable before a real Supabase project
@@ -68,6 +68,17 @@ export const mockProjects: Project[] = [
 
 export const mockCustomerTypes: CustomerType[] = [
   "Owner", "Designer", "Turnkey", "Contractor", "Corporate", "Dealer", "School",
+];
+
+export const mockCategoryBreakdown: { category: ProductCategory; value: number; count: number }[] = [
+  { category: "WALLPOD", value: 620000, count: 4 },
+  { category: "ACOUSHEET", value: 980000, count: 6 },
+  { category: "ACOUSOFT", value: 210000, count: 2 },
+  { category: "ACUBOX", value: 95000, count: 1 },
+  { category: "CNC", value: 150000, count: 3 },
+  { category: "SERVICE", value: 60000, count: 2 },
+  { category: "WALLPAPER", value: 40000, count: 1 },
+  { category: "OTHER", value: 25000, count: 1 },
 ];
 
 function saleReport(r: {

@@ -129,6 +129,42 @@ export function CustomerTypeChart({ data }: { data: SalesDashboardData["customer
   );
 }
 
+export function ProductCategoryChart({ data }: { data: SalesDashboardData["categoryBreakdown"] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>สัดส่วนประเภทงาน</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={280}>
+          <PieChart>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="category"
+              innerRadius={60}
+              outerRadius={100}
+              paddingAngle={2}
+              stroke="var(--card)"
+              strokeWidth={2}
+            >
+              {data.map((entry, i) => (
+                <Cell key={entry.category} fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip content={<ChartTooltip />} />
+            <Legend
+              verticalAlign="bottom"
+              height={48}
+              formatter={(value) => <span className="text-sm text-foreground">{value}</span>}
+            />
+          </PieChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function SalesRepPerformanceChart({
   data,
 }: {
