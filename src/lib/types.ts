@@ -116,6 +116,7 @@ export interface Project {
   sales_rep_name: string;
   customer_type: CustomerType;
   stage_percent: StagePercent;
+  production_status: string | null;
   pre_vat: number;
   vat: number;
   total: number;

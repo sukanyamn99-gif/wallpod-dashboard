@@ -43,7 +43,7 @@ async function fetchLiveProjects(): Promise<Project[]> {
   const { data, error } = await supabase
     .from("projects")
     .select(
-      "id, job_no, project_date, customer_id, project_name, sales_rep_id, customer_type, stage_percent, pre_vat, vat, total, customers(name), sales_reps(name)",
+      "id, job_no, project_date, customer_id, project_name, sales_rep_id, customer_type, stage_percent, production_status, pre_vat, vat, total, customers(name), sales_reps(name)",
     )
     .eq("is_cancelled", false);
 
@@ -62,6 +62,7 @@ async function fetchLiveProjects(): Promise<Project[]> {
     sales_rep_name: row.sales_reps?.name ?? "",
     customer_type: row.customer_type as CustomerType,
     stage_percent: row.stage_percent as StagePercent,
+    production_status: row.production_status,
     pre_vat: Number(row.pre_vat),
     vat: Number(row.vat),
     total: Number(row.total),
@@ -107,7 +108,10 @@ export async function getSalesDashboardData(): Promise<SalesDashboardData> {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const totalPipelineValue = projects.reduce((sum, p) => sum + p.pre_vat, 0);
-  const openProjectsCount = projects.filter((p) => p.stage_percent < 100).length;
+  // "Open" now tracks production status, not the sales stage (every job in this
+  // table is already closed/invoiced) — anything short of the final payment
+  // step counts as open, including jobs that haven't been given a status yet.
+  const openProjectsCount = projects.filter((p) => p.production_status !== "เก็บเงินงวดสุดท้าย").length;
 
   const closedThisMonthValue = projects
     .filter((p) => p.stage_percent === 100 && new Date(p.project_date) >= monthStart)

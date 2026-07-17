@@ -47,6 +47,7 @@ function project(p: {
     sales_rep_name: repById[p.sales_rep_id],
     customer_type: cusById[p.customer_id].customer_type,
     stage_percent: p.stage_percent,
+    production_status: null,
     pre_vat: p.pre_vat,
     vat,
     total: p.pre_vat + vat,
