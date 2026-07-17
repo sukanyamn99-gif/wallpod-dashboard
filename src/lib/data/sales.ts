@@ -84,7 +84,7 @@ export async function getSalesDashboardData(): Promise<SalesDashboardData> {
 
   const closedThisMonthValue = projects
     .filter((p) => p.stage_percent === 100 && new Date(p.project_date) >= monthStart)
-    .reduce((sum, p) => sum + p.total, 0);
+    .reduce((sum, p) => sum + p.pre_vat, 0);
 
   // Pipeline funnel reflects live Sale Reports (self-reported by sales reps),
   // not the historical `projects` import — the Excel data had no pre-close stages.
