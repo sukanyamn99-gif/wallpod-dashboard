@@ -42,6 +42,7 @@ export function SaleReportForm({ salesReps }: { salesReps: SalesRep[] }) {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [images, setImages] = useState<PendingImage[]>([]);
   const [resizing, setResizing] = useState(false);
+  const [formKey, setFormKey] = useState(0);
 
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
     const result = await createSaleReport(formData);
@@ -49,6 +50,9 @@ export function SaleReportForm({ salesReps }: { salesReps: SalesRep[] }) {
       setLocation("");
       images.forEach((img) => URL.revokeObjectURL(img.previewUrl));
       setImages([]);
+      // Remount every field (including the custom Select dropdowns, which don't
+      // reliably clear on a plain form.reset()) so the form is fully blank again.
+      setFormKey((k) => k + 1);
     }
     return result;
   }, initialState);
@@ -101,6 +105,7 @@ export function SaleReportForm({ salesReps }: { salesReps: SalesRep[] }) {
 
   return (
     <form
+      key={formKey}
       action={formAction}
       className="space-y-4"
       onSubmit={(e) => {
