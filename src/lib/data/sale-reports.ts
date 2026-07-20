@@ -1,8 +1,11 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { mockSaleReports } from "@/lib/mock-data";
-import type { SaleReport } from "@/lib/types";
+import type { SaleReport, SaleReportChangeLog } from "@/lib/types";
 
 const IMAGE_BUCKET = "sale-report-images";
+
+const SALE_REPORT_COLUMNS =
+  "id, sales_rep_id, customer_name, project_name, customer_type, project_type, stage, stage_percent, est_value, location_text, next_action, note, phone, image_paths, created_at, sales_reps(name)";
 
 function mapRow(row: {
   id: string;
@@ -74,9 +77,7 @@ export async function getTodaySaleReports(): Promise<SaleReport[]> {
 
   const { data, error } = await supabase
     .from("sales_leads")
-    .select(
-      "id, sales_rep_id, customer_name, project_name, customer_type, project_type, stage, stage_percent, est_value, location_text, next_action, note, phone, image_paths, created_at, sales_reps(name)",
-    )
+    .select(SALE_REPORT_COLUMNS)
     .gte("created_at", todayStart.toISOString())
     .order("created_at", { ascending: false });
 
@@ -90,11 +91,51 @@ export async function getAllSaleReports(): Promise<SaleReport[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("sales_leads")
-    .select(
-      "id, sales_rep_id, customer_name, project_name, customer_type, project_type, stage, stage_percent, est_value, location_text, next_action, note, phone, image_paths, created_at, sales_reps(name)",
-    )
+    .select(SALE_REPORT_COLUMNS)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
   return (data ?? []).map(mapRow);
+}
+
+export async function getSaleReportById(id: string): Promise<SaleReport | null> {
+  if (!isSupabaseConfigured()) return mockSaleReports.find((r) => r.id === id) ?? null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("sales_leads")
+    .select(SALE_REPORT_COLUMNS)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ? mapRow(data) : null;
+}
+
+export async function getSaleReportChangeLog(): Promise<SaleReportChangeLog[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("sales_lead_change_log")
+    .select("id, action, customer_name, before_snapshot, created_at, sales_reps(name), profiles(full_name)")
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return (data ?? []).map((row) => {
+    const before = row.before_snapshot as { stage?: string; est_value?: number | string } | null;
+    return {
+      id: row.id,
+      action: row.action as SaleReportChangeLog["action"],
+      // @ts-expect-error -- Supabase types the joined relation loosely here
+      salesRepName: row.sales_reps?.name ?? "",
+      customerName: row.customer_name,
+      // @ts-expect-error -- Supabase types the joined relation loosely here
+      changedByName: row.profiles?.full_name ?? "—",
+      stageBefore: (before?.stage as SaleReportChangeLog["stageBefore"]) ?? "—",
+      estValueBefore: Number(before?.est_value ?? 0),
+      createdAt: row.created_at,
+    };
+  });
 }

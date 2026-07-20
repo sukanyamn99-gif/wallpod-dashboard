@@ -141,6 +141,17 @@ export interface SaleReport {
   created_at: string;
 }
 
+export interface SaleReportChangeLog {
+  id: string;
+  action: "update" | "delete";
+  salesRepName: string;
+  customerName: string;
+  changedByName: string;
+  stageBefore: Stage;
+  estValueBefore: number;
+  createdAt: string;
+}
+
 export interface SalesDashboardData {
   totalPipelineValue: number;
   openProjectsCount: number;

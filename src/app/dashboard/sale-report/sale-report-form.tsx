@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { useRouter } from "next/navigation";
 import { MapPin, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -13,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createSaleReport } from "./actions";
+import { createSaleReport, updateSaleReport } from "./actions";
 import { resizeImageToBlob } from "@/lib/image-resize";
 import type { CustomerType, ProjectType, SalesRep, Stage } from "@/lib/types";
 
@@ -31,28 +32,65 @@ const STAGES: Stage[] = ["นำเสนอ", "ใบเสนอราคา",
 
 const MAX_IMAGES = 10;
 
-interface PendingImage {
-  blob: Blob;
-  previewUrl: string;
+export interface SaleReportInitialData {
+  salesRepId: string;
+  customerName: string;
+  phone: string;
+  projectName: string;
+  customerType: string;
+  projectType: string;
+  stage: string;
+  estValue: string;
+  locationText: string;
+  nextAction: string;
+  note: string;
+  images: { path: string; url: string }[];
 }
 
-export function SaleReportForm({ salesReps }: { salesReps: SalesRep[] }) {
-  const [location, setLocation] = useState("");
+type ImageItem =
+  | { kind: "existing"; path: string; previewUrl: string }
+  | { kind: "new"; blob: Blob; previewUrl: string };
+
+export function SaleReportForm({
+  salesReps,
+  mode = "create",
+  leadId,
+  initialData,
+}: {
+  salesReps: SalesRep[];
+  mode?: "create" | "edit";
+  leadId?: string;
+  initialData?: SaleReportInitialData;
+}) {
+  const router = useRouter();
+  const [location, setLocation] = useState(initialData?.locationText ?? "");
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [images, setImages] = useState<PendingImage[]>([]);
+  const [images, setImages] = useState<ImageItem[]>(
+    (initialData?.images ?? []).map((img) => ({ kind: "existing" as const, path: img.path, previewUrl: img.url })),
+  );
   const [resizing, setResizing] = useState(false);
   const [formKey, setFormKey] = useState(0);
 
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
-    const result = await createSaleReport(formData);
+    const result =
+      mode === "edit" && leadId
+        ? await updateSaleReport(leadId, formData)
+        : await createSaleReport(formData);
+
     if (!result.error) {
-      setLocation("");
-      images.forEach((img) => URL.revokeObjectURL(img.previewUrl));
-      setImages([]);
-      // Remount every field (including the custom Select dropdowns, which don't
-      // reliably clear on a plain form.reset()) so the form is fully blank again.
-      setFormKey((k) => k + 1);
+      if (mode === "edit") {
+        router.push("/dashboard/sale-report");
+      } else {
+        setLocation("");
+        images.forEach((img) => {
+          if (img.kind === "new") URL.revokeObjectURL(img.previewUrl);
+        });
+        setImages([]);
+        // Remount every field (including the custom Select dropdowns, which don't
+        // reliably clear on a plain form.reset()) so the form is fully blank again.
+        setFormKey((k) => k + 1);
+      }
     }
     return result;
   }, initialState);
@@ -86,10 +124,10 @@ export function SaleReportForm({ salesReps }: { salesReps: SalesRep[] }) {
     try {
       const resized = await Promise.all(files.map((f) => resizeImageToBlob(f)));
       setImages((prev) =>
-        [...prev, ...resized.map((blob) => ({ blob, previewUrl: URL.createObjectURL(blob) }))].slice(
-          0,
-          MAX_IMAGES,
-        ),
+        [
+          ...prev,
+          ...resized.map((blob) => ({ kind: "new" as const, blob, previewUrl: URL.createObjectURL(blob) })),
+        ].slice(0, MAX_IMAGES),
       );
     } finally {
       setResizing(false);
@@ -98,7 +136,8 @@ export function SaleReportForm({ salesReps }: { salesReps: SalesRep[] }) {
 
   function removeImage(index: number) {
     setImages((prev) => {
-      URL.revokeObjectURL(prev[index].previewUrl);
+      const item = prev[index];
+      if (item.kind === "new") URL.revokeObjectURL(item.previewUrl);
       return prev.filter((_, i) => i !== index);
     });
   }
@@ -111,7 +150,10 @@ export function SaleReportForm({ salesReps }: { salesReps: SalesRep[] }) {
       onSubmit={(e) => {
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
-        images.forEach((img, i) => fd.append("images", img.blob, `image-${i}.jpg`));
+        for (const img of images) {
+          if (img.kind === "new") fd.append("images", img.blob, `image-${Date.now()}.jpg`);
+          else fd.append("existing_image_paths", img.path);
+        }
         formAction(fd);
       }}
     >
@@ -124,6 +166,7 @@ export function SaleReportForm({ salesReps }: { salesReps: SalesRep[] }) {
         <Select
           name="sales_rep_id"
           required
+          defaultValue={initialData?.salesRepId}
           items={salesReps.map((rep) => ({ value: rep.id, label: rep.name }))}
         >
           <SelectTrigger id="sales_rep_id" className="w-full">
@@ -141,23 +184,40 @@ export function SaleReportForm({ salesReps }: { salesReps: SalesRep[] }) {
 
       <div className="space-y-2">
         <Label htmlFor="customer_name">ชื่อลูกค้า</Label>
-        <Input id="customer_name" name="customer_name" required placeholder="เช่น บจก. ABC" />
+        <Input
+          id="customer_name"
+          name="customer_name"
+          required
+          defaultValue={initialData?.customerName}
+          placeholder="เช่น บจก. ABC"
+        />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="phone">เบอร์โทร</Label>
-        <Input id="phone" name="phone" type="tel" placeholder="เช่น 081-234-5678" />
+        <Input
+          id="phone"
+          name="phone"
+          type="tel"
+          defaultValue={initialData?.phone}
+          placeholder="เช่น 081-234-5678"
+        />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="project_name">ชื่องาน/โปรเจกต์</Label>
-        <Input id="project_name" name="project_name" placeholder="เช่น โรงแรม XYZ ชั้น 3" />
+        <Input
+          id="project_name"
+          name="project_name"
+          defaultValue={initialData?.projectName}
+          placeholder="เช่น โรงแรม XYZ ชั้น 3"
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="customer_type">กลุ่มลูกค้า</Label>
-          <Select name="customer_type" required>
+          <Select name="customer_type" required defaultValue={initialData?.customerType}>
             <SelectTrigger id="customer_type" className="w-full">
               <SelectValue placeholder="เลือก" />
             </SelectTrigger>
@@ -173,7 +233,7 @@ export function SaleReportForm({ salesReps }: { salesReps: SalesRep[] }) {
 
         <div className="space-y-2">
           <Label htmlFor="project_type">ประเภทสถานที่</Label>
-          <Select name="project_type" required>
+          <Select name="project_type" required defaultValue={initialData?.projectType}>
             <SelectTrigger id="project_type" className="w-full">
               <SelectValue placeholder="เลือก" />
             </SelectTrigger>
@@ -191,7 +251,7 @@ export function SaleReportForm({ salesReps }: { salesReps: SalesRep[] }) {
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="stage">Stage</Label>
-          <Select name="stage" required>
+          <Select name="stage" required defaultValue={initialData?.stage}>
             <SelectTrigger id="stage" className="w-full">
               <SelectValue placeholder="เลือก" />
             </SelectTrigger>
@@ -207,7 +267,15 @@ export function SaleReportForm({ salesReps }: { salesReps: SalesRep[] }) {
 
         <div className="space-y-2">
           <Label htmlFor="est_value">มูลค่าโดยประมาณ (บาท)</Label>
-          <Input id="est_value" name="est_value" type="number" min="0" step="1" placeholder="250000" />
+          <Input
+            id="est_value"
+            name="est_value"
+            type="number"
+            min="0"
+            step="1"
+            defaultValue={initialData?.estValue}
+            placeholder="250000"
+          />
         </div>
       </div>
 
@@ -231,12 +299,17 @@ export function SaleReportForm({ salesReps }: { salesReps: SalesRep[] }) {
 
       <div className="space-y-2">
         <Label htmlFor="next_action">Next Action</Label>
-        <Input id="next_action" name="next_action" placeholder="เช่น นัดเสนองานใหม่ 20/7" />
+        <Input
+          id="next_action"
+          name="next_action"
+          defaultValue={initialData?.nextAction}
+          placeholder="เช่น นัดเสนองานใหม่ 20/7"
+        />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="note">หมายเหตุ</Label>
-        <Textarea id="note" name="note" placeholder="รายละเอียดเพิ่มเติม" />
+        <Textarea id="note" name="note" defaultValue={initialData?.note} placeholder="รายละเอียดเพิ่มเติม" />
       </div>
 
       <div className="space-y-2">
@@ -253,8 +326,8 @@ export function SaleReportForm({ salesReps }: { salesReps: SalesRep[] }) {
         {images.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1">
             {images.map((img, i) => (
-              <div key={img.previewUrl} className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element -- local blob preview, not an optimizable remote asset */}
+              <div key={img.kind === "existing" ? img.path : img.previewUrl} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element -- local blob or private signed URL preview, not an optimizable remote asset */}
                 <img
                   src={img.previewUrl}
                   alt={`รูปที่ ${i + 1}`}
@@ -275,7 +348,7 @@ export function SaleReportForm({ salesReps }: { salesReps: SalesRep[] }) {
       </div>
 
       <Button type="submit" disabled={pending || resizing}>
-        {pending ? "กำลังบันทึก..." : "บันทึก Sale Report"}
+        {pending ? "กำลังบันทึก..." : mode === "edit" ? "บันทึกการแก้ไข" : "บันทึก Sale Report"}
       </Button>
     </form>
   );

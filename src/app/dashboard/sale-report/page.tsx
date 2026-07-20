@@ -1,11 +1,21 @@
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getSalesReps } from "@/lib/data/reference";
-import { getAllSaleReports, getSignedImageUrls } from "@/lib/data/sale-reports";
+import { getCurrentProfile } from "@/lib/data/profile";
+import {
+  getAllSaleReports,
+  getSaleReportChangeLog,
+  getSignedImageUrls,
+} from "@/lib/data/sale-reports";
 import { SaleReportTable } from "./sale-report-table";
 
 export default async function SaleReportPage() {
-  const [reports, salesReps] = await Promise.all([getAllSaleReports(), getSalesReps()]);
+  const [reports, salesReps, changeLog, profile] = await Promise.all([
+    getAllSaleReports(),
+    getSalesReps(),
+    getSaleReportChangeLog(),
+    getCurrentProfile(),
+  ]);
   const imageUrls = await getSignedImageUrls(reports.flatMap((r) => r.image_paths));
 
   return (
@@ -23,7 +33,13 @@ export default async function SaleReportPage() {
         </Button>
       </div>
 
-      <SaleReportTable reports={reports} salesReps={salesReps} imageUrls={imageUrls} />
+      <SaleReportTable
+        reports={reports}
+        salesReps={salesReps}
+        imageUrls={imageUrls}
+        changeLog={changeLog}
+        currentProfile={profile ?? { id: "", full_name: "", role: "sales", sales_rep_id: null }}
+      />
     </div>
   );
 }
