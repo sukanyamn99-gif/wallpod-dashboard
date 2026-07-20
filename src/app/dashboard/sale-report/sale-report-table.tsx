@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Pencil, Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +12,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import {
   Table,
   TableBody,
@@ -26,7 +33,7 @@ import type { Profile, SaleReport, SaleReportChangeLog, SalesRep, Stage } from "
 
 const STAGES: Stage[] = ["นำเสนอ", "ใบเสนอราคา", "เจรจาต่อรอง", "ปิดการขาย", "ไม่สำเร็จ"];
 
-const TOTAL_COLUMNS = 13;
+const TOTAL_COLUMNS = 14;
 
 function summarize(reports: SaleReport[]) {
   return {
@@ -73,6 +80,106 @@ function RowActions({ report }: { report: SaleReport }) {
       </div>
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
+  );
+}
+
+function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-0.5">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <div className="text-sm">{children}</div>
+    </div>
+  );
+}
+
+function DetailSheet({
+  report,
+  imageUrls,
+  onOpenChange,
+}: {
+  report: SaleReport | null;
+  imageUrls: Record<string, string>;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Sheet open={report !== null} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
+        {report && (
+          <>
+            <SheetHeader>
+              <SheetTitle>{report.customer_name}</SheetTitle>
+              <SheetDescription>{report.project_name ?? "ไม่มีชื่องาน/โปรเจกต์"}</SheetDescription>
+            </SheetHeader>
+
+            <div className="space-y-4 overflow-y-auto px-4 pb-4">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">{report.stage}</Badge>
+                <span className="text-lg font-semibold">{formatTHB(report.est_value)}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <DetailRow label="เซลล์">{report.sales_rep_name}</DetailRow>
+                <DetailRow label="วันที่บันทึก">{new Date(report.created_at).toLocaleString("th-TH")}</DetailRow>
+                <DetailRow label="กลุ่มลูกค้า">{report.customer_type}</DetailRow>
+                <DetailRow label="ประเภทสถานที่">{report.project_type}</DetailRow>
+                <DetailRow label="เบอร์โทร">
+                  {report.phone ? (
+                    <a href={`tel:${report.phone}`} className="text-primary underline underline-offset-2">
+                      {report.phone}
+                    </a>
+                  ) : (
+                    "—"
+                  )}
+                </DetailRow>
+                <DetailRow label="ตำแหน่งที่ไปพบลูกค้า">
+                  {report.location_text ? (
+                    <a
+                      href={report.location_text}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline underline-offset-2"
+                    >
+                      ดูตำแหน่ง
+                    </a>
+                  ) : (
+                    "—"
+                  )}
+                </DetailRow>
+              </div>
+
+              <DetailRow label="Next Action">
+                <p className="whitespace-pre-wrap">{report.next_action ?? "—"}</p>
+              </DetailRow>
+
+              <DetailRow label="หมายเหตุ">
+                <p className="whitespace-pre-wrap">{report.note ?? "—"}</p>
+              </DetailRow>
+
+              <DetailRow label={`รูปภาพ (${report.image_paths.length})`}>
+                {report.image_paths.length === 0 ? (
+                  "—"
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    {report.image_paths.map((path) =>
+                      imageUrls[path] ? (
+                        <a key={path} href={imageUrls[path]} target="_blank" rel="noopener noreferrer">
+                          {/* eslint-disable-next-line @next/next/no-img-element -- private signed URL, not an optimizable remote asset */}
+                          <img
+                            src={imageUrls[path]}
+                            alt=""
+                            className="aspect-square w-full rounded-md border object-cover"
+                          />
+                        </a>
+                      ) : null,
+                    )}
+                  </div>
+                )}
+              </DetailRow>
+            </div>
+          </>
+        )}
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -139,6 +246,7 @@ export function SaleReportTable({
   changeLog: SaleReportChangeLog[];
 }) {
   const [selectedRep, setSelectedRep] = useState("all");
+  const [viewingReport, setViewingReport] = useState<SaleReport | null>(null);
 
   const filtered = useMemo(() => {
     if (selectedRep === "all") return reports;
@@ -201,6 +309,7 @@ export function SaleReportTable({
                 <TableHead className="whitespace-nowrap">รูปภาพ</TableHead>
                 <TableHead className="whitespace-nowrap">Next Action</TableHead>
                 <TableHead className="whitespace-nowrap">หมายเหตุ</TableHead>
+                <TableHead className="whitespace-nowrap">รายละเอียด</TableHead>
                 <TableHead className="whitespace-nowrap">จัดการ</TableHead>
               </TableRow>
             </TableHeader>
@@ -262,6 +371,11 @@ export function SaleReportTable({
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{r.next_action ?? "—"}</TableCell>
                   <TableCell className="whitespace-nowrap">{r.note ?? "—"}</TableCell>
+                  <TableCell>
+                    <Button size="icon-sm" variant="outline" onClick={() => setViewingReport(r)}>
+                      <Eye className="h-3.5 w-3.5" />
+                    </Button>
+                  </TableCell>
                   <TableCell>{canManage(r, currentProfile) ? <RowActions report={r} /> : "—"}</TableCell>
                 </TableRow>
               ))}
@@ -274,6 +388,12 @@ export function SaleReportTable({
       </div>
 
       <ChangeLogTable logs={changeLog} />
+
+      <DetailSheet
+        report={viewingReport}
+        imageUrls={imageUrls}
+        onOpenChange={(open) => !open && setViewingReport(null)}
+      />
     </div>
   );
 }
