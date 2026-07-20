@@ -2,6 +2,8 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { mockSaleReports } from "@/lib/mock-data";
 import type { SaleReport } from "@/lib/types";
 
+const IMAGE_BUCKET = "sale-report-images";
+
 function mapRow(row: {
   id: string;
   sales_rep_id: string;
@@ -15,6 +17,8 @@ function mapRow(row: {
   location_text: string | null;
   next_action: string | null;
   note: string | null;
+  phone: string | null;
+  image_paths: string[] | null;
   created_at: string;
 }): SaleReport {
   return {
@@ -32,8 +36,29 @@ function mapRow(row: {
     location_text: row.location_text,
     next_action: row.next_action,
     note: row.note,
+    phone: row.phone,
+    image_paths: row.image_paths ?? [],
     created_at: row.created_at,
   };
+}
+
+/**
+ * Batch-signs every given Storage path in one call so pages that render many
+ * reports don't pay a signing round-trip per report. Degrades to an empty
+ * map (no thumbnails) rather than failing the page if signing errors out.
+ */
+export async function getSignedImageUrls(paths: string[]): Promise<Record<string, string>> {
+  if (!isSupabaseConfigured() || paths.length === 0) return {};
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage.from(IMAGE_BUCKET).createSignedUrls(paths, 3600);
+  if (error || !data) return {};
+
+  const urls: Record<string, string> = {};
+  for (const entry of data) {
+    if (entry.signedUrl && entry.path) urls[entry.path] = entry.signedUrl;
+  }
+  return urls;
 }
 
 export async function getTodaySaleReports(): Promise<SaleReport[]> {
@@ -50,7 +75,7 @@ export async function getTodaySaleReports(): Promise<SaleReport[]> {
   const { data, error } = await supabase
     .from("sales_leads")
     .select(
-      "id, sales_rep_id, customer_name, project_name, customer_type, project_type, stage, stage_percent, est_value, location_text, next_action, note, created_at, sales_reps(name)",
+      "id, sales_rep_id, customer_name, project_name, customer_type, project_type, stage, stage_percent, est_value, location_text, next_action, note, phone, image_paths, created_at, sales_reps(name)",
     )
     .gte("created_at", todayStart.toISOString())
     .order("created_at", { ascending: false });
@@ -66,7 +91,7 @@ export async function getAllSaleReports(): Promise<SaleReport[]> {
   const { data, error } = await supabase
     .from("sales_leads")
     .select(
-      "id, sales_rep_id, customer_name, project_name, customer_type, project_type, stage, stage_percent, est_value, location_text, next_action, note, created_at, sales_reps(name)",
+      "id, sales_rep_id, customer_name, project_name, customer_type, project_type, stage, stage_percent, est_value, location_text, next_action, note, phone, image_paths, created_at, sales_reps(name)",
     )
     .order("created_at", { ascending: false });
 

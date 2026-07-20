@@ -1,20 +1,29 @@
+import { ClipboardList } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { getSalesReps } from "@/lib/data/reference";
-import { getTodaySaleReports } from "@/lib/data/sale-reports";
+import { getTodaySaleReports, getSignedImageUrls } from "@/lib/data/sale-reports";
 import { formatTHB } from "@/lib/format";
 import { SaleReportForm } from "./sale-report-form";
 
 export default async function SaleReportPage() {
   const [salesReps, todayReports] = await Promise.all([getSalesReps(), getTodaySaleReports()]);
+  const imageUrls = await getSignedImageUrls(todayReports.flatMap((r) => r.image_paths));
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Sale Report</h1>
-        <p className="text-sm text-muted-foreground">
-          บันทึกการเข้าพบลูกค้าและความคืบหน้าของดีล — ข้อมูลนี้ใช้คำนวณกราฟ Pipeline บน Sales Dashboard
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Sale Report</h1>
+          <p className="text-sm text-muted-foreground">
+            บันทึกการเข้าพบลูกค้าและความคืบหน้าของดีล — ข้อมูลนี้ใช้คำนวณกราฟ Pipeline บน Sales Dashboard
+          </p>
+        </div>
+        <Button variant="outline" nativeButton={false} render={<a href="/dashboard/sale-report/report" />}>
+          <ClipboardList className="h-4 w-4" />
+          ดูรายงานสรุปทั้งหมด
+        </Button>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -45,6 +54,7 @@ export default async function SaleReportPage() {
                   {r.customer_name}
                   {r.project_name ? ` — ${r.project_name}` : ""}
                 </p>
+                {r.phone && <p className="text-muted-foreground">โทร: {r.phone}</p>}
                 <p className="text-muted-foreground">มูลค่าโดยประมาณ: {formatTHB(r.est_value)}</p>
                 {r.location_text && (
                   <a
@@ -58,6 +68,22 @@ export default async function SaleReportPage() {
                 )}
                 {r.next_action && <p className="text-muted-foreground">Next: {r.next_action}</p>}
                 {r.note && <p className="text-muted-foreground">{r.note}</p>}
+                {r.image_paths.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {r.image_paths.map((path) =>
+                      imageUrls[path] ? (
+                        <a key={path} href={imageUrls[path]} target="_blank" rel="noopener noreferrer">
+                          {/* eslint-disable-next-line @next/next/no-img-element -- private signed URL, not an optimizable remote asset */}
+                          <img
+                            src={imageUrls[path]}
+                            alt=""
+                            className="h-16 w-16 rounded-md border object-cover"
+                          />
+                        </a>
+                      ) : null,
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </CardContent>

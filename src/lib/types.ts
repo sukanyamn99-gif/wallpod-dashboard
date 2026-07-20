@@ -136,6 +136,8 @@ export interface SaleReport {
   location_text: string | null;
   next_action: string | null;
   note: string | null;
+  phone: string | null;
+  image_paths: string[];
   created_at: string;
 }
 

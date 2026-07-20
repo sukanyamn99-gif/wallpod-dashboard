@@ -94,6 +94,7 @@ function saleReport(r: {
   location_text?: string;
   next_action?: string;
   note?: string;
+  phone?: string;
   hoursAgo: number;
 }): SaleReport {
   const created = new Date();
@@ -112,6 +113,8 @@ function saleReport(r: {
     location_text: r.location_text ?? null,
     next_action: r.next_action ?? null,
     note: r.note ?? null,
+    phone: r.phone ?? null,
+    image_paths: [],
     created_at: created.toISOString(),
   };
 }
