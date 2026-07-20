@@ -78,7 +78,6 @@ export async function createSaleReport(formData: FormData) {
   }
 
   revalidatePath("/dashboard/sale-report");
-  revalidatePath("/dashboard/sale-report/report");
   revalidatePath("/dashboard/sales");
   return { error: null };
 }
