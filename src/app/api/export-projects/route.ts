@@ -2,16 +2,12 @@ import * as XLSX from "xlsx";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 import { getFullProjectReport } from "@/lib/data/project-sales";
 
-const PRODUCT_CATEGORIES = [
-  "WALLPOD", "ACOUSHEET", "ACOUSOFT", "ACUBOX", "CNC", "SERVICE", "WALLPAPER", "OTHER",
-] as const;
-
 export async function GET() {
   if (!isSupabaseConfigured()) {
     return new Response("ยังไม่ได้ตั้งค่า Supabase", { status: 503 });
   }
 
-  const allRows = await getFullProjectReport();
+  const { categories, rows: allRows } = await getFullProjectReport();
   const rows = allRows
     .filter((p) => !p.isCancelled)
     .map((p) => {
@@ -24,7 +20,7 @@ export async function GET() {
         "Customer Type": p.customerType,
         "สถานะของงาน": p.productionStatus ?? "",
       };
-      for (const cat of PRODUCT_CATEGORIES) {
+      for (const cat of categories) {
         row[cat] = p.itemsByCategory[cat] || "";
       }
       row["PRE.VAT"] = p.preVat;

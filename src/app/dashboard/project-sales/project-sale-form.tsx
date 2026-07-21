@@ -16,17 +16,13 @@ import {
 import { createProjectSale, updateProjectSale } from "./actions";
 import { formatTHB } from "@/lib/format";
 import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomplete";
-import type { Customer, CustomerType, PaymentStatus, ProductCategory, SalesRep } from "@/lib/types";
+import type { Customer, CustomerType, PaymentStatus, SalesRep } from "@/lib/types";
 import { PRODUCTION_STATUSES } from "@/lib/types";
 
 const initialState = { error: null as string | null };
 
 const CUSTOMER_TYPES: CustomerType[] = [
   "Owner", "Designer", "Turnkey", "Contractor", "Corporate", "Dealer", "School",
-];
-
-const PRODUCT_CATEGORIES: ProductCategory[] = [
-  "WALLPOD", "ACOUSHEET", "ACOUSOFT", "ACUBOX", "CNC", "SERVICE", "WALLPAPER", "OTHER",
 ];
 
 const PAYMENT_STATUSES: PaymentStatus[] = ["เก็บเงินเรียบร้อย", "ชำระมาแล้ว 50%", "รอชำระเงิน"];
@@ -77,12 +73,14 @@ export interface ProjectSaleInitialData {
 export function ProjectSaleForm({
   salesReps,
   customers,
+  categories,
   mode = "create",
   projectId,
   initialData,
 }: {
   salesReps: SalesRep[];
   customers: Customer[];
+  categories: string[];
   mode?: "create" | "edit";
   projectId?: string;
   initialData?: ProjectSaleInitialData;
@@ -280,7 +278,7 @@ export function ProjectSaleForm({
                     <SelectValue placeholder="เลือก" />
                   </SelectTrigger>
                   <SelectContent>
-                    {PRODUCT_CATEGORIES.map((c) => (
+                    {categories.map((c) => (
                       <SelectItem key={c} value={c}>
                         {c}
                       </SelectItem>

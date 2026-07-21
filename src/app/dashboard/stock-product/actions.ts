@@ -4,10 +4,6 @@ import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type { ProductCategory } from "@/lib/types";
 
-const PRODUCT_CATEGORIES: ProductCategory[] = [
-  "WALLPOD", "ACOUSHEET", "ACOUSOFT", "ACUBOX", "CNC", "SERVICE", "WALLPAPER", "OTHER",
-];
-
 const IMAGE_BUCKET = "stock-product-images";
 
 type ParsedStockProduct = {
@@ -29,10 +25,7 @@ type ParsedStockProduct = {
 function parseStockProductForm(formData: FormData): { ok: false; error: string } | ParsedStockProduct {
   const sku = String(formData.get("sku") ?? "").trim() || null;
   const name = String(formData.get("name") ?? "").trim();
-  const categoryRaw = String(formData.get("category") ?? "");
-  const category = PRODUCT_CATEGORIES.includes(categoryRaw as ProductCategory)
-    ? (categoryRaw as ProductCategory)
-    : null;
+  const category = String(formData.get("category") ?? "").trim() || null;
   const color = String(formData.get("color") ?? "").trim() || null;
   const size = String(formData.get("size") ?? "").trim() || null;
   const thickness = String(formData.get("thickness") ?? "").trim() || null;

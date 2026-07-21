@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getCustomers, getSalesReps } from "@/lib/data/reference";
+import { getCustomers, getProductCategories, getSalesReps } from "@/lib/data/reference";
 import { getProjectByJobNo } from "@/lib/data/project-sales";
 import { ProjectSaleForm } from "../../project-sale-form";
 import { DangerZone } from "../../danger-zone";
@@ -13,9 +13,10 @@ export default async function EditProjectSalePage({
   const { jobNo } = await params;
   const decodedJobNo = decodeURIComponent(jobNo);
 
-  const [salesReps, customers, detail] = await Promise.all([
+  const [salesReps, customers, categories, detail] = await Promise.all([
     getSalesReps(),
     getCustomers(),
+    getProductCategories(),
     getProjectByJobNo(decodedJobNo),
   ]);
 
@@ -39,6 +40,7 @@ export default async function EditProjectSalePage({
             <ProjectSaleForm
               salesReps={salesReps}
               customers={customers}
+              categories={categories.map((c) => c.name)}
               mode="edit"
               projectId={detail.id}
               initialData={detail.initialData}

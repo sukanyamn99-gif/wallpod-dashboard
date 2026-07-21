@@ -1,4 +1,5 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { getProductCategories } from "@/lib/data/reference";
 import type { ProjectSaleInitialData } from "@/app/dashboard/project-sales/project-sale-form";
 import type { ProductCategory } from "@/lib/types";
 
@@ -7,10 +8,6 @@ export interface ProjectDetail {
   isCancelled: boolean;
   initialData: ProjectSaleInitialData;
 }
-
-const PRODUCT_CATEGORIES: ProductCategory[] = [
-  "WALLPOD", "ACOUSHEET", "ACOUSOFT", "ACUBOX", "CNC", "SERVICE", "WALLPAPER", "OTHER",
-];
 
 export interface FullProjectRow {
   id: string;
@@ -46,13 +43,23 @@ export interface FullProjectRow {
   outstanding: number | null;
 }
 
+export interface FullProjectReport {
+  categories: string[];
+  rows: FullProjectRow[];
+}
+
 /**
  * Every column from the original Excel tracking sheet, one row per project.
  * Shared by the on-screen report table (shows cancelled jobs too) and the
  * Excel export route (excludes them) — callers filter `isCancelled` as needed.
+ *
+ * `categories` is the union of the live product_categories list and every
+ * product_category value actually present in project_items — so a renamed
+ * or deleted category never makes its historical items silently drop off
+ * the report/export; it just keeps its own column under its old name.
  */
-export async function getFullProjectReport(): Promise<FullProjectRow[]> {
-  if (!isSupabaseConfigured()) return [];
+export async function getFullProjectReport(): Promise<FullProjectReport> {
+  if (!isSupabaseConfigured()) return { categories: [], rows: [] };
 
   const supabase = await createClient();
 
@@ -65,17 +72,26 @@ export async function getFullProjectReport(): Promise<FullProjectRow[]> {
   if (projectsErr) throw projectsErr;
 
   const projectIds = (projects ?? []).map((p) => p.id);
-  const [{ data: items, error: itemsErr }, { data: costs, error: costsErr }, { data: payments, error: paymentsErr }] =
-    await Promise.all([
-      supabase.from("project_items").select("project_id, product_category, amount").in("project_id", projectIds),
-      supabase.from("project_costs").select("*").in("project_id", projectIds),
-      supabase.from("payments").select("*").in("project_id", projectIds).order("installment_no"),
-    ]);
+  const [
+    { data: items, error: itemsErr },
+    { data: costs, error: costsErr },
+    { data: payments, error: paymentsErr },
+    liveCategories,
+  ] = await Promise.all([
+    supabase.from("project_items").select("project_id, product_category, amount").in("project_id", projectIds),
+    supabase.from("project_costs").select("*").in("project_id", projectIds),
+    supabase.from("payments").select("*").in("project_id", projectIds).order("installment_no"),
+    getProductCategories(),
+  ]);
   if (itemsErr) throw itemsErr;
   if (costsErr) throw costsErr;
   if (paymentsErr) throw paymentsErr;
 
-  return (projects ?? []).map((p) => {
+  const categorySet = new Set(liveCategories.map((c) => c.name));
+  for (const it of items ?? []) categorySet.add(it.product_category);
+  const categories = Array.from(categorySet).sort();
+
+  const rows = (projects ?? []).map((p) => {
     const projectItems = (items ?? []).filter((it) => it.project_id === p.id);
     const projectCosts = (costs ?? []).find((c) => c.project_id === p.id);
     const projectPayments = (payments ?? []).filter((pay) => pay.project_id === p.id);
@@ -83,7 +99,7 @@ export async function getFullProjectReport(): Promise<FullProjectRow[]> {
     const payment2 = projectPayments.find((pay) => pay.installment_no === 2);
 
     const itemsByCategory = Object.fromEntries(
-      PRODUCT_CATEGORIES.map((cat) => [
+      categories.map((cat) => [
         cat,
         Number(projectItems.find((it) => it.product_category === cat)?.amount ?? 0),
       ]),
@@ -129,6 +145,8 @@ export async function getFullProjectReport(): Promise<FullProjectRow[]> {
       outstanding: payment1 ? Number(payment1.outstanding_amount) : payment2 ? Number(payment2.outstanding_amount) : null,
     };
   });
+
+  return { categories, rows };
 }
 
 export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | null> {

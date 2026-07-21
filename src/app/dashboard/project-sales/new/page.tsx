@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getCustomers, getSalesReps } from "@/lib/data/reference";
+import { getCustomers, getProductCategories, getSalesReps } from "@/lib/data/reference";
 import { ProjectSaleForm } from "../project-sale-form";
 
 export default async function NewProjectSalePage() {
-  const [salesReps, customers] = await Promise.all([getSalesReps(), getCustomers()]);
+  const [salesReps, customers, categories] = await Promise.all([
+    getSalesReps(),
+    getCustomers(),
+    getProductCategories(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -22,7 +26,7 @@ export default async function NewProjectSalePage() {
           <CardTitle>ข้อมูลงานขาย</CardTitle>
         </CardHeader>
         <CardContent>
-          <ProjectSaleForm salesReps={salesReps} customers={customers} />
+          <ProjectSaleForm salesReps={salesReps} customers={customers} categories={categories.map((c) => c.name)} />
         </CardContent>
       </Card>
     </div>

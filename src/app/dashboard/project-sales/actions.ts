@@ -2,12 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import type { PaymentStatus, ProductCategory, ProductionStatus } from "@/lib/types";
+import type { PaymentStatus, ProductionStatus } from "@/lib/types";
 import { PRODUCTION_STATUSES } from "@/lib/types";
 
-const PRODUCT_CATEGORIES: ProductCategory[] = [
-  "WALLPOD", "ACOUSHEET", "ACOUSOFT", "ACUBOX", "CNC", "SERVICE", "WALLPAPER", "OTHER",
-];
 const PAYMENT_STATUSES: PaymentStatus[] = ["เก็บเงินเรียบร้อย", "ชำระมาแล้ว 50%", "รอชำระเงิน"];
 
 function num(v: FormDataEntryValue | null): number {
@@ -74,7 +71,7 @@ function parseForm(formData: FormData): { ok: false; error: string } | ParsedFor
   const itemAmounts = formData.getAll("item_amount");
   const items = itemCategories
     .map((category, i) => ({ category: String(category), amount: num(itemAmounts[i]) }))
-    .filter((it) => it.category && PRODUCT_CATEGORIES.includes(it.category as ProductCategory) && it.amount > 0);
+    .filter((it) => it.category && it.amount > 0);
 
   if (items.length === 0) {
     return { ok: false, error: "กรุณาเพิ่มรายการสินค้าอย่างน้อย 1 รายการ" };

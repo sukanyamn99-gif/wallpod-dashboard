@@ -62,8 +62,7 @@ create table projects (
 create table project_items (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references projects(id) on delete cascade,
-  product_category text not null check (product_category in
-    ('WALLPOD','ACOUSHEET','ACOUSOFT','ACUBOX','CNC','SERVICE','WALLPAPER','OTHER')),
+  product_category text not null,
   amount numeric(14,2) not null default 0
 );
 
@@ -238,7 +237,7 @@ create table stock_products (
   id uuid primary key default gen_random_uuid(),
   sku text,
   name text not null,
-  category text check (category in ('WALLPOD','ACOUSHEET','ACOUSOFT','ACUBOX','CNC','SERVICE','WALLPAPER','OTHER')),
+  category text,
   color text,
   size text,
   thickness text,
@@ -317,3 +316,21 @@ create policy stock_product_images_delete on storage.objects
     bucket_id = 'stock-product-images'
     and my_role() in ('owner','manager')
   );
+
+-- ============ Product Categories (manageable list, replaces hardcoded enum) ============
+
+create table product_categories (
+  id uuid primary key default gen_random_uuid(),
+  name text not null unique,
+  created_at timestamptz not null default now()
+);
+
+alter table product_categories enable row level security;
+
+create policy product_categories_select on product_categories for select using (auth.uid() is not null);
+create policy product_categories_write on product_categories for all
+  using (my_role() in ('owner','manager')) with check (my_role() in ('owner','manager'));
+
+insert into product_categories (name) values
+  ('WALLPOD'),('ACOUSHEET'),('ACOUSOFT'),('ACUBOX'),('CNC'),('SERVICE'),('WALLPAPER'),('OTHER')
+on conflict (name) do nothing;

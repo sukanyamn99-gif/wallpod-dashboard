@@ -6,7 +6,7 @@ import { JobSearchBox } from "./job-search-box";
 import { ProjectsTable } from "./projects-table";
 
 export default async function ProjectSalesPage() {
-  const projects = await getFullProjectReport();
+  const { categories, rows: projects } = await getFullProjectReport();
 
   return (
     <div className="space-y-6">
@@ -43,7 +43,7 @@ export default async function ProjectSalesPage() {
           <CardTitle>งานขายทั้งหมด ({projects.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <ProjectsTable projects={projects} />
+          <ProjectsTable projects={projects} categories={categories} />
         </CardContent>
       </Card>
     </div>

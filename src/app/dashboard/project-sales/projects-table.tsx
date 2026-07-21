@@ -22,11 +22,8 @@ import {
 import { formatTHB } from "@/lib/format";
 import type { FullProjectRow } from "@/lib/data/project-sales";
 
-const PRODUCT_CATEGORIES = [
-  "WALLPOD", "ACOUSHEET", "ACOUSOFT", "ACUBOX", "CNC", "SERVICE", "WALLPAPER", "OTHER",
-] as const;
-
-const TOTAL_COLUMNS = 34;
+const BASE_COLUMNS = 7;
+const TAIL_COLUMNS = 19;
 
 const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -50,7 +47,7 @@ function sumRows(rows: FullProjectRow[]) {
   };
 }
 
-function ProjectRow({ p }: { p: FullProjectRow }) {
+function ProjectRow({ p, categories }: { p: FullProjectRow; categories: string[] }) {
   return (
     <TableRow className={p.isCancelled ? "opacity-60" : undefined}>
       <TableCell className="font-medium whitespace-nowrap">
@@ -76,7 +73,7 @@ function ProjectRow({ p }: { p: FullProjectRow }) {
       <TableCell className="whitespace-nowrap">{p.salesRepName}</TableCell>
       <TableCell className="whitespace-nowrap">{p.customerType}</TableCell>
       <TableCell className="whitespace-nowrap">{p.productionStatus ?? "—"}</TableCell>
-      {PRODUCT_CATEGORIES.map((cat) => (
+      {categories.map((cat) => (
         <Money key={cat} value={p.itemsByCategory[cat]} />
       ))}
       <Money value={p.preVat} />
@@ -112,9 +109,10 @@ function monthLabelOf(key: string) {
   return `${THAI_MONTHS[month - 1]} ${year}`;
 }
 
-export function ProjectsTable({ projects }: { projects: FullProjectRow[] }) {
+export function ProjectsTable({ projects, categories }: { projects: FullProjectRow[]; categories: string[] }) {
   const [query, setQuery] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("all");
+  const totalColumns = BASE_COLUMNS + categories.length + TAIL_COLUMNS;
 
   const monthOptions = useMemo(() => {
     const keys = new Set(projects.map((p) => monthKeyOf(p.projectDate)));
@@ -238,7 +236,7 @@ export function ProjectsTable({ projects }: { projects: FullProjectRow[] }) {
               <TableHead className="whitespace-nowrap">SALE</TableHead>
               <TableHead className="whitespace-nowrap">Customer Type</TableHead>
               <TableHead className="whitespace-nowrap">สถานะของงาน</TableHead>
-              {PRODUCT_CATEGORIES.map((cat) => (
+              {categories.map((cat) => (
                 <TableHead key={cat} className="text-right whitespace-nowrap">
                   {cat}
                 </TableHead>
@@ -267,7 +265,7 @@ export function ProjectsTable({ projects }: { projects: FullProjectRow[] }) {
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={TOTAL_COLUMNS} className="text-center text-muted-foreground">
+                <TableCell colSpan={totalColumns} className="text-center text-muted-foreground">
                   ไม่พบข้อมูล
                 </TableCell>
               </TableRow>
@@ -275,15 +273,15 @@ export function ProjectsTable({ projects }: { projects: FullProjectRow[] }) {
             {monthGroups.map((group) => (
               <Fragment key={group.key}>
                 <TableRow className="bg-muted hover:bg-muted">
-                  <TableCell colSpan={TOTAL_COLUMNS} className="font-medium">
+                  <TableCell colSpan={totalColumns} className="font-medium">
                     {group.label} ({group.subtotal.count} งาน)
                   </TableCell>
                 </TableRow>
                 {group.rows.map((p) => (
-                  <ProjectRow key={p.id} p={p} />
+                  <ProjectRow key={p.id} p={p} categories={categories} />
                 ))}
                 <TableRow className="bg-muted/50 hover:bg-muted/50 font-medium">
-                  <TableCell colSpan={TOTAL_COLUMNS}>
+                  <TableCell colSpan={totalColumns}>
                     รวม{group.label}: PRE.VAT {formatTHB(group.subtotal.preVat)} · VAT{" "}
                     {formatTHB(group.subtotal.vat)} · รวมทั้งสิ้น {formatTHB(group.subtotal.total)} · ต้นทุน{" "}
                     {formatTHB(group.subtotal.totalCost)} · กำไร {formatTHB(group.subtotal.profit)} · คงค้าง{" "}

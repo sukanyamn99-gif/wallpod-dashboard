@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getDistinctStockSizes, getSignedStockProductImageUrl, getStockProductById } from "@/lib/data/stock";
+import { getProductCategories } from "@/lib/data/reference";
 import { StockProductForm } from "../../stock-product-form";
 
 export default async function EditStockProductPage({
@@ -8,7 +9,11 @@ export default async function EditStockProductPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [product, sizeSuggestions] = await Promise.all([getStockProductById(id), getDistinctStockSizes()]);
+  const [product, sizeSuggestions, categories] = await Promise.all([
+    getStockProductById(id),
+    getDistinctStockSizes(),
+    getProductCategories(),
+  ]);
 
   if (!product) {
     return (
@@ -30,6 +35,7 @@ export default async function EditStockProductPage({
       mode="edit"
       productId={product.id}
       sizeSuggestions={sizeSuggestions}
+      categories={categories.map((c) => c.name)}
       initialData={{
         sku: product.sku ?? "",
         name: product.name,

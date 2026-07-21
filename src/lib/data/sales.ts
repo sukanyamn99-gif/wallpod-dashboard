@@ -3,14 +3,11 @@ import { th } from "date-fns/locale";
 import { isSupabaseConfigured, createClient } from "@/lib/supabase/server";
 import { mockCategoryBreakdown, mockCustomerTypes, mockProjects } from "@/lib/mock-data";
 import { getAllSaleReports } from "@/lib/data/sale-reports";
+import { getProductCategories } from "@/lib/data/reference";
 import type { CustomerType, Project, ProductCategory, SalesDashboardData, StagePercent } from "@/lib/types";
 import { STAGE_LABELS } from "@/lib/types";
 
 const MONTHS_TO_SHOW = 8;
-
-const PRODUCT_CATEGORIES: ProductCategory[] = [
-  "WALLPOD", "ACOUSHEET", "ACOUSOFT", "ACUBOX", "CNC", "SERVICE", "WALLPAPER", "OTHER",
-];
 
 function getMonthRange(projects: Project[]) {
   const now = new Date();
@@ -107,20 +104,28 @@ async function getCategoryBreakdown(
 
   const supabase = await createClient();
   const projectIds = projects.map((p) => p.id);
-  const { data, error } = await supabase
-    .from("project_items")
-    .select("product_category, amount")
-    .in("project_id", projectIds);
+  const [{ data, error }, liveCategories] = await Promise.all([
+    supabase.from("project_items").select("product_category, amount").in("project_id", projectIds),
+    getProductCategories(),
+  ]);
   if (error) throw error;
 
-  return PRODUCT_CATEGORIES.map((cat) => {
-    const rows = (data ?? []).filter((r) => r.product_category === cat);
-    return {
-      category: cat,
-      value: rows.reduce((sum, r) => sum + Number(r.amount), 0),
-      count: rows.length,
-    };
-  }).filter((row) => row.count > 0);
+  // Union the managed list with whatever categories actually appear in the
+  // data, so a renamed/deleted category doesn't silently drop its historical
+  // slice out of this chart.
+  const categorySet = new Set(liveCategories.map((c) => c.name));
+  for (const r of data ?? []) categorySet.add(r.product_category);
+
+  return Array.from(categorySet)
+    .map((cat) => {
+      const rows = (data ?? []).filter((r) => r.product_category === cat);
+      return {
+        category: cat,
+        value: rows.reduce((sum, r) => sum + Number(r.amount), 0),
+        count: rows.length,
+      };
+    })
+    .filter((row) => row.count > 0);
 }
 
 export async function getSalesDashboardData(): Promise<SalesDashboardData> {

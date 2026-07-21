@@ -28,13 +28,8 @@ import { SizeAutocomplete } from "@/components/dashboard/size-autocomplete";
 import { createStockProduct, updateStockProduct } from "./actions";
 import { resizeImageToBlob } from "@/lib/image-resize";
 import { formatTHB } from "@/lib/format";
-import type { ProductCategory } from "@/lib/types";
 
 const initialState = { error: null as string | null };
-
-const PRODUCT_CATEGORIES: ProductCategory[] = [
-  "WALLPOD", "ACOUSHEET", "ACOUSOFT", "ACUBOX", "CNC", "SERVICE", "WALLPAPER", "OTHER",
-];
 
 export interface StockProductInitialData {
   sku: string;
@@ -58,11 +53,13 @@ export function StockProductForm({
   productId,
   initialData,
   sizeSuggestions,
+  categories,
 }: {
   mode?: "create" | "edit";
   productId?: string;
   initialData?: StockProductInitialData;
   sizeSuggestions: string[];
+  categories: string[];
 }) {
   const router = useRouter();
   const [size, setSize] = useState(initialData?.size ?? "");
@@ -159,7 +156,7 @@ export function StockProductForm({
                         <SelectValue placeholder="เลือก" />
                       </SelectTrigger>
                       <SelectContent>
-                        {PRODUCT_CATEGORIES.map((c) => (
+                        {categories.map((c) => (
                           <SelectItem key={c} value={c}>
                             {c}
                           </SelectItem>

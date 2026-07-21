@@ -14,6 +14,7 @@ import {
   Package,
   PackageX,
   Receipt,
+  Tags,
   Warehouse,
   LogOut,
 } from "lucide-react";
@@ -48,6 +49,7 @@ const inventoryGroup = {
   items: [
     { title: "Stock Dashboard", url: "/dashboard/inventory", icon: Boxes },
     { title: "Stock Product", url: "/dashboard/stock-product", icon: Package },
+    { title: "หมวดหมู่สินค้า", url: "/dashboard/product-categories", icon: Tags },
   ],
 };
 

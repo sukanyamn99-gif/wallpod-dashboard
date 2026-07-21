@@ -37,15 +37,10 @@ export type ProjectType =
   | "ห้องซ้อมดนตรี"
   | "อื่นๆ";
 
-export type ProductCategory =
-  | "WALLPOD"
-  | "ACOUSHEET"
-  | "ACOUSOFT"
-  | "ACUBOX"
-  | "CNC"
-  | "SERVICE"
-  | "WALLPAPER"
-  | "OTHER";
+// Was a fixed union; now a managed list (see product_categories table /
+// getProductCategories()), so this stays a plain string alias to avoid
+// touching every existing ProductCategory-typed field across the app.
+export type ProductCategory = string;
 
 export type PaymentStatus = "เก็บเงินเรียบร้อย" | "ชำระมาแล้ว 50%" | "รอชำระเงิน";
 
