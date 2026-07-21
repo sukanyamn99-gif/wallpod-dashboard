@@ -248,6 +248,8 @@ create table stock_products (
   quantity_on_hand numeric(14,2) not null default 0,
   reorder_point numeric(14,2) not null default 0,
   unit_cost numeric(14,2) not null default 0,
+  selling_price numeric(14,2),
+  image_path text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -289,3 +291,29 @@ begin
   where id = p_product_id;
 end;
 $$;
+
+-- ============ Stock Product photo (private Storage bucket) ============
+-- Mirrors stock_products table RLS exactly (role-based, not folder-owned —
+-- stock products have no owning sales rep, unlike sale-report-images).
+
+insert into storage.buckets (id, name, public)
+values ('stock-product-images', 'stock-product-images', false)
+on conflict (id) do nothing;
+
+create policy stock_product_images_select on storage.objects
+  for select using (
+    bucket_id = 'stock-product-images'
+    and auth.uid() is not null
+  );
+
+create policy stock_product_images_insert on storage.objects
+  for insert with check (
+    bucket_id = 'stock-product-images'
+    and my_role() in ('owner','manager')
+  );
+
+create policy stock_product_images_delete on storage.objects
+  for delete using (
+    bucket_id = 'stock-product-images'
+    and my_role() in ('owner','manager')
+  );

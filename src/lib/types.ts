@@ -167,6 +167,8 @@ export interface StockProduct {
   quantityOnHand: number;
   reorderPoint: number;
   unitCost: number;
+  sellingPrice: number | null;
+  imagePath: string | null;
   createdAt: string;
   updatedAt: string;
 }

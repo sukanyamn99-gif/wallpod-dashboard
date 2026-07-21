@@ -8,6 +8,8 @@ const PRODUCT_CATEGORIES: ProductCategory[] = [
   "WALLPOD", "ACOUSHEET", "ACOUSOFT", "ACUBOX", "CNC", "SERVICE", "WALLPAPER", "OTHER",
 ];
 
+const IMAGE_BUCKET = "stock-product-images";
+
 type ParsedStockProduct = {
   ok: true;
   sku: string | null;
@@ -21,6 +23,7 @@ type ParsedStockProduct = {
   unit: string;
   reorderPoint: number;
   unitCost: number;
+  sellingPrice: number | null;
 };
 
 function parseStockProductForm(formData: FormData): { ok: false; error: string } | ParsedStockProduct {
@@ -38,6 +41,8 @@ function parseStockProductForm(formData: FormData): { ok: false; error: string }
   const unit = String(formData.get("unit") ?? "").trim() || "ชิ้น";
   const reorderPoint = Number(formData.get("reorder_point") ?? 0);
   const unitCost = Number(formData.get("unit_cost") ?? 0);
+  const sellingPriceRaw = String(formData.get("selling_price") ?? "").trim();
+  const sellingPrice = sellingPriceRaw === "" ? null : Number(sellingPriceRaw);
 
   if (!name) return { ok: false, error: "กรุณากรอกชื่อสินค้า" };
 
@@ -54,7 +59,20 @@ function parseStockProductForm(formData: FormData): { ok: false; error: string }
     unit,
     reorderPoint: Number.isFinite(reorderPoint) ? reorderPoint : 0,
     unitCost: Number.isFinite(unitCost) ? unitCost : 0,
+    sellingPrice: sellingPrice !== null && Number.isFinite(sellingPrice) ? sellingPrice : null,
   };
+}
+
+async function uploadProductImage(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  productId: string,
+  file: File,
+): Promise<string | null> {
+  const path = `${productId}/${crypto.randomUUID()}.jpg`;
+  const { error } = await supabase.storage.from(IMAGE_BUCKET).upload(path, file, {
+    contentType: "image/jpeg",
+  });
+  return error ? null : path;
 }
 
 export async function createStockProduct(formData: FormData) {
@@ -82,6 +100,7 @@ export async function createStockProduct(formData: FormData) {
       unit: parsed.unit,
       reorder_point: parsed.reorderPoint,
       unit_cost: parsed.unitCost,
+      selling_price: parsed.sellingPrice,
     })
     .select("id")
     .single();
@@ -97,6 +116,18 @@ export async function createStockProduct(formData: FormData) {
     });
     if (movementErr) {
       return { error: `บันทึกสินค้าสำเร็จ แต่บันทึกจำนวนเริ่มต้นไม่สำเร็จ: ${movementErr.message}` };
+    }
+  }
+
+  const imageFile = formData.get("image");
+  if (imageFile instanceof File && imageFile.size > 0) {
+    const path = await uploadProductImage(supabase, product.id, imageFile);
+    if (path) {
+      const { error: imageErr } = await supabase
+        .from("stock_products")
+        .update({ image_path: path })
+        .eq("id", product.id);
+      if (imageErr) return { error: `บันทึกสินค้าสำเร็จ แต่บันทึกรูปภาพไม่สำเร็จ: ${imageErr.message}` };
     }
   }
 
@@ -128,11 +159,28 @@ export async function updateStockProduct(id: string, formData: FormData) {
       unit: parsed.unit,
       reorder_point: parsed.reorderPoint,
       unit_cost: parsed.unitCost,
+      selling_price: parsed.sellingPrice,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);
 
   if (error) return { error: error.message };
+
+  const removeImage = formData.get("remove_image") === "1";
+  const imageFile = formData.get("image");
+  const hasNewImage = imageFile instanceof File && imageFile.size > 0;
+
+  if (removeImage || hasNewImage) {
+    const { data: current } = await supabase.from("stock_products").select("image_path").eq("id", id).single();
+    const oldPath = current?.image_path ?? null;
+    if (oldPath) {
+      await supabase.storage.from(IMAGE_BUCKET).remove([oldPath]);
+    }
+
+    const newPath = hasNewImage ? await uploadProductImage(supabase, id, imageFile as File) : null;
+    const { error: imageErr } = await supabase.from("stock_products").update({ image_path: newPath }).eq("id", id);
+    if (imageErr) return { error: `บันทึกข้อมูลสำเร็จ แต่บันทึกรูปภาพไม่สำเร็จ: ${imageErr.message}` };
+  }
 
   revalidatePath(`/dashboard/stock-product/edit/${id}`);
   revalidatePath("/dashboard/stock-product");
@@ -146,6 +194,13 @@ export async function deleteStockProduct(id: string) {
   }
 
   const supabase = await createClient();
+
+  // Best-effort: clean up the product's image folder before deleting the row.
+  const { data: files } = await supabase.storage.from(IMAGE_BUCKET).list(id);
+  if (files && files.length > 0) {
+    await supabase.storage.from(IMAGE_BUCKET).remove(files.map((f) => `${id}/${f.name}`));
+  }
+
   const { error } = await supabase.from("stock_products").delete().eq("id", id);
   if (error) return { error: error.message };
 

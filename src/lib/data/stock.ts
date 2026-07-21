@@ -2,7 +2,9 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type { ProductCategory, StockDashboardData, StockProduct } from "@/lib/types";
 
 const STOCK_PRODUCT_COLUMNS =
-  "id, sku, name, category, color, size, thickness, location, note, unit, quantity_on_hand, reorder_point, unit_cost, created_at, updated_at";
+  "id, sku, name, category, color, size, thickness, location, note, unit, quantity_on_hand, reorder_point, unit_cost, selling_price, image_path, created_at, updated_at";
+
+const IMAGE_BUCKET = "stock-product-images";
 
 function mapRow(row: {
   id: string;
@@ -18,6 +20,8 @@ function mapRow(row: {
   quantity_on_hand: string | number;
   reorder_point: string | number;
   unit_cost: string | number;
+  selling_price: string | number | null;
+  image_path: string | null;
   created_at: string;
   updated_at: string;
 }): StockProduct {
@@ -35,6 +39,8 @@ function mapRow(row: {
     quantityOnHand: Number(row.quantity_on_hand),
     reorderPoint: Number(row.reorder_point),
     unitCost: Number(row.unit_cost),
+    sellingPrice: row.selling_price === null ? null : Number(row.selling_price),
+    imagePath: row.image_path,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -65,6 +71,26 @@ export async function getStockProductById(id: string): Promise<StockProduct | nu
 
   if (error) throw error;
   return data ? mapRow(data) : null;
+}
+
+export async function getDistinctStockSizes(): Promise<string[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("stock_products").select("size").not("size", "is", null);
+
+  if (error) throw error;
+  const sizes = new Set((data ?? []).map((row) => row.size as string).filter((s) => s.trim().length > 0));
+  return Array.from(sizes).sort();
+}
+
+export async function getSignedStockProductImageUrl(path: string | null): Promise<string | null> {
+  if (!path || !isSupabaseConfigured()) return null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage.from(IMAGE_BUCKET).createSignedUrl(path, 3600);
+  if (error) return null;
+  return data.signedUrl;
 }
 
 export async function getStockDashboardData(): Promise<StockDashboardData> {
