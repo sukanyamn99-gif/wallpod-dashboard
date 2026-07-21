@@ -221,43 +221,89 @@ export function SalesRepPerformanceChart({
   );
 }
 
+function RepMonthlyTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: { dataKey: string; name: string; value: number; color: string }[];
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
+  const nonZero = payload.filter((p) => p.value > 0).sort((a, b) => b.value - a.value);
+  if (nonZero.length === 0) return null;
+
+  return (
+    <div className="max-w-xs rounded-md border bg-card px-3 py-2 text-sm shadow-sm">
+      <p className="mb-1 font-medium">{label}</p>
+      <div className="space-y-0.5">
+        {nonZero.map((p) => (
+          <div key={p.dataKey} className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <span className="inline-block h-2 w-2 rounded-full" style={{ background: p.color }} />
+              {p.name}
+            </span>
+            <span>{formatTHB(p.value)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function RepMonthlyPerformanceChart({
   data,
 }: {
   data: SalesDashboardData["repMonthlyPerformance"];
 }) {
+  const chartData = data.months.map((month, i) => {
+    const point: Record<string, string | number> = { month };
+    for (const row of data.rows) point[row.salesRepId] = row.values[i];
+    return point;
+  });
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>ผลงานรายเซลล์แยกตามเดือน</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {data.rows.map((row) => {
-            const chartData = data.months.map((month, i) => ({ month, value: row.values[i] }));
-            return (
-              <div key={row.salesRepId} className="rounded-md border p-3">
-                <div className="mb-1 flex items-baseline justify-between gap-2">
-                  <p className="text-sm font-medium">{row.salesRepName}</p>
-                  <p className="text-xs text-muted-foreground">{formatTHB(row.total)}</p>
-                </div>
-                <ResponsiveContainer width="100%" height={140}>
-                  <BarChart data={chartData} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
-                    <XAxis
-                      dataKey="month"
-                      tick={{ fill: "var(--muted-foreground)", fontSize: 9 }}
-                      axisLine={{ stroke: "var(--border)" }}
-                      tickLine={false}
-                      interval={0}
-                    />
-                    <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--muted)" }} />
-                    <Bar dataKey="value" fill="var(--chart-1)" radius={[3, 3, 0, 0]} maxBarSize={20} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            );
-          })}
-        </div>
+        <ResponsiveContainer width="100%" height={360}>
+          <BarChart data={chartData} margin={{ left: 8, right: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+            <XAxis
+              dataKey="month"
+              tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
+              axisLine={{ stroke: "var(--border)" }}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fill: "var(--muted-foreground)", fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+              tickFormatter={(v) => formatTHB(v)}
+              width={90}
+            />
+            <Tooltip content={<RepMonthlyTooltip />} cursor={{ fill: "var(--muted)" }} />
+            <Legend
+              verticalAlign="bottom"
+              height={56}
+              wrapperStyle={{ fontSize: 12 }}
+              formatter={(value) => <span className="text-sm text-foreground">{value}</span>}
+            />
+            {data.rows.map((row, i) => (
+              <Bar
+                key={row.salesRepId}
+                dataKey={row.salesRepId}
+                name={row.salesRepName}
+                fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]}
+                radius={[3, 3, 0, 0]}
+                maxBarSize={16}
+              />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
       </CardContent>
     </Card>
   );
