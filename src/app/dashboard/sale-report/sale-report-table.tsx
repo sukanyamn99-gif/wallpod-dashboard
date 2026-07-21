@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, History, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -184,50 +184,58 @@ function DetailSheet({
 }
 
 function ChangeLogTable({ logs }: { logs: SaleReportChangeLog[] }) {
+  const [open, setOpen] = useState(false);
+
   return (
     <div className="space-y-2">
-      <h2 className="text-lg font-semibold">ประวัติการแก้ไข/ลบ</h2>
-      <div className="overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="whitespace-nowrap">วันที่</TableHead>
-              <TableHead className="whitespace-nowrap">การกระทำ</TableHead>
-              <TableHead className="whitespace-nowrap">เซลล์</TableHead>
-              <TableHead className="whitespace-nowrap">ลูกค้า</TableHead>
-              <TableHead className="whitespace-nowrap">แก้ไขโดย</TableHead>
-              <TableHead className="whitespace-nowrap">Stage ก่อนแก้ไข</TableHead>
-              <TableHead className="text-right whitespace-nowrap">มูลค่าก่อนแก้ไข</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {logs.length === 0 && (
+      <Button type="button" variant="outline" onClick={() => setOpen((v) => !v)}>
+        <History className="h-4 w-4" />
+        {open ? "ซ่อนประวัติการแก้ไข/ลบ" : `ดูประวัติการแก้ไข/ลบ (${logs.length})`}
+      </Button>
+
+      {open && (
+        <div className="overflow-x-auto rounded-md border">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
-                  ยังไม่มีประวัติการแก้ไข
-                </TableCell>
+                <TableHead className="whitespace-nowrap">วันที่</TableHead>
+                <TableHead className="whitespace-nowrap">การกระทำ</TableHead>
+                <TableHead className="whitespace-nowrap">เซลล์</TableHead>
+                <TableHead className="whitespace-nowrap">ลูกค้า</TableHead>
+                <TableHead className="whitespace-nowrap">แก้ไขโดย</TableHead>
+                <TableHead className="whitespace-nowrap">Stage ก่อนแก้ไข</TableHead>
+                <TableHead className="text-right whitespace-nowrap">มูลค่าก่อนแก้ไข</TableHead>
               </TableRow>
-            )}
-            {logs.map((log) => (
-              <TableRow key={log.id}>
-                <TableCell className="whitespace-nowrap">
-                  {new Date(log.createdAt).toLocaleString("th-TH")}
-                </TableCell>
-                <TableCell className="whitespace-nowrap">
-                  <Badge variant={log.action === "delete" ? "destructive" : "secondary"}>
-                    {log.action === "delete" ? "ลบ" : "แก้ไข"}
-                  </Badge>
-                </TableCell>
-                <TableCell className="whitespace-nowrap">{log.salesRepName}</TableCell>
-                <TableCell className="whitespace-nowrap">{log.customerName}</TableCell>
-                <TableCell className="whitespace-nowrap">{log.changedByName}</TableCell>
-                <TableCell className="whitespace-nowrap">{log.stageBefore}</TableCell>
-                <TableCell className="text-right whitespace-nowrap">{formatTHB(log.estValueBefore)}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {logs.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                    ยังไม่มีประวัติการแก้ไข
+                  </TableCell>
+                </TableRow>
+              )}
+              {logs.map((log) => (
+                <TableRow key={log.id}>
+                  <TableCell className="whitespace-nowrap">
+                    {new Date(log.createdAt).toLocaleString("th-TH")}
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">
+                    <Badge variant={log.action === "delete" ? "destructive" : "secondary"}>
+                      {log.action === "delete" ? "ลบ" : "แก้ไข"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap">{log.salesRepName}</TableCell>
+                  <TableCell className="whitespace-nowrap">{log.customerName}</TableCell>
+                  <TableCell className="whitespace-nowrap">{log.changedByName}</TableCell>
+                  <TableCell className="whitespace-nowrap">{log.stageBefore}</TableCell>
+                  <TableCell className="text-right whitespace-nowrap">{formatTHB(log.estValueBefore)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 }
