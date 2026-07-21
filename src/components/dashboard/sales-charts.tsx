@@ -113,11 +113,6 @@ export function CustomerTypeChart({ data }: { data: SalesDashboardData["customer
               paddingAngle={2}
               stroke="var(--card)"
               strokeWidth={2}
-              label={({ percent }) => {
-                const pct = Math.round((percent ?? 0) * 100);
-                return pct >= 5 ? `${pct}%` : "";
-              }}
-              labelLine={false}
             >
               {data.map((entry, i) => (
                 <Cell key={entry.type} fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]} />
@@ -164,11 +159,6 @@ export function ProductCategoryChart({ data }: { data: SalesDashboardData["categ
               paddingAngle={2}
               stroke="var(--card)"
               strokeWidth={2}
-              label={({ percent }) => {
-                const pct = Math.round((percent ?? 0) * 100);
-                return pct >= 5 ? `${pct}%` : "";
-              }}
-              labelLine={false}
             >
               {data.map((entry, i) => (
                 <Cell key={entry.category} fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]} />
