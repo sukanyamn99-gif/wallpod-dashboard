@@ -153,6 +153,41 @@ export interface SaleReportChangeLog {
   createdAt: string;
 }
 
+export interface StockProduct {
+  id: string;
+  sku: string | null;
+  name: string;
+  category: ProductCategory | null;
+  color: string | null;
+  size: string | null;
+  thickness: string | null;
+  location: string | null;
+  unit: string;
+  quantityOnHand: number;
+  reorderPoint: number;
+  unitCost: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StockMovement {
+  id: string;
+  stockProductId: string;
+  movementType: "in" | "out";
+  quantity: number;
+  note: string | null;
+  createdByName: string;
+  createdAt: string;
+}
+
+export interface StockDashboardData {
+  skuCount: number;
+  totalStockValue: number;
+  lowStockCount: number;
+  categoryBreakdown: { category: string; value: number; count: number }[];
+  lowStockItems: StockProduct[];
+}
+
 export interface SalesDashboardData {
   totalPipelineValue: number;
   openProjectsCount: number;

@@ -8,6 +8,7 @@ import {
   CalendarCheck,
   ClipboardList,
   LineChart,
+  Package,
   PackageX,
   Receipt,
   LogOut,
@@ -32,7 +33,8 @@ const navItems = [
   { title: "WALLPOD Project Sales", url: "/dashboard/project-sales", icon: ClipboardList },
   { title: "GP Dashboard", url: "/dashboard/gp", icon: BarChart3 },
   { title: "AR Dashboard", url: "/dashboard/ar", icon: Receipt },
-  { title: "Inventory Dashboard", url: "/dashboard/inventory", icon: Boxes },
+  { title: "Stock Dashboard", url: "/dashboard/inventory", icon: Boxes },
+  { title: "Stock Product", url: "/dashboard/stock-product", icon: Package },
   { title: "Dead Stock Dashboard", url: "/dashboard/dead-stock", icon: PackageX },
   { title: "Sale Report", url: "/dashboard/sale-report", icon: CalendarCheck },
 ];

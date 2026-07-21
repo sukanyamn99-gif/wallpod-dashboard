@@ -231,3 +231,60 @@ create policy sales_lead_change_log_select on sales_lead_change_log for select
 
 create policy sales_lead_change_log_insert on sales_lead_change_log for insert
   with check (my_role() in ('owner','manager') or sales_rep_id = my_sales_rep_id());
+
+-- ============ Stock / Inventory ============
+
+create table stock_products (
+  id uuid primary key default gen_random_uuid(),
+  sku text,
+  name text not null,
+  category text check (category in ('WALLPOD','ACOUSHEET','ACOUSOFT','ACUBOX','CNC','SERVICE','WALLPAPER','OTHER')),
+  color text,
+  size text,
+  thickness text,
+  location text,
+  unit text not null default 'ชิ้น',
+  quantity_on_hand numeric(14,2) not null default 0,
+  reorder_point numeric(14,2) not null default 0,
+  unit_cost numeric(14,2) not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table stock_movements (
+  id uuid primary key default gen_random_uuid(),
+  stock_product_id uuid not null references stock_products(id) on delete cascade,
+  movement_type text not null check (movement_type in ('in', 'out')),
+  quantity numeric(14,2) not null,
+  note text,
+  created_by uuid references profiles(id),
+  created_at timestamptz not null default now()
+);
+
+alter table stock_products enable row level security;
+alter table stock_movements enable row level security;
+
+create policy stock_products_select on stock_products for select using (auth.uid() is not null);
+create policy stock_products_write on stock_products for all
+  using (my_role() in ('owner','manager')) with check (my_role() in ('owner','manager'));
+
+create policy stock_movements_select on stock_movements for select using (auth.uid() is not null);
+create policy stock_movements_insert on stock_movements for insert
+  with check (my_role() in ('owner','manager','production'));
+
+create function record_stock_movement(p_product_id uuid, p_type text, p_qty numeric, p_note text)
+returns void language plpgsql security definer as $$
+begin
+  if my_role() not in ('owner', 'manager', 'production') then
+    raise exception 'permission denied';
+  end if;
+
+  insert into stock_movements (stock_product_id, movement_type, quantity, note, created_by)
+  values (p_product_id, p_type, p_qty, p_note, auth.uid());
+
+  update stock_products
+  set quantity_on_hand = quantity_on_hand + (case when p_type = 'in' then p_qty else -p_qty end),
+      updated_at = now()
+  where id = p_product_id;
+end;
+$$;
