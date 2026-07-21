@@ -14,7 +14,6 @@ import {
   YAxis,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatTHB } from "@/lib/format";
 import type { SalesDashboardData } from "@/lib/types";
 
@@ -222,7 +221,7 @@ export function SalesRepPerformanceChart({
   );
 }
 
-export function RepMonthlyPerformanceTable({
+export function RepMonthlyPerformanceChart({
   data,
 }: {
   data: SalesDashboardData["repMonthlyPerformance"];
@@ -233,35 +232,31 @@ export function RepMonthlyPerformanceTable({
         <CardTitle>ผลงานรายเซลล์แยกตามเดือน</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="whitespace-nowrap">เซลล์</TableHead>
-                {data.months.map((m) => (
-                  <TableHead key={m} className="text-right whitespace-nowrap">
-                    {m}
-                  </TableHead>
-                ))}
-                <TableHead className="text-right whitespace-nowrap">รวม</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.rows.map((row) => (
-                <TableRow key={row.salesRepId}>
-                  <TableCell className="whitespace-nowrap font-medium">{row.salesRepName}</TableCell>
-                  {row.values.map((v, i) => (
-                    <TableCell key={i} className="text-right whitespace-nowrap">
-                      {v ? formatTHB(v) : "—"}
-                    </TableCell>
-                  ))}
-                  <TableCell className="text-right whitespace-nowrap font-medium">
-                    {formatTHB(row.total)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {data.rows.map((row) => {
+            const chartData = data.months.map((month, i) => ({ month, value: row.values[i] }));
+            return (
+              <div key={row.salesRepId} className="rounded-md border p-3">
+                <div className="mb-1 flex items-baseline justify-between gap-2">
+                  <p className="text-sm font-medium">{row.salesRepName}</p>
+                  <p className="text-xs text-muted-foreground">{formatTHB(row.total)}</p>
+                </div>
+                <ResponsiveContainer width="100%" height={140}>
+                  <BarChart data={chartData} margin={{ left: 0, right: 0, top: 4, bottom: 0 }}>
+                    <XAxis
+                      dataKey="month"
+                      tick={{ fill: "var(--muted-foreground)", fontSize: 9 }}
+                      axisLine={{ stroke: "var(--border)" }}
+                      tickLine={false}
+                      interval={0}
+                    />
+                    <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--muted)" }} />
+                    <Bar dataKey="value" fill="var(--chart-1)" radius={[3, 3, 0, 0]} maxBarSize={20} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            );
+          })}
         </div>
       </CardContent>
     </Card>
