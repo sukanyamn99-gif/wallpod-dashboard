@@ -94,6 +94,8 @@ export function PipelineByStageChart({ data }: { data: SalesDashboardData["pipel
 }
 
 export function CustomerTypeChart({ data }: { data: SalesDashboardData["customerTypeBreakdown"] }) {
+  const total = data.reduce((sum, d) => sum + d.value, 0);
+
   return (
     <Card>
       <CardHeader>
@@ -111,6 +113,8 @@ export function CustomerTypeChart({ data }: { data: SalesDashboardData["customer
               paddingAngle={2}
               stroke="var(--card)"
               strokeWidth={2}
+              label={({ percent }) => `${Math.round((percent ?? 0) * 100)}%`}
+              labelLine={{ stroke: "var(--muted-foreground)" }}
             >
               {data.map((entry, i) => (
                 <Cell key={entry.type} fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]} />
@@ -120,7 +124,15 @@ export function CustomerTypeChart({ data }: { data: SalesDashboardData["customer
             <Legend
               verticalAlign="bottom"
               height={48}
-              formatter={(value) => <span className="text-sm text-foreground">{value}</span>}
+              formatter={(value, entry) => {
+                const v = (entry?.payload as unknown as { value: number } | undefined)?.value ?? 0;
+                const pct = total > 0 ? Math.round((v / total) * 100) : 0;
+                return (
+                  <span className="text-sm text-foreground">
+                    {value} ({pct}%)
+                  </span>
+                );
+              }}
             />
           </PieChart>
         </ResponsiveContainer>
@@ -130,6 +142,8 @@ export function CustomerTypeChart({ data }: { data: SalesDashboardData["customer
 }
 
 export function ProductCategoryChart({ data }: { data: SalesDashboardData["categoryBreakdown"] }) {
+  const total = data.reduce((sum, d) => sum + d.value, 0);
+
   return (
     <Card>
       <CardHeader>
@@ -147,6 +161,8 @@ export function ProductCategoryChart({ data }: { data: SalesDashboardData["categ
               paddingAngle={2}
               stroke="var(--card)"
               strokeWidth={2}
+              label={({ percent }) => `${Math.round((percent ?? 0) * 100)}%`}
+              labelLine={{ stroke: "var(--muted-foreground)" }}
             >
               {data.map((entry, i) => (
                 <Cell key={entry.category} fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]} />
@@ -156,7 +172,15 @@ export function ProductCategoryChart({ data }: { data: SalesDashboardData["categ
             <Legend
               verticalAlign="bottom"
               height={48}
-              formatter={(value) => <span className="text-sm text-foreground">{value}</span>}
+              formatter={(value, entry) => {
+                const v = (entry?.payload as unknown as { value: number } | undefined)?.value ?? 0;
+                const pct = total > 0 ? Math.round((v / total) * 100) : 0;
+                return (
+                  <span className="text-sm text-foreground">
+                    {value} ({pct}%)
+                  </span>
+                );
+              }}
             />
           </PieChart>
         </ResponsiveContainer>
