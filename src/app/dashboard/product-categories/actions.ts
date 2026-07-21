@@ -23,25 +23,27 @@ export async function createProductCategory(formData: FormData) {
 
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "กรุณากรอกชื่อหมวดหมู่" };
+  const description = String(formData.get("description") ?? "").trim() || null;
 
   const supabase = await createClient();
-  const { error } = await supabase.from("product_categories").insert({ name });
+  const { error } = await supabase.from("product_categories").insert({ name, description });
   if (error) return { error: friendlyError(error) };
 
   revalidateCategoryConsumers();
   return { error: null };
 }
 
-export async function renameProductCategory(id: string, formData: FormData) {
+export async function updateProductCategory(id: string, formData: FormData) {
   if (!isSupabaseConfigured()) {
     return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
   }
 
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "กรุณากรอกชื่อหมวดหมู่" };
+  const description = String(formData.get("description") ?? "").trim() || null;
 
   const supabase = await createClient();
-  const { error } = await supabase.from("product_categories").update({ name }).eq("id", id);
+  const { error } = await supabase.from("product_categories").update({ name, description }).eq("id", id);
   if (error) return { error: friendlyError(error) };
 
   revalidateCategoryConsumers();

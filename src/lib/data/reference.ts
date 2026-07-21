@@ -18,10 +18,15 @@ export async function getCustomers(): Promise<Customer[]> {
   return data ?? [];
 }
 
-export async function getProductCategories(): Promise<{ id: string; name: string; created_at: string }[]> {
+export async function getProductCategories(): Promise<
+  { id: string; name: string; description: string | null; created_at: string }[]
+> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
-  const { data, error } = await supabase.from("product_categories").select("id, name, created_at").order("name");
+  const { data, error } = await supabase
+    .from("product_categories")
+    .select("id, name, description, created_at")
+    .order("name");
   if (error) throw error;
   return data ?? [];
 }
