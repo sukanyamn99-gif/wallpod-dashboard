@@ -33,7 +33,7 @@ import type { Profile, SaleReport, SaleReportChangeLog, SalesRep, Stage } from "
 
 const STAGES: Stage[] = ["นำเสนอ", "ใบเสนอราคา", "เจรจาต่อรอง", "ปิดการขาย", "ไม่สำเร็จ"];
 
-const TOTAL_COLUMNS = 14;
+const TOTAL_COLUMNS = 15;
 
 function summarize(reports: SaleReport[]) {
   return {
@@ -309,6 +309,7 @@ export function SaleReportTable({
                 <TableHead className="whitespace-nowrap">วันที่</TableHead>
                 <TableHead className="whitespace-nowrap">เซลล์</TableHead>
                 <TableHead className="whitespace-nowrap">ลูกค้า</TableHead>
+                <TableHead className="whitespace-nowrap">ผู้ติดต่อ</TableHead>
                 <TableHead className="whitespace-nowrap">งาน/โปรเจกต์</TableHead>
                 <TableHead className="whitespace-nowrap">กลุ่มลูกค้า</TableHead>
                 <TableHead className="whitespace-nowrap">Stage</TableHead>
@@ -337,6 +338,7 @@ export function SaleReportTable({
                   </TableCell>
                   <TableCell className="whitespace-nowrap font-medium">{r.sales_rep_name}</TableCell>
                   <TableCell className="whitespace-nowrap">{r.customer_name}</TableCell>
+                  <TableCell className="whitespace-nowrap">{r.contact_name ?? "—"}</TableCell>
                   <TableCell className="whitespace-nowrap">{r.project_name ?? "—"}</TableCell>
                   <TableCell className="whitespace-nowrap">{r.customer_type}</TableCell>
                   <TableCell className="whitespace-nowrap">
