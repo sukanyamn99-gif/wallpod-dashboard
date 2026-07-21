@@ -1,16 +1,20 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
   Boxes,
   CalendarCheck,
+  ChevronDown,
+  ChevronRight,
   ClipboardList,
   LineChart,
   Package,
   PackageX,
   Receipt,
+  Warehouse,
   LogOut,
 } from "lucide-react";
 import {
@@ -24,6 +28,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import { signOut } from "@/app/login/actions";
 import type { Profile } from "@/lib/types";
@@ -33,14 +40,26 @@ const navItems = [
   { title: "WALLPOD Project Sales", url: "/dashboard/project-sales", icon: ClipboardList },
   { title: "GP Dashboard", url: "/dashboard/gp", icon: BarChart3 },
   { title: "AR Dashboard", url: "/dashboard/ar", icon: Receipt },
-  { title: "Stock Dashboard", url: "/dashboard/inventory", icon: Boxes },
-  { title: "Stock Product", url: "/dashboard/stock-product", icon: Package },
+];
+
+const inventoryGroup = {
+  title: "Inventory",
+  icon: Warehouse,
+  items: [
+    { title: "Stock Dashboard", url: "/dashboard/inventory", icon: Boxes },
+    { title: "Stock Product", url: "/dashboard/stock-product", icon: Package },
+  ],
+};
+
+const remainingNavItems = [
   { title: "Dead Stock Dashboard", url: "/dashboard/dead-stock", icon: PackageX },
   { title: "Sale Report", url: "/dashboard/sale-report", icon: CalendarCheck },
 ];
 
 export function AppSidebar({ profile }: { profile: Profile }) {
   const pathname = usePathname();
+  const isInventoryActive = inventoryGroup.items.some((item) => pathname === item.url);
+  const [inventoryOpen, setInventoryOpen] = useState(isInventoryActive);
 
   return (
     <Sidebar>
@@ -54,6 +73,48 @@ export function AppSidebar({ profile }: { profile: Profile }) {
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => (
+                <SidebarMenuItem key={item.url}>
+                  <SidebarMenuButton
+                    isActive={pathname === item.url}
+                    render={
+                      <Link href={item.url}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    }
+                  />
+                </SidebarMenuItem>
+              ))}
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={isInventoryActive}
+                  onClick={() => setInventoryOpen((open) => !open)}
+                >
+                  <inventoryGroup.icon />
+                  <span>{inventoryGroup.title}</span>
+                  {inventoryOpen ? <ChevronDown className="ml-auto" /> : <ChevronRight className="ml-auto" />}
+                </SidebarMenuButton>
+                {inventoryOpen && (
+                  <SidebarMenuSub>
+                    {inventoryGroup.items.map((item) => (
+                      <SidebarMenuSubItem key={item.url}>
+                        <SidebarMenuSubButton
+                          isActive={pathname === item.url}
+                          render={
+                            <Link href={item.url}>
+                              <item.icon />
+                              <span>{item.title}</span>
+                            </Link>
+                          }
+                        />
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                )}
+              </SidebarMenuItem>
+
+              {remainingNavItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton
                     isActive={pathname === item.url}
