@@ -111,6 +111,7 @@ create table sales_leads (
   next_action text,
   note text,
   phone text,
+  contact_name text,
   image_paths text[] not null default '{}',
   created_by uuid references profiles(id),
   created_at timestamptz not null default now()

@@ -122,6 +122,7 @@ function DetailSheet({
                 <DetailRow label="วันที่บันทึก">{new Date(report.created_at).toLocaleString("th-TH")}</DetailRow>
                 <DetailRow label="กลุ่มลูกค้า">{report.customer_type}</DetailRow>
                 <DetailRow label="ประเภทสถานที่">{report.project_type}</DetailRow>
+                <DetailRow label="ชื่อผู้ติดต่อ">{report.contact_name ?? "—"}</DetailRow>
                 <DetailRow label="เบอร์โทร">
                   {report.phone ? (
                     <a href={`tel:${report.phone}`} className="text-primary underline underline-offset-2">

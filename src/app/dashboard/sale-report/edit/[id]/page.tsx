@@ -38,6 +38,7 @@ export default async function EditSaleReportPage({
               initialData={{
                 salesRepId: report.sales_rep_id,
                 customerName: report.customer_name,
+                contactName: report.contact_name ?? "",
                 phone: report.phone ?? "",
                 projectName: report.project_name ?? "",
                 customerType: report.customer_type,

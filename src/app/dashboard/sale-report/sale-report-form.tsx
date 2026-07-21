@@ -35,6 +35,7 @@ const MAX_IMAGES = 10;
 export interface SaleReportInitialData {
   salesRepId: string;
   customerName: string;
+  contactName: string;
   phone: string;
   projectName: string;
   customerType: string;
@@ -190,6 +191,16 @@ export function SaleReportForm({
           required
           defaultValue={initialData?.customerName}
           placeholder="เช่น บจก. ABC"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="contact_name">ชื่อผู้ติดต่อ</Label>
+        <Input
+          id="contact_name"
+          name="contact_name"
+          defaultValue={initialData?.contactName}
+          placeholder="เช่น คุณสมชาย"
         />
       </div>
 

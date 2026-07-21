@@ -5,7 +5,7 @@ import type { SaleReport, SaleReportChangeLog } from "@/lib/types";
 const IMAGE_BUCKET = "sale-report-images";
 
 const SALE_REPORT_COLUMNS =
-  "id, sales_rep_id, customer_name, project_name, customer_type, project_type, stage, stage_percent, est_value, location_text, next_action, note, phone, image_paths, created_at, sales_reps(name)";
+  "id, sales_rep_id, customer_name, project_name, customer_type, project_type, stage, stage_percent, est_value, location_text, next_action, note, phone, contact_name, image_paths, created_at, sales_reps(name)";
 
 function mapRow(row: {
   id: string;
@@ -21,6 +21,7 @@ function mapRow(row: {
   next_action: string | null;
   note: string | null;
   phone: string | null;
+  contact_name: string | null;
   image_paths: string[] | null;
   created_at: string;
 }): SaleReport {
@@ -40,6 +41,7 @@ function mapRow(row: {
     next_action: row.next_action,
     note: row.note,
     phone: row.phone,
+    contact_name: row.contact_name,
     image_paths: row.image_paths ?? [],
     created_at: row.created_at,
   };

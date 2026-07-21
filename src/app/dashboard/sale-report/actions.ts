@@ -20,6 +20,7 @@ type ParsedSaleReport = {
   nextAction: string | null;
   note: string | null;
   phone: string | null;
+  contactName: string | null;
 };
 
 function parseSaleReportForm(formData: FormData): { ok: false; error: string } | ParsedSaleReport {
@@ -34,6 +35,7 @@ function parseSaleReportForm(formData: FormData): { ok: false; error: string } |
   const nextAction = String(formData.get("next_action") ?? "").trim() || null;
   const note = String(formData.get("note") ?? "").trim() || null;
   const phone = String(formData.get("phone") ?? "").trim() || null;
+  const contactName = String(formData.get("contact_name") ?? "").trim() || null;
 
   if (!salesRepId) return { ok: false, error: "กรุณาเลือกเซลล์" };
   if (!customerName) return { ok: false, error: "กรุณากรอกชื่อลูกค้า" };
@@ -54,6 +56,7 @@ function parseSaleReportForm(formData: FormData): { ok: false; error: string } |
     nextAction,
     note,
     phone,
+    contactName,
   };
 }
 
@@ -104,6 +107,7 @@ export async function createSaleReport(formData: FormData) {
       next_action: parsed.nextAction,
       note: parsed.note,
       phone: parsed.phone,
+      contact_name: parsed.contactName,
       created_by: user?.id ?? null,
     })
     .select("id")
@@ -162,6 +166,7 @@ export async function updateSaleReport(id: string, formData: FormData) {
       next_action: parsed.nextAction,
       note: parsed.note,
       phone: parsed.phone,
+      contact_name: parsed.contactName,
     })
     .eq("id", id);
   if (updateErr) return { error: updateErr.message };
