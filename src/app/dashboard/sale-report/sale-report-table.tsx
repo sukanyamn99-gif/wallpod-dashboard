@@ -309,11 +309,11 @@ export function SaleReportTable({
                 <TableHead className="whitespace-nowrap">วันที่</TableHead>
                 <TableHead className="whitespace-nowrap">เซลล์</TableHead>
                 <TableHead className="whitespace-nowrap">ลูกค้า</TableHead>
-                <TableHead className="whitespace-nowrap">ผู้ติดต่อ</TableHead>
                 <TableHead className="whitespace-nowrap">งาน/โปรเจกต์</TableHead>
                 <TableHead className="whitespace-nowrap">กลุ่มลูกค้า</TableHead>
                 <TableHead className="whitespace-nowrap">Stage</TableHead>
                 <TableHead className="text-right whitespace-nowrap">มูลค่าโดยประมาณ</TableHead>
+                <TableHead className="whitespace-nowrap">ผู้ติดต่อ</TableHead>
                 <TableHead className="whitespace-nowrap">เบอร์โทร</TableHead>
                 <TableHead className="whitespace-nowrap">ตำแหน่ง</TableHead>
                 <TableHead className="whitespace-nowrap">รูปภาพ</TableHead>
@@ -338,13 +338,13 @@ export function SaleReportTable({
                   </TableCell>
                   <TableCell className="whitespace-nowrap font-medium">{r.sales_rep_name}</TableCell>
                   <TableCell className="whitespace-nowrap">{r.customer_name}</TableCell>
-                  <TableCell className="whitespace-nowrap">{r.contact_name ?? "—"}</TableCell>
                   <TableCell className="whitespace-nowrap">{r.project_name ?? "—"}</TableCell>
                   <TableCell className="whitespace-nowrap">{r.customer_type}</TableCell>
                   <TableCell className="whitespace-nowrap">
                     <Badge variant="secondary">{r.stage}</Badge>
                   </TableCell>
                   <TableCell className="text-right whitespace-nowrap">{formatTHB(r.est_value)}</TableCell>
+                  <TableCell className="whitespace-nowrap">{r.contact_name ?? "—"}</TableCell>
                   <TableCell className="whitespace-nowrap">{r.phone ?? "—"}</TableCell>
                   <TableCell className="whitespace-nowrap">
                     {r.location_text ? (
