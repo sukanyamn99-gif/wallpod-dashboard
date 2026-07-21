@@ -17,6 +17,7 @@ type ParsedStockProduct = {
   size: string | null;
   thickness: string | null;
   location: string | null;
+  note: string | null;
   unit: string;
   reorderPoint: number;
   unitCost: number;
@@ -33,6 +34,7 @@ function parseStockProductForm(formData: FormData): { ok: false; error: string }
   const size = String(formData.get("size") ?? "").trim() || null;
   const thickness = String(formData.get("thickness") ?? "").trim() || null;
   const location = String(formData.get("location") ?? "").trim() || null;
+  const note = String(formData.get("product_note") ?? "").trim() || null;
   const unit = String(formData.get("unit") ?? "").trim() || "ชิ้น";
   const reorderPoint = Number(formData.get("reorder_point") ?? 0);
   const unitCost = Number(formData.get("unit_cost") ?? 0);
@@ -48,6 +50,7 @@ function parseStockProductForm(formData: FormData): { ok: false; error: string }
     size,
     thickness,
     location,
+    note,
     unit,
     reorderPoint: Number.isFinite(reorderPoint) ? reorderPoint : 0,
     unitCost: Number.isFinite(unitCost) ? unitCost : 0,
@@ -75,6 +78,7 @@ export async function createStockProduct(formData: FormData) {
       size: parsed.size,
       thickness: parsed.thickness,
       location: parsed.location,
+      note: parsed.note,
       unit: parsed.unit,
       reorder_point: parsed.reorderPoint,
       unit_cost: parsed.unitCost,
@@ -120,6 +124,7 @@ export async function updateStockProduct(id: string, formData: FormData) {
       size: parsed.size,
       thickness: parsed.thickness,
       location: parsed.location,
+      note: parsed.note,
       unit: parsed.unit,
       reorder_point: parsed.reorderPoint,
       unit_cost: parsed.unitCost,

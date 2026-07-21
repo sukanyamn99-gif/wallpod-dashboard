@@ -39,6 +39,7 @@ export default async function EditStockProductPage({
                 size: product.size ?? "",
                 thickness: product.thickness ?? "",
                 location: product.location ?? "",
+                note: product.note ?? "",
                 unit: product.unit,
                 reorderPoint: String(product.reorderPoint),
                 unitCost: String(product.unitCost),

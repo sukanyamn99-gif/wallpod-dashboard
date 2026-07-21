@@ -33,7 +33,7 @@ import { formatTHB } from "@/lib/format";
 import { deleteStockProduct, recordStockMovement } from "./actions";
 import type { Profile, StockProduct } from "@/lib/types";
 
-const TOTAL_COLUMNS = 14;
+const TOTAL_COLUMNS = 15;
 
 const movementInitialState = { error: null as string | null };
 
@@ -182,6 +182,7 @@ export function StockProductsTable({
               <TableHead className="whitespace-nowrap">ตำแหน่งจัดเก็บ</TableHead>
               <TableHead className="whitespace-nowrap">สถานะ</TableHead>
               <TableHead className="whitespace-nowrap">อัปเดตล่าสุด</TableHead>
+              <TableHead className="whitespace-nowrap">หมายเหตุ</TableHead>
               <TableHead className="whitespace-nowrap">จัดการ</TableHead>
             </TableRow>
           </TableHeader>
@@ -224,6 +225,7 @@ export function StockProductsTable({
                   <TableCell className="whitespace-nowrap">
                     {new Date(p.updatedAt).toLocaleDateString("th-TH")}
                   </TableCell>
+                  <TableCell className="max-w-[16rem] whitespace-normal">{p.note ?? "—"}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       {canRecordMovement(currentProfile) && (

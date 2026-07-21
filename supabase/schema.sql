@@ -243,6 +243,7 @@ create table stock_products (
   size text,
   thickness text,
   location text,
+  note text,
   unit text not null default 'ชิ้น',
   quantity_on_hand numeric(14,2) not null default 0,
   reorder_point numeric(14,2) not null default 0,

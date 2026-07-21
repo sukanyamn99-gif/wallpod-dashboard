@@ -2,7 +2,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type { ProductCategory, StockDashboardData, StockProduct } from "@/lib/types";
 
 const STOCK_PRODUCT_COLUMNS =
-  "id, sku, name, category, color, size, thickness, location, unit, quantity_on_hand, reorder_point, unit_cost, created_at, updated_at";
+  "id, sku, name, category, color, size, thickness, location, note, unit, quantity_on_hand, reorder_point, unit_cost, created_at, updated_at";
 
 function mapRow(row: {
   id: string;
@@ -13,6 +13,7 @@ function mapRow(row: {
   size: string | null;
   thickness: string | null;
   location: string | null;
+  note: string | null;
   unit: string;
   quantity_on_hand: string | number;
   reorder_point: string | number;
@@ -29,6 +30,7 @@ function mapRow(row: {
     size: row.size,
     thickness: row.thickness,
     location: row.location,
+    note: row.note,
     unit: row.unit,
     quantityOnHand: Number(row.quantity_on_hand),
     reorderPoint: Number(row.reorder_point),

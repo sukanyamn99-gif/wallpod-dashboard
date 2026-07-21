@@ -162,6 +162,7 @@ export interface StockProduct {
   size: string | null;
   thickness: string | null;
   location: string | null;
+  note: string | null;
   unit: string;
   quantityOnHand: number;
   reorderPoint: number;

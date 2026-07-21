@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -30,6 +31,7 @@ export interface StockProductInitialData {
   size: string;
   thickness: string;
   location: string;
+  note: string;
   unit: string;
   reorderPoint: string;
   unitCost: string;
@@ -133,6 +135,11 @@ export function StockProductForm({
           <Label htmlFor="location">ตำแหน่งจัดเก็บ</Label>
           <Input id="location" name="location" defaultValue={initialData?.location} placeholder="เช่น Store 01" />
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="product_note">หมายเหตุ</Label>
+        <Textarea id="product_note" name="product_note" defaultValue={initialData?.note} placeholder="รายละเอียดเพิ่มเติม" />
       </div>
 
       {mode === "create" ? (
