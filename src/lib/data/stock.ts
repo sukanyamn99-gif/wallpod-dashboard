@@ -84,6 +84,38 @@ export async function getDistinctStockSizes(): Promise<string[]> {
   return Array.from(sizes).sort();
 }
 
+export async function getFrequentlyUsedStockProducts(limit = 6): Promise<StockProduct[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("stock_movements")
+    .select("stock_product_id, created_at")
+    .eq("movement_type", "out")
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) throw error;
+
+  const orderedIds: string[] = [];
+  const seen = new Set<string>();
+  for (const row of data ?? []) {
+    if (seen.has(row.stock_product_id)) continue;
+    seen.add(row.stock_product_id);
+    orderedIds.push(row.stock_product_id);
+    if (orderedIds.length >= limit) break;
+  }
+  if (orderedIds.length === 0) return [];
+
+  const { data: productRows, error: productsErr } = await supabase
+    .from("stock_products")
+    .select(STOCK_PRODUCT_COLUMNS)
+    .in("id", orderedIds);
+  if (productsErr) throw productsErr;
+
+  const byId = new Map((productRows ?? []).map((row) => [row.id, mapRow(row)]));
+  return orderedIds.map((id) => byId.get(id)).filter((p): p is StockProduct => p !== undefined);
+}
+
 export async function getSignedStockProductImageUrl(path: string | null): Promise<string | null> {
   if (!path || !isSupabaseConfigured()) return null;
 

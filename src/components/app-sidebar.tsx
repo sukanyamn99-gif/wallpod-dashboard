@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronRight,
   ClipboardList,
+  ClipboardMinus,
   LineChart,
   Package,
   PackageX,
@@ -50,6 +51,7 @@ const inventoryGroup = {
     { title: "Stock Dashboard", url: "/dashboard/inventory", icon: Boxes },
     { title: "Stock Product", url: "/dashboard/stock-product", icon: Package },
     { title: "หมวดหมู่สินค้า", url: "/dashboard/product-categories", icon: Tags },
+    { title: "ใบเบิกสินค้า", url: "/dashboard/stock-requisition", icon: ClipboardMinus },
   ],
 };
 

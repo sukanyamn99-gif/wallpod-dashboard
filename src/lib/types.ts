@@ -200,3 +200,41 @@ export interface SalesDashboardData {
     rows: { salesRepId: string; salesRepName: string; values: number[]; total: number }[];
   };
 }
+
+export interface Department {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
+export type RequisitionPurpose = "production" | "sample";
+
+export const REQUISITION_PURPOSE_LABELS: Record<RequisitionPurpose, string> = {
+  production: "เบิกเพื่อผลิต",
+  sample: "เบิกทำตัวอย่าง",
+};
+
+export interface StockRequisitionItem {
+  id: string;
+  stockProductId: string | null;
+  productName: string;
+  productSku: string | null;
+  quantity: number;
+  unit: string;
+}
+
+export interface StockRequisition {
+  id: string;
+  docNo: string;
+  departmentName: string | null;
+  requestedById: string | null;
+  requestedByName: string;
+  jobNo: string | null;
+  projectName: string | null;
+  purpose: RequisitionPurpose;
+  customerName: string | null;
+  note: string | null;
+  status: string;
+  createdAt: string;
+  items: StockRequisitionItem[];
+}
