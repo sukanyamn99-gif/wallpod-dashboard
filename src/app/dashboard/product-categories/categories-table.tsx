@@ -1,21 +1,25 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, Pencil, Plus, Tags, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { formatNumber } from "@/lib/format";
 import { createProductCategory, deleteProductCategory, updateProductCategory } from "./actions";
 
 type Category = { id: string; name: string; description: string | null; created_at: string };
+type Summary = { count: number; quantity: number };
+
+const CARD_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+  "var(--chart-6)",
+  "var(--chart-7)",
+];
 
 const addInitialState = { error: null as string | null };
 
@@ -40,7 +44,17 @@ function AddCategoryForm() {
   );
 }
 
-function CategoryRow({ category, canManage }: { category: Category; canManage: boolean }) {
+function CategoryCard({
+  category,
+  canManage,
+  color,
+  summary,
+}: {
+  category: Category;
+  canManage: boolean;
+  color: string;
+  summary: Summary;
+}) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(category.name);
   const [description, setDescription] = useState(category.description ?? "");
@@ -86,106 +100,115 @@ function CategoryRow({ category, canManage }: { category: Category; canManage: b
   }
 
   return (
-    <TableRow>
-      <TableCell>
-        {editing ? (
-          <Input value={name} onChange={(e) => setName(e.target.value)} className="max-w-xs" autoFocus disabled={pending} />
-        ) : (
-          category.name
+    <div className="flex flex-col gap-3 rounded-xl border p-4">
+      <div className="flex items-start justify-between">
+        <div
+          className="flex h-9 w-9 items-center justify-center rounded-lg"
+          style={{ backgroundColor: `color-mix(in oklab, ${color} 18%, transparent)`, color }}
+        >
+          <Tags className="h-4 w-4" />
+        </div>
+        {canManage && (
+          <div className="flex gap-1">
+            {editing ? (
+              <>
+                <Button size="icon-sm" variant="outline" onClick={handleSave} disabled={pending}>
+                  <Check className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="icon-sm"
+                  variant="outline"
+                  onClick={() => {
+                    setEditing(false);
+                    setName(category.name);
+                    setDescription(category.description ?? "");
+                  }}
+                  disabled={pending}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button size="icon-sm" variant="outline" onClick={() => setEditing(true)}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button size="icon-sm" variant="destructive" onClick={handleDelete} disabled={pending}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </>
+            )}
+          </div>
         )}
-      </TableCell>
-      <TableCell className="max-w-[20rem] whitespace-normal">
-        {editing ? (
+      </div>
+
+      {editing ? (
+        <div className="space-y-2">
+          <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus disabled={pending} />
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="max-w-sm"
             rows={2}
             disabled={pending}
+            placeholder="รายละเอียด"
           />
-        ) : (
-          category.description || "—"
-        )}
-      </TableCell>
-      <TableCell className="whitespace-nowrap">
-        {new Date(category.created_at).toLocaleDateString("th-TH")}
-      </TableCell>
-      <TableCell>
-        <div className="flex flex-col gap-1">
-          {canManage && (
-            <div className="flex gap-1">
-              {editing ? (
-                <>
-                  <Button size="icon-sm" variant="outline" onClick={handleSave} disabled={pending}>
-                    <Check className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                    size="icon-sm"
-                    variant="outline"
-                    onClick={() => {
-                      setEditing(false);
-                      setName(category.name);
-                      setDescription(category.description ?? "");
-                    }}
-                    disabled={pending}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button size="icon-sm" variant="outline" onClick={() => setEditing(true)}>
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button size="icon-sm" variant="destructive" onClick={handleDelete} disabled={pending}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </>
-              )}
-            </div>
-          )}
-          {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
-      </TableCell>
-    </TableRow>
+      ) : (
+        <div>
+          <p className="font-medium">{category.name}</p>
+          <p className="text-sm text-muted-foreground">{category.description || "—"}</p>
+        </div>
+      )}
+
+      {error && <p className="text-xs text-destructive">{error}</p>}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span
+          className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+          style={{ backgroundColor: `color-mix(in oklab, ${color} 18%, transparent)`, color }}
+        >
+          {summary.count} สินค้า
+        </span>
+        <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+          {formatNumber(summary.quantity)} จำนวน
+        </span>
+      </div>
+
+      <p className="mt-auto text-xs text-muted-foreground">
+        {new Date(category.created_at).toLocaleDateString("th-TH")}
+      </p>
+    </div>
   );
 }
 
 export function CategoriesTable({
   categories,
   canManage,
+  summary,
 }: {
   categories: Category[];
   canManage: boolean;
+  summary: Record<string, Summary>;
 }) {
   return (
     <div className="space-y-4">
       {canManage && <AddCategoryForm />}
 
-      <div className="overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>ชื่อหมวดหมู่</TableHead>
-              <TableHead>รายละเอียด</TableHead>
-              <TableHead>วันที่สร้าง</TableHead>
-              <TableHead>จัดการ</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {categories.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center text-muted-foreground">
-                  ไม่มีหมวดหมู่
-                </TableCell>
-              </TableRow>
-            )}
-            {categories.map((c) => (
-              <CategoryRow key={c.id} category={c} canManage={canManage} />
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      {categories.length === 0 ? (
+        <p className="text-center text-sm text-muted-foreground">ไม่มีหมวดหมู่</p>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {categories.map((c, i) => (
+            <CategoryCard
+              key={c.id}
+              category={c}
+              canManage={canManage}
+              color={CARD_COLORS[i % CARD_COLORS.length]}
+              summary={summary[c.name] ?? { count: 0, quantity: 0 }}
+            />
+          ))}
+        </div>
+      )}
       <p className="text-sm text-muted-foreground">แสดง {categories.length} หมวดหมู่</p>
     </div>
   );
