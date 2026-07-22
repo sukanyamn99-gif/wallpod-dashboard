@@ -18,6 +18,7 @@ function revalidateRequisitionConsumers() {
   revalidatePath("/dashboard/stock-requisition");
   revalidatePath("/dashboard/stock-product");
   revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard/stock-movement");
 }
 
 async function generateDocNo(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string> {
@@ -129,6 +130,7 @@ export async function createStockRequisition(formData: FormData) {
       p_type: "out",
       p_qty: it.quantity,
       p_note: `เบิกตามใบเบิก ${docNo}`,
+      p_reference: docNo,
     });
     if (movementErr) {
       return { error: `บันทึกใบเบิกสำเร็จ แต่ตัดสต็อกสินค้า "${it.name}" ไม่สำเร็จ: ${movementErr.message}` };

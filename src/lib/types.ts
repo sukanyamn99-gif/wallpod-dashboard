@@ -176,6 +176,12 @@ export interface StockMovement {
   note: string | null;
   createdByName: string;
   createdAt: string;
+  balanceBefore: number | null;
+  balanceAfter: number | null;
+  referenceNo: string | null;
+  productSku: string | null;
+  productName: string;
+  unit: string;
 }
 
 export interface StockDashboardData {

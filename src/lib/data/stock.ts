@@ -1,5 +1,5 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import type { ProductCategory, StockDashboardData, StockProduct } from "@/lib/types";
+import type { ProductCategory, StockDashboardData, StockMovement, StockProduct } from "@/lib/types";
 
 const STOCK_PRODUCT_COLUMNS =
   "id, sku, name, category, color, size, thickness, location, note, unit, quantity_on_hand, reorder_point, unit_cost, selling_price, image_path, created_at, updated_at";
@@ -114,6 +114,39 @@ export async function getFrequentlyUsedStockProducts(limit = 6): Promise<StockPr
 
   const byId = new Map((productRows ?? []).map((row) => [row.id, mapRow(row)]));
   return orderedIds.map((id) => byId.get(id)).filter((p): p is StockProduct => p !== undefined);
+}
+
+export async function getStockMovements(): Promise<StockMovement[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("stock_movements")
+    .select(
+      "id, stock_product_id, movement_type, quantity, note, created_at, balance_before, balance_after, reference_no, stock_products(sku, name, unit), profiles(full_name)",
+    )
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    stockProductId: row.stock_product_id,
+    movementType: row.movement_type as "in" | "out",
+    quantity: Number(row.quantity),
+    note: row.note,
+    // @ts-expect-error -- Supabase types the joined relation loosely here
+    createdByName: row.profiles?.full_name ?? "",
+    createdAt: row.created_at,
+    balanceBefore: row.balance_before === null ? null : Number(row.balance_before),
+    balanceAfter: row.balance_after === null ? null : Number(row.balance_after),
+    referenceNo: row.reference_no,
+    // @ts-expect-error -- Supabase types the joined relation loosely here
+    productSku: row.stock_products?.sku ?? null,
+    // @ts-expect-error -- Supabase types the joined relation loosely here
+    productName: row.stock_products?.name ?? "",
+    // @ts-expect-error -- Supabase types the joined relation loosely here
+    unit: row.stock_products?.unit ?? "",
+  }));
 }
 
 export async function getSignedStockProductImageUrl(path: string | null): Promise<string | null> {
