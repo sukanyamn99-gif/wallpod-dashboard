@@ -38,7 +38,7 @@ export default async function SaleReportPage() {
         salesReps={salesReps}
         imageUrls={imageUrls}
         changeLog={changeLog}
-        currentProfile={profile ?? { id: "", full_name: "", role: "sales", sales_rep_id: null }}
+        currentProfile={profile ?? { id: "", full_name: "", role: "sales", sales_rep_id: null, department: null, active: true }}
       />
     </div>
   );

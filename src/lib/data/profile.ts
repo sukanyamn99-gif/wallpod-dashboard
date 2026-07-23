@@ -6,6 +6,8 @@ const DEMO_PROFILE: Profile = {
   full_name: "โหมดทดลอง",
   role: "owner",
   sales_rep_id: null,
+  department: null,
+  active: true,
 };
 
 export async function getCurrentProfile(): Promise<Profile | null> {
@@ -19,7 +21,7 @@ export async function getCurrentProfile(): Promise<Profile | null> {
 
   const { data } = await supabase
     .from("profiles")
-    .select("id, full_name, role, sales_rep_id")
+    .select("id, full_name, role, sales_rep_id, department, active")
     .eq("id", user.id)
     .single();
 

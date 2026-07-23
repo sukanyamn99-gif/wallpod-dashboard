@@ -9,7 +9,7 @@ export default async function ProductCategoriesPage() {
     getCurrentProfile(),
     getStockProducts(),
   ]);
-  const currentProfile = profile ?? { id: "", full_name: "", role: "sales" as const, sales_rep_id: null };
+  const currentProfile = profile ?? { id: "", full_name: "", role: "sales" as const, sales_rep_id: null, department: null, active: true };
   const canManage = currentProfile.role === "owner" || currentProfile.role === "manager";
 
   const summary: Record<string, { count: number; quantity: number }> = {};

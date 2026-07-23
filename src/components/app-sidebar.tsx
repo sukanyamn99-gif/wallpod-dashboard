@@ -17,6 +17,7 @@ import {
   PackageX,
   Receipt,
   Tags,
+  Users,
   Warehouse,
   LogOut,
 } from "lucide-react";
@@ -61,6 +62,8 @@ const remainingNavItems = [
   { title: "Dead Stock Dashboard", url: "/dashboard/dead-stock", icon: PackageX },
   { title: "Sale Report", url: "/dashboard/sale-report", icon: CalendarCheck },
 ];
+
+const ownerOnlyNavItems = [{ title: "ผู้ใช้งาน", url: "/dashboard/users", icon: Users }];
 
 export function AppSidebar({ profile }: { profile: Profile }) {
   const pathname = usePathname();
@@ -133,6 +136,21 @@ export function AppSidebar({ profile }: { profile: Profile }) {
                   />
                 </SidebarMenuItem>
               ))}
+
+              {profile.role === "owner" &&
+                ownerOnlyNavItems.map((item) => (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton
+                      isActive={pathname === item.url}
+                      render={
+                        <Link href={item.url}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </Link>
+                      }
+                    />
+                  </SidebarMenuItem>
+                ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

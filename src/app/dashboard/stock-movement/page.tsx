@@ -8,7 +8,7 @@ export default async function StockMovementPage() {
     getStockProducts(),
     getCurrentProfile(),
   ]);
-  const currentProfile = profile ?? { id: "", full_name: "", role: "sales" as const, sales_rep_id: null };
+  const currentProfile = profile ?? { id: "", full_name: "", role: "sales" as const, sales_rep_id: null, department: null, active: true };
 
   return (
     <div className="space-y-6">

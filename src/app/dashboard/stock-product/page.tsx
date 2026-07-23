@@ -6,7 +6,7 @@ import { StockProductsTable } from "./stock-products-table";
 
 export default async function StockProductPage() {
   const [products, profile] = await Promise.all([getStockProducts(), getCurrentProfile()]);
-  const currentProfile = profile ?? { id: "", full_name: "", role: "sales" as const, sales_rep_id: null };
+  const currentProfile = profile ?? { id: "", full_name: "", role: "sales" as const, sales_rep_id: null, department: null, active: true };
   const canCreate = currentProfile.role === "owner" || currentProfile.role === "manager";
 
   return (

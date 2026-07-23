@@ -6,7 +6,7 @@ import { RequisitionsTable } from "./requisitions-table";
 
 export default async function StockRequisitionPage() {
   const [requisitions, profile] = await Promise.all([getStockRequisitions(), getCurrentProfile()]);
-  const currentProfile = profile ?? { id: "", full_name: "", role: "sales" as const, sales_rep_id: null };
+  const currentProfile = profile ?? { id: "", full_name: "", role: "sales" as const, sales_rep_id: null, department: null, active: true };
   const canCreate =
     currentProfile.role === "owner" || currentProfile.role === "manager" || currentProfile.role === "production";
 

@@ -5,7 +5,7 @@ import { DepartmentsTable } from "./departments-table";
 
 export default async function DepartmentsPage() {
   const [departments, profile] = await Promise.all([getDepartments(), getCurrentProfile()]);
-  const currentProfile = profile ?? { id: "", full_name: "", role: "sales" as const, sales_rep_id: null };
+  const currentProfile = profile ?? { id: "", full_name: "", role: "sales" as const, sales_rep_id: null, department: null, active: true };
   const canManage = currentProfile.role === "owner" || currentProfile.role === "manager";
 
   return (

@@ -10,6 +10,7 @@ export default async function DashboardLayout({
 }) {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
+  if (!profile.active) redirect("/login?error=บัญชีนี้ถูกระงับการใช้งาน");
 
   return (
     <SidebarProvider>

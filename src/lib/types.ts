@@ -81,11 +81,34 @@ export type Role =
   | "foreman"
   | "production";
 
+export const ROLE_LABELS: Record<Role, string> = {
+  owner: "เจ้าของกิจการ",
+  manager: "ผู้จัดการ",
+  sales: "เซลล์",
+  design: "ออกแบบ",
+  support_sale: "ซัพพอร์ตขาย",
+  account: "บัญชี",
+  foreman: "หัวหน้าช่าง",
+  production: "ฝ่ายผลิต",
+};
+
 export interface Profile {
   id: string;
   full_name: string;
   role: Role;
   sales_rep_id: string | null;
+  department: string | null;
+  active: boolean;
+}
+
+export interface UserAccount {
+  id: string;
+  fullName: string;
+  email: string | null;
+  role: Role;
+  department: string | null;
+  active: boolean;
+  createdAt: string;
 }
 
 export interface SalesRep {
