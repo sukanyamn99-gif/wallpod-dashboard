@@ -81,13 +81,15 @@ export async function createUserAccount(
   if (signUpError) return { error: friendlySignUpError(signUpError.message) };
   if (!signUpData.user) return { error: "สร้างบัญชีไม่สำเร็จ" };
 
-  // The new auth.users row can take a brief moment to become visible to the
-  // profiles insert's foreign-key check (observed in practice, not just
-  // theoretical) — retry once after a short delay before giving up.
   let profileError = (await supabase
     .from("profiles")
     .insert({ id: signUpData.user.id, full_name: fullName, role, department })).error;
   if (profileError?.code === "23503") {
+    // A foreign-key failure here means the auth user signUp() reported success
+    // for was never actually persisted — observed in practice when Supabase's
+    // built-in email-send quota is exhausted (signUp() can report success with
+    // a user id while silently not completing account creation). A brief retry
+    // covers genuine replication lag; if it still fails, this is that case.
     await new Promise((resolve) => setTimeout(resolve, 800));
     profileError = (await supabase
       .from("profiles")
@@ -97,7 +99,7 @@ export async function createUserAccount(
     return {
       error:
         profileError.code === "23503"
-          ? "สร้างบัญชีสำเร็จ แต่บันทึกข้อมูลผู้ใช้ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
+          ? "สร้างบัญชีไม่สำเร็จ — น่าจะเกิดจากข้อจำกัดการส่งอีเมลของ Supabase ในขณะนี้ กรุณาลองใหม่อีกครั้งภายหลัง"
           : profileError.message,
     };
   }
