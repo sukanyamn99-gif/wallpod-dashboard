@@ -81,10 +81,26 @@ export async function createUserAccount(
   if (signUpError) return { error: friendlySignUpError(signUpError.message) };
   if (!signUpData.user) return { error: "สร้างบัญชีไม่สำเร็จ" };
 
-  const { error: profileError } = await supabase
+  // The new auth.users row can take a brief moment to become visible to the
+  // profiles insert's foreign-key check (observed in practice, not just
+  // theoretical) — retry once after a short delay before giving up.
+  let profileError = (await supabase
     .from("profiles")
-    .insert({ id: signUpData.user.id, full_name: fullName, role, department });
-  if (profileError) return { error: profileError.message };
+    .insert({ id: signUpData.user.id, full_name: fullName, role, department })).error;
+  if (profileError?.code === "23503") {
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    profileError = (await supabase
+      .from("profiles")
+      .insert({ id: signUpData.user.id, full_name: fullName, role, department })).error;
+  }
+  if (profileError) {
+    return {
+      error:
+        profileError.code === "23503"
+          ? "สร้างบัญชีสำเร็จ แต่บันทึกข้อมูลผู้ใช้ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง"
+          : profileError.message,
+    };
+  }
 
   revalidatePath("/dashboard/users");
   return { error: null, needsConfirmation: !signUpData.session };
