@@ -144,6 +144,8 @@ alter table sales_leads enable row level security;
 -- profiles: everyone can read their own row; owner/manager read all
 create policy profiles_select on profiles for select
   using (id = auth.uid() or my_role() in ('owner','manager'));
+create policy profiles_insert on profiles for insert
+  with check (my_role() = 'owner');
 
 -- sales_reps / customers: all logged-in staff can read (needed for dropdowns/labels)
 create policy sales_reps_select on sales_reps for select using (auth.uid() is not null);
