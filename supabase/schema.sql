@@ -154,19 +154,15 @@ create policy customers_write on customers for all
   using (my_role() in ('owner','manager','support_sale')) with check (my_role() in ('owner','manager','support_sale'));
 
 -- projects: owner/manager see everything; sales see only their own
-create policy projects_select on projects for select
-  using (my_role() in ('owner','manager') or sales_rep_id = my_sales_rep_id());
+create policy projects_select on projects for select using (my_role() <> 'sales');
 create policy projects_write on projects for all
-  using (my_role() in ('owner','manager') or sales_rep_id = my_sales_rep_id())
-  with check (my_role() in ('owner','manager') or sales_rep_id = my_sales_rep_id());
+  using (my_role() <> 'sales') with check (my_role() <> 'sales');
 
 -- child tables inherit visibility from their parent project
 create policy project_items_select on project_items for select
-  using (exists (select 1 from projects p where p.id = project_id
-    and (my_role() in ('owner','manager') or p.sales_rep_id = my_sales_rep_id())));
+  using (exists (select 1 from projects p where p.id = project_id and my_role() <> 'sales'));
 create policy project_items_write on project_items for all
-  using (exists (select 1 from projects p where p.id = project_id
-    and (my_role() in ('owner','manager') or p.sales_rep_id = my_sales_rep_id())));
+  using (exists (select 1 from projects p where p.id = project_id and my_role() <> 'sales'));
 
 create policy project_costs_select on project_costs for select
   using (my_role() in ('owner','manager'));
@@ -174,10 +170,8 @@ create policy project_costs_write on project_costs for all
   using (my_role() in ('owner','manager'));
 
 create policy payments_select on payments for select
-  using (exists (select 1 from projects p where p.id = project_id
-    and (my_role() in ('owner','manager') or p.sales_rep_id = my_sales_rep_id())));
-create policy payments_write on payments for all
-  using (my_role() in ('owner','manager','account'));
+  using (exists (select 1 from projects p where p.id = project_id and my_role() <> 'sales'));
+create policy payments_write on payments for all using (my_role() <> 'sales');
 
 create policy sales_leads_select on sales_leads for select
   using (my_role() in ('owner','manager') or sales_rep_id = my_sales_rep_id());
@@ -275,7 +269,7 @@ create policy stock_products_select on stock_products for select using (auth.uid
 create policy stock_products_write on stock_products for all
   using (my_role() in ('owner','manager')) with check (my_role() in ('owner','manager'));
 
-create policy stock_movements_select on stock_movements for select using (auth.uid() is not null);
+create policy stock_movements_select on stock_movements for select using (my_role() <> 'sales');
 create policy stock_movements_insert on stock_movements for insert
   with check (my_role() in ('owner','manager','production'));
 
@@ -340,7 +334,7 @@ create table product_categories (
 
 alter table product_categories enable row level security;
 
-create policy product_categories_select on product_categories for select using (auth.uid() is not null);
+create policy product_categories_select on product_categories for select using (my_role() <> 'sales');
 create policy product_categories_write on product_categories for all
   using (my_role() in ('owner','manager')) with check (my_role() in ('owner','manager'));
 
@@ -391,13 +385,13 @@ create table stock_requisition_items (
 alter table stock_requisitions enable row level security;
 alter table stock_requisition_items enable row level security;
 
-create policy stock_requisitions_select on stock_requisitions for select using (auth.uid() is not null);
+create policy stock_requisitions_select on stock_requisitions for select using (my_role() <> 'sales');
 create policy stock_requisitions_insert on stock_requisitions for insert
   with check (my_role() in ('owner','manager','production'));
 create policy stock_requisitions_delete on stock_requisitions for delete
   using (my_role() in ('owner','manager') or requested_by = auth.uid());
 
-create policy stock_requisition_items_select on stock_requisition_items for select using (auth.uid() is not null);
+create policy stock_requisition_items_select on stock_requisition_items for select using (my_role() <> 'sales');
 create policy stock_requisition_items_insert on stock_requisition_items for insert
   with check (my_role() in ('owner','manager','production'));
 

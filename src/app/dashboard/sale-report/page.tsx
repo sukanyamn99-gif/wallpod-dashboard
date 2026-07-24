@@ -1,7 +1,9 @@
+import { redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getSalesReps } from "@/lib/data/reference";
 import { getCurrentProfile } from "@/lib/data/profile";
+import { canAccessPage } from "@/lib/permissions";
 import {
   getAllSaleReports,
   getSaleReportChangeLog,
@@ -10,11 +12,14 @@ import {
 import { SaleReportTable } from "./sale-report-table";
 
 export default async function SaleReportPage() {
-  const [reports, salesReps, changeLog, profile] = await Promise.all([
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/login");
+  if (!canAccessPage(profile.role, "/dashboard/sale-report")) redirect("/dashboard/sales");
+
+  const [reports, salesReps, changeLog] = await Promise.all([
     getAllSaleReports(),
     getSalesReps(),
     getSaleReportChangeLog(),
-    getCurrentProfile(),
   ]);
   const imageUrls = await getSignedImageUrls(reports.flatMap((r) => r.image_paths));
 
@@ -38,7 +43,7 @@ export default async function SaleReportPage() {
         salesReps={salesReps}
         imageUrls={imageUrls}
         changeLog={changeLog}
-        currentProfile={profile ?? { id: "", full_name: "", role: "sales", sales_rep_id: null, department: null, active: true }}
+        currentProfile={profile}
       />
     </div>
   );

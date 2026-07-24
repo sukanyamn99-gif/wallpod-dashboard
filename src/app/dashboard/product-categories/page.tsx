@@ -1,15 +1,17 @@
+import { redirect } from "next/navigation";
 import { getProductCategories } from "@/lib/data/reference";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getStockProducts } from "@/lib/data/stock";
+import { canAccessPage } from "@/lib/permissions";
 import { CategoriesTable } from "./categories-table";
 
 export default async function ProductCategoriesPage() {
-  const [categories, profile, products] = await Promise.all([
-    getProductCategories(),
-    getCurrentProfile(),
-    getStockProducts(),
-  ]);
-  const currentProfile = profile ?? { id: "", full_name: "", role: "sales" as const, sales_rep_id: null, department: null, active: true };
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/login");
+  if (!canAccessPage(profile.role, "/dashboard/product-categories")) redirect("/dashboard/sales");
+
+  const [categories, products] = await Promise.all([getProductCategories(), getStockProducts()]);
+  const currentProfile = profile;
   const canManage = currentProfile.role === "owner" || currentProfile.role === "manager";
 
   const summary: Record<string, { count: number; quantity: number }> = {};

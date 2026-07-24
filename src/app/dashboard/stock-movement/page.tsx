@@ -1,14 +1,16 @@
+import { redirect } from "next/navigation";
 import { getStockMovements, getStockProducts } from "@/lib/data/stock";
 import { getCurrentProfile } from "@/lib/data/profile";
+import { canAccessPage } from "@/lib/permissions";
 import { MovementsTable } from "./movements-table";
 
 export default async function StockMovementPage() {
-  const [movements, stockProducts, profile] = await Promise.all([
-    getStockMovements(),
-    getStockProducts(),
-    getCurrentProfile(),
-  ]);
-  const currentProfile = profile ?? { id: "", full_name: "", role: "sales" as const, sales_rep_id: null, department: null, active: true };
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/login");
+  if (!canAccessPage(profile.role, "/dashboard/stock-movement")) redirect("/dashboard/sales");
+
+  const [movements, stockProducts] = await Promise.all([getStockMovements(), getStockProducts()]);
+  const currentProfile = profile;
 
   return (
     <div className="space-y-6">

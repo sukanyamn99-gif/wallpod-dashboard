@@ -1,9 +1,16 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCustomers, getProductCategories, getSalesReps } from "@/lib/data/reference";
+import { getCurrentProfile } from "@/lib/data/profile";
+import { canAccessPage, canSeeCosts } from "@/lib/permissions";
 import { ProjectSaleForm } from "../project-sale-form";
 
 export default async function NewProjectSalePage() {
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/login");
+  if (!canAccessPage(profile.role, "/dashboard/project-sales")) redirect("/dashboard/sales");
+
   const [salesReps, customers, categories] = await Promise.all([
     getSalesReps(),
     getCustomers(),
@@ -26,7 +33,12 @@ export default async function NewProjectSalePage() {
           <CardTitle>ข้อมูลงานขาย</CardTitle>
         </CardHeader>
         <CardContent>
-          <ProjectSaleForm salesReps={salesReps} customers={customers} categories={categories.map((c) => c.name)} />
+          <ProjectSaleForm
+            salesReps={salesReps}
+            customers={customers}
+            categories={categories.map((c) => c.name)}
+            canSeeCosts={canSeeCosts(profile.role)}
+          />
         </CardContent>
       </Card>
     </div>

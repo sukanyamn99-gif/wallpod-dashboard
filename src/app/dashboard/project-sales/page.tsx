@@ -1,11 +1,18 @@
+import { redirect } from "next/navigation";
 import { Download, Plus } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getFullProjectReport } from "@/lib/data/project-sales";
+import { getCurrentProfile } from "@/lib/data/profile";
+import { canAccessPage, canSeeCosts } from "@/lib/permissions";
 import { JobSearchBox } from "./job-search-box";
 import { ProjectsTable } from "./projects-table";
 
 export default async function ProjectSalesPage() {
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/login");
+  if (!canAccessPage(profile.role, "/dashboard/project-sales")) redirect("/dashboard/sales");
+
   const { categories, rows: projects } = await getFullProjectReport();
 
   return (
@@ -43,7 +50,7 @@ export default async function ProjectSalesPage() {
           <CardTitle>งานขายทั้งหมด ({projects.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <ProjectsTable projects={projects} categories={categories} />
+          <ProjectsTable projects={projects} categories={categories} canSeeCosts={canSeeCosts(profile.role)} />
         </CardContent>
       </Card>
     </div>

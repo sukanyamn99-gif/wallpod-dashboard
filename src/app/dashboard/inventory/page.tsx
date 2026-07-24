@@ -12,10 +12,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getStockDashboardData } from "@/lib/data/stock";
+import { getCurrentProfile } from "@/lib/data/profile";
+import { canSeeCosts } from "@/lib/permissions";
 import { formatTHB } from "@/lib/format";
 
 export default async function StockDashboardPage() {
-  const data = await getStockDashboardData();
+  const [data, profile] = await Promise.all([getStockDashboardData(), getCurrentProfile()]);
+  const showCosts = profile ? canSeeCosts(profile.role) : false;
 
   return (
     <div className="space-y-6">
@@ -24,13 +27,15 @@ export default async function StockDashboardPage() {
         <p className="text-sm text-muted-foreground">ภาพรวมสต๊อกคงเหลือ</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className={`grid gap-4 ${showCosts ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
         <KpiCard label="จำนวนรายการสินค้า" value={`${data.skuCount} รายการ`} icon={Boxes} />
-        <KpiCard label="มูลค่าสต๊อกรวม" value={formatTHB(data.totalStockValue)} icon={PackageSearch} />
+        {showCosts && (
+          <KpiCard label="มูลค่าสต๊อกรวม" value={formatTHB(data.totalStockValue)} icon={PackageSearch} />
+        )}
         <KpiCard label="รายการต่ำกว่าจุดสั่งซื้อ" value={`${data.lowStockCount} รายการ`} icon={AlertTriangle} />
       </div>
 
-      <StockByCategoryChart data={data.categoryBreakdown} />
+      {showCosts && <StockByCategoryChart data={data.categoryBreakdown} />}
 
       <Card>
         <CardHeader>

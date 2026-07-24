@@ -1,7 +1,10 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCustomers, getProductCategories, getSalesReps } from "@/lib/data/reference";
 import { getProjectByJobNo } from "@/lib/data/project-sales";
+import { getCurrentProfile } from "@/lib/data/profile";
+import { canAccessPage, canSeeCosts } from "@/lib/permissions";
 import { ProjectSaleForm } from "../../project-sale-form";
 import { DangerZone } from "../../danger-zone";
 
@@ -10,6 +13,10 @@ export default async function EditProjectSalePage({
 }: {
   params: Promise<{ jobNo: string }>;
 }) {
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/login");
+  if (!canAccessPage(profile.role, "/dashboard/project-sales")) redirect("/dashboard/sales");
+
   const { jobNo } = await params;
   const decodedJobNo = decodeURIComponent(jobNo);
 
@@ -44,6 +51,7 @@ export default async function EditProjectSalePage({
               mode="edit"
               projectId={detail.id}
               initialData={detail.initialData}
+              canSeeCosts={canSeeCosts(profile.role)}
             />
           ) : (
             <p className="text-sm text-muted-foreground">

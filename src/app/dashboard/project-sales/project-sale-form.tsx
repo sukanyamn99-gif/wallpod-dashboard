@@ -77,6 +77,7 @@ export function ProjectSaleForm({
   mode = "create",
   projectId,
   initialData,
+  canSeeCosts = true,
 }: {
   salesReps: SalesRep[];
   customers: Customer[];
@@ -84,6 +85,7 @@ export function ProjectSaleForm({
   mode?: "create" | "edit";
   projectId?: string;
   initialData?: ProjectSaleInitialData;
+  canSeeCosts?: boolean;
 }) {
   const nextRowKey = useRef(initialData?.items.length ?? 1);
   const [items, setItems] = useState<ItemRow[]>(
@@ -331,38 +333,42 @@ export function ProjectSaleForm({
         </div>
       </div>
 
-      <Separator />
+      {canSeeCosts && (
+        <>
+          <Separator />
 
-      {/* Section 3: costs */}
-      <div className="space-y-4">
-        <h3 className="font-medium">ต้นทุน (ถ้ามี)</h3>
-        <div className="grid grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="material_cost">ค่าวัสดุ</Label>
-            <Input id="material_cost" name="material_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.material_cost} placeholder="0" />
+          {/* Section 3: costs */}
+          <div className="space-y-4">
+            <h3 className="font-medium">ต้นทุน (ถ้ามี)</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="material_cost">ค่าวัสดุ</Label>
+                <Input id="material_cost" name="material_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.material_cost} placeholder="0" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="glue_cost">ค่ากาว</Label>
+                <Input id="glue_cost" name="glue_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.glue_cost} placeholder="0" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cutting_cost">ค่าตัด</Label>
+                <Input id="cutting_cost" name="cutting_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.cutting_cost} placeholder="0" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="install_cost">ค่าติดตั้งผู้รับเหมา</Label>
+                <Input id="install_cost" name="install_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.install_cost} placeholder="0" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="parking_cost">ค่าที่จอดรถ</Label>
+                <Input id="parking_cost" name="parking_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.parking_cost} placeholder="0" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="shipping_cost">ค่าขนส่ง</Label>
+                <Input id="shipping_cost" name="shipping_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.shipping_cost} placeholder="0" />
+              </div>
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="glue_cost">ค่ากาว</Label>
-            <Input id="glue_cost" name="glue_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.glue_cost} placeholder="0" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="cutting_cost">ค่าตัด</Label>
-            <Input id="cutting_cost" name="cutting_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.cutting_cost} placeholder="0" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="install_cost">ค่าติดตั้งผู้รับเหมา</Label>
-            <Input id="install_cost" name="install_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.install_cost} placeholder="0" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="parking_cost">ค่าที่จอดรถ</Label>
-            <Input id="parking_cost" name="parking_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.parking_cost} placeholder="0" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="shipping_cost">ค่าขนส่ง</Label>
-            <Input id="shipping_cost" name="shipping_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.shipping_cost} placeholder="0" />
-          </div>
-        </div>
-      </div>
+        </>
+      )}
 
       <Separator />
 

@@ -37,6 +37,7 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import { signOut } from "@/app/login/actions";
+import { canAccessPage } from "@/lib/permissions";
 import type { Profile } from "@/lib/types";
 
 const navItems = [
@@ -70,6 +71,10 @@ export function AppSidebar({ profile }: { profile: Profile }) {
   const isInventoryActive = inventoryGroup.items.some((item) => pathname === item.url);
   const [inventoryOpen, setInventoryOpen] = useState(isInventoryActive);
 
+  const visibleNavItems = navItems.filter((item) => canAccessPage(profile.role, item.url));
+  const visibleInventoryItems = inventoryGroup.items.filter((item) => canAccessPage(profile.role, item.url));
+  const visibleRemainingNavItems = remainingNavItems.filter((item) => canAccessPage(profile.role, item.url));
+
   return (
     <Sidebar>
       <SidebarHeader className="px-4 py-3">
@@ -81,7 +86,7 @@ export function AppSidebar({ profile }: { profile: Profile }) {
           <SidebarGroupLabel>เมนู</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {visibleNavItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton
                     isActive={pathname === item.url}
@@ -95,35 +100,37 @@ export function AppSidebar({ profile }: { profile: Profile }) {
                 </SidebarMenuItem>
               ))}
 
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={isInventoryActive}
-                  onClick={() => setInventoryOpen((open) => !open)}
-                >
-                  <inventoryGroup.icon />
-                  <span>{inventoryGroup.title}</span>
-                  {inventoryOpen ? <ChevronDown className="ml-auto" /> : <ChevronRight className="ml-auto" />}
-                </SidebarMenuButton>
-                {inventoryOpen && (
-                  <SidebarMenuSub>
-                    {inventoryGroup.items.map((item) => (
-                      <SidebarMenuSubItem key={item.url}>
-                        <SidebarMenuSubButton
-                          isActive={pathname === item.url}
-                          render={
-                            <Link href={item.url}>
-                              <item.icon />
-                              <span>{item.title}</span>
-                            </Link>
-                          }
-                        />
-                      </SidebarMenuSubItem>
-                    ))}
-                  </SidebarMenuSub>
-                )}
-              </SidebarMenuItem>
+              {visibleInventoryItems.length > 0 && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={isInventoryActive}
+                    onClick={() => setInventoryOpen((open) => !open)}
+                  >
+                    <inventoryGroup.icon />
+                    <span>{inventoryGroup.title}</span>
+                    {inventoryOpen ? <ChevronDown className="ml-auto" /> : <ChevronRight className="ml-auto" />}
+                  </SidebarMenuButton>
+                  {inventoryOpen && (
+                    <SidebarMenuSub>
+                      {visibleInventoryItems.map((item) => (
+                        <SidebarMenuSubItem key={item.url}>
+                          <SidebarMenuSubButton
+                            isActive={pathname === item.url}
+                            render={
+                              <Link href={item.url}>
+                                <item.icon />
+                                <span>{item.title}</span>
+                              </Link>
+                            }
+                          />
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  )}
+                </SidebarMenuItem>
+              )}
 
-              {remainingNavItems.map((item) => (
+              {visibleRemainingNavItems.map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton
                     isActive={pathname === item.url}

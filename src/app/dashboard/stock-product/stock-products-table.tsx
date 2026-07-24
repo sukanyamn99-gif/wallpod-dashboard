@@ -30,10 +30,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatTHB } from "@/lib/format";
+import { canSeeCosts } from "@/lib/permissions";
 import { deleteStockProduct, recordStockMovement } from "./actions";
 import type { Profile, StockProduct } from "@/lib/types";
-
-const TOTAL_COLUMNS = 15;
 
 const movementInitialState = { error: null as string | null };
 
@@ -141,6 +140,8 @@ export function StockProductsTable({
 }) {
   const [query, setQuery] = useState("");
   const [movementProduct, setMovementProduct] = useState<StockProduct | null>(null);
+  const showCosts = canSeeCosts(currentProfile.role);
+  const totalColumns = showCosts ? 15 : 13;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -177,8 +178,12 @@ export function StockProductsTable({
               <TableHead className="whitespace-nowrap">ความหนา</TableHead>
               <TableHead className="text-right whitespace-nowrap">คงเหลือ</TableHead>
               <TableHead className="text-right whitespace-nowrap">จุดสั่งซื้อ</TableHead>
-              <TableHead className="text-right whitespace-nowrap">ต้นทุน/หน่วย</TableHead>
-              <TableHead className="text-right whitespace-nowrap">มูลค่าคงเหลือ</TableHead>
+              {showCosts && (
+                <>
+                  <TableHead className="text-right whitespace-nowrap">ต้นทุน/หน่วย</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">มูลค่าคงเหลือ</TableHead>
+                </>
+              )}
               <TableHead className="whitespace-nowrap">ตำแหน่งจัดเก็บ</TableHead>
               <TableHead className="whitespace-nowrap">สถานะ</TableHead>
               <TableHead className="whitespace-nowrap">อัปเดตล่าสุด</TableHead>
@@ -189,7 +194,7 @@ export function StockProductsTable({
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={TOTAL_COLUMNS} className="text-center text-muted-foreground">
+                <TableCell colSpan={totalColumns} className="text-center text-muted-foreground">
                   ไม่พบข้อมูล
                 </TableCell>
               </TableRow>
@@ -210,10 +215,14 @@ export function StockProductsTable({
                   <TableCell className="text-right whitespace-nowrap">
                     {p.reorderPoint} {p.unit}
                   </TableCell>
-                  <TableCell className="text-right whitespace-nowrap">{formatTHB(p.unitCost)}</TableCell>
-                  <TableCell className="text-right whitespace-nowrap">
-                    {formatTHB(p.quantityOnHand * p.unitCost)}
-                  </TableCell>
+                  {showCosts && (
+                    <>
+                      <TableCell className="text-right whitespace-nowrap">{formatTHB(p.unitCost)}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        {formatTHB(p.quantityOnHand * p.unitCost)}
+                      </TableCell>
+                    </>
+                  )}
                   <TableCell className="whitespace-nowrap">{p.location ?? "—"}</TableCell>
                   <TableCell className="whitespace-nowrap">
                     {isLow ? (

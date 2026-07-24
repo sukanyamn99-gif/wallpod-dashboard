@@ -24,6 +24,7 @@ import type { FullProjectRow } from "@/lib/data/project-sales";
 
 const BASE_COLUMNS = 7;
 const TAIL_COLUMNS = 19;
+const COST_COLUMNS = 8;
 
 const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -47,7 +48,15 @@ function sumRows(rows: FullProjectRow[]) {
   };
 }
 
-function ProjectRow({ p, categories }: { p: FullProjectRow; categories: string[] }) {
+function ProjectRow({
+  p,
+  categories,
+  canSeeCosts,
+}: {
+  p: FullProjectRow;
+  categories: string[];
+  canSeeCosts: boolean;
+}) {
   return (
     <TableRow className={p.isCancelled ? "opacity-60" : undefined}>
       <TableCell className="font-medium whitespace-nowrap">
@@ -79,14 +88,18 @@ function ProjectRow({ p, categories }: { p: FullProjectRow; categories: string[]
       <Money value={p.preVat} />
       <Money value={p.vat} />
       <Money value={p.total} />
-      <Money value={p.costs?.material} />
-      <Money value={p.costs?.glue} />
-      <Money value={p.costs?.cutting} />
-      <Money value={p.costs?.install} />
-      <Money value={p.costs?.parking} />
-      <Money value={p.costs?.shipping} />
-      <Money value={p.costs?.totalCost} />
-      <Money value={p.profit} />
+      {canSeeCosts && (
+        <>
+          <Money value={p.costs?.material} />
+          <Money value={p.costs?.glue} />
+          <Money value={p.costs?.cutting} />
+          <Money value={p.costs?.install} />
+          <Money value={p.costs?.parking} />
+          <Money value={p.costs?.shipping} />
+          <Money value={p.costs?.totalCost} />
+          <Money value={p.profit} />
+        </>
+      )}
       <TableCell className="whitespace-nowrap">{p.invoiceNo1 ?? "—"}</TableCell>
       <Money value={p.amount1} />
       <TableCell className="whitespace-nowrap">{p.paidDate1 ?? "—"}</TableCell>
@@ -109,10 +122,19 @@ function monthLabelOf(key: string) {
   return `${THAI_MONTHS[month - 1]} ${year}`;
 }
 
-export function ProjectsTable({ projects, categories }: { projects: FullProjectRow[]; categories: string[] }) {
+export function ProjectsTable({
+  projects,
+  categories,
+  canSeeCosts,
+}: {
+  projects: FullProjectRow[];
+  categories: string[];
+  canSeeCosts: boolean;
+}) {
   const [query, setQuery] = useState("");
   const [selectedMonth, setSelectedMonth] = useState("all");
-  const totalColumns = BASE_COLUMNS + categories.length + TAIL_COLUMNS;
+  const totalColumns =
+    BASE_COLUMNS + categories.length + TAIL_COLUMNS - (canSeeCosts ? 0 : COST_COLUMNS);
 
   const monthOptions = useMemo(() => {
     const keys = new Set(projects.map((p) => monthKeyOf(p.projectDate)));
@@ -211,14 +233,18 @@ export function ProjectsTable({ projects, categories }: { projects: FullProjectR
           <p className="text-muted-foreground">รวมทั้งสิ้น</p>
           <p className="font-medium">{formatTHB(summary.total)}</p>
         </div>
-        <div>
-          <p className="text-muted-foreground">ต้นทุนรวม</p>
-          <p className="font-medium">{formatTHB(summary.totalCost)}</p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">กำไรรวม</p>
-          <p className="font-medium">{formatTHB(summary.profit)}</p>
-        </div>
+        {canSeeCosts && (
+          <>
+            <div>
+              <p className="text-muted-foreground">ต้นทุนรวม</p>
+              <p className="font-medium">{formatTHB(summary.totalCost)}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">กำไรรวม</p>
+              <p className="font-medium">{formatTHB(summary.profit)}</p>
+            </div>
+          </>
+        )}
         <div>
           <p className="text-muted-foreground">ยอดคงค้างรวม</p>
           <p className="font-medium">{formatTHB(summary.outstanding)}</p>
@@ -244,14 +270,18 @@ export function ProjectsTable({ projects, categories }: { projects: FullProjectR
               <TableHead className="text-right whitespace-nowrap">PRE.VAT</TableHead>
               <TableHead className="text-right whitespace-nowrap">VAT</TableHead>
               <TableHead className="text-right whitespace-nowrap">รวมทั้งสิ้น</TableHead>
-              <TableHead className="text-right whitespace-nowrap">ค่าวัสดุ</TableHead>
-              <TableHead className="text-right whitespace-nowrap">ค่ากาว</TableHead>
-              <TableHead className="text-right whitespace-nowrap">ค่าตัด</TableHead>
-              <TableHead className="text-right whitespace-nowrap">ค่าติดตั้งผู้รับเหมา</TableHead>
-              <TableHead className="text-right whitespace-nowrap">ค่าที่จอดรถ</TableHead>
-              <TableHead className="text-right whitespace-nowrap">ค่าขนส่ง</TableHead>
-              <TableHead className="text-right whitespace-nowrap">รวมต้นทุน</TableHead>
-              <TableHead className="text-right whitespace-nowrap">กำไร</TableHead>
+              {canSeeCosts && (
+                <>
+                  <TableHead className="text-right whitespace-nowrap">ค่าวัสดุ</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">ค่ากาว</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">ค่าตัด</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">ค่าติดตั้งผู้รับเหมา</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">ค่าที่จอดรถ</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">ค่าขนส่ง</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">รวมต้นทุน</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">กำไร</TableHead>
+                </>
+              )}
               <TableHead className="whitespace-nowrap">เลขที่เอกสาร (งวด 1)</TableHead>
               <TableHead className="text-right whitespace-nowrap">งวดที่ 1 จำนวนเงิน</TableHead>
               <TableHead className="whitespace-nowrap">วันที่รับชำระ (งวด 1)</TableHead>
@@ -278,14 +308,19 @@ export function ProjectsTable({ projects, categories }: { projects: FullProjectR
                   </TableCell>
                 </TableRow>
                 {group.rows.map((p) => (
-                  <ProjectRow key={p.id} p={p} categories={categories} />
+                  <ProjectRow key={p.id} p={p} categories={categories} canSeeCosts={canSeeCosts} />
                 ))}
                 <TableRow className="bg-muted/50 hover:bg-muted/50 font-medium">
                   <TableCell colSpan={totalColumns}>
                     รวม{group.label}: PRE.VAT {formatTHB(group.subtotal.preVat)} · VAT{" "}
-                    {formatTHB(group.subtotal.vat)} · รวมทั้งสิ้น {formatTHB(group.subtotal.total)} · ต้นทุน{" "}
-                    {formatTHB(group.subtotal.totalCost)} · กำไร {formatTHB(group.subtotal.profit)} · คงค้าง{" "}
-                    {formatTHB(group.subtotal.outstanding)}
+                    {formatTHB(group.subtotal.vat)} · รวมทั้งสิ้น {formatTHB(group.subtotal.total)}
+                    {canSeeCosts && (
+                      <>
+                        {" "}
+                        · ต้นทุน {formatTHB(group.subtotal.totalCost)} · กำไร {formatTHB(group.subtotal.profit)}
+                      </>
+                    )}{" "}
+                    · คงค้าง {formatTHB(group.subtotal.outstanding)}
                   </TableCell>
                 </TableRow>
               </Fragment>
