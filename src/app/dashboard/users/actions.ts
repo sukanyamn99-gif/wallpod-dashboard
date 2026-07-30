@@ -85,11 +85,17 @@ export async function createUserAccount(
     .from("profiles")
     .insert({ id: signUpData.user.id, full_name: fullName, role, department })).error;
   if (profileError?.code === "23503") {
-    // A foreign-key failure here means the auth user signUp() reported success
-    // for was never actually persisted — observed in practice when Supabase's
-    // built-in email-send quota is exhausted (signUp() can report success with
-    // a user id while silently not completing account creation). A brief retry
-    // covers genuine replication lag; if it still fails, this is that case.
+    // A foreign-key failure here means the id signUp() returned doesn't
+    // actually exist in auth.users. Two known causes: (1) genuine replication
+    // lag right after a real account was created — a short retry covers this;
+    // (2) this email already has an unconfirmed pending signup from an earlier
+    // attempt, in which case Supabase deliberately returns a decoy response
+    // (no error, a fake id) to avoid leaking which emails are registered —
+    // retrying will keep failing the same way no matter how long you wait,
+    // since there's nothing to become consistent. Only an admin can clear the
+    // stuck pending signup (Supabase Studio → Authentication → Users → delete
+    // the unconfirmed entry for that email), which is why the message below
+    // doesn't just say "try again."
     await new Promise((resolve) => setTimeout(resolve, 800));
     profileError = (await supabase
       .from("profiles")
@@ -99,7 +105,7 @@ export async function createUserAccount(
     return {
       error:
         profileError.code === "23503"
-          ? "สร้างบัญชีไม่สำเร็จ — น่าจะเกิดจากข้อจำกัดการส่งอีเมลของ Supabase ในขณะนี้ กรุณาลองใหม่อีกครั้งภายหลัง"
+          ? "สร้างบัญชีไม่สำเร็จ — อีเมลนี้อาจเคยถูกใช้สร้างบัญชีที่ยังไม่ได้ยืนยันมาก่อน ลองใหม่อีกครั้งในอีกสักครู่ หากยังไม่สำเร็จซ้ำด้วยอีเมลเดิม กรุณาลบบัญชีที่ค้างอยู่ใน Supabase Studio (Authentication → Users) หรือใช้อีเมลอื่นแทน"
           : profileError.message,
     };
   }
