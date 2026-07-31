@@ -83,3 +83,28 @@ export async function getStockRequisitionById(id: string): Promise<StockRequisit
     items: mappedItems,
   };
 }
+
+export interface RequisitionItemReportRow {
+  requisitionId: string;
+  productName: string;
+  quantity: number;
+  createdAt: string;
+}
+
+export async function getStockRequisitionItemsForReport(): Promise<RequisitionItemReportRow[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("stock_requisition_items")
+    .select("requisition_id, product_name_snapshot, quantity, stock_requisitions(created_at)");
+  if (error) throw error;
+
+  return (data ?? []).map((row) => ({
+    requisitionId: row.requisition_id,
+    productName: row.product_name_snapshot,
+    quantity: Number(row.quantity),
+    // @ts-expect-error -- Supabase types the joined relation loosely here
+    createdAt: row.stock_requisitions?.created_at ?? "",
+  }));
+}
