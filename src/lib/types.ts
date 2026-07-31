@@ -267,3 +267,34 @@ export interface StockRequisition {
   createdAt: string;
   items: StockRequisitionItem[];
 }
+
+export interface Supplier {
+  id: string;
+  name: string;
+  address: string | null;
+  taxId: string | null;
+  branch: string | null;
+  createdAt: string;
+}
+
+export interface GoodsReceiptItem {
+  id: string;
+  stockProductId: string | null;
+  productName: string;
+  productSku: string | null;
+  quantity: number;
+  unit: string;
+  unitCost: number;
+}
+
+export interface GoodsReceipt {
+  id: string;
+  docNo: string;
+  supplierName: string | null;
+  receivedById: string | null;
+  receivedByName: string;
+  referenceNo: string | null;
+  note: string | null;
+  createdAt: string;
+  items: GoodsReceiptItem[];
+}

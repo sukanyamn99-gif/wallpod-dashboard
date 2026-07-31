@@ -18,6 +18,7 @@ const PAGE_ACCESS: Record<string, PermissionTier[]> = {
   "/dashboard/stock-requisition": ["admin", "staff"],
   "/dashboard/stock-movement": ["admin", "staff"],
   "/dashboard/inventory/report": ["admin", "staff"],
+  "/dashboard/goods-receipt": ["admin", "staff"],
   "/dashboard/sale-report": ["admin", "sale"],
   "/dashboard/gp": ["admin"],
   "/dashboard/ar": ["admin"],
