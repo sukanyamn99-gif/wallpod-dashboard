@@ -226,6 +226,7 @@ export async function recordStockMovement(productId: string, formData: FormData)
 
   revalidatePath("/dashboard/stock-product");
   revalidatePath("/dashboard/inventory");
+  revalidatePath("/dashboard/inventory/alerts");
   revalidatePath("/dashboard/stock-movement");
   return { error: null };
 }

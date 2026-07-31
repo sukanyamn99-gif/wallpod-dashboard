@@ -13,6 +13,7 @@ import {
   ClipboardMinus,
   FileBarChart,
   History,
+  TriangleAlert,
   LineChart,
   Package,
   PackageX,
@@ -57,6 +58,7 @@ const inventoryGroup = {
     { title: "หมวดหมู่สินค้า", url: "/dashboard/product-categories", icon: Tags },
     { title: "ใบเบิกสินค้า", url: "/dashboard/stock-requisition", icon: ClipboardMinus },
     { title: "ความเคลื่อนไหวสินค้า", url: "/dashboard/stock-movement", icon: History },
+    { title: "แจ้งเตือนสินค้าใกล้หมด", url: "/dashboard/inventory/alerts", icon: TriangleAlert },
     { title: "รายงาน", url: "/dashboard/inventory/report", icon: FileBarChart },
   ],
 };

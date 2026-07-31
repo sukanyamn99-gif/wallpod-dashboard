@@ -12,6 +12,7 @@ const PAGE_ACCESS: Record<string, PermissionTier[]> = {
   "/dashboard/sales": ["admin", "staff", "sale"],
   "/dashboard/inventory": ["admin", "staff", "sale"],
   "/dashboard/stock-product": ["admin", "staff", "sale"],
+  "/dashboard/inventory/alerts": ["admin", "staff", "sale"],
   "/dashboard/project-sales": ["admin", "staff"],
   "/dashboard/product-categories": ["admin", "staff"],
   "/dashboard/stock-requisition": ["admin", "staff"],
