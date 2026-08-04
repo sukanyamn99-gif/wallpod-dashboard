@@ -27,18 +27,30 @@ export default async function GoodsReceiptDetailPage({
   const receipt = await getGoodsReceiptById(id);
   const showCosts = canSeeCosts(profile.role);
   const totalValue = receipt ? receipt.items.reduce((sum, it) => sum + it.quantity * it.unitCost, 0) : 0;
+  const canEdit =
+    receipt && (profile.role === "owner" || profile.role === "manager" || receipt.receivedById === profile.id);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">
-          {receipt ? `ใบรับสินค้า ${receipt.docNo}` : "ไม่พบข้อมูล"}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          <Link href="/dashboard/goods-receipt" className="underline underline-offset-2">
-            ← กลับไปหน้ารับเข้าสินค้า
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">
+            {receipt ? `ใบรับสินค้า ${receipt.docNo}` : "ไม่พบข้อมูล"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            <Link href="/dashboard/goods-receipt" className="underline underline-offset-2">
+              ← กลับไปหน้ารับเข้าสินค้า
+            </Link>
+          </p>
+        </div>
+        {canEdit && (
+          <Link
+            href={`/dashboard/goods-receipt/edit/${id}`}
+            className="text-sm underline underline-offset-2"
+          >
+            แก้ไข
           </Link>
-        </p>
+        )}
       </div>
 
       {receipt ? (

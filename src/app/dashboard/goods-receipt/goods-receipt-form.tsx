@@ -24,8 +24,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatNumber, formatTHB } from "@/lib/format";
-import { createGoodsReceipt } from "./actions";
-import type { Supplier, StockProduct } from "@/lib/types";
+import { createGoodsReceipt, updateGoodsReceipt } from "./actions";
+import type { GoodsReceipt, Supplier, StockProduct } from "@/lib/types";
 
 const initialState = { error: null as string | null };
 
@@ -41,19 +41,43 @@ interface SelectedItem {
 export function GoodsReceiptForm({
   suppliers,
   stockProducts,
+  mode = "create",
+  receiptId,
+  initialData,
 }: {
   suppliers: Supplier[];
   stockProducts: StockProduct[];
+  mode?: "create" | "edit";
+  receiptId?: string;
+  initialData?: GoodsReceipt;
 }) {
   const router = useRouter();
-  const [items, setItems] = useState<SelectedItem[]>([]);
+  const [items, setItems] = useState<SelectedItem[]>(
+    (initialData?.items ?? [])
+      .filter((it) => it.stockProductId)
+      .map((it) => ({
+        stockProductId: it.stockProductId as string,
+        sku: it.productSku ?? "",
+        name: it.productName,
+        unit: it.unit,
+        quantity: it.quantity,
+        unitCost: it.unitCost,
+      })),
+  );
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
 
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
-    const result = await createGoodsReceipt(formData);
+    const result =
+      mode === "edit" && receiptId
+        ? await updateGoodsReceipt(receiptId, formData)
+        : await createGoodsReceipt(formData);
     if (!result.error) {
-      router.push("/dashboard/goods-receipt");
+      router.push(
+        mode === "edit" && receiptId
+          ? `/dashboard/goods-receipt/view/${receiptId}`
+          : "/dashboard/goods-receipt",
+      );
     }
     return result;
   }, initialState);
@@ -113,6 +137,12 @@ export function GoodsReceiptForm({
     >
       {/* Left column */}
       <div className="space-y-4">
+        {mode === "edit" && initialData && (
+          <p className="text-sm text-muted-foreground">
+            เลขที่เอกสาร: <span className="font-medium text-foreground">{initialData.docNo}</span>
+          </p>
+        )}
+
         {state.error && (
           <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>
         )}
@@ -128,7 +158,11 @@ export function GoodsReceiptForm({
               จัดการ
             </Link>
           </div>
-          <Select name="supplier_id" items={suppliers.map((s) => ({ value: s.id, label: s.name }))}>
+          <Select
+            name="supplier_id"
+            items={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+            defaultValue={initialData?.supplierId ?? undefined}
+          >
             <SelectTrigger id="supplier_id" className="w-full">
               <SelectValue placeholder="— เลือกผู้จำหน่าย (ถ้ามี) —" />
             </SelectTrigger>
@@ -144,12 +178,17 @@ export function GoodsReceiptForm({
 
         <div className="space-y-2">
           <Label htmlFor="reference_no">เลขที่อ้างอิง</Label>
-          <Input id="reference_no" name="reference_no" placeholder="เช่น เลขที่ใบส่งของผู้จำหน่าย" />
+          <Input
+            id="reference_no"
+            name="reference_no"
+            placeholder="เช่น เลขที่ใบส่งของผู้จำหน่าย"
+            defaultValue={initialData?.referenceNo ?? undefined}
+          />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="note">หมายเหตุ</Label>
-          <Textarea id="note" name="note" placeholder="ข้อมูลเพิ่มเติม..." />
+          <Textarea id="note" name="note" placeholder="ข้อมูลเพิ่มเติม..." defaultValue={initialData?.note ?? undefined} />
         </div>
 
         <div className="rounded-lg border p-3 text-sm">
@@ -269,11 +308,21 @@ export function GoodsReceiptForm({
         </div>
 
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => router.push("/dashboard/goods-receipt")}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              router.push(
+                mode === "edit" && receiptId
+                  ? `/dashboard/goods-receipt/view/${receiptId}`
+                  : "/dashboard/goods-receipt",
+              )
+            }
+          >
             ยกเลิก
           </Button>
           <Button type="submit" disabled={pending}>
-            {pending ? "กำลังบันทึก..." : "บันทึกใบรับสินค้า"}
+            {pending ? "กำลังบันทึก..." : mode === "edit" ? "บันทึกการแก้ไข" : "บันทึกใบรับสินค้า"}
           </Button>
         </div>
       </div>

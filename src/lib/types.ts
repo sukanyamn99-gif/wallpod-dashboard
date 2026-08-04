@@ -290,6 +290,7 @@ export interface GoodsReceiptItem {
 export interface GoodsReceipt {
   id: string;
   docNo: string;
+  supplierId: string | null;
   supplierName: string | null;
   receivedById: string | null;
   receivedByName: string;

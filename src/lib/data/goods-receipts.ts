@@ -7,6 +7,7 @@ const HEADER_COLUMNS =
 type HeaderRow = {
   id: string;
   doc_no: string;
+  supplier_id: string | null;
   received_by: string | null;
   reference_no: string | null;
   note: string | null;
@@ -19,6 +20,7 @@ function mapHeader(row: HeaderRow): Omit<GoodsReceipt, "items"> {
   return {
     id: row.id,
     docNo: row.doc_no,
+    supplierId: row.supplier_id,
     supplierName: row.suppliers?.name ?? null,
     receivedById: row.received_by,
     receivedByName: row.profiles?.full_name ?? "",

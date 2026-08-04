@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Eye, Trash2 } from "lucide-react";
+import { Eye, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -119,6 +119,16 @@ export function GoodsReceiptsTable({
                     >
                       <Eye className="h-3.5 w-3.5" />
                     </Button>
+                    {canDelete(currentProfile, r) && (
+                      <Button
+                        size="icon-sm"
+                        variant="outline"
+                        nativeButton={false}
+                        render={<Link href={`/dashboard/goods-receipt/edit/${r.id}`} />}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                     {canDelete(currentProfile, r) && <DeleteButton receipt={r} />}
                   </div>
                 </TableCell>
