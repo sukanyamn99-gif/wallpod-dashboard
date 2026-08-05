@@ -126,7 +126,7 @@ function parseForm(formData: FormData): { ok: false; error: string } | ParsedFor
   };
 }
 
-async function resolveCustomerId(
+export async function resolveCustomerId(
   supabase: Awaited<ReturnType<typeof createClient>>,
   customerName: string,
   customerType: string,

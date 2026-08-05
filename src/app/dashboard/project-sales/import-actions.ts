@@ -1,0 +1,328 @@
+"use server";
+
+import * as XLSX from "xlsx";
+import { revalidatePath } from "next/cache";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { getCurrentProfile } from "@/lib/data/profile";
+import { resolveCustomerId } from "./actions";
+import type { CustomerType, PaymentStatus, ProductionStatus } from "@/lib/types";
+import { PRODUCTION_STATUSES } from "@/lib/types";
+
+const CUSTOMER_TYPES: CustomerType[] = ["Owner", "Designer", "Turnkey", "Contractor", "Corporate", "Dealer", "School"];
+const PAYMENT_STATUSES: PaymentStatus[] = ["เก็บเงินเรียบร้อย", "ชำระมาแล้ว 50%", "รอชำระเงิน"];
+
+// Columns produced by /api/export-projects — everything else in the sheet
+// is treated as a dynamic product-category column.
+const KNOWN_COLUMNS = new Set([
+  "JOB NO.", "DATE", "CUSTOMER NAMES", "PROJECT NAME", "SALE", "Customer Type", "สถานะของงาน",
+  "PRE.VAT", "VAT", "รวมทั้งสิ้น",
+  "ค่าวัสดุ", "ค่ากาว", "ค่าตัด", "ค่าติดตั้งผู้รับเหมา", "ค่าที่จอดรถ", "ค่าขนส่ง", "รวมต้นทุน", "กำไร",
+  "เลขที่เอกสาร (งวด 1)", "งวดที่ 1 จำนวนเงิน", "วันที่รับชำระ (งวด 1)",
+  "เลขที่เอกสาร (งวด 2)", "งวดที่ 2 จำนวนเงิน", "วันที่รับชำระ (งวด 2)",
+  "สถานะ", "ยอดคงค้าง",
+]);
+
+export interface ParsedImportRow {
+  jobNo: string | null;
+  projectDate: string;
+  customerName: string;
+  customerType: CustomerType;
+  projectName: string;
+  salesRepName: string;
+  productionStatus: ProductionStatus | null;
+  items: { category: string; amount: number }[];
+  preVat: number;
+  vat: number;
+  costs: {
+    material: number; glue: number; cutting: number; install: number; parking: number; shipping: number;
+  } | null;
+  payments: {
+    invoiceNo: string | null; installmentNo: number; amount: number; paidDate: string | null; status: PaymentStatus; outstandingAmount: number;
+  }[];
+}
+
+export interface ImportPreview {
+  rows: ParsedImportRow[];
+  summary: {
+    rowCount: number;
+    totalPreVat: number;
+    dateFrom: string | null;
+    dateTo: string | null;
+    newCustomerNames: string[];
+    newSalesRepNames: string[];
+  };
+  warnings: string[];
+}
+
+function parseNumber(v: unknown): number {
+  if (typeof v === "number") return Number.isFinite(v) ? v : 0;
+  const s = String(v ?? "").replace(/,/g, "").trim();
+  if (s === "") return 0;
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function parseDate(v: unknown): string | null {
+  if (v instanceof Date && !Number.isNaN(v.getTime())) {
+    return v.toISOString().slice(0, 10);
+  }
+  const s = String(v ?? "").trim();
+  if (s === "") return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) {
+    const [, d, mo, y] = m;
+    return `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+  return null;
+}
+
+function normalizeCustomerType(v: unknown, warnings: string[], jobNo: string): CustomerType {
+  let s = String(v ?? "").trim();
+  if (s === "Direct Owner") s = "Owner";
+  if (!CUSTOMER_TYPES.includes(s as CustomerType)) {
+    warnings.push(`${jobNo || "(ไม่มีเลข JOB)"}: กลุ่มลูกค้า "${s || "(ว่าง)"}" ไม่ถูกต้อง — ใช้ Owner แทน`);
+    return "Owner";
+  }
+  return s as CustomerType;
+}
+
+function normalizeStatus(v: unknown, warnings: string[], jobNo: string): PaymentStatus {
+  const s = String(v ?? "").trim();
+  if (!PAYMENT_STATUSES.includes(s as PaymentStatus)) {
+    warnings.push(`${jobNo || "(ไม่มีเลข JOB)"}: สถานะการชำระ "${s || "(ว่าง)"}" ไม่ถูกต้อง — ใช้ "รอชำระเงิน" แทน`);
+    return "รอชำระเงิน";
+  }
+  return s as PaymentStatus;
+}
+
+function normalizeProductionStatus(v: unknown): ProductionStatus | null {
+  const s = String(v ?? "").trim();
+  return PRODUCTION_STATUSES.includes(s as ProductionStatus) ? (s as ProductionStatus) : null;
+}
+
+export async function previewProjectImport(formData: FormData): Promise<ImportPreview | { error: string }> {
+  const profile = await getCurrentProfile();
+  if (!profile || profile.role !== "owner") {
+    return { error: "เฉพาะเจ้าของกิจการเท่านั้นที่ import ข้อมูลได้" };
+  }
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "กรุณาเลือกไฟล์ Excel" };
+  }
+
+  let workbook: XLSX.WorkBook;
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    workbook = XLSX.read(buffer, { cellDates: true });
+  } catch {
+    return { error: "ไม่สามารถอ่านไฟล์นี้ได้ — กรุณาตรวจสอบว่าเป็นไฟล์ .xlsx ที่ถูกต้อง" };
+  }
+
+  const sheetName = workbook.SheetNames.includes("Project Sales") ? "Project Sales" : workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  if (!sheet) return { error: "ไม่พบข้อมูลในไฟล์นี้" };
+
+  const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "", raw: true });
+
+  const warnings: string[] = [];
+  const seenJobNos = new Set<string>();
+  const rows: ParsedImportRow[] = [];
+
+  for (const r of rawRows) {
+    const jobNo = String(r["JOB NO."] ?? "").trim() || null;
+    const customerName = String(r["CUSTOMER NAMES"] ?? "").trim();
+    if (!customerName) {
+      warnings.push(`${jobNo ?? "(แถวไม่ทราบเลข JOB)"}: ไม่มีชื่อลูกค้า — ข้ามแถวนี้`);
+      continue;
+    }
+    if (jobNo) {
+      if (seenJobNos.has(jobNo)) {
+        warnings.push(`${jobNo}: เลข JOB ซ้ำในไฟล์ — ใช้แถวแรกที่พบ ข้ามแถวนี้`);
+        continue;
+      }
+      seenJobNos.add(jobNo);
+    }
+
+    const projectDate = parseDate(r["DATE"]);
+    if (!projectDate) {
+      warnings.push(`${jobNo ?? customerName}: วันที่ไม่ถูกต้อง — ใช้วันที่วันนี้แทน`);
+    }
+
+    const items: { category: string; amount: number }[] = [];
+    for (const [key, value] of Object.entries(r)) {
+      if (KNOWN_COLUMNS.has(key)) continue;
+      const amount = parseNumber(value);
+      if (amount > 0) items.push({ category: key, amount });
+    }
+    if (items.length === 0) {
+      warnings.push(`${jobNo ?? customerName}: ไม่มีรายการสินค้าที่มีมูลค่า — ข้ามแถวนี้`);
+      continue;
+    }
+
+    const preVat = Math.round(items.reduce((sum, it) => sum + it.amount, 0) * 100) / 100;
+    const vat = Math.round(preVat * 0.07 * 100) / 100;
+    const total = preVat + vat;
+
+    const costs = {
+      material: parseNumber(r["ค่าวัสดุ"]),
+      glue: parseNumber(r["ค่ากาว"]),
+      cutting: parseNumber(r["ค่าตัด"]),
+      install: parseNumber(r["ค่าติดตั้งผู้รับเหมา"]),
+      parking: parseNumber(r["ค่าที่จอดรถ"]),
+      shipping: parseNumber(r["ค่าขนส่ง"]),
+    };
+    const hasCosts = Object.values(costs).some((v) => v > 0);
+
+    const amount1 = parseNumber(r["งวดที่ 1 จำนวนเงิน"]);
+    const invoiceNo1 = String(r["เลขที่เอกสาร (งวด 1)"] ?? "").trim() || null;
+    const amount2 = parseNumber(r["งวดที่ 2 จำนวนเงิน"]);
+    const invoiceNo2 = String(r["เลขที่เอกสาร (งวด 2)"] ?? "").trim() || null;
+    const outstanding = Math.max(0, Math.round((total - amount1 - amount2) * 100) / 100);
+    const status = amount1 > 0 || amount2 > 0 || invoiceNo1 || invoiceNo2 ? normalizeStatus(r["สถานะ"], warnings, jobNo ?? customerName) : "รอชำระเงิน";
+
+    const payments: ParsedImportRow["payments"] = [];
+    if (amount1 > 0 || invoiceNo1) {
+      payments.push({
+        invoiceNo: invoiceNo1, installmentNo: 1, amount: amount1,
+        paidDate: parseDate(r["วันที่รับชำระ (งวด 1)"]), status, outstandingAmount: outstanding,
+      });
+    }
+    if (amount2 > 0 || invoiceNo2) {
+      payments.push({
+        invoiceNo: invoiceNo2, installmentNo: 2, amount: amount2,
+        paidDate: parseDate(r["วันที่รับชำระ (งวด 2)"]), status, outstandingAmount: outstanding,
+      });
+    }
+
+    rows.push({
+      jobNo,
+      projectDate: projectDate ?? new Date().toISOString().slice(0, 10),
+      customerName,
+      customerType: normalizeCustomerType(r["Customer Type"], warnings, jobNo ?? customerName),
+      projectName: String(r["PROJECT NAME"] ?? "").trim() || jobNo || customerName,
+      salesRepName: String(r["SALE"] ?? "").trim() || "ไม่ระบุ",
+      productionStatus: normalizeProductionStatus(r["สถานะของงาน"]),
+      items,
+      preVat,
+      vat,
+      costs: hasCosts ? costs : null,
+      payments,
+    });
+  }
+
+  if (rows.length === 0) {
+    return { error: "ไม่พบข้อมูลที่นำเข้าได้ในไฟล์นี้" };
+  }
+
+  const supabase = await createClient();
+  const [{ data: existingCustomers }, { data: existingReps }] = await Promise.all([
+    supabase.from("customers").select("name"),
+    supabase.from("sales_reps").select("name"),
+  ]);
+  const existingCustomerNames = new Set((existingCustomers ?? []).map((c) => c.name.toLowerCase()));
+  const existingRepNames = new Set((existingReps ?? []).map((r) => r.name.toLowerCase()));
+
+  const distinctCustomerNames = Array.from(new Set(rows.map((r) => r.customerName)));
+  const distinctRepNames = Array.from(new Set(rows.map((r) => r.salesRepName)));
+
+  const dates = rows.map((r) => r.projectDate).sort();
+
+  return {
+    rows,
+    summary: {
+      rowCount: rows.length,
+      totalPreVat: rows.reduce((sum, r) => sum + r.preVat, 0),
+      dateFrom: dates[0] ?? null,
+      dateTo: dates[dates.length - 1] ?? null,
+      newCustomerNames: distinctCustomerNames.filter((n) => !existingCustomerNames.has(n.toLowerCase())),
+      newSalesRepNames: distinctRepNames.filter((n) => !existingRepNames.has(n.toLowerCase())),
+    },
+    warnings,
+  };
+}
+
+async function resolveSalesRepId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  salesRepName: string,
+): Promise<{ salesRepId: string } | { error: string }> {
+  const { data: existing, error: lookupErr } = await supabase
+    .from("sales_reps")
+    .select("id")
+    .ilike("name", salesRepName)
+    .limit(1)
+    .maybeSingle();
+  if (lookupErr) return { error: `ค้นหาเซลล์ไม่สำเร็จ: ${lookupErr.message}` };
+  if (existing?.id) return { salesRepId: existing.id };
+
+  const { data: created, error: createErr } = await supabase
+    .from("sales_reps")
+    .insert({ name: salesRepName })
+    .select("id")
+    .single();
+  if (createErr) return { error: `สร้างเซลล์ใหม่ไม่สำเร็จ: ${createErr.message}` };
+  return { salesRepId: created.id };
+}
+
+export async function commitProjectImport(rowsJson: string): Promise<{ error: string | null; count?: number }> {
+  if (!isSupabaseConfigured()) {
+    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถ import ได้ในโหมดทดลอง" };
+  }
+
+  const profile = await getCurrentProfile();
+  if (!profile || profile.role !== "owner") {
+    return { error: "เฉพาะเจ้าของกิจการเท่านั้นที่ import ข้อมูลได้" };
+  }
+
+  let rows: ParsedImportRow[];
+  try {
+    rows = JSON.parse(rowsJson);
+  } catch {
+    return { error: "ข้อมูลที่จะ import ไม่ถูกต้อง กรุณาอัปโหลดไฟล์ใหม่อีกครั้ง" };
+  }
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return { error: "ไม่มีข้อมูลที่จะ import" };
+  }
+
+  const supabase = await createClient();
+
+  const resolvedRows: Record<string, unknown>[] = [];
+  for (const row of rows) {
+    const customerResult = await resolveCustomerId(supabase, row.customerName, row.customerType);
+    if ("error" in customerResult) return { error: customerResult.error };
+    const repResult = await resolveSalesRepId(supabase, row.salesRepName);
+    if ("error" in repResult) return { error: repResult.error };
+
+    resolvedRows.push({
+      jobNo: row.jobNo ?? "",
+      projectDate: row.projectDate,
+      customerId: customerResult.customerId,
+      projectName: row.projectName,
+      salesRepId: repResult.salesRepId,
+      customerType: row.customerType,
+      preVat: row.preVat,
+      vat: row.vat,
+      productionStatus: row.productionStatus ?? "",
+      items: row.items,
+      costs: row.costs,
+      payments: row.payments.map((p) => ({
+        invoiceNo: p.invoiceNo ?? "",
+        installmentNo: p.installmentNo,
+        amount: p.amount,
+        paidDate: p.paidDate ?? "",
+        status: p.status,
+        outstandingAmount: p.outstandingAmount,
+      })),
+    });
+  }
+
+  const { data: count, error: rpcErr } = await supabase.rpc("replace_all_projects", { p_rows: resolvedRows });
+  if (rpcErr) return { error: `แทนที่ข้อมูลไม่สำเร็จ: ${rpcErr.message}` };
+
+  revalidatePath("/dashboard/project-sales");
+  revalidatePath("/dashboard/sales");
+  revalidatePath("/dashboard/gp");
+  revalidatePath("/dashboard/ar");
+  return { error: null, count: count ?? undefined };
+}

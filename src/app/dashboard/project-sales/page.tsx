@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Download, Plus } from "lucide-react";
+import { Download, Plus, Upload } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getFullProjectReport } from "@/lib/data/project-sales";
@@ -29,6 +29,12 @@ export default async function ProjectSalesPage() {
             <Download className="h-4 w-4" />
             Export Excel
           </Button>
+          {profile.role === "owner" && (
+            <Button variant="outline" nativeButton={false} render={<a href="/dashboard/project-sales/import" />}>
+              <Upload className="h-4 w-4" />
+              Import Excel
+            </Button>
+          )}
           <Button nativeButton={false} render={<a href="/dashboard/project-sales/new" />}>
             <Plus className="h-4 w-4" />
             เพิ่ม Project
