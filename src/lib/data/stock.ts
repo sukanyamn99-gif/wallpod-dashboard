@@ -158,6 +158,20 @@ export async function getSignedStockProductImageUrl(path: string | null): Promis
   return data.signedUrl;
 }
 
+export async function getSignedStockProductImageUrls(paths: string[]): Promise<Record<string, string>> {
+  if (!isSupabaseConfigured() || paths.length === 0) return {};
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.storage.from(IMAGE_BUCKET).createSignedUrls(paths, 3600);
+  if (error || !data) return {};
+
+  const urls: Record<string, string> = {};
+  for (const entry of data) {
+    if (entry.signedUrl && entry.path) urls[entry.path] = entry.signedUrl;
+  }
+  return urls;
+}
+
 export async function getStockDashboardData(): Promise<StockDashboardData> {
   const products = await getStockProducts();
 

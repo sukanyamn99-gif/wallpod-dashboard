@@ -178,7 +178,7 @@ export function ProjectsTable({
         const rows = groups
           .get(key)!
           .slice()
-          .sort((a, b) => a.projectDate.localeCompare(b.projectDate));
+          .sort((a, b) => (a.jobNo ?? "").localeCompare(b.jobNo ?? "", undefined, { numeric: true }));
         return {
           key,
           label: monthLabelOf(key),

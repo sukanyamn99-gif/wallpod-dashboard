@@ -134,14 +134,16 @@ function MovementSheet({
 export function StockProductsTable({
   products,
   currentProfile,
+  imageUrls,
 }: {
   products: StockProduct[];
   currentProfile: Profile;
+  imageUrls: Record<string, string>;
 }) {
   const [query, setQuery] = useState("");
   const [movementProduct, setMovementProduct] = useState<StockProduct | null>(null);
   const showCosts = canSeeCosts(currentProfile.role);
-  const totalColumns = showCosts ? 15 : 13;
+  const totalColumns = (showCosts ? 15 : 13) + 1;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -170,6 +172,7 @@ export function StockProductsTable({
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="whitespace-nowrap">รูป</TableHead>
               <TableHead className="whitespace-nowrap">รหัส</TableHead>
               <TableHead className="whitespace-nowrap">ชื่อสินค้า</TableHead>
               <TableHead className="whitespace-nowrap">หมวดหมู่</TableHead>
@@ -201,8 +204,21 @@ export function StockProductsTable({
             )}
             {filtered.map((p) => {
               const isLow = p.quantityOnHand <= p.reorderPoint;
+              const imageUrl = p.imagePath ? imageUrls[p.imagePath] : undefined;
               return (
                 <TableRow key={p.id}>
+                  <TableCell>
+                    {imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={imageUrl}
+                        alt={p.name}
+                        className="h-10 w-10 rounded-md border object-cover"
+                      />
+                    ) : (
+                      <div className="h-10 w-10 rounded-md border bg-muted" />
+                    )}
+                  </TableCell>
                   <TableCell className="whitespace-nowrap">{p.sku ?? "—"}</TableCell>
                   <TableCell className="whitespace-nowrap font-medium">{p.name}</TableCell>
                   <TableCell className="whitespace-nowrap">{p.category ?? "—"}</TableCell>

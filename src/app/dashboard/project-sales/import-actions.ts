@@ -101,32 +101,119 @@ function normalizeProductionStatus(v: unknown): ProductionStatus | null {
   return PRODUCTION_STATUSES.includes(s as ProductionStatus) ? (s as ProductionStatus) : null;
 }
 
-export async function previewProjectImport(formData: FormData): Promise<ImportPreview | { error: string }> {
-  const profile = await getCurrentProfile();
-  if (!profile || profile.role !== "owner") {
-    return { error: "เฉพาะเจ้าของกิจการเท่านั้นที่ import ข้อมูลได้" };
+// Payment-date columns in the legacy sheet use Thai Buddhist-era D/M/YY
+// (e.g. "30/01/69"), unlike the DATE column's Gregorian D/M/YYYY —
+// matches scripts/import-excel.mjs's parseThaiBEDate exactly.
+function parseThaiBEDate(v: unknown): string | null {
+  const s = String(v ?? "").trim();
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
+  if (!m) return null;
+  const [, d, mo, yy] = m;
+  const ceYear = 2500 + parseInt(yy, 10) - 543;
+  return `${ceYear}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+}
+
+const LEGACY_PRODUCT_CATEGORIES = ["WALLPOD", "ACOUSHEET", "ACOUSOFT", "ACUBOX", "CNC", "SERVICE", "WALLPAPER", "OTHER"];
+const LEGACY_PRODUCT_COL_START = 7; // columns 7..14 in the original "Project Sale 2026" sheet
+
+// Parses the ORIGINAL master tracking sheet format (same layout scripts/
+// import-excel.mjs was built for: fixed columns by index, data starting
+// row 7, one row per JOB NO.) — distinct from the named-column format
+// /api/export-projects produces. Detected automatically in
+// previewProjectImport by sheet name + absence of the export's headers.
+function parseLegacySheet(sheet: XLSX.WorkSheet, warnings: string[]): ParsedImportRow[] {
+  const rawRows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, raw: false, defval: "" });
+  const rows: ParsedImportRow[] = [];
+  const seenJobNos = new Set<string>();
+
+  for (let i = 6; i < rawRows.length; i++) {
+    const r = rawRows[i];
+    const jobNo = String(r[2] ?? "").trim();
+    if (!jobNo.startsWith("JB")) continue; // skips "Week N" subtotal rows / blanks
+    const customerName = String(r[3] ?? "").trim();
+    if (!customerName) continue; // reserved job number with no data yet
+
+    if (seenJobNos.has(jobNo)) {
+      warnings.push(`${jobNo}: เลข JOB ซ้ำในไฟล์ — ใช้แถวแรกที่พบ ข้ามแถวนี้`);
+      continue;
+    }
+    seenJobNos.add(jobNo);
+
+    const projectDate = parseDate(r[1]);
+    if (!projectDate) warnings.push(`${jobNo}: วันที่ไม่ถูกต้อง — ใช้วันที่วันนี้แทน`);
+
+    const salesRepName = String(r[5] ?? "").trim() || "ไม่ระบุ";
+    const customerType = normalizeCustomerType(r[6], warnings, jobNo);
+
+    const preVat = parseNumber(r[15]);
+    const totalInclVat = parseNumber(r[16]);
+    let vat = totalInclVat - preVat;
+    if (totalInclVat === 0 && preVat > 0) vat = Math.round(preVat * 0.07 * 100) / 100;
+    if (vat < 0) vat = 0;
+
+    const items: { category: string; amount: number }[] = [];
+    for (let c = 0; c < LEGACY_PRODUCT_CATEGORIES.length; c++) {
+      const amount = parseNumber(r[LEGACY_PRODUCT_COL_START + c]);
+      if (amount > 0) items.push({ category: LEGACY_PRODUCT_CATEGORIES[c], amount });
+    }
+    if (items.length === 0) {
+      warnings.push(`${jobNo}: ไม่มีรายการสินค้าที่มีมูลค่า — ข้ามแถวนี้`);
+      continue;
+    }
+
+    const costs = {
+      material: parseNumber(r[19]),
+      glue: parseNumber(r[20]),
+      cutting: parseNumber(r[21]),
+      install: parseNumber(r[22]),
+      parking: parseNumber(r[23]),
+      shipping: parseNumber(r[24]),
+    };
+    const hasCosts = Object.values(costs).some((v) => v > 0);
+
+    const outstanding = parseNumber(r[38]);
+    const invoiceNo1 = String(r[28] ?? "").trim() || null;
+    const amount1 = parseNumber(r[29]);
+    const invoiceNo2 = String(r[33] ?? "").trim() || null;
+    const amount2 = parseNumber(r[34]);
+    const status =
+      amount1 > 0 || String(r[32] ?? "").trim() ? normalizeStatus(r[32], warnings, jobNo) : "รอชำระเงิน";
+
+    const payments: ParsedImportRow["payments"] = [];
+    if (amount1 > 0 || String(r[32] ?? "").trim()) {
+      payments.push({
+        invoiceNo: invoiceNo1, installmentNo: 1, amount: amount1,
+        paidDate: parseThaiBEDate(r[31]), status, outstandingAmount: outstanding,
+      });
+    }
+    if (amount2 > 0) {
+      payments.push({
+        invoiceNo: invoiceNo2, installmentNo: 2, amount: amount2,
+        paidDate: parseThaiBEDate(r[35]), status, outstandingAmount: outstanding,
+      });
+    }
+
+    rows.push({
+      jobNo,
+      projectDate: projectDate ?? new Date().toISOString().slice(0, 10),
+      customerName,
+      customerType,
+      projectName: String(r[4] ?? "").trim() || jobNo,
+      salesRepName,
+      productionStatus: null, // not tracked in the legacy sheet
+      items,
+      preVat,
+      vat,
+      costs: hasCosts ? costs : null,
+      payments,
+    });
   }
 
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
-    return { error: "กรุณาเลือกไฟล์ Excel" };
-  }
+  return rows;
+}
 
-  let workbook: XLSX.WorkBook;
-  try {
-    const buffer = Buffer.from(await file.arrayBuffer());
-    workbook = XLSX.read(buffer, { cellDates: true });
-  } catch {
-    return { error: "ไม่สามารถอ่านไฟล์นี้ได้ — กรุณาตรวจสอบว่าเป็นไฟล์ .xlsx ที่ถูกต้อง" };
-  }
-
-  const sheetName = workbook.SheetNames.includes("Project Sales") ? "Project Sales" : workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
-  if (!sheet) return { error: "ไม่พบข้อมูลในไฟล์นี้" };
-
+function parseExportFormatSheet(sheet: XLSX.WorkSheet, warnings: string[]): ParsedImportRow[] {
   const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "", raw: true });
-
-  const warnings: string[] = [];
   const seenJobNos = new Set<string>();
   const rows: ParsedImportRow[] = [];
 
@@ -210,6 +297,46 @@ export async function previewProjectImport(formData: FormData): Promise<ImportPr
       costs: hasCosts ? costs : null,
       payments,
     });
+  }
+
+  return rows;
+}
+
+export async function previewProjectImport(formData: FormData): Promise<ImportPreview | { error: string }> {
+  const profile = await getCurrentProfile();
+  if (!profile || profile.role !== "owner") {
+    return { error: "เฉพาะเจ้าของกิจการเท่านั้นที่ import ข้อมูลได้" };
+  }
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "กรุณาเลือกไฟล์ Excel" };
+  }
+
+  let workbook: XLSX.WorkBook;
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    workbook = XLSX.read(buffer, { cellDates: true });
+  } catch {
+    return { error: "ไม่สามารถอ่านไฟล์นี้ได้ — กรุณาตรวจสอบว่าเป็นไฟล์ .xlsx ที่ถูกต้อง" };
+  }
+
+  const warnings: string[] = [];
+  let rows: ParsedImportRow[];
+
+  // Two supported formats: the named-column layout /api/export-projects
+  // produces (sheet "Project Sales"), and the original master tracking
+  // sheet layout ("Project Sale 2026", fixed columns by position — the
+  // same format scripts/import-excel.mjs was built for). Detected by
+  // sheet name; the legacy sheet has no usable header row to check for
+  // named columns, so presence of "Project Sale 2026" takes priority.
+  if (workbook.SheetNames.includes("Project Sale 2026")) {
+    rows = parseLegacySheet(workbook.Sheets["Project Sale 2026"], warnings);
+  } else {
+    const sheetName = workbook.SheetNames.includes("Project Sales") ? "Project Sales" : workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    if (!sheet) return { error: "ไม่พบข้อมูลในไฟล์นี้" };
+    rows = parseExportFormatSheet(sheet, warnings);
   }
 
   if (rows.length === 0) {
