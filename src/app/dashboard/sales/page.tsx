@@ -1,4 +1,4 @@
-import { Briefcase, CircleDollarSign, TrendingUp } from "lucide-react";
+import { Briefcase, CheckCircle2, CircleDollarSign, TrendingUp } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import {
   CustomerTypeChart,
@@ -21,9 +21,14 @@ export default async function SalesDashboardPage() {
         <p className="text-sm text-muted-foreground">ภาพรวมยอดขายและ pipeline</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="มูลค่ารวม (Pipeline)" value={formatTHB(data.totalPipelineValue)} icon={CircleDollarSign} />
-        <KpiCard label="จำนวนงานที่เปิดอยู่" value={`${data.openProjectsCount} งาน`} icon={Briefcase} />
+        <KpiCard label="จำนวนงานทั้งหมด" value={`${data.totalProjectsCount} งาน`} icon={Briefcase} />
+        <KpiCard
+          label="สถานะงาน"
+          value={`ปิดแล้ว ${data.closedProjectsCount} · ยังไม่ปิด ${data.openProjectsCount}`}
+          icon={CheckCircle2}
+        />
         <KpiCard label="ยอดปิดการขายเดือนนี้" value={formatTHB(data.closedThisMonthValue)} icon={TrendingUp} />
       </div>
 

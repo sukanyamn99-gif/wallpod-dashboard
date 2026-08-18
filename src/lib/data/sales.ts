@@ -139,10 +139,12 @@ export async function getSalesDashboardData(): Promise<SalesDashboardData> {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const totalPipelineValue = projects.reduce((sum, p) => sum + p.pre_vat, 0);
-  // "Open" now tracks production status, not the sales stage (every job in this
+  const totalProjectsCount = projects.length;
+  const closedProjectsCount = projects.filter((p) => p.production_status === "เก็บเงินงวดสุดท้าย").length;
+  // "Open" tracks production status, not the sales stage (every job in this
   // table is already closed/invoiced) — anything short of the final payment
   // step counts as open, including jobs that haven't been given a status yet.
-  const openProjectsCount = projects.filter((p) => p.production_status !== "เก็บเงินงวดสุดท้าย").length;
+  const openProjectsCount = totalProjectsCount - closedProjectsCount;
 
   const closedThisMonthValue = projects
     .filter((p) => p.stage_percent === 100 && new Date(p.project_date) >= monthStart)
@@ -192,6 +194,8 @@ export async function getSalesDashboardData(): Promise<SalesDashboardData> {
 
   return {
     totalPipelineValue,
+    totalProjectsCount,
+    closedProjectsCount,
     openProjectsCount,
     closedThisMonthValue,
     pipelineByStage,

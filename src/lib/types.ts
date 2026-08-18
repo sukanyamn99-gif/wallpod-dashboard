@@ -217,6 +217,8 @@ export interface StockDashboardData {
 
 export interface SalesDashboardData {
   totalPipelineValue: number;
+  totalProjectsCount: number;
+  closedProjectsCount: number;
   openProjectsCount: number;
   closedThisMonthValue: number;
   pipelineByStage: { stage: StagePercent; label: string; value: number; count: number }[];
