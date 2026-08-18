@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Eye, History, Pencil, Trash2 } from "lucide-react";
+import { Check, Eye, History, Pencil, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,14 +53,37 @@ function canManage(report: SaleReport, profile: Profile) {
 function RowActions({ report }: { report: SaleReport }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
-  function handleDelete() {
-    if (!window.confirm(`ยืนยันลบรายการของ "${report.customer_name}" ถาวร? การกระทำนี้ไม่สามารถย้อนกลับได้`)) return;
+  function handleConfirmDelete() {
     setError(null);
     startTransition(async () => {
       const result = await deleteSaleReport(report.id);
       if (result.error) setError(result.error);
+      setConfirming(false);
     });
+  }
+
+  if (confirming) {
+    return (
+      <div className="flex flex-col gap-1">
+        <div className="flex gap-1">
+          <Button
+            size="icon-sm"
+            variant="destructive"
+            onClick={handleConfirmDelete}
+            disabled={pending}
+            title={`ยืนยันลบรายการของ "${report.customer_name}" ถาวร`}
+          >
+            <Check className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="icon-sm" variant="outline" onClick={() => setConfirming(false)} disabled={pending} title="ยกเลิก">
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+        {error && <p className="text-xs text-destructive">{error}</p>}
+      </div>
+    );
   }
 
   return (
@@ -74,7 +97,7 @@ function RowActions({ report }: { report: SaleReport }) {
         >
           <Pencil className="h-3.5 w-3.5" />
         </Button>
-        <Button size="icon-sm" variant="destructive" onClick={handleDelete} disabled={pending}>
+        <Button size="icon-sm" variant="destructive" onClick={() => setConfirming(true)}>
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
       </div>

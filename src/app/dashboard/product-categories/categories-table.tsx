@@ -56,6 +56,7 @@ function CategoryCard({
   summary: Summary;
 }) {
   const [editing, setEditing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [name, setName] = useState(category.name);
   const [description, setDescription] = useState(category.description ?? "");
   const [pending, startTransition] = useTransition();
@@ -85,17 +86,12 @@ function CategoryCard({
     });
   }
 
-  function handleDelete() {
-    if (
-      !window.confirm(
-        `ลบหมวดหมู่ "${category.name}"? สินค้าที่เคยใช้หมวดหมู่นี้จะไม่ถูกลบ แต่จะไม่แสดงในตัวเลือกอีกต่อไป`,
-      )
-    )
-      return;
+  function handleConfirmDelete() {
     setError(null);
     startTransition(async () => {
       const result = await deleteProductCategory(category.id);
       if (result.error) setError(result.error);
+      setConfirmingDelete(false);
     });
   }
 
@@ -128,12 +124,27 @@ function CategoryCard({
                   <X className="h-3.5 w-3.5" />
                 </Button>
               </>
+            ) : confirmingDelete ? (
+              <>
+                <Button
+                  size="icon-sm"
+                  variant="destructive"
+                  onClick={handleConfirmDelete}
+                  disabled={pending}
+                  title={`ยืนยันลบหมวดหมู่ "${category.name}"`}
+                >
+                  <Check className="h-3.5 w-3.5" />
+                </Button>
+                <Button size="icon-sm" variant="outline" onClick={() => setConfirmingDelete(false)} disabled={pending} title="ยกเลิก">
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </>
             ) : (
               <>
                 <Button size="icon-sm" variant="outline" onClick={() => setEditing(true)}>
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
-                <Button size="icon-sm" variant="destructive" onClick={handleDelete} disabled={pending}>
+                <Button size="icon-sm" variant="destructive" onClick={() => setConfirmingDelete(true)}>
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
               </>

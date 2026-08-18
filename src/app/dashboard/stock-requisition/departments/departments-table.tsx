@@ -39,6 +39,7 @@ function AddDepartmentForm() {
 
 function DepartmentRow({ department, canManage }: { department: Department; canManage: boolean }) {
   const [editing, setEditing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [name, setName] = useState(department.name);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -63,12 +64,12 @@ function DepartmentRow({ department, canManage }: { department: Department; canM
     });
   }
 
-  function handleDelete() {
-    if (!window.confirm(`ลบแผนก "${department.name}"? ใบเบิกที่เคยใช้แผนกนี้จะไม่ถูกลบ`)) return;
+  function handleConfirmDelete() {
     setError(null);
     startTransition(async () => {
       const result = await deleteDepartment(department.id);
       if (result.error) setError(result.error);
+      setConfirmingDelete(false);
     });
   }
 
@@ -105,12 +106,27 @@ function DepartmentRow({ department, canManage }: { department: Department; canM
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 </>
+              ) : confirmingDelete ? (
+                <>
+                  <Button
+                    size="icon-sm"
+                    variant="destructive"
+                    onClick={handleConfirmDelete}
+                    disabled={pending}
+                    title={`ยืนยันลบแผนก "${department.name}"`}
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button size="icon-sm" variant="outline" onClick={() => setConfirmingDelete(false)} disabled={pending} title="ยกเลิก">
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </>
               ) : (
                 <>
                   <Button size="icon-sm" variant="outline" onClick={() => setEditing(true)}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
-                  <Button size="icon-sm" variant="destructive" onClick={handleDelete} disabled={pending}>
+                  <Button size="icon-sm" variant="destructive" onClick={() => setConfirmingDelete(true)}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </>

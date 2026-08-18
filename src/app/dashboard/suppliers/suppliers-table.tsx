@@ -42,6 +42,7 @@ function AddSupplierForm() {
 
 function SupplierRow({ supplier, canManage }: { supplier: Supplier; canManage: boolean }) {
   const [editing, setEditing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [name, setName] = useState(supplier.name);
   const [address, setAddress] = useState(supplier.address ?? "");
   const [taxId, setTaxId] = useState(supplier.taxId ?? "");
@@ -79,12 +80,12 @@ function SupplierRow({ supplier, canManage }: { supplier: Supplier; canManage: b
     });
   }
 
-  function handleDelete() {
-    if (!window.confirm(`ลบผู้จำหน่าย "${supplier.name}"? เอกสารรับเข้าสินค้าที่เคยใช้รายนี้จะไม่ถูกลบ`)) return;
+  function handleConfirmDelete() {
     setError(null);
     startTransition(async () => {
       const result = await deleteSupplier(supplier.id);
       if (result.error) setError(result.error);
+      setConfirmingDelete(false);
     });
   }
 
@@ -139,12 +140,27 @@ function SupplierRow({ supplier, canManage }: { supplier: Supplier; canManage: b
                     <X className="h-3.5 w-3.5" />
                   </Button>
                 </>
+              ) : confirmingDelete ? (
+                <>
+                  <Button
+                    size="icon-sm"
+                    variant="destructive"
+                    onClick={handleConfirmDelete}
+                    disabled={pending}
+                    title={`ยืนยันลบผู้จำหน่าย "${supplier.name}"`}
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button size="icon-sm" variant="outline" onClick={() => setConfirmingDelete(false)} disabled={pending} title="ยกเลิก">
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </>
               ) : (
                 <>
                   <Button size="icon-sm" variant="outline" onClick={() => setEditing(true)}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
-                  <Button size="icon-sm" variant="destructive" onClick={handleDelete} disabled={pending}>
+                  <Button size="icon-sm" variant="destructive" onClick={() => setConfirmingDelete(true)}>
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </>

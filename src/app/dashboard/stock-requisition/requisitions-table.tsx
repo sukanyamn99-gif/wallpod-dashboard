@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Eye, Trash2 } from "lucide-react";
+import { Check, Eye, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,24 +27,42 @@ function canDelete(profile: Profile, requisition: Omit<StockRequisition, "items"
 function DeleteButton({ requisition }: { requisition: Omit<StockRequisition, "items"> }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
-  function handleDelete() {
-    if (
-      !window.confirm(
-        `ลบใบเบิก "${requisition.docNo}"? การกระทำนี้ไม่สามารถย้อนกลับได้ และจะไม่คืนสต็อกที่เบิกไปแล้ว`,
-      )
-    )
-      return;
+  function handleConfirm() {
     setError(null);
     startTransition(async () => {
       const result = await deleteStockRequisition(requisition.id);
       if (result.error) setError(result.error);
+      setConfirming(false);
     });
+  }
+
+  if (confirming) {
+    return (
+      <div className="flex flex-col gap-1">
+        <div className="flex gap-1">
+          <Button
+            size="icon-sm"
+            variant="destructive"
+            onClick={handleConfirm}
+            disabled={pending}
+            title={`ยืนยันลบใบเบิก "${requisition.docNo}" (จะไม่คืนสต็อกที่เบิกไปแล้ว)`}
+          >
+            <Check className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="icon-sm" variant="outline" onClick={() => setConfirming(false)} disabled={pending} title="ยกเลิก">
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+        {error && <p className="text-xs text-destructive">{error}</p>}
+      </div>
+    );
   }
 
   return (
     <div className="flex flex-col gap-1">
-      <Button size="icon-sm" variant="destructive" onClick={handleDelete} disabled={pending}>
+      <Button size="icon-sm" variant="destructive" onClick={() => setConfirming(true)}>
         <Trash2 className="h-3.5 w-3.5" />
       </Button>
       {error && <p className="text-xs text-destructive">{error}</p>}

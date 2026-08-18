@@ -19,24 +19,24 @@ export function DangerZone({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [confirmingAction, setConfirmingAction] = useState<"cancel" | "delete" | null>(null);
 
-  function handleCancelToggle() {
-    const action = isCancelled ? "กู้คืนงานนี้" : "ยกเลิกงานนี้";
-    if (!window.confirm(`ยืนยัน "${action}" ใช่หรือไม่?`)) return;
+  function handleConfirmCancelToggle() {
     setError(null);
     startTransition(async () => {
       const result = await setProjectCancelled(projectId, jobNo, !isCancelled);
       if (result.error) setError(result.error);
+      setConfirmingAction(null);
     });
   }
 
-  function handleDelete() {
-    if (!window.confirm(`ยืนยันลบงาน "${jobNo ?? ""}" ถาวร? การกระทำนี้ไม่สามารถย้อนกลับได้`)) return;
+  function handleConfirmDelete() {
     setError(null);
     startTransition(async () => {
       const result = await deleteProjectSale(projectId);
       if (result.error) {
         setError(result.error);
+        setConfirmingAction(null);
         return;
       }
       router.push("/dashboard/project-sales");
@@ -58,16 +58,37 @@ export function DangerZone({
         {isCancelled && (
           <p className="rounded-md bg-amber-100 p-3 text-sm text-amber-900">งานนี้ถูกยกเลิกแล้ว ไม่ถูกนับในยอดขาย</p>
         )}
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" onClick={handleCancelToggle} disabled={pending}>
-            {isCancelled ? <RotateCcw className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-            {isCancelled ? "กู้คืนงานนี้" : "ยกเลิกงานนี้"}
-          </Button>
-          <Button type="button" variant="destructive" onClick={handleDelete} disabled={pending}>
-            <Trash2 className="h-4 w-4" />
-            ลบงานนี้ถาวร
-          </Button>
-        </div>
+        {confirmingAction ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm">
+              {confirmingAction === "cancel"
+                ? `ยืนยัน "${isCancelled ? "กู้คืนงานนี้" : "ยกเลิกงานนี้"}" ใช่หรือไม่?`
+                : `ยืนยันลบงาน "${jobNo ?? ""}" ถาวร? การกระทำนี้ไม่สามารถย้อนกลับได้`}
+            </p>
+            <Button
+              type="button"
+              variant={confirmingAction === "delete" ? "destructive" : "outline"}
+              onClick={confirmingAction === "cancel" ? handleConfirmCancelToggle : handleConfirmDelete}
+              disabled={pending}
+            >
+              ยืนยัน
+            </Button>
+            <Button type="button" variant="outline" onClick={() => setConfirmingAction(null)} disabled={pending}>
+              ยกเลิก
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" onClick={() => setConfirmingAction("cancel")}>
+              {isCancelled ? <RotateCcw className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+              {isCancelled ? "กู้คืนงานนี้" : "ยกเลิกงานนี้"}
+            </Button>
+            <Button type="button" variant="destructive" onClick={() => setConfirmingAction("delete")}>
+              <Trash2 className="h-4 w-4" />
+              ลบงานนี้ถาวร
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
