@@ -166,7 +166,7 @@ export function StockProductsTable({
   const [query, setQuery] = useState("");
   const [movementProduct, setMovementProduct] = useState<StockProduct | null>(null);
   const showCosts = canSeeCosts(currentProfile.role);
-  const totalColumns = (showCosts ? 15 : 13) + 1;
+  const totalColumns = showCosts ? 15 : 13;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -176,7 +176,6 @@ export function StockProductsTable({
         (p.sku ?? "").toLowerCase().includes(q) ||
         p.name.toLowerCase().includes(q) ||
         (p.category ?? "").toLowerCase().includes(q) ||
-        (p.color ?? "").toLowerCase().includes(q) ||
         (p.size ?? "").toLowerCase().includes(q) ||
         (p.location ?? "").toLowerCase().includes(q),
     );
@@ -187,7 +186,7 @@ export function StockProductsTable({
       <Input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="ค้นหา รหัส / ชื่อสินค้า / หมวดหมู่ / สี / ขนาด / ตำแหน่งจัดเก็บ"
+        placeholder="ค้นหา รหัส / ชื่อสินค้า / หมวดหมู่ / ขนาด / ตำแหน่งจัดเก็บ"
         className="max-w-sm"
       />
 
@@ -199,7 +198,6 @@ export function StockProductsTable({
               <TableHead className="whitespace-nowrap">รหัส</TableHead>
               <TableHead className="whitespace-nowrap">ชื่อสินค้า</TableHead>
               <TableHead className="whitespace-nowrap">หมวดหมู่</TableHead>
-              <TableHead className="whitespace-nowrap">สี</TableHead>
               <TableHead className="whitespace-nowrap">ขนาด</TableHead>
               <TableHead className="whitespace-nowrap">ความหนา</TableHead>
               <TableHead className="text-right whitespace-nowrap">คงเหลือ</TableHead>
@@ -245,7 +243,6 @@ export function StockProductsTable({
                   <TableCell className="whitespace-nowrap">{p.sku ?? "—"}</TableCell>
                   <TableCell className="whitespace-nowrap font-medium">{p.name}</TableCell>
                   <TableCell className="whitespace-nowrap">{p.category ?? "—"}</TableCell>
-                  <TableCell className="whitespace-nowrap">{p.color ?? "—"}</TableCell>
                   <TableCell className="whitespace-nowrap">{p.size ?? "—"}</TableCell>
                   <TableCell className="whitespace-nowrap">{p.thickness ?? "—"}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">
