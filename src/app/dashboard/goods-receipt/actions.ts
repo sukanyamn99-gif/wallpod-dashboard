@@ -217,7 +217,32 @@ export async function deleteGoodsReceipt(id: string) {
     return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถลบได้ในโหมดทดลอง" };
   }
 
+  const existing = await getGoodsReceiptById(id);
+  if (!existing) return { error: "ไม่พบใบรับสินค้านี้ในระบบ" };
+
   const supabase = await createClient();
+
+  // Reverse each line's stock/lot contribution before deleting the paperwork
+  // — reuses edit_goods_receipt_item's exact reverse-then-reapply math by
+  // editing every line down to zero, so delete no longer leaves stock or a
+  // stock_product_lots row behind (matches what editing a receipt to zero
+  // already does correctly).
+  for (const item of existing.items) {
+    if (!item.stockProductId || item.quantity <= 0) continue;
+    const { error: reverseErr } = await supabase.rpc("edit_goods_receipt_item", {
+      p_product_id: item.stockProductId,
+      p_old_qty: item.quantity,
+      p_old_cost: item.unitCost,
+      p_new_qty: 0,
+      p_new_cost: 0,
+      p_note: `ลบใบรับสินค้า ${existing.docNo}`,
+      p_reference: existing.docNo,
+    });
+    if (reverseErr) {
+      return { error: `คืนสต็อกสินค้า "${item.productName}" ไม่สำเร็จ: ${reverseErr.message}` };
+    }
+  }
+
   const { error } = await supabase.from("goods_receipts").delete().eq("id", id);
   if (error) return { error: error.message };
 
