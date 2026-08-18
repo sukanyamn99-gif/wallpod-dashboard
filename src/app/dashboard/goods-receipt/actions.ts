@@ -222,6 +222,31 @@ export async function deleteGoodsReceipt(id: string) {
 
   const supabase = await createClient();
 
+  // Block the delete if any line's lot has already been partially/fully
+  // withdrawn — reversing would need to claw back stock that's already gone
+  // out the door (via a requisition or manual movement), which is exactly
+  // the negative-on-hand edge case this guard exists to prevent.
+  const productIds = existing.items.map((it) => it.stockProductId).filter((pid): pid is string => !!pid);
+  if (productIds.length > 0) {
+    const { data: lots, error: lotsErr } = await supabase
+      .from("stock_product_lots")
+      .select("stock_product_id, quantity_received, quantity_remaining")
+      .eq("reference_no", existing.docNo)
+      .in("stock_product_id", productIds);
+    if (lotsErr) return { error: lotsErr.message };
+
+    const consumedItems = existing.items.filter((item) => {
+      const lot = (lots ?? []).find((l) => l.stock_product_id === item.stockProductId);
+      return lot && Number(lot.quantity_remaining) < Number(lot.quantity_received);
+    });
+    if (consumedItems.length > 0) {
+      const names = consumedItems.map((it) => it.productName).join(", ");
+      return {
+        error: `ไม่สามารถลบได้ เนื่องจากมีสินค้าที่เบิกออกไปแล้วจากใบรับนี้: ${names} — กรุณาแก้ไขจำนวนในใบรับสินค้าแทนหากต้องการแก้ไข`,
+      };
+    }
+  }
+
   // Reverse each line's stock/lot contribution before deleting the paperwork
   // — reuses edit_goods_receipt_item's exact reverse-then-reapply math by
   // editing every line down to zero, so delete no longer leaves stock or a
