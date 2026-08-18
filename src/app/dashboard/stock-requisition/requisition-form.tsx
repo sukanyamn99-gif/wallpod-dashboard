@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Factory, FlaskConical, Package, Plus, Settings2, X } from "lucide-react";
@@ -52,6 +52,7 @@ export function RequisitionForm({
   const [items, setItems] = useState<SelectedItem[]>([]);
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [, startTransition] = useTransition();
 
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
     const result = await createStockRequisition(formData);
@@ -102,7 +103,7 @@ export function RequisitionForm({
           fd.append("item_unit", it.unit);
           fd.append("item_quantity", String(it.quantity));
         }
-        formAction(fd);
+        startTransition(() => formAction(fd));
       }}
       className="grid grid-cols-1 gap-6 lg:grid-cols-2"
     >

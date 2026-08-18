@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { MapPin, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -72,6 +72,7 @@ export function SaleReportForm({
   );
   const [resizing, setResizing] = useState(false);
   const [formKey, setFormKey] = useState(0);
+  const [, startTransition] = useTransition();
 
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
     const result =
@@ -155,7 +156,7 @@ export function SaleReportForm({
           if (img.kind === "new") fd.append("images", img.blob, `image-${Date.now()}.jpg`);
           else fd.append("existing_image_paths", img.path);
         }
-        formAction(fd);
+        startTransition(() => formAction(fd));
       }}
     >
       {state.error && (

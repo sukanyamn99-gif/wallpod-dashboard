@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -62,6 +62,7 @@ export function StockProductForm({
   categories: string[];
 }) {
   const router = useRouter();
+  const [, startTransition] = useTransition();
   const [size, setSize] = useState(initialData?.size ?? "");
   const [image, setImage] = useState<{ blob: Blob; previewUrl: string } | null>(null);
   const [removeExistingImage, setRemoveExistingImage] = useState(false);
@@ -120,7 +121,7 @@ export function StockProductForm({
             const fd = new FormData(e.currentTarget);
             if (image) fd.set("image", image.blob, "product.jpg");
             if (removeExistingImage) fd.set("remove_image", "1");
-            formAction(fd);
+            startTransition(() => formAction(fd));
           }}
         >
           <DialogHeader>
