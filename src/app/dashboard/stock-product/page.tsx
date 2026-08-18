@@ -1,6 +1,6 @@
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getSignedStockProductImageUrls, getStockProducts } from "@/lib/data/stock";
+import { getSignedStockProductImageUrls, getStockProductLotsByProduct, getStockProducts } from "@/lib/data/stock";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { StockProductsTable } from "./stock-products-table";
 
@@ -10,7 +10,10 @@ export default async function StockProductPage() {
   const canCreate = currentProfile.role === "owner" || currentProfile.role === "manager";
 
   const imagePaths = products.map((p) => p.imagePath).filter((p): p is string => p !== null);
-  const imageUrls = await getSignedStockProductImageUrls(imagePaths);
+  const [imageUrls, lotsByProduct] = await Promise.all([
+    getSignedStockProductImageUrls(imagePaths),
+    getStockProductLotsByProduct(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -27,7 +30,12 @@ export default async function StockProductPage() {
         )}
       </div>
 
-      <StockProductsTable products={products} currentProfile={currentProfile} imageUrls={imageUrls} />
+      <StockProductsTable
+        products={products}
+        currentProfile={currentProfile}
+        imageUrls={imageUrls}
+        lotsByProduct={lotsByProduct}
+      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import type { ProductCategory, StockDashboardData, StockMovement, StockProduct } from "@/lib/types";
+import type { ProductCategory, StockDashboardData, StockMovement, StockProduct, StockProductLot } from "@/lib/types";
 
 const STOCK_PRODUCT_COLUMNS =
   "id, sku, name, category, color, size, thickness, location, note, unit, quantity_on_hand, reorder_point, unit_cost, selling_price, image_path, created_at, updated_at";
@@ -170,6 +170,33 @@ export async function getSignedStockProductImageUrls(paths: string[]): Promise<R
     if (entry.signedUrl && entry.path) urls[entry.path] = entry.signedUrl;
   }
   return urls;
+}
+
+export async function getStockProductLotsByProduct(): Promise<Record<string, StockProductLot[]>> {
+  if (!isSupabaseConfigured()) return {};
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("stock_product_lots")
+    .select("id, stock_product_id, quantity_received, quantity_remaining, unit_cost, reference_no, received_at")
+    .gt("quantity_remaining", 0)
+    .order("received_at", { ascending: true });
+  if (error) throw error;
+
+  const byProduct: Record<string, StockProductLot[]> = {};
+  for (const row of data ?? []) {
+    const lot: StockProductLot = {
+      id: row.id,
+      stockProductId: row.stock_product_id,
+      quantityReceived: Number(row.quantity_received),
+      quantityRemaining: Number(row.quantity_remaining),
+      unitCost: Number(row.unit_cost),
+      referenceNo: row.reference_no,
+      receivedAt: row.received_at,
+    };
+    (byProduct[lot.stockProductId] ??= []).push(lot);
+  }
+  return byProduct;
 }
 
 export async function getStockDashboardData(): Promise<StockDashboardData> {

@@ -207,6 +207,16 @@ export interface StockMovement {
   unit: string;
 }
 
+export interface StockProductLot {
+  id: string;
+  stockProductId: string;
+  quantityReceived: number;
+  quantityRemaining: number;
+  unitCost: number;
+  referenceNo: string | null;
+  receivedAt: string;
+}
+
 export interface StockDashboardData {
   skuCount: number;
   totalStockValue: number;

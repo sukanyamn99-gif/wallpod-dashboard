@@ -2,7 +2,7 @@
 
 import { useActionState, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, PackagePlus, Pencil, Trash2, X } from "lucide-react";
+import { Check, Layers, PackagePlus, Pencil, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,14 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogBody,
+} from "@/components/ui/dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -32,7 +40,7 @@ import {
 import { formatTHB } from "@/lib/format";
 import { canSeeCosts } from "@/lib/permissions";
 import { deleteStockProduct, recordStockMovement } from "./actions";
-import type { Profile, StockProduct } from "@/lib/types";
+import type { Profile, StockProduct, StockProductLot } from "@/lib/types";
 
 const movementInitialState = { error: null as string | null };
 
@@ -154,17 +162,89 @@ function MovementSheet({
   );
 }
 
+function LotsDialog({
+  product,
+  lots,
+  showCosts,
+  onOpenChange,
+}: {
+  product: StockProduct | null;
+  lots: StockProductLot[];
+  showCosts: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const lotTotal = lots.reduce((sum, l) => sum + l.quantityRemaining, 0);
+  const unspecified = product ? Math.max(0, product.quantityOnHand - lotTotal) : 0;
+
+  return (
+    <Dialog open={product !== null} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        {product && (
+          <>
+            <DialogHeader>
+              <DialogTitle>Lot คงเหลือ — {product.name}</DialogTitle>
+              <DialogDescription>
+                รวมคงเหลือ {product.quantityOnHand} {product.unit}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogBody className="space-y-3 py-4">
+              {lots.length === 0 ? (
+                <p className="text-sm text-muted-foreground">ไม่มีข้อมูล Lot สำหรับสินค้านี้</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="whitespace-nowrap">วันที่รับเข้า</TableHead>
+                      <TableHead className="text-right whitespace-nowrap">คงเหลือ / รับเข้า</TableHead>
+                      {showCosts && <TableHead className="text-right whitespace-nowrap">ต้นทุน/หน่วย</TableHead>}
+                      <TableHead className="whitespace-nowrap">เลขที่อ้างอิง</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {lots.map((lot) => (
+                      <TableRow key={lot.id}>
+                        <TableCell className="whitespace-nowrap">
+                          {new Date(lot.receivedAt).toLocaleDateString("th-TH")}
+                        </TableCell>
+                        <TableCell className="text-right whitespace-nowrap">
+                          {lot.quantityRemaining} / {lot.quantityReceived} {product.unit}
+                        </TableCell>
+                        {showCosts && (
+                          <TableCell className="text-right whitespace-nowrap">{formatTHB(lot.unitCost)}</TableCell>
+                        )}
+                        <TableCell className="whitespace-nowrap">{lot.referenceNo ?? "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+              {unspecified > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  คงเหลือ {unspecified} {product.unit} ไม่ทราบ Lot ที่มา (สต็อกเดิมก่อนเริ่มใช้ระบบ Lot หรือรับเข้าแบบไม่ผ่านใบรับสินค้า)
+                </p>
+              )}
+            </DialogBody>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function StockProductsTable({
   products,
   currentProfile,
   imageUrls,
+  lotsByProduct,
 }: {
   products: StockProduct[];
   currentProfile: Profile;
   imageUrls: Record<string, string>;
+  lotsByProduct: Record<string, StockProductLot[]>;
 }) {
   const [query, setQuery] = useState("");
   const [movementProduct, setMovementProduct] = useState<StockProduct | null>(null);
+  const [lotsProduct, setLotsProduct] = useState<StockProduct | null>(null);
   const showCosts = canSeeCosts(currentProfile.role);
   const totalColumns = showCosts ? 15 : 13;
 
@@ -273,6 +353,11 @@ export function StockProductsTable({
                   <TableCell className="max-w-[16rem] whitespace-normal">{p.note ?? "—"}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
+                      {(lotsByProduct[p.id]?.length ?? 0) > 0 && (
+                        <Button size="icon-sm" variant="outline" onClick={() => setLotsProduct(p)} title="ดู Lot คงเหลือ">
+                          <Layers className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                       {canRecordMovement(currentProfile) && (
                         <Button size="icon-sm" variant="outline" onClick={() => setMovementProduct(p)}>
                           <PackagePlus className="h-3.5 w-3.5" />
@@ -304,6 +389,12 @@ export function StockProductsTable({
       </p>
 
       <MovementSheet product={movementProduct} onOpenChange={(open) => !open && setMovementProduct(null)} />
+      <LotsDialog
+        product={lotsProduct}
+        lots={lotsProduct ? (lotsByProduct[lotsProduct.id] ?? []) : []}
+        showCosts={showCosts}
+        onOpenChange={(open) => !open && setLotsProduct(null)}
+      />
     </div>
   );
 }
