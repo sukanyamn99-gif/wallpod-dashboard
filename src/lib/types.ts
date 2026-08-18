@@ -215,6 +215,7 @@ export interface StockProductLot {
   unitCost: number;
   referenceNo: string | null;
   receivedAt: string;
+  note: string | null;
 }
 
 export interface StockDashboardData {

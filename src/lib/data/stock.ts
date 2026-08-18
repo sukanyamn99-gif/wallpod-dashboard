@@ -183,6 +183,16 @@ export async function getStockProductLotsByProduct(): Promise<Record<string, Sto
     .order("received_at", { ascending: true });
   if (error) throw error;
 
+  // Lots have no note of their own — pull the originating goods receipt's
+  // note by matching reference_no to doc_no (the same key used to keep the
+  // lot in sync on edit/delete).
+  const docNos = Array.from(new Set((data ?? []).map((row) => row.reference_no).filter((r): r is string => !!r)));
+  const noteByDocNo = new Map<string, string | null>();
+  if (docNos.length > 0) {
+    const { data: receipts } = await supabase.from("goods_receipts").select("doc_no, note").in("doc_no", docNos);
+    for (const r of receipts ?? []) noteByDocNo.set(r.doc_no, r.note);
+  }
+
   const byProduct: Record<string, StockProductLot[]> = {};
   for (const row of data ?? []) {
     const lot: StockProductLot = {
@@ -193,6 +203,7 @@ export async function getStockProductLotsByProduct(): Promise<Record<string, Sto
       unitCost: Number(row.unit_cost),
       referenceNo: row.reference_no,
       receivedAt: row.received_at,
+      note: row.reference_no ? (noteByDocNo.get(row.reference_no) ?? null) : null,
     };
     (byProduct[lot.stockProductId] ??= []).push(lot);
   }

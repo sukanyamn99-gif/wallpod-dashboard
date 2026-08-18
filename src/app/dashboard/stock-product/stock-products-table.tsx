@@ -198,6 +198,7 @@ function LotsDialog({
                       <TableHead className="text-right whitespace-nowrap">คงเหลือ / รับเข้า</TableHead>
                       {showCosts && <TableHead className="text-right whitespace-nowrap">ต้นทุน/หน่วย</TableHead>}
                       <TableHead className="whitespace-nowrap">เลขที่อ้างอิง</TableHead>
+                      <TableHead className="whitespace-nowrap">หมายเหตุ</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -213,6 +214,7 @@ function LotsDialog({
                           <TableCell className="text-right whitespace-nowrap">{formatTHB(lot.unitCost)}</TableCell>
                         )}
                         <TableCell className="whitespace-nowrap">{lot.referenceNo ?? "—"}</TableCell>
+                        <TableCell className="max-w-[12rem] whitespace-normal">{lot.note ?? "—"}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
