@@ -14,7 +14,7 @@ export default async function ReceiptReportPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">รายงานการรับเข้ารายเดือน</h1>
+        <h1 className="text-2xl font-semibold">รายงานการรับเข้าสินค้า</h1>
         <p className="text-sm text-muted-foreground">
           ประวัติการรับสินค้าเข้าทุกรายการ ค้นหาตามเดือนหรือรหัสสินค้าได้
         </p>

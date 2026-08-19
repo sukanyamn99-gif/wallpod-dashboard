@@ -63,9 +63,15 @@ const inventoryGroup = {
     { title: "ใบเบิกสินค้า", url: "/dashboard/stock-requisition", icon: ClipboardMinus },
     { title: "ความเคลื่อนไหวสินค้า", url: "/dashboard/stock-movement", icon: History },
     { title: "แจ้งเตือนสินค้าใกล้หมด", url: "/dashboard/inventory/alerts", icon: TriangleAlert },
-    { title: "รายงาน", url: "/dashboard/inventory/report", icon: FileBarChart },
-    { title: "รายงานการเบิกรายเดือน", url: "/dashboard/stock-requisition/report", icon: FileUp },
-    { title: "รายงานการรับเข้ารายเดือน", url: "/dashboard/goods-receipt/report", icon: FileDown },
+    {
+      title: "รายงาน",
+      url: "/dashboard/inventory/report",
+      icon: FileBarChart,
+      children: [
+        { title: "รายงานการเบิกสินค้า", url: "/dashboard/stock-requisition/report", icon: FileUp },
+        { title: "รายงานการรับเข้าสินค้า", url: "/dashboard/goods-receipt/report", icon: FileDown },
+      ],
+    },
   ],
 };
 
@@ -78,11 +84,18 @@ const ownerOnlyNavItems = [{ title: "ผู้ใช้งาน", url: "/dashbo
 
 export function AppSidebar({ profile }: { profile: Profile }) {
   const pathname = usePathname();
-  const isInventoryActive = inventoryGroup.items.some((item) => pathname === item.url);
+  const isInventoryActive = inventoryGroup.items.some(
+    (item) => pathname === item.url || item.children?.some((c) => pathname === c.url),
+  );
   const [inventoryOpen, setInventoryOpen] = useState(isInventoryActive);
 
   const visibleNavItems = navItems.filter((item) => canAccessPage(profile.role, item.url));
-  const visibleInventoryItems = inventoryGroup.items.filter((item) => canAccessPage(profile.role, item.url));
+  const visibleInventoryItems = inventoryGroup.items
+    .filter((item) => canAccessPage(profile.role, item.url))
+    .map((item) => ({
+      ...item,
+      children: item.children?.filter((c) => canAccessPage(profile.role, c.url)),
+    }));
   const visibleRemainingNavItems = remainingNavItems.filter((item) => canAccessPage(profile.role, item.url));
 
   return (
@@ -133,6 +146,24 @@ export function AppSidebar({ profile }: { profile: Profile }) {
                               </Link>
                             }
                           />
+                          {item.children && item.children.length > 0 && (
+                            <SidebarMenuSub>
+                              {item.children.map((child) => (
+                                <SidebarMenuSubItem key={child.url}>
+                                  <SidebarMenuSubButton
+                                    size="sm"
+                                    isActive={pathname === child.url}
+                                    render={
+                                      <Link href={child.url}>
+                                        <child.icon />
+                                        <span>{child.title}</span>
+                                      </Link>
+                                    }
+                                  />
+                                </SidebarMenuSubItem>
+                              ))}
+                            </SidebarMenuSub>
+                          )}
                         </SidebarMenuSubItem>
                       ))}
                     </SidebarMenuSub>

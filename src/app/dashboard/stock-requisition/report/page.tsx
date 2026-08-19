@@ -14,7 +14,7 @@ export default async function RequisitionReportPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">รายงานการเบิกรายเดือน</h1>
+        <h1 className="text-2xl font-semibold">รายงานการเบิกสินค้า</h1>
         <p className="text-sm text-muted-foreground">
           ประวัติการเบิกสินค้าทุกรายการ ค้นหาตามเดือนหรือรหัสสินค้าได้
         </p>
