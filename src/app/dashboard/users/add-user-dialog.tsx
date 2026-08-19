@@ -74,10 +74,7 @@ export function AddUserDialog() {
           <DialogBody className="space-y-4 py-4">
             {created ? (
               <p className="rounded-md bg-green-100 p-3 text-sm text-green-900">
-                สร้างบัญชีเรียบร้อย —{" "}
-                {state.needsConfirmation
-                  ? "ผู้ใช้งานต้องกดยืนยันอีเมลก่อนเข้าสู่ระบบครั้งแรก"
-                  : "ผู้ใช้งานสามารถเข้าสู่ระบบได้ทันที"}
+                สร้างบัญชีเรียบร้อย — ผู้ใช้งานสามารถเข้าสู่ระบบได้ทันที
               </p>
             ) : (
               <>
@@ -140,10 +137,6 @@ export function AddUserDialog() {
                   <Label htmlFor="department">แผนก (ถ้ามี)</Label>
                   <Input id="department" name="department" placeholder="แผนก" disabled={pending} />
                 </div>
-                <p className="rounded-md bg-amber-100 p-3 text-xs text-amber-900">
-                  ผู้ใช้งานใหม่จะเข้าสู่ระบบได้ทันทีหรือต้องยืนยันอีเมลก่อน ขึ้นอยู่กับการตั้งค่า &quot;Confirm
-                  email&quot; ใน Supabase Auth Settings ของโปรเจกต์นี้
-                </p>
               </>
             )}
           </DialogBody>
