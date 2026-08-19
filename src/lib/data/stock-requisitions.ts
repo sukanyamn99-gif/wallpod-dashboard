@@ -108,3 +108,55 @@ export async function getStockRequisitionItemsForReport(): Promise<RequisitionIt
     createdAt: row.stock_requisitions?.created_at ?? "",
   }));
 }
+
+// Flat, one-row-per-line-item view of every requisition ever submitted — the
+// source for the monthly requisition report page, which filters/groups by
+// month and product on the client rather than re-querying per filter change.
+export interface RequisitionReportRow {
+  id: string;
+  docNo: string;
+  departmentName: string | null;
+  requestedByName: string;
+  jobNo: string | null;
+  productName: string;
+  productSku: string | null;
+  quantity: number;
+  unit: string;
+  createdAt: string;
+}
+
+export async function getRequisitionReportRows(): Promise<RequisitionReportRow[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("stock_requisition_items")
+    .select(
+      "id, product_name_snapshot, product_sku_snapshot, quantity, unit_snapshot, stock_requisitions(doc_no, job_no, created_at, departments(name), profiles(full_name))",
+    );
+  if (error) throw error;
+
+  const rows: RequisitionReportRow[] = (data ?? []).map((row) => {
+    const header = row.stock_requisitions as unknown as {
+      doc_no: string;
+      job_no: string | null;
+      created_at: string;
+      departments: { name: string } | null;
+      profiles: { full_name: string } | null;
+    } | null;
+    return {
+      id: row.id,
+      docNo: header?.doc_no ?? "",
+      departmentName: header?.departments?.name ?? null,
+      requestedByName: header?.profiles?.full_name ?? "",
+      jobNo: header?.job_no ?? null,
+      productName: row.product_name_snapshot,
+      productSku: row.product_sku_snapshot,
+      quantity: Number(row.quantity),
+      unit: row.unit_snapshot,
+      createdAt: header?.created_at ?? "",
+    };
+  });
+
+  return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}

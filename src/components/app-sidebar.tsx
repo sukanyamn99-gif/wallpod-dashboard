@@ -12,6 +12,8 @@ import {
   ClipboardList,
   ClipboardMinus,
   FileBarChart,
+  FileDown,
+  FileUp,
   History,
   TriangleAlert,
   LineChart,
@@ -62,6 +64,8 @@ const inventoryGroup = {
     { title: "ความเคลื่อนไหวสินค้า", url: "/dashboard/stock-movement", icon: History },
     { title: "แจ้งเตือนสินค้าใกล้หมด", url: "/dashboard/inventory/alerts", icon: TriangleAlert },
     { title: "รายงาน", url: "/dashboard/inventory/report", icon: FileBarChart },
+    { title: "รายงานการเบิกรายเดือน", url: "/dashboard/stock-requisition/report", icon: FileUp },
+    { title: "รายงานการรับเข้ารายเดือน", url: "/dashboard/goods-receipt/report", icon: FileDown },
   ],
 };
 

@@ -78,3 +78,54 @@ export async function getGoodsReceiptById(id: string): Promise<GoodsReceipt | nu
     items: mappedItems,
   };
 }
+
+// Flat, one-row-per-line-item view of every goods receipt ever recorded —
+// the source for the monthly receipt report page, which filters/groups by
+// month and product on the client rather than re-querying per filter change.
+export interface ReceiptReportRow {
+  id: string;
+  docNo: string;
+  supplierName: string | null;
+  receivedByName: string;
+  productName: string;
+  productSku: string | null;
+  quantity: number;
+  unit: string;
+  unitCost: number;
+  createdAt: string;
+}
+
+export async function getReceiptReportRows(): Promise<ReceiptReportRow[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("goods_receipt_items")
+    .select(
+      "id, product_name_snapshot, product_sku_snapshot, quantity, unit_snapshot, unit_cost, goods_receipts(doc_no, created_at, suppliers(name), profiles(full_name))",
+    );
+  if (error) throw error;
+
+  const rows: ReceiptReportRow[] = (data ?? []).map((row) => {
+    const header = row.goods_receipts as unknown as {
+      doc_no: string;
+      created_at: string;
+      suppliers: { name: string } | null;
+      profiles: { full_name: string } | null;
+    } | null;
+    return {
+      id: row.id,
+      docNo: header?.doc_no ?? "",
+      supplierName: header?.suppliers?.name ?? null,
+      receivedByName: header?.profiles?.full_name ?? "",
+      productName: row.product_name_snapshot,
+      productSku: row.product_sku_snapshot,
+      quantity: Number(row.quantity),
+      unit: row.unit_snapshot,
+      unitCost: Number(row.unit_cost),
+      createdAt: header?.created_at ?? "",
+    };
+  });
+
+  return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
