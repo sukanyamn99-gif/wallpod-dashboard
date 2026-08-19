@@ -84,7 +84,7 @@ export function AppSidebar({ profile }: { profile: Profile }) {
   return (
     <Sidebar>
       <SidebarHeader className="px-4 py-3">
-        <p className="text-sm font-semibold">WALLPOD Owner Dashboard</p>
+        <p className="text-sm font-semibold">Koonway Co.,Ltd.</p>
         <p className="text-xs text-muted-foreground">คูนเว จำกัด</p>
       </SidebarHeader>
       <SidebarContent>
