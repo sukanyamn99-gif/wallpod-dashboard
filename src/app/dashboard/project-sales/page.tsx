@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { getFullProjectReport } from "@/lib/data/project-sales";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage, canSeeCosts } from "@/lib/permissions";
-import { JobSearchBox } from "./job-search-box";
 import { ProjectsTable } from "./projects-table";
 
 export default async function ProjectSalesPage() {
@@ -41,15 +40,6 @@ export default async function ProjectSalesPage() {
           </Button>
         </div>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>ค้นหางานเดิมเพื่อแก้ไข</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <JobSearchBox />
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>
