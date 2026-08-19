@@ -308,7 +308,7 @@ export function SaleReportTable({
           </SelectContent>
         </Select>
 
-        <div className="grid grid-cols-2 gap-3 rounded-md border p-4 text-sm sm:grid-cols-4 lg:grid-cols-7">
+        <div className="grid grid-cols-2 gap-3 rounded-md border bg-muted/40 p-4 text-sm sm:grid-cols-4 lg:grid-cols-7">
           <div>
             <p className="text-muted-foreground">จำนวนรายการ</p>
             <p className="font-medium">{summary.count} รายการ</p>
@@ -327,7 +327,7 @@ export function SaleReportTable({
 
         <div className="overflow-x-auto rounded-md border">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-muted">
               <TableRow>
                 <TableHead className="whitespace-nowrap">วันที่</TableHead>
                 <TableHead className="whitespace-nowrap">เซลล์</TableHead>
@@ -384,23 +384,27 @@ export function SaleReportTable({
                     )}
                   </TableCell>
                   <TableCell>
-                    {r.image_paths.length === 0 ? (
+                    {r.image_paths.length === 0 || !imageUrls[r.image_paths[0]] ? (
                       "—"
                     ) : (
-                      <div className="flex flex-wrap gap-1">
-                        {r.image_paths.map((path) =>
-                          imageUrls[path] ? (
-                            <a key={path} href={imageUrls[path]} target="_blank" rel="noopener noreferrer">
-                              {/* eslint-disable-next-line @next/next/no-img-element -- private signed URL, not an optimizable remote asset */}
-                              <img
-                                src={imageUrls[path]}
-                                alt=""
-                                className="h-10 w-10 rounded border object-cover"
-                              />
-                            </a>
-                          ) : null,
+                      <button
+                        type="button"
+                        onClick={() => setViewingReport(r)}
+                        className="relative block"
+                        title="ดูรูปภาพทั้งหมด"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element -- private signed URL, not an optimizable remote asset */}
+                        <img
+                          src={imageUrls[r.image_paths[0]]}
+                          alt=""
+                          className="h-10 w-10 rounded border object-cover"
+                        />
+                        {r.image_paths.length > 1 && (
+                          <span className="absolute -right-1 -bottom-1 rounded-full bg-primary px-1 text-[10px] leading-4 text-primary-foreground">
+                            +{r.image_paths.length - 1}
+                          </span>
                         )}
-                      </div>
+                      </button>
                     )}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{r.next_action ?? "—"}</TableCell>
