@@ -17,7 +17,11 @@ const VALID_ROLES: Role[] = [
 ];
 
 function friendlySignUpError(message: string): string {
-  if (message.toLowerCase().includes("already registered")) return "มีบัญชีนี้ในระบบแล้ว";
+  const lower = message.toLowerCase();
+  if (lower.includes("already registered")) return "มีบัญชีนี้ในระบบแล้ว";
+  if (lower.includes("rate limit")) {
+    return "ระบบส่งอีเมลยืนยันได้จำกัดจำนวนต่อชั่วโมง (ค่าเริ่มต้นของ Supabase) ขณะนี้เกินโควต้าแล้ว กรุณารอสักครู่แล้วลองใหม่ หรือแจ้งผู้ดูแลระบบให้ปิดการยืนยันอีเมล (Authentication → Providers → Email → Confirm email) ใน Supabase Studio เพื่อไม่ต้องส่งอีเมลทุกครั้งที่เพิ่มผู้ใช้งาน";
+  }
   return message;
 }
 
