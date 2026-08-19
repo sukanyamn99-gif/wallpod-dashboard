@@ -83,13 +83,14 @@ export default async function GpDashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="มูลค่ารวม (Pre-VAT)" value={formatTHB(data.kpis.totalPreVat)} icon={CircleDollarSign} />
-        <KpiCard label="ต้นทุนรวม" value={formatTHB(data.kpis.totalCost)} icon={Receipt} />
-        <KpiCard label="กำไรขั้นต้นรวม" value={formatTHB(data.kpis.totalProfit)} icon={TrendingUp} />
+        <KpiCard label="มูลค่ารวม (Pre-VAT)" value={formatTHB(data.kpis.totalPreVat)} icon={CircleDollarSign} tone="blue" />
+        <KpiCard label="ต้นทุนรวม" value={formatTHB(data.kpis.totalCost)} icon={Receipt} tone="amber" />
+        <KpiCard label="กำไรขั้นต้นรวม" value={formatTHB(data.kpis.totalProfit)} icon={TrendingUp} tone="green" />
         <KpiCard
           label="อัตรากำไรขั้นต้นเฉลี่ย"
           value={`${data.kpis.avgMarginPercent.toFixed(1)}%`}
           icon={Percent}
+          tone="violet"
         />
       </div>
 

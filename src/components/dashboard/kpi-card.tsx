@@ -7,6 +7,7 @@ const TONE_CLASSES = {
   green: "bg-[color-mix(in_oklch,var(--chart-2),transparent_86%)] text-[var(--chart-2)]",
   amber: "bg-[color-mix(in_oklch,var(--chart-3),transparent_86%)] text-[var(--chart-3)]",
   violet: "bg-[color-mix(in_oklch,var(--chart-5),transparent_86%)] text-[var(--chart-5)]",
+  rose: "bg-[color-mix(in_oklch,var(--destructive),transparent_86%)] text-[var(--destructive)]",
 } as const;
 
 export function KpiCard({

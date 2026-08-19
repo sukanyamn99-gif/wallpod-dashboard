@@ -123,14 +123,14 @@ export function InventoryReportView({
       </div>
 
       <div className={`grid grid-cols-1 gap-4 ${canSeeCosts ? "sm:grid-cols-4" : "sm:grid-cols-2"}`}>
-        <KpiCard label="สินค้าทั้งหมด" value={`${dashboardData.skuCount} รายการ`} icon={Boxes} />
+        <KpiCard label="สินค้าทั้งหมด" value={`${dashboardData.skuCount} รายการ`} icon={Boxes} tone="blue" />
         {canSeeCosts && (
           <>
-            <KpiCard label="มูลค่าสินค้าคงคลัง" value={formatTHB(dashboardData.totalStockValue)} icon={PackageSearch} />
-            <KpiCard label="มูลค่าเฉลี่ย/รายการ" value={formatTHB(avgValuePerItem)} icon={Wallet} />
+            <KpiCard label="มูลค่าสินค้าคงคลัง" value={formatTHB(dashboardData.totalStockValue)} icon={PackageSearch} tone="green" />
+            <KpiCard label="มูลค่าเฉลี่ย/รายการ" value={formatTHB(avgValuePerItem)} icon={Wallet} tone="violet" />
           </>
         )}
-        <KpiCard label="สินค้าใกล้หมด" value={`${dashboardData.lowStockCount} รายการ`} icon={AlertTriangle} />
+        <KpiCard label="สินค้าใกล้หมด" value={`${dashboardData.lowStockCount} รายการ`} icon={AlertTriangle} tone="rose" />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

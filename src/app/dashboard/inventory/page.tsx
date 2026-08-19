@@ -28,11 +28,11 @@ export default async function StockDashboardPage() {
       </div>
 
       <div className={`grid gap-4 ${showCosts ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-        <KpiCard label="จำนวนรายการสินค้า" value={`${data.skuCount} รายการ`} icon={Boxes} />
+        <KpiCard label="จำนวนรายการสินค้า" value={`${data.skuCount} รายการ`} icon={Boxes} tone="blue" />
         {showCosts && (
-          <KpiCard label="มูลค่าสต๊อกรวม" value={formatTHB(data.totalStockValue)} icon={PackageSearch} />
+          <KpiCard label="มูลค่าสต๊อกรวม" value={formatTHB(data.totalStockValue)} icon={PackageSearch} tone="green" />
         )}
-        <KpiCard label="รายการต่ำกว่าจุดสั่งซื้อ" value={`${data.lowStockCount} รายการ`} icon={AlertTriangle} />
+        <KpiCard label="รายการต่ำกว่าจุดสั่งซื้อ" value={`${data.lowStockCount} รายการ`} icon={AlertTriangle} tone="rose" />
       </div>
 
       {showCosts && <StockByCategoryChart data={data.categoryBreakdown} />}

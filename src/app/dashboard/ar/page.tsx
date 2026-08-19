@@ -34,10 +34,10 @@ export default async function ArDashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="ลูกหนี้คงค้างรวม" value={formatTHB(data.kpis.totalOutstanding)} icon={CircleDollarSign} />
-        <KpiCard label="จำนวนงานค้างชำระ" value={`${data.kpis.receivableCount} งาน`} icon={Briefcase} />
-        <KpiCard label="อายุหนี้เฉลี่ย" value={`${Math.round(data.kpis.avgAgeDays)} วัน`} icon={Clock} />
-        <KpiCard label="ลูกหนี้ค้างนานที่สุด" value={`${data.kpis.oldestAgeDays} วัน`} icon={AlertTriangle} />
+        <KpiCard label="ลูกหนี้คงค้างรวม" value={formatTHB(data.kpis.totalOutstanding)} icon={CircleDollarSign} tone="blue" />
+        <KpiCard label="จำนวนงานค้างชำระ" value={`${data.kpis.receivableCount} งาน`} icon={Briefcase} tone="violet" />
+        <KpiCard label="อายุหนี้เฉลี่ย" value={`${Math.round(data.kpis.avgAgeDays)} วัน`} icon={Clock} tone="amber" />
+        <KpiCard label="ลูกหนี้ค้างนานที่สุด" value={`${data.kpis.oldestAgeDays} วัน`} icon={AlertTriangle} tone="rose" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
