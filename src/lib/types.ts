@@ -138,6 +138,7 @@ export interface Project {
   pre_vat: number;
   vat: number;
   total: number;
+  items: { category: ProductCategory; amount: number }[];
 }
 
 export interface SaleReport {

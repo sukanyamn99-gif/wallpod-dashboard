@@ -57,7 +57,13 @@ function ChartTooltip({
   );
 }
 
-export function PipelineByStageChart({ data }: { data: SalesDashboardData["pipelineByStage"] }) {
+export function PipelineByStageChart({
+  data,
+  onBarClick,
+}: {
+  data: SalesDashboardData["pipelineByStage"];
+  onBarClick?: (stage: SalesDashboardData["pipelineByStage"][number]["stage"]) => void;
+}) {
   return (
     <Card>
       <CardHeader>
@@ -81,7 +87,17 @@ export function PipelineByStageChart({ data }: { data: SalesDashboardData["pipel
               width={90}
             />
             <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--muted)" }} />
-            <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={64}>
+            <Bar
+              dataKey="value"
+              radius={[4, 4, 0, 0]}
+              maxBarSize={64}
+              onClick={
+                onBarClick
+                  ? (entry) => onBarClick((entry.payload as SalesDashboardData["pipelineByStage"][number]).stage)
+                  : undefined
+              }
+              cursor={onBarClick ? "pointer" : undefined}
+            >
               {data.map((entry) => (
                 <Cell key={entry.stage} fill={STAGE_COLOR_BY_PERCENT[entry.stage]} />
               ))}
@@ -93,7 +109,13 @@ export function PipelineByStageChart({ data }: { data: SalesDashboardData["pipel
   );
 }
 
-export function CustomerTypeChart({ data }: { data: SalesDashboardData["customerTypeBreakdown"] }) {
+export function CustomerTypeChart({
+  data,
+  onSliceClick,
+}: {
+  data: SalesDashboardData["customerTypeBreakdown"];
+  onSliceClick?: (type: SalesDashboardData["customerTypeBreakdown"][number]["type"]) => void;
+}) {
   const total = data.reduce((sum, d) => sum + d.value, 0);
 
   return (
@@ -113,6 +135,12 @@ export function CustomerTypeChart({ data }: { data: SalesDashboardData["customer
               paddingAngle={2}
               stroke="var(--card)"
               strokeWidth={2}
+              onClick={
+                onSliceClick
+                  ? (entry) => onSliceClick((entry.payload as SalesDashboardData["customerTypeBreakdown"][number]).type)
+                  : undefined
+              }
+              cursor={onSliceClick ? "pointer" : undefined}
             >
               {data.map((entry, i) => (
                 <Cell key={entry.type} fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]} />
@@ -139,7 +167,13 @@ export function CustomerTypeChart({ data }: { data: SalesDashboardData["customer
   );
 }
 
-export function ProductCategoryChart({ data }: { data: SalesDashboardData["categoryBreakdown"] }) {
+export function ProductCategoryChart({
+  data,
+  onSliceClick,
+}: {
+  data: SalesDashboardData["categoryBreakdown"];
+  onSliceClick?: (category: SalesDashboardData["categoryBreakdown"][number]["category"]) => void;
+}) {
   const total = data.reduce((sum, d) => sum + d.value, 0);
 
   return (
@@ -159,6 +193,12 @@ export function ProductCategoryChart({ data }: { data: SalesDashboardData["categ
               paddingAngle={2}
               stroke="var(--card)"
               strokeWidth={2}
+              onClick={
+                onSliceClick
+                  ? (entry) => onSliceClick((entry.payload as SalesDashboardData["categoryBreakdown"][number]).category)
+                  : undefined
+              }
+              cursor={onSliceClick ? "pointer" : undefined}
             >
               {data.map((entry, i) => (
                 <Cell key={entry.category} fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]} />
@@ -187,8 +227,10 @@ export function ProductCategoryChart({ data }: { data: SalesDashboardData["categ
 
 export function SalesRepPerformanceChart({
   data,
+  onBarClick,
 }: {
   data: SalesDashboardData["salesRepPerformance"];
+  onBarClick?: (salesRepId: string) => void;
 }) {
   return (
     <Card>
@@ -229,7 +271,17 @@ export function SalesRepPerformanceChart({
               }}
               cursor={{ fill: "var(--muted)" }}
             />
-            <Bar dataKey="totalValue" radius={[0, 4, 4, 0]} maxBarSize={28}>
+            <Bar
+              dataKey="totalValue"
+              radius={[0, 4, 4, 0]}
+              maxBarSize={28}
+              onClick={
+                onBarClick
+                  ? (entry) => onBarClick((entry.payload as SalesDashboardData["salesRepPerformance"][number]).salesRepId)
+                  : undefined
+              }
+              cursor={onBarClick ? "pointer" : undefined}
+            >
               {data.map((entry, i) => (
                 <Cell key={entry.salesRepId} fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]} />
               ))}
@@ -274,8 +326,10 @@ function RepMonthlyTooltip({
 
 export function RepMonthlyPerformanceChart({
   data,
+  onBarClick,
 }: {
   data: SalesDashboardData["repMonthlyPerformance"];
+  onBarClick?: (salesRepId: string, monthIndex: number) => void;
 }) {
   const chartData = data.months.map((month, i) => {
     const point: Record<string, string | number> = { month };
@@ -320,6 +374,8 @@ export function RepMonthlyPerformanceChart({
                 fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]}
                 radius={[3, 3, 0, 0]}
                 maxBarSize={16}
+                onClick={onBarClick ? (_entry, index) => onBarClick(row.salesRepId, index) : undefined}
+                cursor={onBarClick ? "pointer" : undefined}
               />
             ))}
           </BarChart>
@@ -329,7 +385,13 @@ export function RepMonthlyPerformanceChart({
   );
 }
 
-export function MonthlySalesChart({ data }: { data: SalesDashboardData["monthlySales"] }) {
+export function MonthlySalesChart({
+  data,
+  onBarClick,
+}: {
+  data: SalesDashboardData["monthlySales"];
+  onBarClick?: (monthIndex: number) => void;
+}) {
   return (
     <Card>
       <CardHeader>
@@ -353,7 +415,14 @@ export function MonthlySalesChart({ data }: { data: SalesDashboardData["monthlyS
               width={90}
             />
             <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--muted)" }} />
-            <Bar dataKey="value" fill="var(--chart-1)" radius={[4, 4, 0, 0]} maxBarSize={48} />
+            <Bar
+              dataKey="value"
+              fill="var(--chart-1)"
+              radius={[4, 4, 0, 0]}
+              maxBarSize={48}
+              onClick={onBarClick ? (_entry, index) => onBarClick(index) : undefined}
+              cursor={onBarClick ? "pointer" : undefined}
+            />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>

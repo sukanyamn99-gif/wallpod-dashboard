@@ -23,6 +23,13 @@ export const mockCustomers: Customer[] = [
 const repById = Object.fromEntries(mockSalesReps.map((r) => [r.id, r.name]));
 const cusById = Object.fromEntries(mockCustomers.map((c) => [c.id, c]));
 
+// Cycled across mock projects (by index) purely so the demo/no-Supabase
+// fallback has *some* per-project category breakdown to filter — not meant
+// to reconcile exactly with mockCategoryBreakdown's own totals below.
+const MOCK_ITEM_CATEGORIES: ProductCategory[] = [
+  "WALLPOD", "ACOUSHEET", "ACOUSOFT", "ACUBOX", "CNC", "SERVICE", "WALLPAPER", "OTHER",
+];
+
 function project(p: {
   id: string;
   job_no: string;
@@ -32,6 +39,7 @@ function project(p: {
   sales_rep_id: string;
   stage_percent: 10 | 30 | 50 | 100;
   pre_vat: number;
+  index: number;
 }): Project {
   const date = new Date();
   date.setDate(date.getDate() - p.daysAgo);
@@ -51,20 +59,21 @@ function project(p: {
     pre_vat: p.pre_vat,
     vat,
     total: p.pre_vat + vat,
+    items: [{ category: MOCK_ITEM_CATEGORIES[p.index % MOCK_ITEM_CATEGORIES.length], amount: p.pre_vat }],
   };
 }
 
 export const mockProjects: Project[] = [
-  project({ id: "p1", job_no: "J-2607-01", daysAgo: 2, customer_id: "cus-1", project_name: "สตูดิโอบันทึกเสียง สยามดีไซน์", sales_rep_id: "rep-1", stage_percent: 50, pre_vat: 420000 }),
-  project({ id: "p2", job_no: "J-2607-02", daysAgo: 10, customer_id: "cus-2", project_name: "ห้องดนตรี รร.วัดสุทธิ", sales_rep_id: "rep-2", stage_percent: 30, pre_vat: 180000 }),
-  project({ id: "p3", job_no: "J-2607-03", daysAgo: 1, customer_id: "cus-3", project_name: "คอนโด เทิร์นคีย์ เฟส 2", sales_rep_id: "rep-3", stage_percent: 10, pre_vat: 950000 }),
-  project({ id: "p4", job_no: "J-2607-04", daysAgo: 15, customer_id: "cus-4", project_name: "ห้องโฮมเธียเตอร์ คุณวรรณา", sales_rep_id: "rep-1", stage_percent: 100, pre_vat: 95000 }),
-  project({ id: "p5", job_no: "J-2607-05", daysAgo: 5, customer_id: "cus-5", project_name: "ห้องประชุมสำนักงานใหญ่", sales_rep_id: "rep-2", stage_percent: 100, pre_vat: 260000 }),
-  project({ id: "p6", job_no: "J-2607-06", daysAgo: 20, customer_id: "cus-6", project_name: "อาคารพาณิชย์ 5 ชั้น", sales_rep_id: "rep-3", stage_percent: 50, pre_vat: 610000 }),
-  project({ id: "p7", job_no: "J-2607-07", daysAgo: 3, customer_id: "cus-7", project_name: "โชว์รูมตัวแทนจำหน่ายภาคเหนือ", sales_rep_id: "rep-1", stage_percent: 30, pre_vat: 150000 }),
-  project({ id: "p8", job_no: "J-2607-08", daysAgo: 8, customer_id: "cus-1", project_name: "ห้องประชุมเล็ก สยามดีไซน์", sales_rep_id: "rep-2", stage_percent: 100, pre_vat: 88000 }),
-  project({ id: "p9", job_no: "J-2607-09", daysAgo: 12, customer_id: "cus-3", project_name: "คอนโด เทิร์นคีย์ เฟส 1", sales_rep_id: "rep-3", stage_percent: 100, pre_vat: 720000 }),
-  project({ id: "p10", job_no: "J-2607-10", daysAgo: 0, customer_id: "cus-4", project_name: "ผนังกันเสียงห้องซ้อมดนตรี", sales_rep_id: "rep-1", stage_percent: 10, pre_vat: 65000 }),
+  project({ id: "p1", job_no: "J-2607-01", daysAgo: 2, customer_id: "cus-1", project_name: "สตูดิโอบันทึกเสียง สยามดีไซน์", sales_rep_id: "rep-1", stage_percent: 50, pre_vat: 420000, index: 0 }),
+  project({ id: "p2", job_no: "J-2607-02", daysAgo: 10, customer_id: "cus-2", project_name: "ห้องดนตรี รร.วัดสุทธิ", sales_rep_id: "rep-2", stage_percent: 30, pre_vat: 180000, index: 1 }),
+  project({ id: "p3", job_no: "J-2607-03", daysAgo: 1, customer_id: "cus-3", project_name: "คอนโด เทิร์นคีย์ เฟส 2", sales_rep_id: "rep-3", stage_percent: 10, pre_vat: 950000, index: 2 }),
+  project({ id: "p4", job_no: "J-2607-04", daysAgo: 15, customer_id: "cus-4", project_name: "ห้องโฮมเธียเตอร์ คุณวรรณา", sales_rep_id: "rep-1", stage_percent: 100, pre_vat: 95000, index: 3 }),
+  project({ id: "p5", job_no: "J-2607-05", daysAgo: 5, customer_id: "cus-5", project_name: "ห้องประชุมสำนักงานใหญ่", sales_rep_id: "rep-2", stage_percent: 100, pre_vat: 260000, index: 4 }),
+  project({ id: "p6", job_no: "J-2607-06", daysAgo: 20, customer_id: "cus-6", project_name: "อาคารพาณิชย์ 5 ชั้น", sales_rep_id: "rep-3", stage_percent: 50, pre_vat: 610000, index: 5 }),
+  project({ id: "p7", job_no: "J-2607-07", daysAgo: 3, customer_id: "cus-7", project_name: "โชว์รูมตัวแทนจำหน่ายภาคเหนือ", sales_rep_id: "rep-1", stage_percent: 30, pre_vat: 150000, index: 6 }),
+  project({ id: "p8", job_no: "J-2607-08", daysAgo: 8, customer_id: "cus-1", project_name: "ห้องประชุมเล็ก สยามดีไซน์", sales_rep_id: "rep-2", stage_percent: 100, pre_vat: 88000, index: 7 }),
+  project({ id: "p9", job_no: "J-2607-09", daysAgo: 12, customer_id: "cus-3", project_name: "คอนโด เทิร์นคีย์ เฟส 1", sales_rep_id: "rep-3", stage_percent: 100, pre_vat: 720000, index: 0 }),
+  project({ id: "p10", job_no: "J-2607-10", daysAgo: 0, customer_id: "cus-4", project_name: "ผนังกันเสียงห้องซ้อมดนตรี", sales_rep_id: "rep-1", stage_percent: 10, pre_vat: 65000, index: 1 }),
 ];
 
 export const mockCustomerTypes: CustomerType[] = [

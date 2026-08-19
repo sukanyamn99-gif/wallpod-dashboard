@@ -4,13 +4,7 @@ import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { MultiSelectFilter } from "@/components/dashboard/multi-select-filter";
 import {
   Table,
   TableBody,
@@ -208,7 +202,8 @@ export function ProjectsTable({
   canSeeCosts: boolean;
 }) {
   const [query, setQuery] = useState("");
-  const [selectedMonth, setSelectedMonth] = useState("all");
+  const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set());
+  const [selectedSalesReps, setSelectedSalesReps] = useState<Set<string>>(new Set());
   const totalColumns =
     BASE_COLUMNS + categories.length + TAIL_COLUMNS - (canSeeCosts ? 0 : COST_COLUMNS);
 
@@ -217,6 +212,13 @@ export function ProjectsTable({
     return Array.from(keys)
       .sort()
       .map((key) => ({ value: key, label: monthLabelOf(key) }));
+  }, [projects]);
+
+  const salesRepOptions = useMemo(() => {
+    const names = new Set(projects.map((p) => p.salesRepName).filter(Boolean));
+    return Array.from(names)
+      .sort((a, b) => a.localeCompare(b, "th"))
+      .map((name) => ({ value: name, label: name }));
   }, [projects]);
 
   const searched = useMemo(() => {
@@ -232,9 +234,12 @@ export function ProjectsTable({
   }, [projects, query]);
 
   const filtered = useMemo(() => {
-    if (selectedMonth === "all") return searched;
-    return searched.filter((p) => monthKeyOf(p.projectDate) === selectedMonth);
-  }, [searched, selectedMonth]);
+    return searched.filter((p) => {
+      if (selectedMonths.size > 0 && !selectedMonths.has(monthKeyOf(p.projectDate))) return false;
+      if (selectedSalesReps.size > 0 && !selectedSalesReps.has(p.salesRepName)) return false;
+      return true;
+    });
+  }, [searched, selectedMonths, selectedSalesReps]);
 
   const summary = useMemo(() => sumRows(filtered), [filtered]);
 
@@ -273,23 +278,20 @@ export function ProjectsTable({
           placeholder="ค้นหา JOB NO. / ลูกค้า / ชื่องาน / เซลล์"
           className="max-w-sm"
         />
-        <Select
-          value={selectedMonth}
-          onValueChange={(v) => setSelectedMonth(v as string)}
-          items={[{ value: "all", label: "ทุกเดือน" }, ...monthOptions]}
-        >
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="ทุกเดือน" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">ทุกเดือน</SelectItem>
-            {monthOptions.map((m) => (
-              <SelectItem key={m.value} value={m.value}>
-                {m.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <MultiSelectFilter
+          allLabel="ทุกเดือน"
+          countLabel="เดือน"
+          options={monthOptions}
+          selected={selectedMonths}
+          onChange={setSelectedMonths}
+        />
+        <MultiSelectFilter
+          allLabel="ทุกเซลล์"
+          countLabel="เซลล์"
+          options={salesRepOptions}
+          selected={selectedSalesReps}
+          onChange={setSelectedSalesReps}
+        />
       </div>
 
       <div className="flex flex-wrap gap-3">
