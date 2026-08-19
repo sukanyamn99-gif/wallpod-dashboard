@@ -20,6 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatTHB } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { FullProjectRow } from "@/lib/data/project-sales";
 
 const BASE_COLUMNS = 7;
@@ -31,9 +32,19 @@ const THAI_MONTHS = [
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
 ];
 
-function Money({ value }: { value: number | null | undefined }) {
-  return <TableCell className="text-right whitespace-nowrap">{value ? formatTHB(value) : "—"}</TableCell>;
+function Money({ value, className }: { value: number | null | undefined; className?: string }) {
+  return (
+    <TableCell className={cn("text-right whitespace-nowrap", className)}>
+      {value ? formatTHB(value) : "—"}
+    </TableCell>
+  );
 }
+
+// Tints the per-category amount columns (a variable-width block of columns
+// in the middle of an otherwise very wide table) so they read as one visual
+// group at a glance, separate from the fixed job-detail and totals columns
+// on either side.
+const CATEGORY_GROUP_CLASS = "bg-muted/40";
 
 function SubtotalStat({
   label,
@@ -111,7 +122,7 @@ function ProjectRow({
       <TableCell className="whitespace-nowrap">{p.customerType}</TableCell>
       <TableCell className="whitespace-nowrap">{p.productionStatus ?? "—"}</TableCell>
       {categories.map((cat) => (
-        <Money key={cat} value={p.itemsByCategory[cat]} />
+        <Money key={cat} value={p.itemsByCategory[cat]} className={CATEGORY_GROUP_CLASS} />
       ))}
       <Money value={p.preVat} />
       <Money value={p.vat} />
@@ -291,7 +302,7 @@ export function ProjectsTable({
               <TableHead className="whitespace-nowrap">Customer Type</TableHead>
               <TableHead className="whitespace-nowrap">สถานะของงาน</TableHead>
               {categories.map((cat) => (
-                <TableHead key={cat} className="text-right whitespace-nowrap">
+                <TableHead key={cat} className={cn("text-right whitespace-nowrap", CATEGORY_GROUP_CLASS)}>
                   {cat}
                 </TableHead>
               ))}
