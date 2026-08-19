@@ -40,11 +40,15 @@ function Money({ value, className }: { value: number | null | undefined; classNa
   );
 }
 
-// Tints the per-category amount columns (a variable-width block of columns
-// in the middle of an otherwise very wide table) so they read as one visual
-// group at a glance, separate from the fixed job-detail and totals columns
-// on either side.
-const CATEGORY_GROUP_CLASS = "bg-muted/40";
+// Tints each block of related columns in this very wide table with its own
+// pale hue (reusing the app's existing chart palette) so every group reads
+// as a distinct zone while scrolling horizontally — not just "category" vs
+// "everything else," but category / VAT-and-totals / cost / payment each
+// getting their own color.
+const CATEGORY_GROUP_CLASS = "bg-[color-mix(in_oklch,var(--chart-1),transparent_82%)]";
+const VAT_GROUP_CLASS = "bg-[color-mix(in_oklch,var(--chart-3),transparent_78%)]";
+const COST_GROUP_CLASS = "bg-[color-mix(in_oklch,var(--chart-5),transparent_84%)]";
+const PAYMENT_GROUP_CLASS = "bg-[color-mix(in_oklch,var(--chart-2),transparent_84%)]";
 
 function SubtotalStat({
   label,
@@ -124,29 +128,29 @@ function ProjectRow({
       {categories.map((cat) => (
         <Money key={cat} value={p.itemsByCategory[cat]} className={CATEGORY_GROUP_CLASS} />
       ))}
-      <Money value={p.preVat} />
-      <Money value={p.vat} />
-      <Money value={p.total} />
+      <Money value={p.preVat} className={VAT_GROUP_CLASS} />
+      <Money value={p.vat} className={VAT_GROUP_CLASS} />
+      <Money value={p.total} className={VAT_GROUP_CLASS} />
       {canSeeCosts && (
         <>
-          <Money value={p.costs?.material} />
-          <Money value={p.costs?.glue} />
-          <Money value={p.costs?.cutting} />
-          <Money value={p.costs?.install} />
-          <Money value={p.costs?.parking} />
-          <Money value={p.costs?.shipping} />
-          <Money value={p.costs?.totalCost} />
-          <Money value={p.profit} />
+          <Money value={p.costs?.material} className={COST_GROUP_CLASS} />
+          <Money value={p.costs?.glue} className={COST_GROUP_CLASS} />
+          <Money value={p.costs?.cutting} className={COST_GROUP_CLASS} />
+          <Money value={p.costs?.install} className={COST_GROUP_CLASS} />
+          <Money value={p.costs?.parking} className={COST_GROUP_CLASS} />
+          <Money value={p.costs?.shipping} className={COST_GROUP_CLASS} />
+          <Money value={p.costs?.totalCost} className={COST_GROUP_CLASS} />
+          <Money value={p.profit} className={COST_GROUP_CLASS} />
         </>
       )}
-      <TableCell className="whitespace-nowrap">{p.invoiceNo1 ?? "—"}</TableCell>
-      <Money value={p.amount1} />
-      <TableCell className="whitespace-nowrap">{p.paidDate1 ?? "—"}</TableCell>
-      <TableCell className="whitespace-nowrap">{p.invoiceNo2 ?? "—"}</TableCell>
-      <Money value={p.amount2} />
-      <TableCell className="whitespace-nowrap">{p.paidDate2 ?? "—"}</TableCell>
-      <TableCell className="whitespace-nowrap">{p.status ?? "—"}</TableCell>
-      <Money value={p.outstanding} />
+      <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.invoiceNo1 ?? "—"}</TableCell>
+      <Money value={p.amount1} className={PAYMENT_GROUP_CLASS} />
+      <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.paidDate1 ?? "—"}</TableCell>
+      <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.invoiceNo2 ?? "—"}</TableCell>
+      <Money value={p.amount2} className={PAYMENT_GROUP_CLASS} />
+      <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.paidDate2 ?? "—"}</TableCell>
+      <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.status ?? "—"}</TableCell>
+      <Money value={p.outstanding} className={PAYMENT_GROUP_CLASS} />
     </TableRow>
   );
 }
@@ -306,29 +310,29 @@ export function ProjectsTable({
                   {cat}
                 </TableHead>
               ))}
-              <TableHead className="text-right whitespace-nowrap">PRE.VAT</TableHead>
-              <TableHead className="text-right whitespace-nowrap">VAT</TableHead>
-              <TableHead className="text-right whitespace-nowrap">รวมทั้งสิ้น</TableHead>
+              <TableHead className={cn("text-right whitespace-nowrap", VAT_GROUP_CLASS)}>PRE.VAT</TableHead>
+              <TableHead className={cn("text-right whitespace-nowrap", VAT_GROUP_CLASS)}>VAT</TableHead>
+              <TableHead className={cn("text-right whitespace-nowrap", VAT_GROUP_CLASS)}>รวมทั้งสิ้น</TableHead>
               {canSeeCosts && (
                 <>
-                  <TableHead className="text-right whitespace-nowrap">ค่าวัสดุ</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">ค่ากาว</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">ค่าตัด</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">ค่าติดตั้งผู้รับเหมา</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">ค่าที่จอดรถ</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">ค่าขนส่ง</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">รวมต้นทุน</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">กำไร</TableHead>
+                  <TableHead className={cn("text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่าวัสดุ</TableHead>
+                  <TableHead className={cn("text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่ากาว</TableHead>
+                  <TableHead className={cn("text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่าตัด</TableHead>
+                  <TableHead className={cn("text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่าติดตั้งผู้รับเหมา</TableHead>
+                  <TableHead className={cn("text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่าที่จอดรถ</TableHead>
+                  <TableHead className={cn("text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่าขนส่ง</TableHead>
+                  <TableHead className={cn("text-right whitespace-nowrap", COST_GROUP_CLASS)}>รวมต้นทุน</TableHead>
+                  <TableHead className={cn("text-right whitespace-nowrap", COST_GROUP_CLASS)}>กำไร</TableHead>
                 </>
               )}
-              <TableHead className="whitespace-nowrap">เลขที่เอกสาร (งวด 1)</TableHead>
-              <TableHead className="text-right whitespace-nowrap">งวดที่ 1 จำนวนเงิน</TableHead>
-              <TableHead className="whitespace-nowrap">วันที่รับชำระ (งวด 1)</TableHead>
-              <TableHead className="whitespace-nowrap">เลขที่เอกสาร (งวด 2)</TableHead>
-              <TableHead className="text-right whitespace-nowrap">งวดที่ 2 จำนวนเงิน</TableHead>
-              <TableHead className="whitespace-nowrap">วันที่รับชำระ (งวด 2)</TableHead>
-              <TableHead className="whitespace-nowrap">สถานะ</TableHead>
-              <TableHead className="text-right whitespace-nowrap">ยอดคงค้าง</TableHead>
+              <TableHead className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>เลขที่เอกสาร (งวด 1)</TableHead>
+              <TableHead className={cn("text-right whitespace-nowrap", PAYMENT_GROUP_CLASS)}>งวดที่ 1 จำนวนเงิน</TableHead>
+              <TableHead className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>วันที่รับชำระ (งวด 1)</TableHead>
+              <TableHead className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>เลขที่เอกสาร (งวด 2)</TableHead>
+              <TableHead className={cn("text-right whitespace-nowrap", PAYMENT_GROUP_CLASS)}>งวดที่ 2 จำนวนเงิน</TableHead>
+              <TableHead className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>วันที่รับชำระ (งวด 2)</TableHead>
+              <TableHead className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>สถานะ</TableHead>
+              <TableHead className={cn("text-right whitespace-nowrap", PAYMENT_GROUP_CLASS)}>ยอดคงค้าง</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
