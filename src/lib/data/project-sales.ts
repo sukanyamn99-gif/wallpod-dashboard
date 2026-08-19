@@ -63,38 +63,53 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
 
   const supabase = await createClient();
 
-  const { data: projects, error: projectsErr } = await supabase
-    .from("projects")
-    .select(
-      "id, job_no, project_date, project_name, customer_type, pre_vat, vat, total, is_cancelled, production_status, customers(name), sales_reps(name)",
-    )
-    .order("project_date", { ascending: false });
-  if (projectsErr) throw projectsErr;
-
-  const projectIds = (projects ?? []).map((p) => p.id);
-  const [
-    { data: items, error: itemsErr },
-    { data: costs, error: costsErr },
-    { data: payments, error: paymentsErr },
-    liveCategories,
-  ] = await Promise.all([
-    supabase.from("project_items").select("project_id, product_category, amount").in("project_id", projectIds),
-    supabase.from("project_costs").select("*").in("project_id", projectIds),
-    supabase.from("payments").select("*").in("project_id", projectIds).order("installment_no"),
+  // One round trip: PostgREST embeds project_items/project_costs/payments
+  // via their project_id foreign keys instead of fetching each table
+  // separately and joining client-side — this used to be 2 sequential
+  // round trips (projects, then Promise.all of the child tables), which
+  // mattered a lot more before the Vercel function was colocated with
+  // Supabase, but still adds up since this function backs 4 different pages.
+  const [{ data: projects, error: projectsErr }, liveCategories] = await Promise.all([
+    supabase
+      .from("projects")
+      .select(
+        "id, job_no, project_date, project_name, customer_type, pre_vat, vat, total, is_cancelled, production_status, customers(name), sales_reps(name), project_items(product_category, amount), project_costs(material_cost, glue_cost, cutting_cost, install_cost, parking_cost, shipping_cost, total_cost), payments(invoice_no, installment_no, amount, paid_date, status, outstanding_amount)",
+      )
+      .order("project_date", { ascending: false })
+      .order("installment_no", { foreignTable: "payments", ascending: true }),
     getProductCategories(),
   ]);
-  if (itemsErr) throw itemsErr;
-  if (costsErr) throw costsErr;
-  if (paymentsErr) throw paymentsErr;
+  if (projectsErr) throw projectsErr;
+
+  type EmbeddedItem = { product_category: string; amount: number };
+  type EmbeddedCosts = {
+    material_cost: number;
+    glue_cost: number;
+    cutting_cost: number;
+    install_cost: number;
+    parking_cost: number;
+    shipping_cost: number;
+    total_cost: number;
+  };
+  type EmbeddedPayment = {
+    invoice_no: string | null;
+    installment_no: number;
+    amount: number;
+    paid_date: string | null;
+    status: string | null;
+    outstanding_amount: number;
+  };
 
   const categorySet = new Set(liveCategories.map((c) => c.name));
-  for (const it of items ?? []) categorySet.add(it.product_category);
+  for (const p of projects ?? []) {
+    for (const it of (p.project_items as unknown as EmbeddedItem[]) ?? []) categorySet.add(it.product_category);
+  }
   const categories = Array.from(categorySet).sort();
 
   const rows = (projects ?? []).map((p) => {
-    const projectItems = (items ?? []).filter((it) => it.project_id === p.id);
-    const projectCosts = (costs ?? []).find((c) => c.project_id === p.id);
-    const projectPayments = (payments ?? []).filter((pay) => pay.project_id === p.id);
+    const projectItems = (p.project_items as unknown as EmbeddedItem[]) ?? [];
+    const projectCosts = (p.project_costs as unknown as EmbeddedCosts | null) ?? null;
+    const projectPayments = (p.payments as unknown as EmbeddedPayment[]) ?? [];
     const payment1 = projectPayments.find((pay) => pay.installment_no === 1);
     const payment2 = projectPayments.find((pay) => pay.installment_no === 2);
 
@@ -154,28 +169,41 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
 
   const supabase = await createClient();
 
+  // One round trip via PostgREST embedding instead of fetching the project
+  // then its children separately — same optimization as getFullProjectReport().
   const { data: project, error: projectErr } = await supabase
     .from("projects")
     .select(
-      "id, job_no, project_date, customer_id, project_name, sales_rep_id, customer_type, pre_vat, vat, is_cancelled, production_status, customers(name)",
+      "id, job_no, project_date, customer_id, project_name, sales_rep_id, customer_type, pre_vat, vat, is_cancelled, production_status, customers(name), project_items(product_category, amount), project_costs(material_cost, glue_cost, cutting_cost, install_cost, parking_cost, shipping_cost), payments(invoice_no, installment_no, amount, paid_date, status)",
     )
     .eq("job_no", jobNo)
+    .order("installment_no", { foreignTable: "payments", ascending: true })
     .maybeSingle();
   if (projectErr) throw projectErr;
   if (!project) return null;
 
-  const [{ data: items, error: itemsErr }, { data: costs, error: costsErr }, { data: payments, error: paymentsErr }] =
-    await Promise.all([
-      supabase.from("project_items").select("product_category, amount").eq("project_id", project.id),
-      supabase.from("project_costs").select("*").eq("project_id", project.id).maybeSingle(),
-      supabase.from("payments").select("*").eq("project_id", project.id).order("installment_no"),
-    ]);
-  if (itemsErr) throw itemsErr;
-  if (costsErr) throw costsErr;
-  if (paymentsErr) throw paymentsErr;
+  type EmbeddedItem = { product_category: string; amount: number };
+  type EmbeddedCosts = {
+    material_cost: number;
+    glue_cost: number;
+    cutting_cost: number;
+    install_cost: number;
+    parking_cost: number;
+    shipping_cost: number;
+  };
+  type EmbeddedPayment = {
+    invoice_no: string | null;
+    installment_no: number;
+    amount: number;
+    paid_date: string | null;
+    status: string | null;
+  };
+  const items = (project.project_items as unknown as EmbeddedItem[]) ?? [];
+  const costs = (project.project_costs as unknown as EmbeddedCosts | null) ?? null;
+  const payments = (project.payments as unknown as EmbeddedPayment[]) ?? [];
 
-  const payment1 = payments?.find((p) => p.installment_no === 1);
-  const payment2 = payments?.find((p) => p.installment_no === 2);
+  const payment1 = payments.find((p) => p.installment_no === 1);
+  const payment2 = payments.find((p) => p.installment_no === 2);
 
   return {
     id: project.id,
