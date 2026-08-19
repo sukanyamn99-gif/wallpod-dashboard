@@ -16,7 +16,7 @@ export default async function GoodsReceiptPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-start gap-4">
         <div>
           <h1 className="text-2xl font-semibold">รับเข้าสินค้า</h1>
           <p className="text-sm text-muted-foreground">รายการใบรับสินค้าเข้าสต็อกทั้งหมด</p>
