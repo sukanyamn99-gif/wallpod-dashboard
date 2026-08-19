@@ -31,31 +31,130 @@ const ROLE_OPTIONS = (Object.entries(ROLE_LABELS) as [Role, string][]).map(([val
 
 const initialState: { error: string | null; needsConfirmation?: boolean } = { error: null };
 
-export function AddUserDialog() {
-  const [open, setOpen] = useState(false);
+// Owns useActionState itself, so remounting this component (via the `key`
+// the parent gives it on close) is what actually resets `state` back to
+// initialState — resetting just the <form> element inside a component whose
+// useActionState never remounts left `state` (and therefore the "created"
+// success view) stuck forever after the first successful submission.
+function AddUserForm({ onClose }: { onClose: () => void }) {
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState<Role>("sales");
-  const [formKey, setFormKey] = useState(0);
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
-    const result = await createUserAccount(formData);
-    if (!result.error) {
-      setFormKey((k) => k + 1);
-      setRole("sales");
-    }
-    return result;
+    return createUserAccount(formData);
   }, initialState);
 
   const created = !state.error && state.needsConfirmation !== undefined;
+
+  return (
+    <form action={formAction}>
+      <DialogBody className="space-y-4 py-4">
+        {created ? (
+          <p className="rounded-md bg-green-100 p-3 text-sm text-green-900">
+            สร้างบัญชีเรียบร้อย — ผู้ใช้งานสามารถเข้าสู่ระบบได้ทันที
+          </p>
+        ) : (
+          <>
+            {state.error && (
+              <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="full_name">ชื่อ-นามสกุล</Label>
+              <Input id="full_name" name="full_name" placeholder="ชื่อ นามสกุล" required disabled={pending} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">อีเมล</Label>
+              <Input id="email" name="email" type="email" required disabled={pending} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">รหัสผ่านเริ่มต้น</Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  minLength={6}
+                  required
+                  disabled={pending}
+                  className="pr-9"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  className="absolute inset-y-0 right-2 flex items-center text-muted-foreground"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">ผู้ใช้สามารถเปลี่ยนรหัสผ่านได้ภายหลัง</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="role">สิทธิ์การใช้งาน</Label>
+              <Select
+                name="role"
+                value={role}
+                onValueChange={(v) => setRole(v as Role)}
+                items={ROLE_OPTIONS}
+                disabled={pending}
+              >
+                <SelectTrigger id="role" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="department">แผนก (ถ้ามี)</Label>
+              <Input id="department" name="department" placeholder="แผนก" disabled={pending} />
+            </div>
+          </>
+        )}
+      </DialogBody>
+      <DialogFooter>
+        {created ? (
+          <Button type="button" onClick={onClose}>
+            เสร็จสิ้น
+          </Button>
+        ) : (
+          <>
+            <Button type="button" variant="outline" onClick={onClose} disabled={pending}>
+              ยกเลิก
+            </Button>
+            <Button type="submit" disabled={pending}>
+              {pending ? "กำลังสร้าง..." : "สร้างผู้ใช้"}
+            </Button>
+          </>
+        )}
+      </DialogFooter>
+    </form>
+  );
+}
+
+export function AddUserDialog() {
+  const [open, setOpen] = useState(false);
+  const [formKey, setFormKey] = useState(0);
+
+  // Both the button-triggered close (onClose, called directly from AddUserForm)
+  // and the backdrop/Esc-triggered close (onOpenChange, called by the Dialog
+  // primitive itself) need to bump formKey — onOpenChange only fires for the
+  // latter, so setOpen(false) alone from a button's onClick never reached it.
+  function closeAndReset() {
+    setOpen(false);
+    setFormKey((k) => k + 1);
+  }
 
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
-        if (!next) {
-          setFormKey((k) => k + 1);
-          setRole("sales");
-        }
+        if (!next) setFormKey((k) => k + 1);
       }}
     >
       <DialogTrigger
@@ -70,93 +169,7 @@ export function AddUserDialog() {
         <DialogHeader>
           <DialogTitle>เพิ่มผู้ใช้งานใหม่</DialogTitle>
         </DialogHeader>
-        <form key={formKey} action={formAction}>
-          <DialogBody className="space-y-4 py-4">
-            {created ? (
-              <p className="rounded-md bg-green-100 p-3 text-sm text-green-900">
-                สร้างบัญชีเรียบร้อย — ผู้ใช้งานสามารถเข้าสู่ระบบได้ทันที
-              </p>
-            ) : (
-              <>
-                {state.error && (
-                  <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>
-                )}
-                <div className="space-y-2">
-                  <Label htmlFor="full_name">ชื่อ-นามสกุล</Label>
-                  <Input id="full_name" name="full_name" placeholder="ชื่อ นามสกุล" required disabled={pending} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">อีเมล</Label>
-                  <Input id="email" name="email" type="email" required disabled={pending} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">รหัสผ่านเริ่มต้น</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      name="password"
-                      type={showPassword ? "text" : "password"}
-                      minLength={6}
-                      required
-                      disabled={pending}
-                      className="pr-9"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((s) => !s)}
-                      className="absolute inset-y-0 right-2 flex items-center text-muted-foreground"
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">ผู้ใช้สามารถเปลี่ยนรหัสผ่านได้ภายหลัง</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">สิทธิ์การใช้งาน</Label>
-                  <Select
-                    name="role"
-                    value={role}
-                    onValueChange={(v) => setRole(v as Role)}
-                    items={ROLE_OPTIONS}
-                    disabled={pending}
-                  >
-                    <SelectTrigger id="role" className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ROLE_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="department">แผนก (ถ้ามี)</Label>
-                  <Input id="department" name="department" placeholder="แผนก" disabled={pending} />
-                </div>
-              </>
-            )}
-          </DialogBody>
-          <DialogFooter>
-            {created ? (
-              <Button type="button" onClick={() => setOpen(false)}>
-                เสร็จสิ้น
-              </Button>
-            ) : (
-              <>
-                <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={pending}>
-                  ยกเลิก
-                </Button>
-                <Button type="submit" disabled={pending}>
-                  {pending ? "กำลังสร้าง..." : "สร้างผู้ใช้"}
-                </Button>
-              </>
-            )}
-          </DialogFooter>
-        </form>
+        <AddUserForm key={formKey} onClose={closeAndReset} />
       </DialogContent>
     </Dialog>
   );
