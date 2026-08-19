@@ -299,7 +299,7 @@ export function ProjectsTable({
         </SummaryGroup>
 
         <SummaryGroup
-          title="ภาษีมูลค่าเพิ่ม"
+          title="สรุปยอดขาย"
           titleClassName="text-[var(--chart-3)]"
           boxClassName={VAT_GROUP_CLASS}
         >
