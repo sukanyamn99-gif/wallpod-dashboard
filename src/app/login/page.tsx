@@ -17,7 +17,7 @@ export default async function LoginPage({
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle>WALLPOD Owner Dashboard</CardTitle>
+          <CardTitle>Koonway Co.,Ltd.</CardTitle>
           <CardDescription>คูนเว จำกัด — เข้าสู่ระบบเพื่อดูข้อมูล</CardDescription>
         </CardHeader>
         <CardContent>
