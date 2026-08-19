@@ -51,7 +51,7 @@ const navItems = [
 ];
 
 const inventoryGroup = {
-  title: "Inventory",
+  title: "Stock Data",
   icon: Warehouse,
   items: [
     { title: "Stock Dashboard", url: "/dashboard/inventory", icon: Boxes },
