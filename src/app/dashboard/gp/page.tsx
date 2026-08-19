@@ -102,8 +102,8 @@ export default async function GpDashboardPage() {
       <MonthlyGpTrendChart data={data.monthlyTrend} />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <MarginTable title="งานที่กำไรดีที่สุด (Top 5)" rows={data.marginExtremes.top} />
-        <MarginTable title="งานที่กำไรน้อยที่สุด (Bottom 5)" rows={data.marginExtremes.bottom} />
+        <MarginTable title="งานที่กำไรดีที่สุด (Top 10)" rows={data.marginExtremes.top} />
+        <MarginTable title="งานที่กำไรน้อยที่สุด (Bottom 10)" rows={data.marginExtremes.bottom} />
       </div>
     </div>
   );

@@ -83,9 +83,9 @@ export async function getGpDashboardData(): Promise<GpDashboardData> {
     .filter((r) => r.preVat > 0)
     .map((r) => ({ row: r, marginPercent: (r.profit / r.preVat) * 100 }))
     .sort((a, b) => b.marginPercent - a.marginPercent);
-  const top = withMargin.slice(0, 5).map((w) => w.row);
+  const top = withMargin.slice(0, 10).map((w) => w.row);
   const bottom = withMargin
-    .slice(-5)
+    .slice(-10)
     .reverse()
     .map((w) => w.row);
 
