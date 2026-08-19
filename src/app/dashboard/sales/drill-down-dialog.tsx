@@ -57,6 +57,10 @@ export function DrillDownDialog({ drillDown, onClose }: { drillDown: DrillDown |
 }
 
 function ProjectDrillDownTable({ rows }: { rows: Project[] }) {
+  const sorted = rows
+    .slice()
+    .sort((a, b) => (a.job_no ?? "").localeCompare(b.job_no ?? "", undefined, { numeric: true }));
+
   return (
     <Table>
       <TableHeader>
@@ -66,18 +70,19 @@ function ProjectDrillDownTable({ rows }: { rows: Project[] }) {
           <TableHead className="whitespace-nowrap">ลูกค้า</TableHead>
           <TableHead className="whitespace-nowrap">ชื่องาน</TableHead>
           <TableHead className="whitespace-nowrap">เซลล์</TableHead>
+          <TableHead className="whitespace-nowrap">สถานะ</TableHead>
           <TableHead className="text-right whitespace-nowrap">มูลค่า</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {rows.length === 0 && (
+        {sorted.length === 0 && (
           <TableRow>
-            <TableCell colSpan={6} className="text-center text-muted-foreground">
+            <TableCell colSpan={7} className="text-center text-muted-foreground">
               ไม่พบข้อมูล
             </TableCell>
           </TableRow>
         )}
-        {rows.map((p) => (
+        {sorted.map((p) => (
           <TableRow key={p.id}>
             <TableCell className="whitespace-nowrap font-medium">
               {p.job_no ? (
@@ -95,6 +100,7 @@ function ProjectDrillDownTable({ rows }: { rows: Project[] }) {
             <TableCell className="whitespace-nowrap">{p.customer_name}</TableCell>
             <TableCell className="whitespace-nowrap">{p.project_name}</TableCell>
             <TableCell className="whitespace-nowrap">{p.sales_rep_name}</TableCell>
+            <TableCell className="whitespace-nowrap">{p.production_status ?? "—"}</TableCell>
             <TableCell className="text-right whitespace-nowrap">{formatTHB(p.total)}</TableCell>
           </TableRow>
         ))}

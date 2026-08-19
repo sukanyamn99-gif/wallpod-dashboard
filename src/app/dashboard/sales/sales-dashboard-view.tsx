@@ -132,6 +132,24 @@ export function SalesDashboardView({
     });
   }
 
+  function showAllFiltered() {
+    setDrillDown({
+      kind: "projects",
+      title: "งานทั้งหมด",
+      rows: filteredProjects,
+    });
+  }
+
+  function showClosedThisMonth() {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    setDrillDown({
+      kind: "projects",
+      title: "ปิดการขายเดือนนี้",
+      rows: filteredProjects.filter((p) => p.stage_percent === 100 && new Date(p.project_date) >= monthStart),
+    });
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -158,15 +176,34 @@ export function SalesDashboardView({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="มูลค่ารวม (Pipeline)" value={formatTHB(agg.totalPipelineValue)} icon={CircleDollarSign} tone="blue" />
-        <KpiCard label="จำนวนงานทั้งหมด" value={`${agg.totalProjectsCount} งาน`} icon={Briefcase} tone="green" />
+        <KpiCard
+          label="มูลค่ารวม (Pipeline)"
+          value={formatTHB(agg.totalPipelineValue)}
+          icon={CircleDollarSign}
+          tone="blue"
+          onClick={showAllFiltered}
+        />
+        <KpiCard
+          label="จำนวนงานทั้งหมด"
+          value={`${agg.totalProjectsCount} งาน`}
+          icon={Briefcase}
+          tone="green"
+          onClick={showAllFiltered}
+        />
         <KpiCard
           label="สถานะงาน"
           value={`ปิดแล้ว ${agg.closedProjectsCount} · ยังไม่ปิด ${agg.openProjectsCount}`}
           icon={CheckCircle2}
           tone="amber"
+          onClick={showAllFiltered}
         />
-        <KpiCard label="ยอดปิดการขายเดือนนี้" value={formatTHB(agg.closedThisMonthValue)} icon={TrendingUp} tone="violet" />
+        <KpiCard
+          label="ยอดปิดการขายเดือนนี้"
+          value={formatTHB(agg.closedThisMonthValue)}
+          icon={TrendingUp}
+          tone="violet"
+          onClick={showClosedThisMonth}
+        />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">

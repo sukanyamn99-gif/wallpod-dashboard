@@ -15,14 +15,19 @@ export function KpiCard({
   value,
   icon: Icon,
   tone = "blue",
+  onClick,
 }: {
   label: string;
   value: string;
   icon: LucideIcon;
   tone?: keyof typeof TONE_CLASSES;
+  onClick?: () => void;
 }) {
   return (
-    <Card>
+    <Card
+      onClick={onClick}
+      className={cn(onClick && "cursor-pointer transition-colors hover:bg-accent/40")}
+    >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
         <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl", TONE_CLASSES[tone])}>
