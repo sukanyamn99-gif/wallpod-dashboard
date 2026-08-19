@@ -91,25 +91,26 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  /* WALLPOD "control room" palette — deep blue-charcoal ground, blue accent. */
+  --background: #0E1320;
+  --foreground: #EAF0FF;
+  --card: #161D2E;
+  --card-foreground: #EAF0FF;
+  --popover: #161D2E;
+  --popover-foreground: #EAF0FF;
+  --primary: #4C7EF3;
+  --primary-foreground: #FFFFFF;
+  --secondary: #1D2537;
+  --secondary-foreground: #EAF0FF;
+  --muted: #1D2537;
+  --muted-foreground: #93A0BE;
+  --accent: #1D2537;
+  --accent-foreground: #EAF0FF;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: #3987e5;
+  --border: #262F45;
+  --input: #262F45;
+  --ring: #4C7EF3;
+  --chart-1: #4C7EF3;
   --chart-2: #199e70;
   --chart-3: #c98500;
   --chart-4: #008300;
@@ -121,14 +122,14 @@
   --chart-seq-3: #184f95;
   --chart-seq-4: #0d366b;
   --status-critical: #e66767;
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar: #0B0F1A;
+  --sidebar-foreground: #EAF0FF;
+  --sidebar-primary: #4C7EF3;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #1D2537;
+  --sidebar-accent-foreground: #EAF0FF;
+  --sidebar-border: #1D2536;
+  --sidebar-ring: #4C7EF3;
 }
 
 @layer base {

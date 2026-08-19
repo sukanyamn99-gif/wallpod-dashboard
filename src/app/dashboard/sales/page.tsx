@@ -22,14 +22,15 @@ export default async function SalesDashboardPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="มูลค่ารวม (Pipeline)" value={formatTHB(data.totalPipelineValue)} icon={CircleDollarSign} />
-        <KpiCard label="จำนวนงานทั้งหมด" value={`${data.totalProjectsCount} งาน`} icon={Briefcase} />
+        <KpiCard label="มูลค่ารวม (Pipeline)" value={formatTHB(data.totalPipelineValue)} icon={CircleDollarSign} tone="blue" />
+        <KpiCard label="จำนวนงานทั้งหมด" value={`${data.totalProjectsCount} งาน`} icon={Briefcase} tone="green" />
         <KpiCard
           label="สถานะงาน"
           value={`ปิดแล้ว ${data.closedProjectsCount} · ยังไม่ปิด ${data.openProjectsCount}`}
           icon={CheckCircle2}
+          tone="amber"
         />
-        <KpiCard label="ยอดปิดการขายเดือนนี้" value={formatTHB(data.closedThisMonthValue)} icon={TrendingUp} />
+        <KpiCard label="ยอดปิดการขายเดือนนี้" value={formatTHB(data.closedThisMonthValue)} icon={TrendingUp} tone="violet" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
