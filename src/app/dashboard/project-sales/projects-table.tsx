@@ -50,6 +50,39 @@ const VAT_GROUP_CLASS = "bg-[color-mix(in_oklch,var(--chart-3),transparent_78%)]
 const COST_GROUP_CLASS = "bg-[color-mix(in_oklch,var(--chart-5),transparent_84%)]";
 const PAYMENT_GROUP_CLASS = "bg-[color-mix(in_oklch,var(--chart-2),transparent_84%)]";
 
+// Standalone stat card used in the summary bar above the table. Unlike a CSS
+// grid (which stretches N equal columns across however wide the parent is —
+// the parent grows to match this very wide table, pushing later stats off
+// screen), a flex item keeps its own natural width and wraps, so every group
+// stays visible without needing to scroll the page horizontally.
+function SummaryGroup({
+  title,
+  titleClassName,
+  boxClassName,
+  children,
+}: {
+  title: string;
+  titleClassName?: string;
+  boxClassName?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={cn("min-w-[180px] space-y-2 rounded-lg border p-3", boxClassName)}>
+      <p className={cn("text-xs font-semibold", titleClassName)}>{title}</p>
+      <div className="space-y-1.5">{children}</div>
+    </div>
+  );
+}
+
+function SummaryStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium tabular-nums">{formatTHB(value)}</span>
+    </div>
+  );
+}
+
 function SubtotalStat({
   label,
   value,
@@ -259,39 +292,40 @@ export function ProjectsTable({
         </Select>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 rounded-md border p-4 text-sm sm:grid-cols-4">
-        <div>
-          <p className="text-muted-foreground">จำนวนงาน (ไม่รวมยกเลิก)</p>
-          <p className="font-medium">{summary.count} งาน</p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">PRE.VAT รวม</p>
-          <p className="font-medium">{formatTHB(summary.preVat)}</p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">VAT รวม</p>
-          <p className="font-medium">{formatTHB(summary.vat)}</p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">รวมทั้งสิ้น</p>
-          <p className="font-medium">{formatTHB(summary.total)}</p>
-        </div>
+      <div className="flex flex-wrap gap-3">
+        <SummaryGroup title="จำนวนงาน" boxClassName="bg-muted/30">
+          <p className="text-2xl font-semibold tabular-nums">{summary.count} งาน</p>
+          <p className="text-xs text-muted-foreground">ไม่รวมงานที่ยกเลิก</p>
+        </SummaryGroup>
+
+        <SummaryGroup
+          title="ภาษีมูลค่าเพิ่ม"
+          titleClassName="text-[var(--chart-3)]"
+          boxClassName={VAT_GROUP_CLASS}
+        >
+          <SummaryStat label="ก่อนภาษีมูลค่าเพิ่มรวม" value={summary.preVat} />
+          <SummaryStat label="ภาษีมูลค่าเพิ่ม" value={summary.vat} />
+          <SummaryStat label="ยอดรวมภาษีมูลค่าเพิ่มรวม" value={summary.total} />
+        </SummaryGroup>
+
         {canSeeCosts && (
-          <>
-            <div>
-              <p className="text-muted-foreground">ต้นทุนรวม</p>
-              <p className="font-medium">{formatTHB(summary.totalCost)}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">กำไรรวม</p>
-              <p className="font-medium">{formatTHB(summary.profit)}</p>
-            </div>
-          </>
+          <SummaryGroup
+            title="ต้นทุน & กำไร"
+            titleClassName="text-[var(--chart-5)]"
+            boxClassName={COST_GROUP_CLASS}
+          >
+            <SummaryStat label="ต้นทุนรวม" value={summary.totalCost} />
+            <SummaryStat label="กำไรรวม" value={summary.profit} />
+          </SummaryGroup>
         )}
-        <div>
-          <p className="text-muted-foreground">ยอดคงค้างรวม</p>
-          <p className="font-medium">{formatTHB(summary.outstanding)}</p>
-        </div>
+
+        <SummaryGroup
+          title="การชำระเงิน"
+          titleClassName="text-[var(--chart-2)]"
+          boxClassName={PAYMENT_GROUP_CLASS}
+        >
+          <SummaryStat label="ยอดคงค้างรวม" value={summary.outstanding} />
+        </SummaryGroup>
       </div>
 
       <div className="overflow-x-auto rounded-md border">
