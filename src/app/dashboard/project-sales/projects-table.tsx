@@ -35,6 +35,34 @@ function Money({ value }: { value: number | null | undefined }) {
   return <TableCell className="text-right whitespace-nowrap">{value ? formatTHB(value) : "—"}</TableCell>;
 }
 
+function SubtotalStat({
+  label,
+  value,
+  tone,
+  emphasize,
+}: {
+  label: string;
+  value: number;
+  tone?: "profit" | "outstanding";
+  emphasize?: boolean;
+}) {
+  let valueClassName = "font-semibold tabular-nums";
+  if (tone === "profit") {
+    valueClassName += value < 0 ? " text-[var(--destructive)]" : " text-[var(--chart-2)]";
+  } else if (tone === "outstanding") {
+    valueClassName += value > 0 ? " text-[var(--chart-3)]" : "";
+  } else if (emphasize) {
+    valueClassName += " text-base";
+  }
+
+  return (
+    <div className="flex flex-col justify-center border-l pl-4 first:border-l-0 first:pl-0">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className={valueClassName}>{formatTHB(value)}</span>
+    </div>
+  );
+}
+
 function sumRows(rows: FullProjectRow[]) {
   const counted = rows.filter((p) => !p.isCancelled);
   return {
@@ -310,17 +338,21 @@ export function ProjectsTable({
                 {group.rows.map((p) => (
                   <ProjectRow key={p.id} p={p} categories={categories} canSeeCosts={canSeeCosts} />
                 ))}
-                <TableRow className="bg-muted/50 hover:bg-muted/50 font-medium">
-                  <TableCell colSpan={totalColumns}>
-                    รวม{group.label}: PRE.VAT {formatTHB(group.subtotal.preVat)} · VAT{" "}
-                    {formatTHB(group.subtotal.vat)} · รวมทั้งสิ้น {formatTHB(group.subtotal.total)}
-                    {canSeeCosts && (
-                      <>
-                        {" "}
-                        · ต้นทุน {formatTHB(group.subtotal.totalCost)} · กำไร {formatTHB(group.subtotal.profit)}
-                      </>
-                    )}{" "}
-                    · คงค้าง {formatTHB(group.subtotal.outstanding)}
+                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                  <TableCell colSpan={totalColumns} className="py-3">
+                    <div className="flex flex-wrap items-stretch gap-x-6 gap-y-2">
+                      <span className="text-sm font-medium text-muted-foreground">สรุป{group.label}</span>
+                      <SubtotalStat label="PRE.VAT" value={group.subtotal.preVat} />
+                      <SubtotalStat label="VAT" value={group.subtotal.vat} />
+                      <SubtotalStat label="รวมทั้งสิ้น" value={group.subtotal.total} emphasize />
+                      {canSeeCosts && (
+                        <>
+                          <SubtotalStat label="ต้นทุน" value={group.subtotal.totalCost} />
+                          <SubtotalStat label="กำไร" value={group.subtotal.profit} tone="profit" />
+                        </>
+                      )}
+                      <SubtotalStat label="คงค้าง" value={group.subtotal.outstanding} tone="outstanding" />
+                    </div>
                   </TableCell>
                 </TableRow>
               </Fragment>
