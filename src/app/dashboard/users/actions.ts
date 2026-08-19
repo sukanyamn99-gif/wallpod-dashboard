@@ -29,17 +29,57 @@ export async function updateUserAccount(userId: string, formData: FormData) {
     return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
   }
 
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "กรุณาเข้าสู่ระบบ" };
+  const { data: callerProfile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  if (callerProfile?.role !== "owner") {
+    return { error: "เฉพาะเจ้าของกิจการเท่านั้นที่แก้ไขผู้ใช้งานได้" };
+  }
+
+  const fullName = String(formData.get("full_name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim();
   const role = String(formData.get("role") ?? "");
-  if (!VALID_ROLES.includes(role as Role)) return { error: "สิทธิ์ไม่ถูกต้อง" };
   const department = String(formData.get("department") ?? "").trim() || null;
   const active = formData.get("active") === "on";
+  const password = String(formData.get("password") ?? "");
 
-  const supabase = await createClient();
-  const { error } = await supabase
+  if (!fullName) return { error: "กรุณากรอกชื่อ-นามสกุล" };
+  if (!VALID_ROLES.includes(role as Role)) return { error: "สิทธิ์ไม่ถูกต้อง" };
+  if (password && password.length < 6) return { error: "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร" };
+
+  const { error: profileError } = await supabase
     .from("profiles")
-    .update({ role, department, active })
+    .update({ full_name: fullName, role, department, active })
     .eq("id", userId);
-  if (error) return { error: error.message };
+  if (profileError) return { error: profileError.message };
+
+  // Email and password live in auth.users, not profiles, so they need the
+  // admin API (same trusted, server-side-only service-role key already used
+  // by createUserAccount) — the caller-is-owner check above happens before
+  // this point specifically because this call bypasses RLS entirely.
+  if (email || password) {
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return {
+        error:
+          "บันทึกชื่อ/สิทธิ์/แผนกเรียบร้อย แต่ยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY บนเซิร์ฟเวอร์ — ไม่สามารถเปลี่ยนอีเมลหรือรหัสผ่านได้",
+      };
+    }
+    const adminClient = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    );
+    const attrs: { email?: string; password?: string; email_confirm?: boolean } = {};
+    if (email) {
+      attrs.email = email;
+      attrs.email_confirm = true;
+    }
+    if (password) attrs.password = password;
+    const { error: authError } = await adminClient.auth.admin.updateUserById(userId, attrs);
+    if (authError) return { error: friendlyCreateUserError(authError.message) };
+  }
 
   revalidatePath("/dashboard/users");
   return { error: null };
