@@ -31,7 +31,7 @@ export default async function DashboardLayout({
   return (
     <SidebarProvider>
       <AppSidebar profile={profile} />
-      <main className="flex-1">
+      <main className="min-w-0 flex-1">
         <div className="flex items-center gap-2 border-b p-3">
           <SidebarTrigger />
         </div>

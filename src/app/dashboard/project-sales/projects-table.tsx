@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +43,25 @@ const CATEGORY_GROUP_CLASS = "bg-[color-mix(in_oklch,var(--chart-1),transparent_
 const VAT_GROUP_CLASS = "bg-[color-mix(in_oklch,var(--chart-3),transparent_78%)]";
 const COST_GROUP_CLASS = "bg-[color-mix(in_oklch,var(--chart-5),transparent_84%)]";
 const PAYMENT_GROUP_CLASS = "bg-[color-mix(in_oklch,var(--chart-2),transparent_84%)]";
+
+// The first 5 columns (JOB NO. through SALE) stay pinned to the left edge
+// while the rest of this very wide table scrolls horizontally — fixed
+// widths are required so each column's sticky `left` offset lines up
+// exactly between the header row and every body row.
+const FROZEN_COL_WIDTHS = [96, 92, 220, 200, 100];
+const FROZEN_COL_OFFSETS = FROZEN_COL_WIDTHS.reduce<number[]>((acc, w, i) => {
+  acc.push(i === 0 ? 0 : acc[i - 1] + FROZEN_COL_WIDTHS[i - 1]);
+  return acc;
+}, []);
+
+function frozenColStyle(index: number): CSSProperties {
+  return {
+    left: FROZEN_COL_OFFSETS[index],
+    width: FROZEN_COL_WIDTHS[index],
+    minWidth: FROZEN_COL_WIDTHS[index],
+    maxWidth: FROZEN_COL_WIDTHS[index],
+  };
+}
 
 // Standalone stat card used in the summary bar above the table. Unlike a CSS
 // grid (which stretches N equal columns across however wide the parent is —
@@ -129,7 +148,10 @@ function ProjectRow({
 }) {
   return (
     <TableRow className={p.isCancelled ? "opacity-60" : undefined}>
-      <TableCell className="font-medium whitespace-nowrap">
+      <TableCell
+        className={cn("sticky z-10 truncate bg-card font-medium", p.isCancelled && "bg-card/60")}
+        style={frozenColStyle(0)}
+      >
         {p.jobNo ? (
           <Link
             href={`/dashboard/project-sales/edit/${encodeURIComponent(p.jobNo)}`}
@@ -146,10 +168,30 @@ function ProjectRow({
           </Badge>
         )}
       </TableCell>
-      <TableCell className="whitespace-nowrap">{p.projectDate}</TableCell>
-      <TableCell className="whitespace-nowrap">{p.customerName}</TableCell>
-      <TableCell className="whitespace-nowrap">{p.projectName}</TableCell>
-      <TableCell className="whitespace-nowrap">{p.salesRepName}</TableCell>
+      <TableCell
+        className={cn("sticky z-10 truncate bg-card", p.isCancelled && "bg-card/60")}
+        style={frozenColStyle(1)}
+      >
+        {p.projectDate}
+      </TableCell>
+      <TableCell
+        className={cn("sticky z-10 truncate bg-card", p.isCancelled && "bg-card/60")}
+        style={frozenColStyle(2)}
+      >
+        {p.customerName}
+      </TableCell>
+      <TableCell
+        className={cn("sticky z-10 truncate bg-card", p.isCancelled && "bg-card/60")}
+        style={frozenColStyle(3)}
+      >
+        {p.projectName}
+      </TableCell>
+      <TableCell
+        className={cn("sticky z-10 truncate bg-card", p.isCancelled && "bg-card/60")}
+        style={frozenColStyle(4)}
+      >
+        {p.salesRepName}
+      </TableCell>
       <TableCell className="whitespace-nowrap">{p.customerType}</TableCell>
       <TableCell className="whitespace-nowrap">{p.productionStatus ?? "—"}</TableCell>
       {categories.map((cat) => (
@@ -330,45 +372,55 @@ export function ProjectsTable({
         </SummaryGroup>
       </div>
 
-      <div className="overflow-x-auto rounded-md border">
-        <Table>
+      <div className="rounded-md border">
+        <Table containerClassName="max-h-[70vh] overflow-auto">
           <TableHeader>
             <TableRow>
-              <TableHead className="whitespace-nowrap">JOB NO.</TableHead>
-              <TableHead className="whitespace-nowrap">DATE</TableHead>
-              <TableHead className="whitespace-nowrap">CUSTOMER NAMES</TableHead>
-              <TableHead className="whitespace-nowrap">PROJECT NAME</TableHead>
-              <TableHead className="whitespace-nowrap">SALE</TableHead>
-              <TableHead className="whitespace-nowrap">Customer Type</TableHead>
-              <TableHead className="whitespace-nowrap">สถานะของงาน</TableHead>
+              <TableHead className="sticky top-0 z-20 truncate bg-card" style={frozenColStyle(0)}>
+                JOB NO.
+              </TableHead>
+              <TableHead className="sticky top-0 z-20 truncate bg-card" style={frozenColStyle(1)}>
+                DATE
+              </TableHead>
+              <TableHead className="sticky top-0 z-20 truncate bg-card" style={frozenColStyle(2)}>
+                CUSTOMER NAMES
+              </TableHead>
+              <TableHead className="sticky top-0 z-20 truncate bg-card" style={frozenColStyle(3)}>
+                PROJECT NAME
+              </TableHead>
+              <TableHead className="sticky top-0 z-20 truncate bg-card" style={frozenColStyle(4)}>
+                SALE
+              </TableHead>
+              <TableHead className="sticky top-0 z-10 whitespace-nowrap bg-card">Customer Type</TableHead>
+              <TableHead className="sticky top-0 z-10 whitespace-nowrap bg-card">สถานะของงาน</TableHead>
               {categories.map((cat) => (
-                <TableHead key={cat} className={cn("text-right whitespace-nowrap", CATEGORY_GROUP_CLASS)}>
+                <TableHead key={cat} className={cn("sticky top-0 z-10 text-right whitespace-nowrap", CATEGORY_GROUP_CLASS)}>
                   {cat}
                 </TableHead>
               ))}
-              <TableHead className={cn("text-right whitespace-nowrap", VAT_GROUP_CLASS)}>PRE.VAT</TableHead>
-              <TableHead className={cn("text-right whitespace-nowrap", VAT_GROUP_CLASS)}>VAT</TableHead>
-              <TableHead className={cn("text-right whitespace-nowrap", VAT_GROUP_CLASS)}>รวมทั้งสิ้น</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", VAT_GROUP_CLASS)}>PRE.VAT</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", VAT_GROUP_CLASS)}>VAT</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", VAT_GROUP_CLASS)}>รวมทั้งสิ้น</TableHead>
               {canSeeCosts && (
                 <>
-                  <TableHead className={cn("text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่าวัสดุ</TableHead>
-                  <TableHead className={cn("text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่ากาว</TableHead>
-                  <TableHead className={cn("text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่าตัด</TableHead>
-                  <TableHead className={cn("text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่าติดตั้งผู้รับเหมา</TableHead>
-                  <TableHead className={cn("text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่าที่จอดรถ</TableHead>
-                  <TableHead className={cn("text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่าขนส่ง</TableHead>
-                  <TableHead className={cn("text-right whitespace-nowrap", COST_GROUP_CLASS)}>รวมต้นทุน</TableHead>
-                  <TableHead className={cn("text-right whitespace-nowrap", COST_GROUP_CLASS)}>กำไร</TableHead>
+                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่าวัสดุ</TableHead>
+                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่ากาว</TableHead>
+                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่าตัด</TableHead>
+                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่าติดตั้งผู้รับเหมา</TableHead>
+                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่าที่จอดรถ</TableHead>
+                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่าขนส่ง</TableHead>
+                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_CLASS)}>รวมต้นทุน</TableHead>
+                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_CLASS)}>กำไร</TableHead>
                 </>
               )}
-              <TableHead className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>เลขที่เอกสาร (งวด 1)</TableHead>
-              <TableHead className={cn("text-right whitespace-nowrap", PAYMENT_GROUP_CLASS)}>งวดที่ 1 จำนวนเงิน</TableHead>
-              <TableHead className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>วันที่รับชำระ (งวด 1)</TableHead>
-              <TableHead className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>เลขที่เอกสาร (งวด 2)</TableHead>
-              <TableHead className={cn("text-right whitespace-nowrap", PAYMENT_GROUP_CLASS)}>งวดที่ 2 จำนวนเงิน</TableHead>
-              <TableHead className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>วันที่รับชำระ (งวด 2)</TableHead>
-              <TableHead className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>สถานะ</TableHead>
-              <TableHead className={cn("text-right whitespace-nowrap", PAYMENT_GROUP_CLASS)}>ยอดคงค้าง</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_CLASS)}>เลขที่เอกสาร (งวด 1)</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", PAYMENT_GROUP_CLASS)}>งวดที่ 1 จำนวนเงิน</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_CLASS)}>วันที่รับชำระ (งวด 1)</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_CLASS)}>เลขที่เอกสาร (งวด 2)</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", PAYMENT_GROUP_CLASS)}>งวดที่ 2 จำนวนเงิน</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_CLASS)}>วันที่รับชำระ (งวด 2)</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_CLASS)}>สถานะ</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", PAYMENT_GROUP_CLASS)}>ยอดคงค้าง</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
