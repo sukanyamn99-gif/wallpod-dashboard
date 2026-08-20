@@ -240,8 +240,8 @@ function monthKeyOf(dateStr: string) {
 }
 
 function monthLabelOf(key: string) {
-  const [year, month] = key.split("-").map(Number);
-  return `${THAI_MONTHS[month - 1]} ${year}`;
+  const [, month] = key.split("-").map(Number);
+  return THAI_MONTHS[month - 1];
 }
 
 export function ProjectsTable({
