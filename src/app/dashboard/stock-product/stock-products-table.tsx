@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState, useTransition } from "react";
+import { useActionState, useMemo, useState, useTransition, type CSSProperties } from "react";
 import Link from "next/link";
 import { Check, Layers, PackagePlus, Pencil, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -43,6 +43,26 @@ import { deleteStockProduct, recordStockMovement } from "./actions";
 import type { Profile, StockProduct, StockProductLot } from "@/lib/types";
 
 const movementInitialState = { error: null as string | null };
+
+// The first 6 columns (รูป through ความหนา) stay pinned to the left edge
+// while the rest of this wide table scrolls horizontally — fixed widths
+// are required so each column's sticky `left` offset lines up exactly
+// between the header row and every body row (same pattern as the
+// WALLPOD Project Sales report table).
+const FROZEN_COL_WIDTHS = [56, 90, 180, 110, 100, 90];
+const FROZEN_COL_OFFSETS = FROZEN_COL_WIDTHS.reduce<number[]>((acc, w, i) => {
+  acc.push(i === 0 ? 0 : acc[i - 1] + FROZEN_COL_WIDTHS[i - 1]);
+  return acc;
+}, []);
+
+function frozenColStyle(index: number): CSSProperties {
+  return {
+    left: FROZEN_COL_OFFSETS[index],
+    width: FROZEN_COL_WIDTHS[index],
+    minWidth: FROZEN_COL_WIDTHS[index],
+    maxWidth: FROZEN_COL_WIDTHS[index],
+  };
+}
 
 function canManage(profile: Profile) {
   return profile.role === "owner" || profile.role === "manager";
@@ -272,29 +292,29 @@ export function StockProductsTable({
         className="max-w-sm"
       />
 
-      <div className="overflow-x-auto rounded-md border">
-        <Table>
+      <div className="rounded-md border">
+        <Table containerClassName="max-h-[70vh] overflow-auto">
           <TableHeader>
             <TableRow>
-              <TableHead className="whitespace-nowrap">รูป</TableHead>
-              <TableHead className="whitespace-nowrap">รหัส</TableHead>
-              <TableHead className="whitespace-nowrap">ชื่อสินค้า</TableHead>
-              <TableHead className="whitespace-nowrap">หมวดหมู่</TableHead>
-              <TableHead className="whitespace-nowrap">ขนาด</TableHead>
-              <TableHead className="whitespace-nowrap">ความหนา</TableHead>
-              <TableHead className="text-right whitespace-nowrap">คงเหลือ</TableHead>
-              <TableHead className="text-right whitespace-nowrap">จุดสั่งซื้อ</TableHead>
+              <TableHead className="sticky top-0 z-20 truncate bg-card" style={frozenColStyle(0)}>รูป</TableHead>
+              <TableHead className="sticky top-0 z-20 truncate bg-card" style={frozenColStyle(1)}>รหัส</TableHead>
+              <TableHead className="sticky top-0 z-20 truncate bg-card" style={frozenColStyle(2)}>ชื่อสินค้า</TableHead>
+              <TableHead className="sticky top-0 z-20 truncate bg-card" style={frozenColStyle(3)}>หมวดหมู่</TableHead>
+              <TableHead className="sticky top-0 z-20 truncate bg-card" style={frozenColStyle(4)}>ขนาด</TableHead>
+              <TableHead className="sticky top-0 z-20 truncate bg-card" style={frozenColStyle(5)}>ความหนา</TableHead>
+              <TableHead className="sticky top-0 z-10 text-right whitespace-nowrap bg-card">คงเหลือ</TableHead>
+              <TableHead className="sticky top-0 z-10 text-right whitespace-nowrap bg-card">จุดสั่งซื้อ</TableHead>
               {showCosts && (
                 <>
-                  <TableHead className="text-right whitespace-nowrap">ต้นทุน/หน่วย</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">มูลค่าคงเหลือ</TableHead>
+                  <TableHead className="sticky top-0 z-10 text-right whitespace-nowrap bg-card">ต้นทุน/หน่วย</TableHead>
+                  <TableHead className="sticky top-0 z-10 text-right whitespace-nowrap bg-card">มูลค่าคงเหลือ</TableHead>
                 </>
               )}
-              <TableHead className="whitespace-nowrap">ตำแหน่งจัดเก็บ</TableHead>
-              <TableHead className="whitespace-nowrap">สถานะ</TableHead>
-              <TableHead className="whitespace-nowrap">อัปเดตล่าสุด</TableHead>
-              <TableHead className="whitespace-nowrap">หมายเหตุ</TableHead>
-              <TableHead className="whitespace-nowrap">จัดการ</TableHead>
+              <TableHead className="sticky top-0 z-10 whitespace-nowrap bg-card">ตำแหน่งจัดเก็บ</TableHead>
+              <TableHead className="sticky top-0 z-10 whitespace-nowrap bg-card">สถานะ</TableHead>
+              <TableHead className="sticky top-0 z-10 whitespace-nowrap bg-card">อัปเดตล่าสุด</TableHead>
+              <TableHead className="sticky top-0 z-10 whitespace-nowrap bg-card">หมายเหตุ</TableHead>
+              <TableHead className="sticky top-0 z-10 whitespace-nowrap bg-card">จัดการ</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -310,7 +330,7 @@ export function StockProductsTable({
               const imageUrl = p.imagePath ? imageUrls[p.imagePath] : undefined;
               return (
                 <TableRow key={p.id}>
-                  <TableCell>
+                  <TableCell className="sticky z-10 bg-card" style={frozenColStyle(0)}>
                     {imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -322,11 +342,11 @@ export function StockProductsTable({
                       <div className="h-10 w-10 rounded-md border bg-muted" />
                     )}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap">{p.sku ?? "—"}</TableCell>
-                  <TableCell className="whitespace-nowrap font-medium">{p.name}</TableCell>
-                  <TableCell className="whitespace-nowrap">{p.category ?? "—"}</TableCell>
-                  <TableCell className="whitespace-nowrap">{p.size ?? "—"}</TableCell>
-                  <TableCell className="whitespace-nowrap">{p.thickness ?? "—"}</TableCell>
+                  <TableCell className="sticky z-10 truncate bg-card" style={frozenColStyle(1)}>{p.sku ?? "—"}</TableCell>
+                  <TableCell className="sticky z-10 truncate bg-card font-medium" style={frozenColStyle(2)}>{p.name}</TableCell>
+                  <TableCell className="sticky z-10 truncate bg-card" style={frozenColStyle(3)}>{p.category ?? "—"}</TableCell>
+                  <TableCell className="sticky z-10 truncate bg-card" style={frozenColStyle(4)}>{p.size ?? "—"}</TableCell>
+                  <TableCell className="sticky z-10 truncate bg-card" style={frozenColStyle(5)}>{p.thickness ?? "—"}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">
                     {p.quantityOnHand} {p.unit}
                   </TableCell>
