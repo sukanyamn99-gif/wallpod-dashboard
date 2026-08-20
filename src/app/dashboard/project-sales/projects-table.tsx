@@ -44,6 +44,16 @@ const VAT_GROUP_CLASS = "bg-[color-mix(in_oklch,var(--chart-3),transparent_78%)]
 const COST_GROUP_CLASS = "bg-[color-mix(in_oklch,var(--chart-5),transparent_84%)]";
 const PAYMENT_GROUP_CLASS = "bg-[color-mix(in_oklch,var(--chart-2),transparent_84%)]";
 
+// The header row is sticky (stays on screen while body rows scroll
+// underneath it), so — unlike the body cells above — its background must
+// be fully opaque or the scrolling row text shows through and overlaps
+// the header text. Same hues, mixed into the opaque card color instead of
+// transparent, so the header still reads as the same tinted group.
+const CATEGORY_GROUP_HEADER_CLASS = "bg-[color-mix(in_oklch,var(--card),var(--chart-1)_18%)]";
+const VAT_GROUP_HEADER_CLASS = "bg-[color-mix(in_oklch,var(--card),var(--chart-3)_22%)]";
+const COST_GROUP_HEADER_CLASS = "bg-[color-mix(in_oklch,var(--card),var(--chart-5)_16%)]";
+const PAYMENT_GROUP_HEADER_CLASS = "bg-[color-mix(in_oklch,var(--card),var(--chart-2)_16%)]";
+
 // The first 5 columns (JOB NO. through SALE) stay pinned to the left edge
 // while the rest of this very wide table scrolls horizontally — fixed
 // widths are required so each column's sticky `left` offset lines up
@@ -394,33 +404,33 @@ export function ProjectsTable({
               <TableHead className="sticky top-0 z-10 whitespace-nowrap bg-card">Customer Type</TableHead>
               <TableHead className="sticky top-0 z-10 whitespace-nowrap bg-card">สถานะของงาน</TableHead>
               {categories.map((cat) => (
-                <TableHead key={cat} className={cn("sticky top-0 z-10 text-right whitespace-nowrap", CATEGORY_GROUP_CLASS)}>
+                <TableHead key={cat} className={cn("sticky top-0 z-10 text-right whitespace-nowrap", CATEGORY_GROUP_HEADER_CLASS)}>
                   {cat}
                 </TableHead>
               ))}
-              <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", VAT_GROUP_CLASS)}>PRE.VAT</TableHead>
-              <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", VAT_GROUP_CLASS)}>VAT</TableHead>
-              <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", VAT_GROUP_CLASS)}>รวมทั้งสิ้น</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", VAT_GROUP_HEADER_CLASS)}>PRE.VAT</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", VAT_GROUP_HEADER_CLASS)}>VAT</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", VAT_GROUP_HEADER_CLASS)}>รวมทั้งสิ้น</TableHead>
               {canSeeCosts && (
                 <>
-                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่าวัสดุ</TableHead>
-                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่ากาว</TableHead>
-                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่าตัด</TableHead>
-                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่าติดตั้งผู้รับเหมา</TableHead>
-                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่าที่จอดรถ</TableHead>
-                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_CLASS)}>ค่าขนส่ง</TableHead>
-                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_CLASS)}>รวมต้นทุน</TableHead>
-                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_CLASS)}>กำไร</TableHead>
+                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>ค่าวัสดุ</TableHead>
+                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>ค่ากาว</TableHead>
+                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>ค่าตัด</TableHead>
+                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>ค่าติดตั้งผู้รับเหมา</TableHead>
+                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>ค่าที่จอดรถ</TableHead>
+                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>ค่าขนส่ง</TableHead>
+                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>รวมต้นทุน</TableHead>
+                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>กำไร</TableHead>
                 </>
               )}
-              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_CLASS)}>เลขที่เอกสาร (งวด 1)</TableHead>
-              <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", PAYMENT_GROUP_CLASS)}>งวดที่ 1 จำนวนเงิน</TableHead>
-              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_CLASS)}>วันที่รับชำระ (งวด 1)</TableHead>
-              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_CLASS)}>เลขที่เอกสาร (งวด 2)</TableHead>
-              <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", PAYMENT_GROUP_CLASS)}>งวดที่ 2 จำนวนเงิน</TableHead>
-              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_CLASS)}>วันที่รับชำระ (งวด 2)</TableHead>
-              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_CLASS)}>สถานะ</TableHead>
-              <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", PAYMENT_GROUP_CLASS)}>ยอดคงค้าง</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>เลขที่เอกสาร (งวด 1)</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>งวดที่ 1 จำนวนเงิน</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>วันที่รับชำระ (งวด 1)</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>เลขที่เอกสาร (งวด 2)</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>งวดที่ 2 จำนวนเงิน</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>วันที่รับชำระ (งวด 2)</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>สถานะ</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>ยอดคงค้าง</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
