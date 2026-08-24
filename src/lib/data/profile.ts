@@ -11,7 +11,21 @@ const DEMO_PROFILE: Profile = {
 };
 
 export async function getCurrentProfile(): Promise<Profile | null> {
-  if (!isSupabaseConfigured()) return DEMO_PROFILE;
+  if (!isSupabaseConfigured()) {
+    // The demo/owner fallback below is only safe on a developer's own
+    // machine, where there's no real data behind it. `VERCEL` is set on
+    // every Vercel environment (production AND preview) — if Supabase's
+    // env vars ever go missing there, this must fail loudly instead of
+    // silently handing out unauthenticated owner access to whoever loads
+    // the page. Throwing here surfaces as a 500 (visible, alertable),
+    // which is the correct failure mode for a security-relevant misconfig.
+    if (process.env.VERCEL) {
+      throw new Error(
+        "Supabase is not configured on this deployment (missing NEXT_PUBLIC_SUPABASE_URL/NEXT_PUBLIC_SUPABASE_ANON_KEY). Refusing to fall back to demo/owner access — set the environment variables in Vercel and redeploy.",
+      );
+    }
+    return DEMO_PROFILE;
+  }
 
   const supabase = await createClient();
   const {
