@@ -1,10 +1,20 @@
 import * as XLSX from "xlsx";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 import { getStockDashboardData } from "@/lib/data/stock";
+import { getCurrentProfile } from "@/lib/data/profile";
 
+// No role restriction here — the Low Stock Alert page itself is open to
+// every tier (quantities/locations only, no cost data) — but this still
+// requires a real, active session rather than trusting the proxy redirect
+// as the only gate for this route.
 export async function GET() {
   if (!isSupabaseConfigured()) {
     return new Response("ยังไม่ได้ตั้งค่า Supabase", { status: 503 });
+  }
+
+  const profile = await getCurrentProfile();
+  if (!profile || !profile.active) {
+    return new Response("ไม่มีสิทธิ์เข้าถึงข้อมูลนี้", { status: 403 });
   }
 
   const { lowStockItems } = await getStockDashboardData();

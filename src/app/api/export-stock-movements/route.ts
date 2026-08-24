@@ -1,10 +1,17 @@
 import * as XLSX from "xlsx";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 import { getStockMovements } from "@/lib/data/stock";
+import { getCurrentProfile } from "@/lib/data/profile";
+import { canAccessPage } from "@/lib/permissions";
 
 export async function GET() {
   if (!isSupabaseConfigured()) {
     return new Response("ยังไม่ได้ตั้งค่า Supabase", { status: 503 });
+  }
+
+  const profile = await getCurrentProfile();
+  if (!profile || !profile.active || !canAccessPage(profile.role, "/dashboard/stock-movement")) {
+    return new Response("ไม่มีสิทธิ์เข้าถึงข้อมูลนี้", { status: 403 });
   }
 
   const movements = await getStockMovements();

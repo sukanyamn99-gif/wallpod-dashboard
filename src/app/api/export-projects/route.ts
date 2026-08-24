@@ -1,10 +1,23 @@
 import * as XLSX from "xlsx";
 import { isSupabaseConfigured } from "@/lib/supabase/server";
 import { getFullProjectReport } from "@/lib/data/project-sales";
+import { getCurrentProfile } from "@/lib/data/profile";
+import { canAccessPage } from "@/lib/permissions";
 
+// This route contains the same cost/profit/payment data as the WALLPOD
+// Project Sales page — RLS on `projects`/`project_costs` already filters
+// what each role can read, but that's not a substitute for checking access
+// at the entry point too: an explicit check here means a future RLS
+// mistake on those tables can't silently turn into a data leak through
+// this download link.
 export async function GET() {
   if (!isSupabaseConfigured()) {
     return new Response("ยังไม่ได้ตั้งค่า Supabase", { status: 503 });
+  }
+
+  const profile = await getCurrentProfile();
+  if (!profile || !profile.active || !canAccessPage(profile.role, "/dashboard/project-sales")) {
+    return new Response("ไม่มีสิทธิ์เข้าถึงข้อมูลนี้", { status: 403 });
   }
 
   const { categories, rows: allRows } = await getFullProjectReport();
