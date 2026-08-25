@@ -24,7 +24,6 @@ const PAGE_ACCESS: Record<string, PermissionTier[]> = {
   "/dashboard/sale-report": ["admin", "sale"],
   "/dashboard/gp": ["admin"],
   "/dashboard/ar": ["admin"],
-  "/dashboard/dead-stock": ["admin"],
 };
 
 export function canAccessPage(role: Role, path: string): boolean {

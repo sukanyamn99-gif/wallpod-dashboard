@@ -227,12 +227,21 @@ export interface StockProductLot {
   note: string | null;
 }
 
+export interface DeadStockItem extends StockProduct {
+  lastActivityAt: string;
+  neverMoved: boolean;
+  daysIdle: number;
+}
+
 export interface StockDashboardData {
   skuCount: number;
   totalStockValue: number;
   lowStockCount: number;
   categoryBreakdown: { category: string; value: number; count: number }[];
   lowStockItems: StockProduct[];
+  deadStockCount: number;
+  deadStockValue: number;
+  deadStockItems: DeadStockItem[];
 }
 
 export interface SalesDashboardData {

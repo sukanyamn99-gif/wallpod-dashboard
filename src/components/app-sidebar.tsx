@@ -20,7 +20,6 @@ import {
   LineChart,
   Package,
   PackagePlus,
-  PackageX,
   Receipt,
   ScrollText,
   Settings,
@@ -78,10 +77,7 @@ const inventoryGroup = {
   ],
 };
 
-const remainingNavItems = [
-  { title: "Dead Stock Dashboard", url: "/dashboard/dead-stock", icon: PackageX },
-  { title: "Sale Report", url: "/dashboard/sale-report", icon: CalendarCheck },
-];
+const remainingNavItems = [{ title: "Sale Report", url: "/dashboard/sale-report", icon: CalendarCheck }];
 
 const settingsGroup = {
   title: "ตั้งค่า",

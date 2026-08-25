@@ -1,5 +1,10 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import type { ProductCategory, StockDashboardData, StockMovement, StockProduct, StockProductLot } from "@/lib/types";
+import type { DeadStockItem, ProductCategory, StockDashboardData, StockMovement, StockProduct, StockProductLot } from "@/lib/types";
+
+// A product counts as Dead Stock once it's sat with no in/out movement for
+// this many months — matches the definition the user gave directly, not an
+// industry-standard threshold.
+const DEAD_STOCK_MONTHS = 6;
 
 const STOCK_PRODUCT_COLUMNS =
   "id, sku, name, category, color, size, thickness, location, note, unit, quantity_on_hand, reorder_point, unit_cost, selling_price, image_path, created_at, updated_at";
@@ -211,7 +216,7 @@ export async function getStockProductLotsByProduct(): Promise<Record<string, Sto
 }
 
 export async function getStockDashboardData(): Promise<StockDashboardData> {
-  const products = await getStockProducts();
+  const [products, movements] = await Promise.all([getStockProducts(), getStockMovements()]);
 
   const lowStockItems = products
     .filter((p) => p.quantityOnHand <= p.reorderPoint)
@@ -226,6 +231,39 @@ export async function getStockDashboardData(): Promise<StockDashboardData> {
     byCategory.set(key, entry);
   }
 
+  // Last movement per product — the app's own `updatedAt` on stock_products
+  // also changes on non-movement edits (renaming, changing reorder point),
+  // so it can't stand in for "last time this actually moved"; movements are
+  // the real signal.
+  const lastMovementByProduct = new Map<string, string>();
+  for (const m of movements) {
+    const existing = lastMovementByProduct.get(m.stockProductId);
+    if (!existing || new Date(m.createdAt) > new Date(existing)) {
+      lastMovementByProduct.set(m.stockProductId, m.createdAt);
+    }
+  }
+
+  const now = Date.now();
+  const deadStockCutoff = new Date();
+  deadStockCutoff.setMonth(deadStockCutoff.getMonth() - DEAD_STOCK_MONTHS);
+
+  const deadStockItems: DeadStockItem[] = products
+    // Only stock actually sitting on hand counts as "dead" — a product with
+    // zero quantity that hasn't moved is just out of stock, not dead stock.
+    .filter((p) => p.quantityOnHand > 0)
+    .map((p) => {
+      const lastMovement = lastMovementByProduct.get(p.id);
+      const lastActivityAt = lastMovement ?? p.createdAt;
+      return {
+        ...p,
+        lastActivityAt,
+        neverMoved: !lastMovement,
+        daysIdle: Math.floor((now - new Date(lastActivityAt).getTime()) / (1000 * 60 * 60 * 24)),
+      };
+    })
+    .filter((p) => new Date(p.lastActivityAt) < deadStockCutoff)
+    .sort((a, b) => new Date(a.lastActivityAt).getTime() - new Date(b.lastActivityAt).getTime());
+
   return {
     skuCount: products.length,
     totalStockValue: products.reduce((sum, p) => sum + p.quantityOnHand * p.unitCost, 0),
@@ -236,5 +274,8 @@ export async function getStockDashboardData(): Promise<StockDashboardData> {
       count,
     })),
     lowStockItems,
+    deadStockCount: deadStockItems.length,
+    deadStockValue: deadStockItems.reduce((sum, p) => sum + p.quantityOnHand * p.unitCost, 0),
+    deadStockItems,
   };
 }
