@@ -22,6 +22,7 @@ import {
   LineChart,
   Package,
   PackagePlus,
+  Palette,
   Receipt,
   ScrollText,
   Settings,
@@ -75,6 +76,7 @@ const inventoryGroup = {
       children: [
         { title: "รายงานการเบิกสินค้า", url: "/dashboard/stock-requisition/report", icon: FileUp },
         { title: "รายงานการรับเข้าสินค้า", url: "/dashboard/goods-receipt/report", icon: FileDown },
+        { title: "รายงานสินค้าคงเหลือ", url: "/dashboard/stock-product/report", icon: Palette },
       ],
     },
   ],
