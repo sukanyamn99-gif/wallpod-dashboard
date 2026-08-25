@@ -16,7 +16,7 @@ export default async function StockCatalogReportPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="print:hidden">
         <h1 className="text-2xl font-semibold">รายงานสินค้าคงเหลือ</h1>
         <p className="text-sm text-muted-foreground">แสดงสี ชื่อสินค้า และจำนวนคงเหลือของสินค้าทั้งหมด</p>
       </div>

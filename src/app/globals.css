@@ -144,3 +144,14 @@
     @apply font-sans;
   }
 }
+
+/* App shell (sidebar, its layout gap) never belongs on a printed page — the
+   app is forced dark-theme, so pages that support printing (e.g. the stock
+   catalog report) also need their own print:text-black overrides since
+   inherited theme colors would otherwise print near-invisible on white paper. */
+@media print {
+  [data-slot="sidebar"],
+  [data-slot="sidebar-gap"] {
+    display: none !important;
+  }
+}

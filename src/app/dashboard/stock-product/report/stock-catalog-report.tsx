@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FilterX, ImageOff } from "lucide-react";
+import { FilterX, ImageOff, MapPin, Phone, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -41,7 +41,35 @@ export function StockCatalogReport({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
+      {/* Letterhead — screen-hidden, print-only. Matches the company's real
+          printed COLOR CHART sheet so the printout looks like their own
+          document rather than a generic app report. */}
+      <div className="hidden print:block">
+        <div className="flex items-start justify-between pb-3">
+          <div>
+            <p className="text-3xl font-bold tracking-tight text-black">COLOR CHART</p>
+            <p className="text-base font-semibold text-black">THEWALLPOD.COM</p>
+            <div className="mt-2 space-y-1 text-xs text-neutral-700">
+              <p className="flex items-center gap-1.5">
+                <MapPin className="h-3 w-3 shrink-0" />
+                24/3 H-CAPE BIZ PLUS, SOI SUKHAPHIBAN 2, PRAWET, BANGKOK 10250
+              </p>
+              <p className="flex items-center gap-1.5">
+                <Phone className="h-3 w-3 shrink-0" />
+                (+66) 2 329 1336 – 9
+              </p>
+            </div>
+          </div>
+          <div className="rounded-full border border-neutral-300 bg-neutral-50 px-5 py-2.5">
+            <p className="text-lg font-bold tracking-tight text-neutral-800">
+              Wall<span className="text-sky-600">P</span>OD
+            </p>
+          </div>
+        </div>
+        <div className="border-t-2 border-neutral-800" />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 print:hidden">
         <Input
           placeholder="ค้นหาชื่อสินค้า, รหัส, สี..."
           value={search}
@@ -64,6 +92,10 @@ export function StockCatalogReport({
           <FilterX className="h-4 w-4" />
           เคลียร์ตัวกรอง
         </Button>
+        <Button variant="outline" onClick={() => window.print()}>
+          <Printer className="h-4 w-4" />
+          พิมพ์
+        </Button>
         <p className="ml-auto text-sm text-muted-foreground">
           แสดง {filtered.length} จาก {products.length} รายการ
         </p>
@@ -72,12 +104,12 @@ export function StockCatalogReport({
       {filtered.length === 0 ? (
         <div className="rounded-md border py-12 text-center text-sm text-muted-foreground">ไม่พบสินค้า</div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 print:grid-cols-6 print:gap-2">
           {filtered.map((p) => {
             const imageUrl = p.imagePath ? imageUrls[p.imagePath] : null;
             const lowStock = p.quantityOnHand <= p.reorderPoint;
             return (
-              <div key={p.id} className="rounded-lg border bg-white p-2 shadow-sm">
+              <div key={p.id} className="rounded-lg border bg-white p-2 shadow-sm print:break-inside-avoid print:shadow-none">
                 <div className="relative aspect-square overflow-hidden rounded-md bg-neutral-100">
                   {imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element -- signed Supabase Storage URLs, not a static/local asset next/image can optimize
@@ -101,6 +133,13 @@ export function StockCatalogReport({
                   <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-neutral-800" title={p.name}>
                     {p.name}
                   </p>
+                  {(p.size || p.thickness) && (
+                    <p className="truncate text-[9px] text-neutral-500">
+                      {p.size && `${p.size} มม.`}
+                      {p.size && p.thickness && " • "}
+                      {p.thickness && `หนา ${p.thickness} มม.`}
+                    </p>
+                  )}
                 </div>
               </div>
             );
