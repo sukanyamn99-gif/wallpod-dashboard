@@ -97,11 +97,8 @@ export function StockCatalogReport({
                     {p.quantityOnHand}
                   </span>
                 </div>
-                <div className="mt-1.5 space-y-0.5 text-center">
-                  <p className="truncate text-[11px] font-semibold text-neutral-900" title={p.sku ?? undefined}>
-                    {p.sku ?? "—"}
-                  </p>
-                  <p className="truncate text-[10px] uppercase tracking-wide text-neutral-600" title={p.name}>
+                <div className="mt-1.5 text-center">
+                  <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-neutral-800" title={p.name}>
                     {p.name}
                   </p>
                 </div>
