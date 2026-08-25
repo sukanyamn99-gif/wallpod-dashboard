@@ -9,6 +9,11 @@ function num(v: FormDataEntryValue | null): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function str(v: FormDataEntryValue | null): string | null {
+  const s = String(v ?? "").trim();
+  return s === "" ? null : s;
+}
+
 async function generateDocNo(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string> {
   const now = new Date();
   const yy = String(now.getFullYear() + 543 - 2500).padStart(2, "0"); // BE short year, matches JOB NO./doc-no convention
@@ -47,9 +52,16 @@ export async function createPettyCashTransaction(formData: FormData) {
     p_type: transactionType satisfies PettyCashTransactionType,
     p_amount: amount,
     p_description: description,
+    p_category: str(formData.get("category")),
+    p_biller_name: str(formData.get("biller_name")),
+    p_job_no: str(formData.get("job_no")),
+    p_vat_amount: num(formData.get("vat_amount")),
+    p_wht_amount: num(formData.get("wht_amount")),
+    p_transaction_date: str(formData.get("transaction_date")) ?? new Date().toISOString().slice(0, 10),
   });
   if (error) return { error: error.message };
 
   revalidatePath("/dashboard/expenses/petty-cash");
+  revalidatePath("/dashboard/expenses");
   return { error: null, docNo };
 }

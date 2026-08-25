@@ -24,6 +24,7 @@ const PAGE_ACCESS: Record<string, PermissionTier[]> = {
   "/dashboard/sale-report": ["admin", "sale"],
   "/dashboard/gp": ["admin"],
   "/dashboard/ar": ["admin"],
+  "/dashboard/expenses": ["admin", "staff"],
   "/dashboard/expenses/payment-vouchers": ["admin", "staff"],
   "/dashboard/expenses/petty-cash": ["admin", "staff"],
 };

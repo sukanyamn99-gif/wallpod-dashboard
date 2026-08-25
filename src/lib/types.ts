@@ -340,6 +340,16 @@ export interface GoodsReceipt {
   items: GoodsReceiptItem[];
 }
 
+export type WhtFormType = "ภ.ง.ด.1" | "ภ.ง.ด.2" | "ภ.ง.ด.3" | "ภ.ง.ด.53";
+
+export interface PaymentVoucherLedgerLine {
+  id: string;
+  accountCode: string | null;
+  description: string | null;
+  debit: number;
+  credit: number;
+}
+
 export interface PaymentVoucher {
   id: string;
   docNo: string;
@@ -353,6 +363,15 @@ export interface PaymentVoucher {
   recordedById: string | null;
   recordedByName: string;
   createdAt: string;
+  whtCertNo: string | null;
+  description: string | null;
+  whtRate: number | null;
+  whtFormType: WhtFormType | null;
+  whtAmount: number;
+  bankName: string | null;
+  bankAccountNo: string | null;
+  bankTransferDate: string | null;
+  ledgerLines: PaymentVoucherLedgerLine[];
 }
 
 export type PettyCashTransactionType = "topup" | "expense";
@@ -368,4 +387,9 @@ export interface PettyCashTransaction {
   recordedById: string | null;
   recordedByName: string;
   createdAt: string;
+  category: string | null;
+  billerName: string | null;
+  jobNo: string | null;
+  vatAmount: number;
+  whtAmount: number;
 }

@@ -84,6 +84,7 @@ const expensesGroup = {
   title: "ค่าใช้จ่าย",
   icon: Banknote,
   items: [
+    { title: "Dashboard ค่าใช้จ่าย", url: "/dashboard/expenses", icon: BarChart3 },
     { title: "Payment Voucher (ใบสำคัญจ่าย)", url: "/dashboard/expenses/payment-vouchers", icon: FileSpreadsheet },
     { title: "เงินสดย่อย", url: "/dashboard/expenses/petty-cash", icon: Wallet },
   ],

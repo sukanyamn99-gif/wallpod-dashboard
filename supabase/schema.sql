@@ -872,7 +872,15 @@ create table payment_vouchers (
   reference_no text,
   note text,
   recorded_by uuid references profiles(id),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  wht_cert_no text,
+  description text,
+  wht_rate numeric(5,2),
+  wht_form_type text check (wht_form_type in ('ภ.ง.ด.1', 'ภ.ง.ด.2', 'ภ.ง.ด.3', 'ภ.ง.ด.53')),
+  wht_amount numeric(14,2) not null default 0,
+  bank_name text,
+  bank_account_no text,
+  bank_transfer_date date
 );
 
 alter table payment_vouchers enable row level security;
@@ -886,6 +894,36 @@ create policy payment_vouchers_update on payment_vouchers for update
   with check (my_role() in ('owner', 'manager') or recorded_by = auth.uid());
 create policy payment_vouchers_delete on payment_vouchers for delete
   using (my_role() in ('owner', 'manager') or recorded_by = auth.uid());
+
+-- Mini double-entry ledger table printed on the voucher (รหัสบัญชี/CODE,
+-- รายการ/DESCRIPTIONS, DEBIT, CREDIT) — a child table since a real voucher
+-- can post to any number of GL accounts. Visibility/write rules mirror the
+-- parent voucher exactly (same reasoning as project_items following projects).
+create table payment_voucher_ledger_lines (
+  id uuid primary key default gen_random_uuid(),
+  voucher_id uuid not null references payment_vouchers(id) on delete cascade,
+  account_code text,
+  description text,
+  debit numeric(14,2) not null default 0,
+  credit numeric(14,2) not null default 0,
+  sort_order int not null default 0
+);
+
+alter table payment_voucher_ledger_lines enable row level security;
+
+create policy payment_voucher_ledger_lines_select on payment_voucher_ledger_lines for select
+  using (exists (select 1 from payment_vouchers v where v.id = voucher_id and my_role() <> 'sales'));
+create policy payment_voucher_ledger_lines_write on payment_voucher_ledger_lines for all
+  using (exists (
+    select 1 from payment_vouchers v
+    where v.id = voucher_id
+      and (my_role() in ('owner', 'manager') or v.recorded_by = auth.uid())
+  ))
+  with check (exists (
+    select 1 from payment_vouchers v
+    where v.id = voucher_id
+      and (my_role() in ('owner', 'manager') or v.recorded_by = auth.uid())
+  ));
 
 -- ---------- เงินสดย่อย (Petty Cash) ----------
 -- Append-only ledger with a running balance — deliberately no edit/delete
@@ -903,7 +941,12 @@ create table petty_cash_transactions (
   description text not null,
   balance_after numeric(14,2) not null,
   recorded_by uuid references profiles(id),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  category text,
+  biller_name text,
+  job_no text,
+  vat_amount numeric(14,2) not null default 0,
+  wht_amount numeric(14,2) not null default 0
 );
 
 alter table petty_cash_transactions enable row level security;
@@ -918,7 +961,9 @@ create policy petty_cash_insert on petty_cash_transactions for insert
 -- transaction so two near-simultaneous entries can never both read the
 -- same stale balance (the same concurrency reasoning as record_stock_movement).
 create function record_petty_cash_transaction(
-  p_doc_no text, p_type text, p_amount numeric, p_description text
+  p_doc_no text, p_type text, p_amount numeric, p_description text,
+  p_category text default null, p_biller_name text default null, p_job_no text default null,
+  p_vat_amount numeric default 0, p_wht_amount numeric default 0, p_transaction_date date default current_date
 )
 returns void language plpgsql security definer as $$
 declare
@@ -940,7 +985,13 @@ begin
     else v_last_balance - p_amount
   end;
 
-  insert into petty_cash_transactions (doc_no, transaction_type, amount, description, balance_after, recorded_by)
-  values (p_doc_no, p_type, p_amount, p_description, v_new_balance, auth.uid());
+  insert into petty_cash_transactions (
+    doc_no, transaction_type, amount, description, balance_after, recorded_by,
+    category, biller_name, job_no, vat_amount, wht_amount, transaction_date
+  )
+  values (
+    p_doc_no, p_type, p_amount, p_description, v_new_balance, auth.uid(),
+    p_category, p_biller_name, p_job_no, p_vat_amount, p_wht_amount, p_transaction_date
+  );
 end;
 $$;

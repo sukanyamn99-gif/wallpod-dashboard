@@ -2,7 +2,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type { PettyCashTransaction, PettyCashTransactionType } from "@/lib/types";
 
 const COLUMNS =
-  "id, doc_no, transaction_date, transaction_type, amount, description, balance_after, recorded_by, created_at, profiles(full_name)";
+  "id, doc_no, transaction_date, transaction_type, amount, description, balance_after, recorded_by, created_at, category, biller_name, job_no, vat_amount, wht_amount, profiles(full_name)";
 
 type Row = {
   id: string;
@@ -14,6 +14,11 @@ type Row = {
   balance_after: number | string;
   recorded_by: string | null;
   created_at: string;
+  category: string | null;
+  biller_name: string | null;
+  job_no: string | null;
+  vat_amount: number | string;
+  wht_amount: number | string;
   profiles: { full_name: string } | null;
 };
 
@@ -29,6 +34,11 @@ function mapRow(row: Row): PettyCashTransaction {
     recordedById: row.recorded_by,
     recordedByName: row.profiles?.full_name ?? "",
     createdAt: row.created_at,
+    category: row.category,
+    billerName: row.biller_name,
+    jobNo: row.job_no,
+    vatAmount: Number(row.vat_amount),
+    whtAmount: Number(row.wht_amount),
   };
 }
 
