@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { logActivity } from "@/lib/activity-log";
 import type { PaymentStatus, ProductionStatus } from "@/lib/types";
 import { PRODUCTION_STATUSES } from "@/lib/types";
 
@@ -297,6 +298,7 @@ export async function setProjectCancelled(projectId: string, jobNo: string | nul
   const { error } = await supabase.from("projects").update({ is_cancelled: cancelled }).eq("id", projectId);
   if (error) return { error: error.message };
 
+  await logActivity(cancelled ? "ยกเลิกงาน" : "กู้คืนงาน", jobNo);
   revalidatePath(`/dashboard/project-sales/edit/${jobNo ?? ""}`);
   revalidatePath("/dashboard/project-sales");
   revalidatePath("/dashboard/sales");
@@ -309,9 +311,11 @@ export async function deleteProjectSale(projectId: string) {
   }
 
   const supabase = await createClient();
+  const { data: project } = await supabase.from("projects").select("job_no").eq("id", projectId).single();
   const { error } = await supabase.from("projects").delete().eq("id", projectId);
   if (error) return { error: error.message };
 
+  await logActivity("ลบงาน", project?.job_no ?? null);
   revalidatePath("/dashboard/project-sales");
   revalidatePath("/dashboard/sales");
   return { error: null };

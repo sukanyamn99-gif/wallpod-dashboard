@@ -109,6 +109,15 @@ export interface LoginLogEntry {
   loggedInAt: string;
 }
 
+export interface ActivityLogEntry {
+  id: string;
+  actorId: string | null;
+  actorNameSnapshot: string;
+  action: string;
+  entityLabel: string | null;
+  createdAt: string;
+}
+
 export interface UserAccount {
   id: string;
   fullName: string;

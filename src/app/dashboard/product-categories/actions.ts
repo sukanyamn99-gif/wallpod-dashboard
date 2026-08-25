@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { logActivity } from "@/lib/activity-log";
 
 function friendlyError(error: { code?: string; message: string }): string {
   if (error.code === "23505") return "มีหมวดหมู่นี้อยู่แล้ว";
@@ -56,9 +57,11 @@ export async function deleteProductCategory(id: string) {
   }
 
   const supabase = await createClient();
+  const { data: category } = await supabase.from("product_categories").select("name").eq("id", id).single();
   const { error } = await supabase.from("product_categories").delete().eq("id", id);
   if (error) return { error: error.message };
 
+  await logActivity("ลบหมวดหมู่สินค้า", category?.name ?? null);
   revalidateCategoryConsumers();
   return { error: null };
 }

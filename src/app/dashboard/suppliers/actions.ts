@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { logActivity } from "@/lib/activity-log";
 
 function friendlyError(error: { code?: string; message: string }): string {
   if (error.code === "23505") return "มีผู้จำหน่ายรายนี้อยู่แล้ว";
@@ -60,9 +61,11 @@ export async function deleteSupplier(id: string) {
   }
 
   const supabase = await createClient();
+  const { data: supplier } = await supabase.from("suppliers").select("name").eq("id", id).single();
   const { error } = await supabase.from("suppliers").delete().eq("id", id);
   if (error) return { error: error.message };
 
+  await logActivity("ลบผู้จำหน่าย", supplier?.name ?? null);
   revalidateSupplierConsumers();
   return { error: null };
 }

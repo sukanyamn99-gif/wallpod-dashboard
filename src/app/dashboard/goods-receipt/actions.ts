@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { getGoodsReceiptById } from "@/lib/data/goods-receipts";
+import { logActivity } from "@/lib/activity-log";
 
 function num(v: FormDataEntryValue | null): number {
   const n = Number(v);
@@ -271,6 +272,7 @@ export async function deleteGoodsReceipt(id: string) {
   const { error } = await supabase.from("goods_receipts").delete().eq("id", id);
   if (error) return { error: error.message };
 
+  await logActivity("ลบใบรับสินค้า", existing.docNo);
   revalidateGoodsReceiptConsumers();
   return { error: null };
 }

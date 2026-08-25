@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { logActivity } from "@/lib/activity-log";
 import type { RequisitionPurpose } from "@/lib/types";
 
 function num(v: FormDataEntryValue | null): number {
@@ -147,9 +148,11 @@ export async function deleteStockRequisition(id: string) {
   }
 
   const supabase = await createClient();
+  const { data: requisition } = await supabase.from("stock_requisitions").select("doc_no").eq("id", id).single();
   const { error } = await supabase.from("stock_requisitions").delete().eq("id", id);
   if (error) return { error: error.message };
 
+  await logActivity("ลบใบเบิกสินค้า", requisition?.doc_no ?? null);
   revalidateRequisitionConsumers();
   return { error: null };
 }

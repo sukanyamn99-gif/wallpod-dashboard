@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { logActivity } from "@/lib/activity-log";
 import { STAGE_PERCENT_BY_STAGE, type Stage } from "@/lib/types";
 
 const IMAGE_BUCKET = "sale-report-images";
@@ -246,6 +247,7 @@ export async function deleteSaleReport(id: string) {
   const { error } = await supabase.from("sales_leads").delete().eq("id", id);
   if (error) return { error: error.message };
 
+  await logActivity("ลบ Sale Report", before.customer_name ?? null);
   revalidatePath("/dashboard/sale-report");
   revalidatePath("/dashboard/sales");
   return { error: null };

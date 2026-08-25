@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import type { Role } from "@/lib/types";
+import { logActivity } from "@/lib/activity-log";
+import { ROLE_LABELS, type Role } from "@/lib/types";
 
 const VALID_ROLES: Role[] = [
   "owner",
@@ -50,11 +51,25 @@ export async function updateUserAccount(userId: string, formData: FormData) {
   if (!VALID_ROLES.includes(role as Role)) return { error: "สิทธิ์ไม่ถูกต้อง" };
   if (password && password.length < 6) return { error: "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร" };
 
+  const { data: before } = await supabase.from("profiles").select("role, active").eq("id", userId).single();
+
   const { error: profileError } = await supabase
     .from("profiles")
     .update({ full_name: fullName, role, department, active })
     .eq("id", userId);
   if (profileError) return { error: profileError.message };
+
+  // Only log when something risky actually changed — editing a name or
+  // department isn't the kind of thing this log is for.
+  if (before && before.role !== role) {
+    await logActivity(
+      "เปลี่ยนสิทธิ์ผู้ใช้งาน",
+      `${fullName}: ${ROLE_LABELS[before.role as Role] ?? before.role} → ${ROLE_LABELS[role as Role] ?? role}`,
+    );
+  }
+  if (before && before.active !== active) {
+    await logActivity(active ? "เปิดใช้งานบัญชี" : "ระงับการใช้งานบัญชี", fullName);
+  }
 
   // Email and password live in auth.users, not profiles, so they need the
   // admin API (same trusted, server-side-only service-role key already used
@@ -79,6 +94,7 @@ export async function updateUserAccount(userId: string, formData: FormData) {
     if (password) attrs.password = password;
     const { error: authError } = await adminClient.auth.admin.updateUserById(userId, attrs);
     if (authError) return { error: friendlyCreateUserError(authError.message) };
+    if (password) await logActivity("รีเซ็ตรหัสผ่านผู้ใช้งาน", fullName);
   }
 
   revalidatePath("/dashboard/users");
@@ -147,6 +163,7 @@ export async function createUserAccount(
     return { error: profileError.message };
   }
 
+  await logActivity("สร้างผู้ใช้งานใหม่", `${fullName} (${ROLE_LABELS[role as Role] ?? role})`);
   revalidatePath("/dashboard/users");
   return { error: null, needsConfirmation: false };
 }

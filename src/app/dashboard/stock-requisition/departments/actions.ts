@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { logActivity } from "@/lib/activity-log";
 
 function friendlyError(error: { code?: string; message: string }): string {
   if (error.code === "23505") return "มีแผนกนี้อยู่แล้ว";
@@ -51,9 +52,11 @@ export async function deleteDepartment(id: string) {
   }
 
   const supabase = await createClient();
+  const { data: department } = await supabase.from("departments").select("name").eq("id", id).single();
   const { error } = await supabase.from("departments").delete().eq("id", id);
   if (error) return { error: error.message };
 
+  await logActivity("ลบแผนก", department?.name ?? null);
   revalidateDepartmentConsumers();
   return { error: null };
 }

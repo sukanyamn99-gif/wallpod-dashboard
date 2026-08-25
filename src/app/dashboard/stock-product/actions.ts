@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { logActivity } from "@/lib/activity-log";
 import type { ProductCategory } from "@/lib/types";
 
 const IMAGE_BUCKET = "stock-product-images";
@@ -188,6 +189,8 @@ export async function deleteStockProduct(id: string) {
 
   const supabase = await createClient();
 
+  const { data: product } = await supabase.from("stock_products").select("name").eq("id", id).single();
+
   // Best-effort: clean up the product's image folder before deleting the row.
   const { data: files } = await supabase.storage.from(IMAGE_BUCKET).list(id);
   if (files && files.length > 0) {
@@ -197,6 +200,7 @@ export async function deleteStockProduct(id: string) {
   const { error } = await supabase.from("stock_products").delete().eq("id", id);
   if (error) return { error: error.message };
 
+  await logActivity("ลบสินค้า", product?.name ?? null);
   revalidatePath("/dashboard/stock-product");
   revalidatePath("/dashboard/inventory");
   return { error: null };
