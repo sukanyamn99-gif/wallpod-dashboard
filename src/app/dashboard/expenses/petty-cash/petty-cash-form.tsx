@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -24,9 +24,32 @@ const SUGGESTED_CATEGORIES = [
   "ค่าไปรษณีย์",
 ];
 
+// Same click-to-fill idea as the category suggestions above, just as chips
+// instead of a <datalist> — a <textarea> doesn't support the list attribute
+// reliably across browsers, so this is a plain button that fills the field
+// directly; the text stays fully editable afterward either way.
+const DESCRIPTION_SUGGESTIONS: Record<PettyCashTransactionType, string[]> = {
+  topup: ["เติมเงินสดย่อยประจำเดือน", "เติมเงินสดย่อยเพิ่มเติม"],
+  expense: [
+    "ซื้ออุปกรณ์สำนักงาน",
+    "ค่าเดินทาง",
+    "ค่าส่งเอกสาร/พัสดุ",
+    "ค่าอาหาร/เครื่องดื่มรับรอง",
+    "ค่าจอดรถ/ทางด่วน",
+  ],
+};
+
 export function PettyCashForm({ categorySuggestions = SUGGESTED_CATEGORIES }: { categorySuggestions?: string[] }) {
   const router = useRouter();
   const [type, setType] = useState<PettyCashTransactionType>("expense");
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+
+  function fillDescription(text: string) {
+    if (descriptionRef.current) {
+      descriptionRef.current.value = text;
+      descriptionRef.current.focus();
+    }
+  }
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
     const result = await createPettyCashTransaction(formData);
     if (!result.error) {
@@ -84,7 +107,25 @@ export function PettyCashForm({ categorySuggestions = SUGGESTED_CATEGORIES }: { 
 
       <div className="space-y-2">
         <Label htmlFor="description">รายการ</Label>
-        <Textarea id="description" name="description" placeholder="เช่น ซื้ออุปกรณ์สำนักงาน, เติมเงินสดย่อยประจำเดือน" required />
+        <Textarea
+          id="description"
+          name="description"
+          ref={descriptionRef}
+          placeholder="เช่น ซื้ออุปกรณ์สำนักงาน, เติมเงินสดย่อยประจำเดือน"
+          required
+        />
+        <div className="flex flex-wrap gap-1.5">
+          {DESCRIPTION_SUGGESTIONS[type].map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => fillDescription(s)}
+              className="rounded-full border px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
       </div>
 
       {type === "expense" && (
