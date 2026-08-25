@@ -1,11 +1,99 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FilterX, ImageOff, MapPin, Phone, Printer } from "lucide-react";
+import { FilterX, ImageOff, MapPin, Phone, Printer, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { StockProduct } from "@/lib/types";
+
+// Matches the company's own printed COLOR CHART sheet so the printout looks
+// like their real document rather than a generic app report.
+function Letterhead() {
+  return (
+    <div>
+      <div className="flex items-start justify-between pb-3">
+        <div>
+          <p className="text-3xl font-bold tracking-tight text-black">COLOR CHART</p>
+          <p className="text-base font-semibold text-black">THEWALLPOD.COM</p>
+          <div className="mt-2 space-y-1 text-xs text-neutral-700">
+            <p className="flex items-center gap-1.5">
+              <MapPin className="h-3 w-3 shrink-0" />
+              24/3 H-CAPE BIZ PLUS, SOI SUKHAPHIBAN 2, PRAWET, BANGKOK 10250
+            </p>
+            <p className="flex items-center gap-1.5">
+              <Phone className="h-3 w-3 shrink-0" />
+              (+66) 2 329 1336 – 9
+            </p>
+          </div>
+        </div>
+        <div className="rounded-full border border-neutral-300 bg-neutral-50 px-5 py-2.5">
+          <p className="text-lg font-bold tracking-tight text-neutral-800">
+            Wall<span className="text-sky-600">P</span>OD
+          </p>
+        </div>
+      </div>
+      <div className="border-t-2 border-neutral-800" />
+    </div>
+  );
+}
+
+function SwatchCard({ product, imageUrl }: { product: StockProduct; imageUrl: string | null }) {
+  const lowStock = product.quantityOnHand <= product.reorderPoint;
+  return (
+    <div className="rounded-lg border bg-white p-2 shadow-sm print:break-inside-avoid print:shadow-none">
+      <div className="relative aspect-square overflow-hidden rounded-md bg-neutral-100">
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- signed Supabase Storage URLs, not a static/local asset next/image can optimize
+          <img src={imageUrl} alt={product.name} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center gap-1 text-neutral-400">
+            <ImageOff className="h-5 w-5" />
+            <span className="text-[10px]">ไม่มีรูป</span>
+          </div>
+        )}
+        <span
+          className={`absolute right-1 top-1 rounded-full border px-1.5 py-0.5 text-[11px] font-semibold shadow-sm ${
+            lowStock ? "border-destructive/40 bg-destructive/90 text-white" : "border-neutral-300 bg-white text-neutral-900"
+          }`}
+          title="จำนวนคงเหลือ"
+        >
+          {product.quantityOnHand}
+        </span>
+      </div>
+      <div className="mt-1.5 text-center">
+        <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-neutral-800" title={product.name}>
+          {product.name}
+        </p>
+        {(product.size || product.thickness) && (
+          <p className="truncate text-[9px] text-neutral-500">
+            {product.size && `${product.size} มม.`}
+            {product.size && product.thickness && " • "}
+            {product.thickness && `หนา ${product.thickness} มม.`}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CatalogGrid({
+  products,
+  imageUrls,
+  className,
+}: {
+  products: StockProduct[];
+  imageUrls: Record<string, string>;
+  className: string;
+}) {
+  return (
+    <div className={className}>
+      {products.map((p) => (
+        <SwatchCard key={p.id} product={p} imageUrl={p.imagePath ? (imageUrls[p.imagePath] ?? null) : null} />
+      ))}
+    </div>
+  );
+}
 
 export function StockCatalogReport({
   products,
@@ -18,6 +106,7 @@ export function StockCatalogReport({
 }) {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const categoryOptions = [{ value: "all", label: "ทุกหมวดหมู่" }, ...categories.map((c) => ({ value: c, label: c }))];
 
@@ -41,32 +130,10 @@ export function StockCatalogReport({
 
   return (
     <div className="space-y-4">
-      {/* Letterhead — screen-hidden, print-only. Matches the company's real
-          printed COLOR CHART sheet so the printout looks like their own
-          document rather than a generic app report. */}
+      {/* Screen-hidden, print-only — shows only when the browser is actually
+          printing (or the on-screen preview below is open). */}
       <div className="hidden print:block">
-        <div className="flex items-start justify-between pb-3">
-          <div>
-            <p className="text-3xl font-bold tracking-tight text-black">COLOR CHART</p>
-            <p className="text-base font-semibold text-black">THEWALLPOD.COM</p>
-            <div className="mt-2 space-y-1 text-xs text-neutral-700">
-              <p className="flex items-center gap-1.5">
-                <MapPin className="h-3 w-3 shrink-0" />
-                24/3 H-CAPE BIZ PLUS, SOI SUKHAPHIBAN 2, PRAWET, BANGKOK 10250
-              </p>
-              <p className="flex items-center gap-1.5">
-                <Phone className="h-3 w-3 shrink-0" />
-                (+66) 2 329 1336 – 9
-              </p>
-            </div>
-          </div>
-          <div className="rounded-full border border-neutral-300 bg-neutral-50 px-5 py-2.5">
-            <p className="text-lg font-bold tracking-tight text-neutral-800">
-              Wall<span className="text-sky-600">P</span>OD
-            </p>
-          </div>
-        </div>
-        <div className="border-t-2 border-neutral-800" />
+        <Letterhead />
       </div>
 
       <div className="flex flex-wrap items-center gap-2 print:hidden">
@@ -92,7 +159,7 @@ export function StockCatalogReport({
           <FilterX className="h-4 w-4" />
           เคลียร์ตัวกรอง
         </Button>
-        <Button variant="outline" onClick={() => window.print()}>
+        <Button variant="outline" onClick={() => setPreviewOpen(true)}>
           <Printer className="h-4 w-4" />
           พิมพ์
         </Button>
@@ -104,46 +171,39 @@ export function StockCatalogReport({
       {filtered.length === 0 ? (
         <div className="rounded-md border py-12 text-center text-sm text-muted-foreground">ไม่พบสินค้า</div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 print:grid-cols-6 print:gap-2">
-          {filtered.map((p) => {
-            const imageUrl = p.imagePath ? imageUrls[p.imagePath] : null;
-            const lowStock = p.quantityOnHand <= p.reorderPoint;
-            return (
-              <div key={p.id} className="rounded-lg border bg-white p-2 shadow-sm print:break-inside-avoid print:shadow-none">
-                <div className="relative aspect-square overflow-hidden rounded-md bg-neutral-100">
-                  {imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- signed Supabase Storage URLs, not a static/local asset next/image can optimize
-                    <img src={imageUrl} alt={p.name} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full flex-col items-center justify-center gap-1 text-neutral-400">
-                      <ImageOff className="h-5 w-5" />
-                      <span className="text-[10px]">ไม่มีรูป</span>
-                    </div>
-                  )}
-                  <span
-                    className={`absolute right-1 top-1 rounded-full border px-1.5 py-0.5 text-[11px] font-semibold shadow-sm ${
-                      lowStock ? "border-destructive/40 bg-destructive/90 text-white" : "border-neutral-300 bg-white text-neutral-900"
-                    }`}
-                    title="จำนวนคงเหลือ"
-                  >
-                    {p.quantityOnHand}
-                  </span>
-                </div>
-                <div className="mt-1.5 text-center">
-                  <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-neutral-800" title={p.name}>
-                    {p.name}
-                  </p>
-                  {(p.size || p.thickness) && (
-                    <p className="truncate text-[9px] text-neutral-500">
-                      {p.size && `${p.size} มม.`}
-                      {p.size && p.thickness && " • "}
-                      {p.thickness && `หนา ${p.thickness} มม.`}
-                    </p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+        <CatalogGrid
+          products={filtered}
+          imageUrls={imageUrls}
+          className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 print:grid-cols-6 print:gap-2"
+        />
+      )}
+
+      {/* On-screen preview of exactly what will print, before the OS print
+          dialog opens — this overlay itself is print:hidden so it never
+          appears in the actual printout; only the blocks above (marked
+          print:block / print:grid-*) do, driven by the real @media print. */}
+      {previewOpen && (
+        <div className="fixed inset-0 z-50 overflow-auto bg-black/60 p-4 print:hidden">
+          <div className="mx-auto max-w-5xl rounded-lg bg-white p-6 text-black shadow-xl">
+            <div className="mb-4 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setPreviewOpen(false)}>
+                <X className="h-4 w-4" />
+                ปิดตัวอย่าง
+              </Button>
+              <Button onClick={() => window.print()}>
+                <Printer className="h-4 w-4" />
+                พิมพ์
+              </Button>
+            </div>
+            <Letterhead />
+            <div className="mt-4">
+              {filtered.length === 0 ? (
+                <p className="py-12 text-center text-sm text-neutral-500">ไม่พบสินค้า</p>
+              ) : (
+                <CatalogGrid products={filtered} imageUrls={imageUrls} className="grid grid-cols-6 gap-2" />
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
