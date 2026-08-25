@@ -6,11 +6,24 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { createPettyCashTransaction } from "./actions";
 import type { PettyCashTransactionType } from "@/lib/types";
 
 const initialState: { error: string | null; docNo?: string } = { error: null };
+
+// Common Thai withholding-tax rates (ภ.ง.ด.3/53 practice: 1% transport,
+// 2%/3% services, 5% rent/advertising) — no single rate is universally
+// correct, so this stays a picker rather than a hardcoded percentage.
+const WHT_RATE_OPTIONS = [
+  { value: "0", label: "ไม่มี" },
+  { value: "1", label: "1%" },
+  { value: "1.5", label: "1.5%" },
+  { value: "2", label: "2%" },
+  { value: "3", label: "3%" },
+  { value: "5", label: "5%" },
+];
 
 // Matches the fixed category columns on the real petty-cash reconciliation
 // sheet — offered as suggestions (a <datalist>, same free-text-with-
@@ -42,13 +55,28 @@ const DESCRIPTION_SUGGESTIONS: Record<PettyCashTransactionType, string[]> = {
 export function PettyCashForm({
   categorySuggestions = SUGGESTED_CATEGORIES,
   recentDescriptions,
+  recentBillers = [],
 }: {
   categorySuggestions?: string[];
   recentDescriptions?: Record<PettyCashTransactionType, string[]>;
+  recentBillers?: string[];
 }) {
   const router = useRouter();
   const [type, setType] = useState<PettyCashTransactionType>("expense");
+  const [amount, setAmount] = useState("");
+  const [whtRatePercent, setWhtRatePercent] = useState("0");
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  const billerRef = useRef<HTMLInputElement>(null);
+  const categoryRef = useRef<HTMLInputElement>(null);
+
+  // "จำนวนเงิน (รวมสุทธิ)" is entered VAT-inclusive, so VAT is extracted
+  // out of it (×7/107) rather than added on top; WHT then applies to the
+  // pre-VAT portion, matching standard Thai withholding-tax practice.
+  const amountNum = Number(amount) || 0;
+  const preVatAmount = amountNum / 1.07;
+  const vatAmount = amountNum > 0 ? amountNum - preVatAmount : 0;
+  const whtRateNum = Number(whtRatePercent) || 0;
+  const whtAmount = whtRateNum > 0 ? preVatAmount * (whtRateNum / 100) : 0;
 
   // Text actually typed before (most relevant to this business) leads,
   // followed by the generic fixed suggestions — deduplicated so a phrase
@@ -61,6 +89,20 @@ export function PettyCashForm({
     if (descriptionRef.current) {
       descriptionRef.current.value = text;
       descriptionRef.current.focus();
+    }
+  }
+
+  function fillBiller(text: string) {
+    if (billerRef.current) {
+      billerRef.current.value = text;
+      billerRef.current.focus();
+    }
+  }
+
+  function fillCategory(text: string) {
+    if (categoryRef.current) {
+      categoryRef.current.value = text;
+      categoryRef.current.focus();
     }
   }
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
@@ -115,7 +157,16 @@ export function PettyCashForm({
 
       <div className="space-y-2">
         <Label htmlFor="amount">จำนวนเงิน (รวมสุทธิ)</Label>
-        <Input id="amount" name="amount" type="number" min="0" step="0.01" required />
+        <Input
+          id="amount"
+          name="amount"
+          type="number"
+          min="0"
+          step="0.01"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          required
+        />
       </div>
 
       <div className="space-y-2">
@@ -145,8 +196,22 @@ export function PettyCashForm({
         <div className="space-y-4 rounded-lg border p-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="biller_name">ผู้บิล</Label>
-              <Input id="biller_name" name="biller_name" placeholder="ผู้เบิก/ผู้ซื้อของ" />
+              <Label htmlFor="biller_name">ผู้เบิก</Label>
+              <Input id="biller_name" name="biller_name" ref={billerRef} placeholder="ผู้เบิก/ผู้ซื้อของ" />
+              {recentBillers.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {recentBillers.map((name) => (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => fillBiller(name)}
+                      className="rounded-full border px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    >
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="job_no">งาน/Job</Label>
@@ -156,22 +221,57 @@ export function PettyCashForm({
 
           <div className="space-y-2">
             <Label htmlFor="category">หมวดหมู่</Label>
-            <Input id="category" name="category" list="petty-cash-categories" placeholder="เลือกหรือพิมพ์หมวดหมู่ใหม่" />
-            <datalist id="petty-cash-categories">
+            <Input id="category" name="category" ref={categoryRef} placeholder="เลือกหรือพิมพ์หมวดหมู่ใหม่" />
+            <div className="flex flex-wrap gap-1.5">
               {categorySuggestions.map((c) => (
-                <option key={c} value={c} />
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => fillCategory(c)}
+                  className="rounded-full border px-2.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                >
+                  {c}
+                </button>
               ))}
-            </datalist>
+            </div>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="vat_amount">ภาษีซื้อ</Label>
-              <Input id="vat_amount" name="vat_amount" type="number" min="0" step="0.01" placeholder="0" />
+              <Input
+                id="vat_amount"
+                name="vat_amount"
+                type="number"
+                value={vatAmount ? vatAmount.toFixed(2) : ""}
+                readOnly
+                className="bg-muted"
+              />
+              <p className="text-xs text-muted-foreground">คำนวณอัตโนมัติจากยอดรวม (แยก VAT 7%)</p>
             </div>
             <div className="space-y-2">
+              <Label htmlFor="wht_rate">อัตราภาษีหัก ณ ที่จ่าย</Label>
+              <Select value={whtRatePercent} onValueChange={(v) => setWhtRatePercent(v ?? "0")} items={WHT_RATE_OPTIONS}>
+                <SelectTrigger id="wht_rate" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {WHT_RATE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Label htmlFor="wht_amount">ภาษีหัก ณ ที่จ่าย</Label>
-              <Input id="wht_amount" name="wht_amount" type="number" min="0" step="0.01" placeholder="0" />
+              <Input
+                id="wht_amount"
+                name="wht_amount"
+                type="number"
+                value={whtAmount ? whtAmount.toFixed(2) : ""}
+                readOnly
+                className="bg-muted"
+              />
             </div>
           </div>
         </div>

@@ -64,7 +64,7 @@ export function PrintPettyCashView({
               วันที่บิล
             </th>
             <th className="border border-black p-1" rowSpan={2}>
-              ผู้บิล
+              ผู้เบิก
             </th>
             <th className="border border-black p-1" rowSpan={2}>
               รายการ

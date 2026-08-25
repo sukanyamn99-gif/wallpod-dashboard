@@ -86,3 +86,30 @@ export async function getRecentPettyCashDescriptions(
   }
   return byType;
 }
+
+// Distinct ผู้เบิก names actually used before, most-recent-first — same
+// quick-select idea as getRecentPettyCashDescriptions, but ผู้เบิก only
+// applies to ใช้จ่าย rows (เติมเงิน has no biller), so no per-type split needed.
+export async function getRecentPettyCashBillers(limit = 8): Promise<string[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("petty_cash_transactions")
+    .select("biller_name")
+    .eq("transaction_type", "expense")
+    .not("biller_name", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(300);
+  if (error) throw error;
+
+  const seen = new Set<string>();
+  const billers: string[] = [];
+  for (const row of data ?? []) {
+    const name = row.biller_name?.trim();
+    if (!name || seen.has(name) || billers.length >= limit) continue;
+    seen.add(name);
+    billers.push(name);
+  }
+  return billers;
+}
