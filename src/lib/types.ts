@@ -339,3 +339,33 @@ export interface GoodsReceipt {
   createdAt: string;
   items: GoodsReceiptItem[];
 }
+
+export interface PaymentVoucher {
+  id: string;
+  docNo: string;
+  voucherDate: string;
+  payeeName: string;
+  category: string | null;
+  amount: number;
+  paymentMethod: string | null;
+  referenceNo: string | null;
+  note: string | null;
+  recordedById: string | null;
+  recordedByName: string;
+  createdAt: string;
+}
+
+export type PettyCashTransactionType = "topup" | "expense";
+
+export interface PettyCashTransaction {
+  id: string;
+  docNo: string;
+  transactionDate: string;
+  transactionType: PettyCashTransactionType;
+  amount: number;
+  description: string;
+  balanceAfter: number;
+  recordedById: string | null;
+  recordedByName: string;
+  createdAt: string;
+}

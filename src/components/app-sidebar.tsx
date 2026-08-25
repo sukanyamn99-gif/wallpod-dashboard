@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
+  Banknote,
   Boxes,
   CalendarCheck,
   ChevronDown,
@@ -13,6 +14,7 @@ import {
   ClipboardMinus,
   FileBarChart,
   FileDown,
+  FileSpreadsheet,
   FileText,
   FileUp,
   History,
@@ -25,6 +27,7 @@ import {
   Settings,
   Tags,
   Users,
+  Wallet,
   Warehouse,
   LogOut,
 } from "lucide-react";
@@ -77,6 +80,15 @@ const inventoryGroup = {
   ],
 };
 
+const expensesGroup = {
+  title: "ค่าใช้จ่าย",
+  icon: Banknote,
+  items: [
+    { title: "Payment Voucher (ใบสำคัญจ่าย)", url: "/dashboard/expenses/payment-vouchers", icon: FileSpreadsheet },
+    { title: "เงินสดย่อย", url: "/dashboard/expenses/petty-cash", icon: Wallet },
+  ],
+};
+
 const remainingNavItems = [{ title: "Sale Report", url: "/dashboard/sale-report", icon: CalendarCheck }];
 
 const settingsGroup = {
@@ -95,6 +107,8 @@ export function AppSidebar({ profile }: { profile: Profile }) {
     (item) => pathname === item.url || item.children?.some((c) => pathname === c.url),
   );
   const [inventoryOpen, setInventoryOpen] = useState(isInventoryActive);
+  const isExpensesActive = expensesGroup.items.some((item) => pathname === item.url);
+  const [expensesOpen, setExpensesOpen] = useState(isExpensesActive);
   const isSettingsActive = settingsGroup.items.some((item) => pathname === item.url);
   const [settingsOpen, setSettingsOpen] = useState(isSettingsActive);
 
@@ -105,6 +119,7 @@ export function AppSidebar({ profile }: { profile: Profile }) {
       ...item,
       children: item.children?.filter((c) => canAccessPage(profile.role, c.url)),
     }));
+  const visibleExpensesItems = expensesGroup.items.filter((item) => canAccessPage(profile.role, item.url));
   const visibleRemainingNavItems = remainingNavItems.filter((item) => canAccessPage(profile.role, item.url));
 
   return (
@@ -173,6 +188,36 @@ export function AppSidebar({ profile }: { profile: Profile }) {
                               ))}
                             </SidebarMenuSub>
                           )}
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  )}
+                </SidebarMenuItem>
+              )}
+
+              {visibleExpensesItems.length > 0 && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={isExpensesActive}
+                    onClick={() => setExpensesOpen((open) => !open)}
+                  >
+                    <expensesGroup.icon />
+                    <span>{expensesGroup.title}</span>
+                    {expensesOpen ? <ChevronDown className="ml-auto" /> : <ChevronRight className="ml-auto" />}
+                  </SidebarMenuButton>
+                  {expensesOpen && (
+                    <SidebarMenuSub>
+                      {visibleExpensesItems.map((item) => (
+                        <SidebarMenuSubItem key={item.url}>
+                          <SidebarMenuSubButton
+                            isActive={pathname === item.url}
+                            render={
+                              <Link href={item.url}>
+                                <item.icon />
+                                <span>{item.title}</span>
+                              </Link>
+                            }
+                          />
                         </SidebarMenuSubItem>
                       ))}
                     </SidebarMenuSub>
