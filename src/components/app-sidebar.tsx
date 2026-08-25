@@ -13,6 +13,7 @@ import {
   ClipboardMinus,
   FileBarChart,
   FileDown,
+  FileText,
   FileUp,
   History,
   TriangleAlert,
@@ -21,6 +22,8 @@ import {
   PackagePlus,
   PackageX,
   Receipt,
+  ScrollText,
+  Settings,
   Tags,
   Users,
   Warehouse,
@@ -80,7 +83,15 @@ const remainingNavItems = [
   { title: "Sale Report", url: "/dashboard/sale-report", icon: CalendarCheck },
 ];
 
-const ownerOnlyNavItems = [{ title: "ผู้ใช้งาน", url: "/dashboard/users", icon: Users }];
+const settingsGroup = {
+  title: "ตั้งค่า",
+  icon: Settings,
+  items: [
+    { title: "ผู้ใช้งาน", url: "/dashboard/users", icon: Users },
+    { title: "เก็บ log การใช้งาน", url: "/dashboard/settings/activity-log", icon: ScrollText },
+    { title: "ตั้งค่าเอกสารต่างๆ", url: "/dashboard/settings/documents", icon: FileText },
+  ],
+};
 
 export function AppSidebar({ profile }: { profile: Profile }) {
   const pathname = usePathname();
@@ -88,6 +99,8 @@ export function AppSidebar({ profile }: { profile: Profile }) {
     (item) => pathname === item.url || item.children?.some((c) => pathname === c.url),
   );
   const [inventoryOpen, setInventoryOpen] = useState(isInventoryActive);
+  const isSettingsActive = settingsGroup.items.some((item) => pathname === item.url);
+  const [settingsOpen, setSettingsOpen] = useState(isSettingsActive);
 
   const visibleNavItems = navItems.filter((item) => canAccessPage(profile.role, item.url));
   const visibleInventoryItems = inventoryGroup.items
@@ -185,20 +198,35 @@ export function AppSidebar({ profile }: { profile: Profile }) {
                 </SidebarMenuItem>
               ))}
 
-              {profile.role === "owner" &&
-                ownerOnlyNavItems.map((item) => (
-                  <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton
-                      isActive={pathname === item.url}
-                      render={
-                        <Link href={item.url}>
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </Link>
-                      }
-                    />
-                  </SidebarMenuItem>
-                ))}
+              {profile.role === "owner" && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={isSettingsActive}
+                    onClick={() => setSettingsOpen((open) => !open)}
+                  >
+                    <settingsGroup.icon />
+                    <span>{settingsGroup.title}</span>
+                    {settingsOpen ? <ChevronDown className="ml-auto" /> : <ChevronRight className="ml-auto" />}
+                  </SidebarMenuButton>
+                  {settingsOpen && (
+                    <SidebarMenuSub>
+                      {settingsGroup.items.map((item) => (
+                        <SidebarMenuSubItem key={item.url}>
+                          <SidebarMenuSubButton
+                            isActive={pathname === item.url}
+                            render={
+                              <Link href={item.url}>
+                                <item.icon />
+                                <span>{item.title}</span>
+                              </Link>
+                            }
+                          />
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  )}
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

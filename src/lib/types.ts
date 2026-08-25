@@ -101,6 +101,14 @@ export interface Profile {
   active: boolean;
 }
 
+export interface LoginLogEntry {
+  id: string;
+  profileId: string | null;
+  fullNameSnapshot: string;
+  email: string | null;
+  loggedInAt: string;
+}
+
 export interface UserAccount {
   id: string;
   fullName: string;
