@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { formatTHB } from "@/lib/format";
 import type { PettyCashTransaction } from "@/lib/types";
@@ -22,11 +21,6 @@ export function PrintPettyCashView({
   toLabel: string;
   preparerName: string;
 }) {
-  useEffect(() => {
-    const t = setTimeout(() => window.print(), 300);
-    return () => clearTimeout(t);
-  }, []);
-
   // Known category columns first (matches the paper form's fixed layout),
   // then any category the business has started using that isn't in that
   // fixed set yet, so a new category never silently disappears from the total.
