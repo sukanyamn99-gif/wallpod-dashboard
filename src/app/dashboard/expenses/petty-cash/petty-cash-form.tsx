@@ -39,10 +39,23 @@ const DESCRIPTION_SUGGESTIONS: Record<PettyCashTransactionType, string[]> = {
   ],
 };
 
-export function PettyCashForm({ categorySuggestions = SUGGESTED_CATEGORIES }: { categorySuggestions?: string[] }) {
+export function PettyCashForm({
+  categorySuggestions = SUGGESTED_CATEGORIES,
+  recentDescriptions,
+}: {
+  categorySuggestions?: string[];
+  recentDescriptions?: Record<PettyCashTransactionType, string[]>;
+}) {
   const router = useRouter();
   const [type, setType] = useState<PettyCashTransactionType>("expense");
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
+
+  // Text actually typed before (most relevant to this business) leads,
+  // followed by the generic fixed suggestions — deduplicated so a phrase
+  // that happens to match both doesn't show twice.
+  const descriptionChips = Array.from(
+    new Set([...(recentDescriptions?.[type] ?? []), ...DESCRIPTION_SUGGESTIONS[type]]),
+  );
 
   function fillDescription(text: string) {
     if (descriptionRef.current) {
@@ -115,7 +128,7 @@ export function PettyCashForm({ categorySuggestions = SUGGESTED_CATEGORIES }: { 
           required
         />
         <div className="flex flex-wrap gap-1.5">
-          {DESCRIPTION_SUGGESTIONS[type].map((s) => (
+          {descriptionChips.map((s) => (
             <button
               key={s}
               type="button"

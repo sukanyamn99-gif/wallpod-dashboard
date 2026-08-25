@@ -58,3 +58,31 @@ export async function getPettyCashTransactions(): Promise<PettyCashTransaction[]
   // @ts-expect-error -- Supabase types the joined relation loosely here
   return (data ?? []).map(mapRow);
 }
+
+// Distinct รายการ text actually typed before, most-recent-first, split by
+// เติมเงิน/ใช้จ่าย since the two mean very different things — feeds the
+// quick-select chips on the entry form alongside the fixed suggestions.
+export async function getRecentPettyCashDescriptions(
+  limit = 8,
+): Promise<Record<PettyCashTransactionType, string[]>> {
+  const byType: Record<PettyCashTransactionType, string[]> = { topup: [], expense: [] };
+  if (!isSupabaseConfigured()) return byType;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("petty_cash_transactions")
+    .select("transaction_type, description")
+    .order("created_at", { ascending: false })
+    .limit(300);
+  if (error) throw error;
+
+  const seen: Record<PettyCashTransactionType, Set<string>> = { topup: new Set(), expense: new Set() };
+  for (const row of data ?? []) {
+    const type = row.transaction_type as PettyCashTransactionType;
+    const desc = row.description?.trim();
+    if (!desc || !byType[type] || seen[type].has(desc) || byType[type].length >= limit) continue;
+    seen[type].add(desc);
+    byType[type].push(desc);
+  }
+  return byType;
+}
