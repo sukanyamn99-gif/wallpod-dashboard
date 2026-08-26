@@ -65,3 +65,51 @@ export async function createPettyCashTransaction(formData: FormData) {
   revalidatePath("/dashboard/expenses");
   return { error: null, docNo };
 }
+
+export async function updatePettyCashTransaction(id: string, formData: FormData) {
+  if (!isSupabaseConfigured()) {
+    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
+  }
+
+  const transactionType = String(formData.get("transaction_type") ?? "");
+  if (transactionType !== "topup" && transactionType !== "expense") {
+    return { error: "กรุณาเลือกประเภทรายการ" };
+  }
+  const amount = num(formData.get("amount"));
+  if (amount <= 0) return { error: "กรุณากรอกจำนวนเงินให้ถูกต้อง" };
+  const description = String(formData.get("description") ?? "").trim();
+  if (!description) return { error: "กรุณากรอกรายละเอียด" };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("update_petty_cash_transaction", {
+    p_id: id,
+    p_type: transactionType satisfies PettyCashTransactionType,
+    p_amount: amount,
+    p_description: description,
+    p_category: str(formData.get("category")),
+    p_biller_name: str(formData.get("biller_name")),
+    p_job_no: str(formData.get("job_no")),
+    p_vat_amount: num(formData.get("vat_amount")),
+    p_wht_amount: num(formData.get("wht_amount")),
+    p_transaction_date: str(formData.get("transaction_date")) ?? new Date().toISOString().slice(0, 10),
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/expenses/petty-cash");
+  revalidatePath("/dashboard/expenses");
+  return { error: null };
+}
+
+export async function deletePettyCashTransaction(id: string) {
+  if (!isSupabaseConfigured()) {
+    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถลบได้ในโหมดทดลอง" };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("delete_petty_cash_transaction", { p_id: id });
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/expenses/petty-cash");
+  revalidatePath("/dashboard/expenses");
+  return { error: null };
+}

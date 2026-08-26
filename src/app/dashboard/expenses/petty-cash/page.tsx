@@ -24,8 +24,7 @@ export default async function PettyCashPage() {
         <div>
           <h1 className="text-2xl font-semibold">เงินสดย่อย</h1>
           <p className="text-sm text-muted-foreground">
-            บันทึกการเติมเงิน/ใช้จ่ายเงินสดย่อย — เป็นบัญชีแบบต่อเนื่อง ไม่สามารถแก้ไข/ลบรายการย้อนหลังได้
-            หากบันทึกผิดให้บันทึกรายการแก้ไขเพิ่ม
+            บันทึกการเติมเงิน/ใช้จ่ายเงินสดย่อย — แก้ไขหรือลบรายการได้ ระบบจะคำนวณยอดคงเหลือของทุกรายการใหม่ให้อัตโนมัติ
           </p>
         </div>
         {canCreate && (
@@ -39,7 +38,7 @@ export default async function PettyCashPage() {
         <KpiCard label="ยอดเงินสดย่อยคงเหลือ" value={formatTHB(currentBalance)} icon={Wallet} tone="green" />
       </div>
 
-      <PettyCashTable transactions={transactions} />
+      <PettyCashTable transactions={transactions} canManage={canCreate} />
     </div>
   );
 }

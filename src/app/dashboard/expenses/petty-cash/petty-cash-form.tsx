@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { createPettyCashTransaction } from "./actions";
-import type { PettyCashTransactionType } from "@/lib/types";
+import { createPettyCashTransaction, updatePettyCashTransaction } from "./actions";
+import type { PettyCashTransaction, PettyCashTransactionType } from "@/lib/types";
 
 const initialState: { error: string | null; docNo?: string } = { error: null };
 
@@ -52,19 +52,47 @@ const DESCRIPTION_SUGGESTIONS: Record<PettyCashTransactionType, string[]> = {
   ],
 };
 
+// Reconstructs the WHT rate picker's initial selection from a saved
+// wht_amount — the column only stores the computed amount, not which rate
+// produced it, so this backs it out and snaps to the closest known option
+// (exact match in practice, since every save already went through this
+// same fixed rate list).
+function inferWhtRatePercent(whtAmount: number, preVatAmount: number): string {
+  if (whtAmount <= 0 || preVatAmount <= 0) return "0";
+  const impliedRate = (whtAmount / preVatAmount) * 100;
+  let closest = WHT_RATE_OPTIONS[0];
+  let closestDiff = Infinity;
+  for (const opt of WHT_RATE_OPTIONS) {
+    const diff = Math.abs(Number(opt.value) - impliedRate);
+    if (diff < closestDiff) {
+      closest = opt;
+      closestDiff = diff;
+    }
+  }
+  return closest.value;
+}
+
 export function PettyCashForm({
   categorySuggestions = SUGGESTED_CATEGORIES,
   recentDescriptions,
   recentBillers = [],
+  mode = "create",
+  transactionId,
+  initialData,
 }: {
   categorySuggestions?: string[];
   recentDescriptions?: Record<PettyCashTransactionType, string[]>;
   recentBillers?: string[];
+  mode?: "create" | "edit";
+  transactionId?: string;
+  initialData?: PettyCashTransaction;
 }) {
   const router = useRouter();
-  const [type, setType] = useState<PettyCashTransactionType>("expense");
-  const [amount, setAmount] = useState("");
-  const [whtRatePercent, setWhtRatePercent] = useState("0");
+  const [type, setType] = useState<PettyCashTransactionType>(initialData?.transactionType ?? "expense");
+  const [amount, setAmount] = useState(initialData ? String(initialData.amount) : "");
+  const [whtRatePercent, setWhtRatePercent] = useState(() =>
+    initialData ? inferWhtRatePercent(initialData.whtAmount, initialData.amount / 1.07) : "0",
+  );
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const billerRef = useRef<HTMLInputElement>(null);
   const categoryRef = useRef<HTMLInputElement>(null);
@@ -106,7 +134,10 @@ export function PettyCashForm({
     }
   }
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
-    const result = await createPettyCashTransaction(formData);
+    const result =
+      mode === "edit" && transactionId
+        ? await updatePettyCashTransaction(transactionId, formData)
+        : await createPettyCashTransaction(formData);
     if (!result.error) {
       router.push("/dashboard/expenses/petty-cash");
     }
@@ -150,7 +181,7 @@ export function PettyCashForm({
           id="transaction_date"
           name="transaction_date"
           type="date"
-          defaultValue={new Date().toISOString().slice(0, 10)}
+          defaultValue={initialData?.transactionDate ?? new Date().toISOString().slice(0, 10)}
           required
         />
       </div>
@@ -175,6 +206,7 @@ export function PettyCashForm({
           id="description"
           name="description"
           ref={descriptionRef}
+          defaultValue={initialData?.description}
           placeholder="เช่น ซื้ออุปกรณ์สำนักงาน, เติมเงินสดย่อยประจำเดือน"
           required
         />
@@ -197,7 +229,13 @@ export function PettyCashForm({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="biller_name">ผู้เบิก</Label>
-              <Input id="biller_name" name="biller_name" ref={billerRef} placeholder="ผู้เบิก/ผู้ซื้อของ" />
+              <Input
+                id="biller_name"
+                name="biller_name"
+                ref={billerRef}
+                defaultValue={initialData?.billerName ?? undefined}
+                placeholder="ผู้เบิก/ผู้ซื้อของ"
+              />
               {recentBillers.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {recentBillers.map((name) => (
@@ -215,13 +253,24 @@ export function PettyCashForm({
             </div>
             <div className="space-y-2">
               <Label htmlFor="job_no">งาน/Job</Label>
-              <Input id="job_no" name="job_no" placeholder="เช่น JB2601001 (ถ้ามี)" />
+              <Input
+                id="job_no"
+                name="job_no"
+                defaultValue={initialData?.jobNo ?? undefined}
+                placeholder="เช่น JB2601001 (ถ้ามี)"
+              />
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="category">หมวดหมู่</Label>
-            <Input id="category" name="category" ref={categoryRef} placeholder="เลือกหรือพิมพ์หมวดหมู่ใหม่" />
+            <Input
+              id="category"
+              name="category"
+              ref={categoryRef}
+              defaultValue={initialData?.category ?? undefined}
+              placeholder="เลือกหรือพิมพ์หมวดหมู่ใหม่"
+            />
             <div className="flex flex-wrap gap-1.5">
               {categorySuggestions.map((c) => (
                 <button

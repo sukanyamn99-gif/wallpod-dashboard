@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Printer } from "lucide-react";
+import { Check, Pencil, Printer, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,10 +17,64 @@ import {
 } from "@/components/ui/table";
 import { formatTHB } from "@/lib/format";
 import type { PettyCashTransaction } from "@/lib/types";
+import { deletePettyCashTransaction } from "./actions";
 
-const TOTAL_COLUMNS = 8;
+const TOTAL_COLUMNS_BASE = 8;
 
-export function PettyCashTable({ transactions }: { transactions: PettyCashTransaction[] }) {
+function DeleteButton({ transaction }: { transaction: PettyCashTransaction }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
+  function handleConfirm() {
+    setError(null);
+    startTransition(async () => {
+      const result = await deletePettyCashTransaction(transaction.id);
+      if (result.error) setError(result.error);
+      setConfirming(false);
+    });
+  }
+
+  if (confirming) {
+    return (
+      <div className="flex flex-col gap-1">
+        <div className="flex gap-1">
+          <Button
+            size="icon-sm"
+            variant="destructive"
+            onClick={handleConfirm}
+            disabled={pending}
+            title={`ยืนยันลบ "${transaction.docNo}" (จะคำนวณยอดคงเหลือของรายการหลังจากนี้ใหม่ทั้งหมด)`}
+          >
+            <Check className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="icon-sm" variant="outline" onClick={() => setConfirming(false)} disabled={pending} title="ยกเลิก">
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+        {error && <p className="text-xs text-destructive">{error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Button size="icon-sm" variant="destructive" onClick={() => setConfirming(true)}>
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+export function PettyCashTable({
+  transactions,
+  canManage = false,
+}: {
+  transactions: PettyCashTransaction[];
+  canManage?: boolean;
+}) {
+  const totalColumns = TOTAL_COLUMNS_BASE + (canManage ? 1 : 0);
   const [query, setQuery] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -82,12 +136,13 @@ export function PettyCashTable({ transactions }: { transactions: PettyCashTransa
               <TableHead className="text-right whitespace-nowrap">จำนวนเงิน</TableHead>
               <TableHead className="text-right whitespace-nowrap">คงเหลือ</TableHead>
               <TableHead className="whitespace-nowrap">ผู้บันทึก</TableHead>
+              {canManage && <TableHead className="whitespace-nowrap">จัดการ</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={TOTAL_COLUMNS} className="text-center text-muted-foreground">
+                <TableCell colSpan={totalColumns} className="text-center text-muted-foreground">
                   ไม่พบข้อมูล
                 </TableCell>
               </TableRow>
@@ -115,6 +170,21 @@ export function PettyCashTable({ transactions }: { transactions: PettyCashTransa
                   {formatTHB(t.balanceAfter)}
                 </TableCell>
                 <TableCell className="whitespace-nowrap">{t.recordedByName || "—"}</TableCell>
+                {canManage && (
+                  <TableCell>
+                    <div className="flex gap-1">
+                      <Button
+                        size="icon-sm"
+                        variant="outline"
+                        nativeButton={false}
+                        render={<Link href={`/dashboard/expenses/petty-cash/edit/${t.id}`} />}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <DeleteButton transaction={t} />
+                    </div>
+                  </TableCell>
+                )}
               </TableRow>
             ))}
           </TableBody>

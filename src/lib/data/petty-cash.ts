@@ -59,6 +59,18 @@ export async function getPettyCashTransactions(): Promise<PettyCashTransaction[]
   return (data ?? []).map(mapRow);
 }
 
+export async function getPettyCashTransactionById(id: string): Promise<PettyCashTransaction | null> {
+  if (!isSupabaseConfigured()) return null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("petty_cash_transactions").select(COLUMNS).eq("id", id).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  // @ts-expect-error -- Supabase types the joined relation loosely here
+  return mapRow(data);
+}
+
 // Distinct รายการ text actually typed before, most-recent-first, split by
 // เติมเงิน/ใช้จ่าย since the two mean very different things — feeds the
 // quick-select chips on the entry form alongside the fixed suggestions.

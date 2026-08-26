@@ -984,7 +984,14 @@ create policy petty_cash_select on petty_cash_transactions for select
   using (my_role() <> 'sales');
 create policy petty_cash_insert on petty_cash_transactions for insert
   with check (my_role() in ('owner', 'manager', 'account'));
--- No update/delete policy — append-only, see comment above.
+-- Originally append-only (no update/delete policy) — the user later asked
+-- for full edit/delete, added in migration_033 along with
+-- recompute_petty_cash_balances() so balance_after never goes stale.
+create policy petty_cash_update on petty_cash_transactions for update
+  using (my_role() in ('owner', 'manager', 'account'))
+  with check (my_role() in ('owner', 'manager', 'account'));
+create policy petty_cash_delete on petty_cash_transactions for delete
+  using (my_role() in ('owner', 'manager', 'account'));
 
 -- Only writer of balance_after — computes it atomically from the last
 -- transaction so two near-simultaneous entries can never both read the
@@ -1022,5 +1029,58 @@ begin
     p_doc_no, p_type, p_amount, p_description, v_new_balance, auth.uid(),
     p_category, p_biller_name, p_job_no, p_vat_amount, p_wht_amount, p_transaction_date
   );
+end;
+$$;
+
+-- Recomputes the whole ledger's running balance in chronological order —
+-- called by update/delete below so editing or removing any row (not just
+-- the latest) never leaves a later row's balance_after stale.
+create function recompute_petty_cash_balances()
+returns void language plpgsql security definer as $$
+declare
+  r record;
+  v_balance numeric(14,2) := 0;
+begin
+  for r in select id, transaction_type, amount from petty_cash_transactions order by created_at asc
+  loop
+    v_balance := case when r.transaction_type = 'topup' then v_balance + r.amount else v_balance - r.amount end;
+    update petty_cash_transactions set balance_after = v_balance where id = r.id;
+  end loop;
+end;
+$$;
+
+-- doc_no and created_at (the chain's ordering key) are deliberately not
+-- editable — everything else on the row can change.
+create function update_petty_cash_transaction(
+  p_id uuid, p_type text, p_amount numeric, p_description text,
+  p_category text default null, p_biller_name text default null, p_job_no text default null,
+  p_vat_amount numeric default 0, p_wht_amount numeric default 0, p_transaction_date date default current_date
+)
+returns void language plpgsql security definer as $$
+begin
+  if my_role() not in ('owner', 'manager', 'account') then
+    raise exception 'permission denied';
+  end if;
+
+  update petty_cash_transactions
+  set transaction_type = p_type, amount = p_amount, description = p_description,
+      category = p_category, biller_name = p_biller_name, job_no = p_job_no,
+      vat_amount = p_vat_amount, wht_amount = p_wht_amount, transaction_date = p_transaction_date
+  where id = p_id;
+
+  perform recompute_petty_cash_balances();
+end;
+$$;
+
+create function delete_petty_cash_transaction(p_id uuid)
+returns void language plpgsql security definer as $$
+begin
+  if my_role() not in ('owner', 'manager', 'account') then
+    raise exception 'permission denied';
+  end if;
+
+  delete from petty_cash_transactions where id = p_id;
+
+  perform recompute_petty_cash_balances();
 end;
 $$;
