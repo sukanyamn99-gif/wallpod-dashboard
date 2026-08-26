@@ -205,16 +205,41 @@ export async function deleteUserAccount(userId: string) {
     if ((count ?? 0) <= 1) return { error: "ไม่สามารถลบเจ้าของกิจการคนสุดท้ายได้" };
   }
 
+  // profiles.id references auth.users(id) on delete cascade, so deleting the
+  // auth user also removes the profile row — but several tables reference
+  // profiles for historical attribution (stock movements, goods receipts,
+  // requisitions, payment vouchers, petty cash, sale-report change log,
+  // and the sales_reps link) with no cascade/set-null on that FK. Checking
+  // for those rows up front, rather than just attempting the delete and
+  // parsing the error, is necessary here: Supabase Auth's admin API doesn't
+  // surface the underlying Postgres constraint violation at all — it just
+  // returns an opaque 500 with an empty message, so there is no error text
+  // to pattern-match against after the fact.
+  const referenceChecks: { table: string; column: string; label: string }[] = [
+    { table: "sales_reps", column: "profile_id", label: "ผูกกับบัญชีเซลล์" },
+    { table: "sales_leads", column: "created_by", label: "Sale Report" },
+    { table: "sales_lead_change_log", column: "changed_by", label: "ประวัติแก้ไข Sale Report" },
+    { table: "stock_movements", column: "created_by", label: "ความเคลื่อนไหวสินค้า" },
+    { table: "stock_requisitions", column: "requested_by", label: "ใบเบิกสินค้า" },
+    { table: "goods_receipts", column: "received_by", label: "ใบรับสินค้า" },
+    { table: "payment_vouchers", column: "recorded_by", label: "ใบสำคัญจ่าย" },
+    { table: "petty_cash_transactions", column: "recorded_by", label: "เงินสดย่อย" },
+  ];
+  const foundLabels: string[] = [];
+  for (const { table, column, label } of referenceChecks) {
+    const { count } = await supabase.from(table).select("id", { count: "exact", head: true }).eq(column, userId);
+    if ((count ?? 0) > 0) foundLabels.push(label);
+  }
+  if (foundLabels.length > 0) {
+    return {
+      error: `ไม่สามารถลบผู้ใช้งานนี้ได้ เนื่องจากมีประวัติการทำรายการในระบบ (${foundLabels.join(", ")}) — แนะนำให้ระงับการใช้งานแทนการลบ`,
+    };
+  }
+
   const adminClient = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
-  // profiles.id references auth.users(id) on delete cascade, so this also
-  // removes the profile row — but tables that reference profiles for
-  // historical attribution (stock_movements.created_by, goods_receipts.
-  // received_by, payment_vouchers.recorded_by, etc.) have no cascade/set-null
-  // on that FK, so deleting a user with any recorded activity fails with a
-  // foreign-key violation rather than silently rewriting history.
   const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
   if (deleteError) return { error: friendlyDeleteUserError(deleteError.message) };
 
