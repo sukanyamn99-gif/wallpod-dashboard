@@ -1,10 +1,20 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { Check, Trash2, X } from "lucide-react";
+import { useState, useMemo, useTransition, type FormEvent } from "react";
+import { Check, Eye, EyeOff, KeyRound, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -14,7 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ROLE_LABELS, type Role, type UserAccount } from "@/lib/types";
-import { deleteUserAccount } from "./actions";
+import { deleteUserAccount, resetUserPassword } from "./actions";
 import { EditUserDialog } from "./edit-user-dialog";
 
 const TOTAL_COLUMNS = 7;
@@ -71,7 +81,104 @@ function DeleteUserButton({ account }: { account: UserAccount }) {
   );
 }
 
-function UserRow({ account, isSelf, canDelete }: { account: UserAccount; isSelf: boolean; canDelete: boolean }) {
+function ResetPasswordButton({ account }: { account: UserAccount }) {
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+
+  function closeAndReset() {
+    setOpen(false);
+    setPassword("");
+    setError(null);
+    setSuccess(false);
+  }
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    startTransition(async () => {
+      const result = await resetUserPassword(account.id, password);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setSuccess(true);
+      setPassword("");
+    });
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : closeAndReset())}>
+      <DialogTrigger
+        render={
+          <Button size="icon-sm" variant="outline" title="รีเซ็ตรหัสผ่าน">
+            <KeyRound className="h-3.5 w-3.5" />
+          </Button>
+        }
+      />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>รีเซ็ตรหัสผ่าน — {account.fullName}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit}>
+          <DialogBody className="space-y-4 py-4">
+            {error && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
+            {success && (
+              <p className="rounded-md bg-green-500/10 p-3 text-sm text-green-700 dark:text-green-400">
+                ตั้งรหัสผ่านใหม่เรียบร้อย
+              </p>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor={`reset-password-${account.id}`}>รหัสผ่านใหม่</Label>
+              <div className="relative">
+                <Input
+                  id={`reset-password-${account.id}`}
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  minLength={6}
+                  placeholder="อย่างน้อย 6 ตัวอักษร"
+                  required
+                  disabled={pending}
+                  className="pr-9"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  className="absolute inset-y-0 right-2 flex items-center text-muted-foreground"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeAndReset} disabled={pending}>
+              ปิด
+            </Button>
+            <Button type="submit" disabled={pending || password.length < 6}>
+              {pending ? "กำลังบันทึก..." : "ตั้งรหัสผ่านใหม่"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function UserRow({
+  account,
+  isSelf,
+  canManageAccounts,
+}: {
+  account: UserAccount;
+  isSelf: boolean;
+  canManageAccounts: boolean;
+}) {
   return (
     <TableRow>
       <TableCell className="whitespace-nowrap">
@@ -101,7 +208,12 @@ function UserRow({ account, isSelf, canDelete }: { account: UserAccount; isSelf:
       <TableCell className="whitespace-nowrap">
         <div className="flex gap-1">
           <EditUserDialog account={account} isSelf={isSelf} />
-          {canDelete && !isSelf && <DeleteUserButton account={account} />}
+          {canManageAccounts && !isSelf && (
+            <>
+              <ResetPasswordButton account={account} />
+              <DeleteUserButton account={account} />
+            </>
+          )}
         </div>
       </TableCell>
     </TableRow>
@@ -111,11 +223,11 @@ function UserRow({ account, isSelf, canDelete }: { account: UserAccount; isSelf:
 export function UsersTable({
   accounts,
   currentUserId,
-  canDelete,
+  canManageAccounts,
 }: {
   accounts: UserAccount[];
   currentUserId: string;
-  canDelete: boolean;
+  canManageAccounts: boolean;
 }) {
   const [query, setQuery] = useState("");
 
@@ -142,8 +254,8 @@ export function UsersTable({
           <p className="text-sm font-medium text-green-700 dark:text-green-400">ใช้งานอยู่</p>
           <p className="text-2xl font-semibold">{activeCount}</p>
         </div>
-        <div className="rounded-xl border p-4">
-          <p className="text-sm font-medium text-muted-foreground">ผู้ดูแลระบบ</p>
+        <div className="rounded-xl border bg-amber-500/10 p-4">
+          <p className="text-sm font-medium text-amber-700 dark:text-amber-400">ผู้ดูแลระบบ</p>
           <p className="text-2xl font-semibold">{adminCount}</p>
         </div>
       </div>
@@ -177,7 +289,7 @@ export function UsersTable({
               </TableRow>
             )}
             {filtered.map((a) => (
-              <UserRow key={a.id} account={a} isSelf={a.id === currentUserId} canDelete={canDelete} />
+              <UserRow key={a.id} account={a} isSelf={a.id === currentUserId} canManageAccounts={canManageAccounts} />
             ))}
           </TableBody>
         </Table>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { Eye, EyeOff, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,7 +53,6 @@ function EditUserForm({
 }) {
   const [role, setRole] = useState<Role>(account.role);
   const [active, setActive] = useState(account.active);
-  const [showPassword, setShowPassword] = useState(false);
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
     return updateUserAccount(account.id, formData);
   }, initialState);
@@ -140,28 +139,6 @@ function EditUserForm({
             ใช้งานอยู่
           </label>
         )}
-        <div className="space-y-2 border-t pt-4">
-          <Label htmlFor={`password-${account.id}`}>รีเซ็ตรหัสผ่าน</Label>
-          <div className="relative">
-            <Input
-              id={`password-${account.id}`}
-              name="password"
-              type={showPassword ? "text" : "password"}
-              minLength={6}
-              placeholder="เว้นว่างหากไม่ต้องการเปลี่ยนรหัสผ่าน"
-              disabled={pending}
-              className="pr-9"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((s) => !s)}
-              className="absolute inset-y-0 right-2 flex items-center text-muted-foreground"
-              tabIndex={-1}
-            >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          </div>
-        </div>
       </DialogBody>
       <DialogFooter>
         <Button type="button" variant="outline" onClick={onClose} disabled={pending}>

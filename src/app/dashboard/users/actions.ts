@@ -32,6 +32,43 @@ function friendlyDeleteUserError(message: string): string {
   return message;
 }
 
+// Dedicated action for the quick "reset password" icon on each row — kept
+// separate from updateUserAccount so resetting a password can never
+// accidentally touch role/department/active in the same submit.
+export async function resetUserPassword(userId: string, password: string) {
+  if (!isSupabaseConfigured()) {
+    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถรีเซ็ตรหัสผ่านได้ในโหมดทดลอง" };
+  }
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return { error: "ยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY บนเซิร์ฟเวอร์ — ไม่สามารถรีเซ็ตรหัสผ่านได้" };
+  }
+  if (password.length < 6) return { error: "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "กรุณาเข้าสู่ระบบ" };
+  const { data: callerProfile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  if (callerProfile?.role !== "owner" && callerProfile?.role !== "manager") {
+    return { error: "เฉพาะเจ้าของกิจการหรือผู้จัดการเท่านั้นที่รีเซ็ตรหัสผ่านได้" };
+  }
+  if (userId === user.id) return { error: "ไม่สามารถรีเซ็ตรหัสผ่านของตัวเองได้ที่นี่" };
+
+  const { data: target } = await supabase.from("profiles").select("full_name").eq("id", userId).single();
+  if (!target) return { error: "ไม่พบผู้ใช้งานนี้" };
+
+  const adminClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+  const { error: authError } = await adminClient.auth.admin.updateUserById(userId, { password });
+  if (authError) return { error: friendlyCreateUserError(authError.message) };
+
+  await logActivity("รีเซ็ตรหัสผ่านผู้ใช้งาน", target.full_name);
+  return { error: null };
+}
+
 export async function updateUserAccount(userId: string, formData: FormData) {
   if (!isSupabaseConfigured()) {
     return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
@@ -52,11 +89,9 @@ export async function updateUserAccount(userId: string, formData: FormData) {
   const role = String(formData.get("role") ?? "");
   const department = String(formData.get("department") ?? "").trim() || null;
   const active = formData.get("active") === "on";
-  const password = String(formData.get("password") ?? "");
 
   if (!fullName) return { error: "กรุณากรอกชื่อ-นามสกุล" };
   if (!VALID_ROLES.includes(role as Role)) return { error: "สิทธิ์ไม่ถูกต้อง" };
-  if (password && password.length < 6) return { error: "รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร" };
 
   const { data: before } = await supabase.from("profiles").select("role, active").eq("id", userId).single();
 
@@ -78,30 +113,24 @@ export async function updateUserAccount(userId: string, formData: FormData) {
     await logActivity(active ? "เปิดใช้งานบัญชี" : "ระงับการใช้งานบัญชี", fullName);
   }
 
-  // Email and password live in auth.users, not profiles, so they need the
-  // admin API (same trusted, server-side-only service-role key already used
-  // by createUserAccount) — the caller-is-owner check above happens before
-  // this point specifically because this call bypasses RLS entirely.
-  if (email || password) {
+  // Email lives in auth.users, not profiles, so it needs the admin API (same
+  // trusted, server-side-only service-role key already used elsewhere) —
+  // the caller role check above happens before this point specifically
+  // because this call bypasses RLS entirely. Password reset is a separate,
+  // dedicated action (resetUserPassword) — never bundled into this save.
+  if (email) {
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
       return {
         error:
-          "บันทึกชื่อ/สิทธิ์/แผนกเรียบร้อย แต่ยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY บนเซิร์ฟเวอร์ — ไม่สามารถเปลี่ยนอีเมลหรือรหัสผ่านได้",
+          "บันทึกชื่อ/สิทธิ์/แผนกเรียบร้อย แต่ยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY บนเซิร์ฟเวอร์ — ไม่สามารถเปลี่ยนอีเมลได้",
       };
     }
     const adminClient = createSupabaseClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
-    const attrs: { email?: string; password?: string; email_confirm?: boolean } = {};
-    if (email) {
-      attrs.email = email;
-      attrs.email_confirm = true;
-    }
-    if (password) attrs.password = password;
-    const { error: authError } = await adminClient.auth.admin.updateUserById(userId, attrs);
+    const { error: authError } = await adminClient.auth.admin.updateUserById(userId, { email, email_confirm: true });
     if (authError) return { error: friendlyCreateUserError(authError.message) };
-    if (password) await logActivity("รีเซ็ตรหัสผ่านผู้ใช้งาน", fullName);
   }
 
   revalidatePath("/dashboard/users");

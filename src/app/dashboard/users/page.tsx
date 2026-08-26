@@ -24,7 +24,11 @@ export default async function UsersPage() {
         {profile.role === "owner" && <AddUserDialog />}
       </div>
 
-      <UsersTable accounts={accounts} currentUserId={profile.id} canDelete={profile.role === "owner" || profile.role === "manager"} />
+      <UsersTable
+        accounts={accounts}
+        currentUserId={profile.id}
+        canManageAccounts={profile.role === "owner" || profile.role === "manager"}
+      />
     </div>
   );
 }
