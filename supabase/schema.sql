@@ -90,7 +90,10 @@ create table payments (
   paid_date date,
   status text not null check (status in
     ('เก็บเงินเรียบร้อย','ชำระมาแล้ว 50%','รอชำระเงิน')),
-  outstanding_amount numeric(14,2) not null default 0
+  outstanding_amount numeric(14,2) not null default 0,
+  -- An installment counts as actually paid only once this is filled in —
+  -- invoice_no alone can be entered before the money has actually arrived.
+  receipt_no text
 );
 
 -- ============ Sale Report (live pipeline tracking, self-reported by sales reps) ============

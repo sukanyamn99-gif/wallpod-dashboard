@@ -66,9 +66,11 @@ export interface ProjectSaleInitialData {
   invoiceNo1: string;
   amount1: string;
   paidDate1: string;
+  receiptNo1: string;
   invoiceNo2: string;
   amount2: string;
   paidDate2: string;
+  receiptNo2: string;
 }
 
 export function ProjectSaleForm({
@@ -100,6 +102,9 @@ export function ProjectSaleForm({
   );
   const [amount1, setAmount1] = useState(initialData?.amount1 ?? "");
   const [amount2, setAmount2] = useState(initialData?.amount2 ?? "");
+  const [receiptNo1, setReceiptNo1] = useState(initialData?.receiptNo1 ?? "");
+  const [receiptNo2, setReceiptNo2] = useState(initialData?.receiptNo2 ?? "");
+  const [status, setStatus] = useState(initialData?.status ?? "");
   const [savedMessage, setSavedMessage] = useState(false);
 
   const jobNoRef = useRef<HTMLInputElement>(null);
@@ -132,6 +137,9 @@ export function ProjectSaleForm({
         setInstallment2(false);
         setAmount1("");
         setAmount2("");
+        setReceiptNo1("");
+        setReceiptNo2("");
+        setStatus("");
         setMaterialCost("");
         setMaterialCostSuggestion(null);
         setMaterialCostError(null);
@@ -148,7 +156,14 @@ export function ProjectSaleForm({
   );
   const vat = Math.round(preVat * 0.07 * 100) / 100;
   const total = preVat + vat;
-  const outstanding = Math.max(0, total - (Number(amount1) || 0) - (Number(amount2) || 0));
+  // An installment only counts toward "paid" once its receipt number is
+  // filled in — an invoice number/amount can legitimately be entered before
+  // the actual bank transfer clears, so those alone must not reduce
+  // ยอดคงค้าง. This also means a job with no receipts yet naturally shows
+  // the full total as outstanding without needing to special-case สถานะ.
+  const paidAmount =
+    (receiptNo1.trim() ? Number(amount1) || 0 : 0) + (receiptNo2.trim() ? Number(amount2) || 0 : 0);
+  const outstanding = Math.max(0, total - paidAmount);
 
   function addRow() {
     setItems((prev) => [...prev, { key: nextRowKey.current++, category: "", amount: "" }]);
@@ -446,7 +461,7 @@ export function ProjectSaleForm({
 
         <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">งวดที่ 1</p>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="invoice_no_1">เลขที่เอกสาร</Label>
               <Input id="invoice_no_1" name="invoice_no_1" defaultValue={initialData?.invoiceNo1} placeholder="IV..." />
@@ -468,13 +483,23 @@ export function ProjectSaleForm({
               <Label htmlFor="paid_date_1">วันที่รับชำระ</Label>
               <Input id="paid_date_1" name="paid_date_1" type="date" defaultValue={initialData?.paidDate1} />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="receipt_no_1">เลขที่ใบเสร็จ</Label>
+              <Input
+                id="receipt_no_1"
+                name="receipt_no_1"
+                value={receiptNo1}
+                onChange={(e) => setReceiptNo1(e.target.value)}
+                placeholder="RE... (กรอกเมื่อได้รับเงินแล้ว)"
+              />
+            </div>
           </div>
         </div>
 
         {installment2 ? (
           <div className="space-y-2">
             <p className="text-sm font-medium text-muted-foreground">งวดที่ 2</p>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <div className="space-y-2">
                 <Label htmlFor="invoice_no_2">เลขที่เอกสาร</Label>
                 <Input id="invoice_no_2" name="invoice_no_2" defaultValue={initialData?.invoiceNo2} placeholder="IV..." />
@@ -496,6 +521,16 @@ export function ProjectSaleForm({
                 <Label htmlFor="paid_date_2">วันที่รับชำระ</Label>
                 <Input id="paid_date_2" name="paid_date_2" type="date" defaultValue={initialData?.paidDate2} />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="receipt_no_2">เลขที่ใบเสร็จ</Label>
+                <Input
+                  id="receipt_no_2"
+                  name="receipt_no_2"
+                  value={receiptNo2}
+                  onChange={(e) => setReceiptNo2(e.target.value)}
+                  placeholder="RE... (กรอกเมื่อได้รับเงินแล้ว)"
+                />
+              </div>
             </div>
           </div>
         ) : (
@@ -508,7 +543,7 @@ export function ProjectSaleForm({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="status">สถานะ</Label>
-            <Select name="status" required defaultValue={initialData?.status}>
+            <Select name="status" required value={status} onValueChange={(v) => setStatus(v ?? "")}>
               <SelectTrigger id="status" className="w-full">
                 <SelectValue placeholder="เลือก" />
               </SelectTrigger>

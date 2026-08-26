@@ -47,8 +47,10 @@ type ParsedForm = {
   outstanding: number;
   invoiceNo1: string | null;
   paidDate1: string | null;
+  receiptNo1: string | null;
   invoiceNo2: string | null;
   paidDate2: string | null;
+  receiptNo2: string | null;
 };
 
 function parseForm(formData: FormData): { ok: false; error: string } | ParsedForm {
@@ -100,7 +102,14 @@ function parseForm(formData: FormData): { ok: false; error: string } | ParsedFor
 
   const installment1Amount = num(formData.get("amount_1"));
   const installment2Amount = num(formData.get("amount_2"));
-  const outstanding = Math.max(0, Math.round((total - installment1Amount - installment2Amount) * 100) / 100);
+  const receiptNo1 = str(formData.get("receipt_no_1"));
+  const receiptNo2 = str(formData.get("receipt_no_2"));
+  // An installment only counts toward "paid" once its receipt number is
+  // filled in — mirrors project-sale-form.tsx's live preview (see comment
+  // there): an invoice number/amount can be entered before the bank
+  // transfer actually clears, so those alone must not reduce ยอดคงค้าง.
+  const paidAmount = (receiptNo1 ? installment1Amount : 0) + (receiptNo2 ? installment2Amount : 0);
+  const outstanding = Math.max(0, Math.round((total - paidAmount) * 100) / 100);
 
   return {
     ok: true,
@@ -123,8 +132,10 @@ function parseForm(formData: FormData): { ok: false; error: string } | ParsedFor
     outstanding,
     invoiceNo1: str(formData.get("invoice_no_1")),
     paidDate1: str(formData.get("paid_date_1")),
+    receiptNo1,
     invoiceNo2: str(formData.get("invoice_no_2")),
     paidDate2: str(formData.get("paid_date_2")),
+    receiptNo2,
   };
 }
 
@@ -163,6 +174,7 @@ function buildPayments(projectId: string, parsed: ParsedForm) {
       installment_no: 1,
       amount: parsed.installment1Amount,
       paid_date: parsed.paidDate1,
+      receipt_no: parsed.receiptNo1,
       status: parsed.status,
       outstanding_amount: parsed.outstanding,
     });
@@ -174,6 +186,7 @@ function buildPayments(projectId: string, parsed: ParsedForm) {
       installment_no: 2,
       amount: parsed.installment2Amount,
       paid_date: parsed.paidDate2,
+      receipt_no: parsed.receiptNo2,
       status: parsed.status,
       outstanding_amount: parsed.outstanding,
     });
