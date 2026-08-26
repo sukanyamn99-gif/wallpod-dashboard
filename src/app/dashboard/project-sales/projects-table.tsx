@@ -19,7 +19,7 @@ import type { FullProjectRow } from "@/lib/data/project-sales";
 
 const BASE_COLUMNS = 7;
 const TAIL_COLUMNS = 19;
-const COST_COLUMNS = 8;
+const COST_COLUMNS = 9;
 
 const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -30,6 +30,23 @@ function Money({ value, className }: { value: number | null | undefined; classNa
   return (
     <TableCell className={cn("text-right whitespace-nowrap", className)}>
       {value ? formatTHB(value) : "—"}
+    </TableCell>
+  );
+}
+
+// preVat, not total, is the margin base — matches GP Dashboard's
+// avgMarginPercent convention (profit / revenue, VAT excluded since it's a
+// pass-through tax, not revenue).
+function marginPercent(profit: number | null | undefined, preVat: number | null | undefined): number | null {
+  if (profit == null || !preVat) return null;
+  return (profit / preVat) * 100;
+}
+
+function Percent({ value, className }: { value: number | null; className?: string }) {
+  const toneClass = value != null && value < 0 ? "text-[var(--destructive)]" : undefined;
+  return (
+    <TableCell className={cn("text-right whitespace-nowrap tabular-nums", className, toneClass)}>
+      {value != null ? `${value.toFixed(1)}%` : "—"}
     </TableCell>
   );
 }
@@ -106,6 +123,15 @@ function SummaryStat({ label, value }: { label: string; value: number }) {
   );
 }
 
+function SummaryPercent({ label, value }: { label: string; value: number | null }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium tabular-nums">{value != null ? `${value.toFixed(1)}%` : "—"}</span>
+    </div>
+  );
+}
+
 function SubtotalStat({
   label,
   value,
@@ -130,6 +156,19 @@ function SubtotalStat({
     <div className="flex flex-col justify-center border-l pl-4 first:border-l-0 first:pl-0">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className={valueClassName}>{formatTHB(value)}</span>
+    </div>
+  );
+}
+
+function SubtotalPercent({ label, value }: { label: string; value: number | null }) {
+  const valueClassName = cn(
+    "font-semibold tabular-nums",
+    value != null && value < 0 ? "text-[var(--destructive)]" : "text-[var(--chart-2)]",
+  );
+  return (
+    <div className="flex flex-col justify-center border-l pl-4 first:border-l-0 first:pl-0">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className={valueClassName}>{value != null ? `${value.toFixed(1)}%` : "—"}</span>
     </div>
   );
 }
@@ -220,6 +259,7 @@ function ProjectRow({
           <Money value={p.costs?.shipping} className={COST_GROUP_CLASS} />
           <Money value={p.costs?.totalCost} className={COST_GROUP_CLASS} />
           <Money value={p.profit} className={COST_GROUP_CLASS} />
+          <Percent value={marginPercent(p.profit, p.preVat)} className={COST_GROUP_CLASS} />
         </>
       )}
       <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.invoiceNo1 ?? "—"}</TableCell>
@@ -370,6 +410,7 @@ export function ProjectsTable({
           >
             <SummaryStat label="ต้นทุนรวม" value={summary.totalCost} />
             <SummaryStat label="กำไรรวม" value={summary.profit} />
+            <SummaryPercent label="% กำไรเฉลี่ย" value={marginPercent(summary.profit, summary.preVat)} />
           </SummaryGroup>
         )}
 
@@ -421,6 +462,7 @@ export function ProjectsTable({
                   <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>ค่าขนส่ง</TableHead>
                   <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>รวมต้นทุน</TableHead>
                   <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>กำไร</TableHead>
+                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>%กำไร</TableHead>
                 </>
               )}
               <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>เลขที่เอกสาร (งวด 1)</TableHead>
@@ -462,6 +504,7 @@ export function ProjectsTable({
                         <>
                           <SubtotalStat label="ต้นทุน" value={group.subtotal.totalCost} />
                           <SubtotalStat label="กำไร" value={group.subtotal.profit} tone="profit" />
+                          <SubtotalPercent label="%กำไร" value={marginPercent(group.subtotal.profit, group.subtotal.preVat)} />
                         </>
                       )}
                       <SubtotalStat label="คงค้าง" value={group.subtotal.outstanding} tone="outstanding" />
