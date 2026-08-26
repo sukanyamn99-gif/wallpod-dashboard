@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useTransition, type FormEvent } from "react";
-import { Check, Eye, EyeOff, KeyRound, Trash2, X } from "lucide-react";
+import { Check, Eye, EyeOff, KeyRound, Lock, Trash2, User, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -121,7 +121,10 @@ function ResetPasswordButton({ account }: { account: UserAccount }) {
       />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>รีเซ็ตรหัสผ่าน — {account.fullName}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <KeyRound className="h-4 w-4 text-amber-500" />
+            รีเซ็ตรหัสผ่าน
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <DialogBody className="space-y-4 py-4">
@@ -131,9 +134,24 @@ function ResetPasswordButton({ account }: { account: UserAccount }) {
                 ตั้งรหัสผ่านใหม่เรียบร้อย
               </p>
             )}
+            <div className="flex items-center gap-3 rounded-md border bg-muted/40 p-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                <User className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">ผู้ใช้งาน</p>
+                <p className="truncate text-sm font-medium">
+                  {account.fullName}
+                  {account.email && <span className="text-muted-foreground"> · {account.email}</span>}
+                </p>
+              </div>
+            </div>
             <div className="space-y-2">
-              <Label htmlFor={`reset-password-${account.id}`}>รหัสผ่านใหม่</Label>
+              <Label htmlFor={`reset-password-${account.id}`}>
+                รหัสผ่านใหม่ <span className="text-destructive">*</span>
+              </Label>
               <div className="relative">
+                <Lock className="absolute inset-y-0 left-3 my-auto h-4 w-4 text-muted-foreground" />
                 <Input
                   id={`reset-password-${account.id}`}
                   type={showPassword ? "text" : "password"}
@@ -143,7 +161,7 @@ function ResetPasswordButton({ account }: { account: UserAccount }) {
                   placeholder="อย่างน้อย 6 ตัวอักษร"
                   required
                   disabled={pending}
-                  className="pr-9"
+                  className="pr-9 pl-9"
                 />
                 <button
                   type="button"
@@ -158,10 +176,11 @@ function ResetPasswordButton({ account }: { account: UserAccount }) {
           </DialogBody>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={closeAndReset} disabled={pending}>
-              ปิด
+              ยกเลิก
             </Button>
             <Button type="submit" disabled={pending || password.length < 6}>
-              {pending ? "กำลังบันทึก..." : "ตั้งรหัสผ่านใหม่"}
+              <KeyRound className="h-4 w-4" />
+              {pending ? "กำลังบันทึก..." : "รีเซ็ตรหัสผ่าน"}
             </Button>
           </DialogFooter>
         </form>
