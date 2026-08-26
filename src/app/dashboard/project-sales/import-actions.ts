@@ -17,8 +17,13 @@ const KNOWN_COLUMNS = new Set([
   "JOB NO.", "DATE", "CUSTOMER NAMES", "PROJECT NAME", "SALE", "Customer Type", "สถานะของงาน",
   "PRE.VAT", "VAT", "รวมทั้งสิ้น",
   "ค่าวัสดุ", "ค่ากาว", "ค่าตัด", "ค่าติดตั้งผู้รับเหมา", "ค่าที่จอดรถ", "ค่าขนส่ง", "รวมต้นทุน", "กำไร",
-  "เลขที่เอกสาร (งวด 1)", "งวดที่ 1 จำนวนเงิน", "วันที่รับชำระ (งวด 1)",
-  "เลขที่เอกสาร (งวด 2)", "งวดที่ 2 จำนวนเงิน", "วันที่รับชำระ (งวด 2)",
+  "เลขที่เอกสาร (งวด 1)", "งวดที่ 1 จำนวนเงิน", "วันที่ออกเอกสาร (งวด 1)", "เลขที่ใบเสร็จ (งวด 1)", "วันที่รับชำระเงิน (งวด 1)",
+  "เลขที่เอกสาร (งวด 2)", "งวดที่ 2 จำนวนเงิน", "วันที่ออกเอกสาร (งวด 2)", "เลขที่ใบเสร็จ (งวด 2)", "วันที่รับชำระเงิน (งวด 2)",
+  // Legacy export column names (pre-received_date rename) — accepted for
+  // backward compatibility with files exported before this change so an
+  // old backup file still imports cleanly instead of being misread as
+  // dynamic product-category columns.
+  "วันที่รับชำระ (งวด 1)", "วันที่รับชำระ (งวด 2)",
   "สถานะ", "ยอดคงค้าง",
 ]);
 
@@ -37,7 +42,8 @@ export interface ParsedImportRow {
     material: number; glue: number; cutting: number; install: number; parking: number; shipping: number;
   } | null;
   payments: {
-    invoiceNo: string | null; installmentNo: number; amount: number; paidDate: string | null; status: PaymentStatus; outstandingAmount: number;
+    invoiceNo: string | null; installmentNo: number; amount: number; paidDate: string | null;
+    receiptNo: string | null; receivedDate: string | null; status: PaymentStatus; outstandingAmount: number;
   }[];
 }
 
@@ -179,17 +185,19 @@ function parseLegacySheet(sheet: XLSX.WorkSheet, warnings: string[]): ParsedImpo
     const status =
       amount1 > 0 || String(r[32] ?? "").trim() ? normalizeStatus(r[32], warnings, jobNo) : "รอชำระเงิน";
 
+    // The legacy master sheet predates receipt_no/received_date entirely —
+    // both stay null for every row parsed through this path.
     const payments: ParsedImportRow["payments"] = [];
     if (amount1 > 0 || String(r[32] ?? "").trim()) {
       payments.push({
         invoiceNo: invoiceNo1, installmentNo: 1, amount: amount1,
-        paidDate: parseThaiBEDate(r[31]), status, outstandingAmount: outstanding,
+        paidDate: parseThaiBEDate(r[31]), receiptNo: null, receivedDate: null, status, outstandingAmount: outstanding,
       });
     }
     if (amount2 > 0) {
       payments.push({
         invoiceNo: invoiceNo2, installmentNo: 2, amount: amount2,
-        paidDate: parseThaiBEDate(r[35]), status, outstandingAmount: outstanding,
+        paidDate: parseThaiBEDate(r[35]), receiptNo: null, receivedDate: null, status, outstandingAmount: outstanding,
       });
     }
 
@@ -264,22 +272,37 @@ function parseExportFormatSheet(sheet: XLSX.WorkSheet, warnings: string[]): Pars
 
     const amount1 = parseNumber(r["งวดที่ 1 จำนวนเงิน"]);
     const invoiceNo1 = String(r["เลขที่เอกสาร (งวด 1)"] ?? "").trim() || null;
+    const receiptNo1 = String(r["เลขที่ใบเสร็จ (งวด 1)"] ?? "").trim() || null;
     const amount2 = parseNumber(r["งวดที่ 2 จำนวนเงิน"]);
     const invoiceNo2 = String(r["เลขที่เอกสาร (งวด 2)"] ?? "").trim() || null;
-    const outstanding = Math.max(0, Math.round((total - amount1 - amount2) * 100) / 100);
+    const receiptNo2 = String(r["เลขที่ใบเสร็จ (งวด 2)"] ?? "").trim() || null;
+    // Matches the create/edit form's rule (project-sale-form.tsx): an
+    // installment only counts as paid once its receipt number is filled
+    // in, not just because an invoice/amount was entered.
+    const paidAmount = (receiptNo1 ? amount1 : 0) + (receiptNo2 ? amount2 : 0);
+    const outstanding = Math.max(0, Math.round((total - paidAmount) * 100) / 100);
     const status = amount1 > 0 || amount2 > 0 || invoiceNo1 || invoiceNo2 ? normalizeStatus(r["สถานะ"], warnings, jobNo ?? customerName) : "รอชำระเงิน";
 
+    // "วันที่รับชำระ (งวด N)" is the pre-rename column name — accepted as a
+    // fallback so a backup file exported before this change still imports
+    // its document-issue date correctly instead of dropping it.
     const payments: ParsedImportRow["payments"] = [];
     if (amount1 > 0 || invoiceNo1) {
       payments.push({
         invoiceNo: invoiceNo1, installmentNo: 1, amount: amount1,
-        paidDate: parseDate(r["วันที่รับชำระ (งวด 1)"]), status, outstandingAmount: outstanding,
+        paidDate: parseDate(r["วันที่ออกเอกสาร (งวด 1)"] || r["วันที่รับชำระ (งวด 1)"]),
+        receiptNo: receiptNo1,
+        receivedDate: parseDate(r["วันที่รับชำระเงิน (งวด 1)"]),
+        status, outstandingAmount: outstanding,
       });
     }
     if (amount2 > 0 || invoiceNo2) {
       payments.push({
         invoiceNo: invoiceNo2, installmentNo: 2, amount: amount2,
-        paidDate: parseDate(r["วันที่รับชำระ (งวด 2)"]), status, outstandingAmount: outstanding,
+        paidDate: parseDate(r["วันที่ออกเอกสาร (งวด 2)"] || r["วันที่รับชำระ (งวด 2)"]),
+        receiptNo: receiptNo2,
+        receivedDate: parseDate(r["วันที่รับชำระเงิน (งวด 2)"]),
+        status, outstandingAmount: outstanding,
       });
     }
 
@@ -438,6 +461,8 @@ export async function commitProjectImport(rowsJson: string): Promise<{ error: st
         installmentNo: p.installmentNo,
         amount: p.amount,
         paidDate: p.paidDate ?? "",
+        receiptNo: p.receiptNo ?? "",
+        receivedDate: p.receivedDate ?? "",
         status: p.status,
         outstandingAmount: p.outstandingAmount,
       })),

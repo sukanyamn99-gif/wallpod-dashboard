@@ -630,9 +630,10 @@ begin
     end if;
 
     if jsonb_array_length(coalesce(v_row->'payments', '[]'::jsonb)) > 0 then
-      insert into payments (project_id, invoice_no, installment_no, amount, paid_date, status, outstanding_amount)
+      insert into payments (project_id, invoice_no, installment_no, amount, paid_date, status, outstanding_amount, receipt_no, received_date)
       select v_project_id, nullif(p->>'invoiceNo', ''), (p->>'installmentNo')::int, (p->>'amount')::numeric,
-             nullif(p->>'paidDate', '')::date, p->>'status', (p->>'outstandingAmount')::numeric
+             nullif(p->>'paidDate', '')::date, p->>'status', (p->>'outstandingAmount')::numeric,
+             nullif(p->>'receiptNo', ''), nullif(p->>'receivedDate', '')::date
       from jsonb_array_elements(v_row->'payments') as p;
     end if;
 

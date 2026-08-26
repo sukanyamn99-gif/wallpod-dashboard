@@ -36,9 +36,13 @@ export interface FullProjectRow {
   invoiceNo1: string | null;
   amount1: number | null;
   paidDate1: string | null;
+  receiptNo1: string | null;
+  receivedDate1: string | null;
   invoiceNo2: string | null;
   amount2: number | null;
   paidDate2: string | null;
+  receiptNo2: string | null;
+  receivedDate2: string | null;
   status: string | null;
   outstanding: number | null;
 }
@@ -73,7 +77,7 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
     supabase
       .from("projects")
       .select(
-        "id, job_no, project_date, project_name, customer_type, pre_vat, vat, total, is_cancelled, production_status, customers(name), sales_reps(name), project_items(product_category, amount), project_costs(material_cost, glue_cost, cutting_cost, install_cost, parking_cost, shipping_cost, total_cost), payments(invoice_no, installment_no, amount, paid_date, status, outstanding_amount)",
+        "id, job_no, project_date, project_name, customer_type, pre_vat, vat, total, is_cancelled, production_status, customers(name), sales_reps(name), project_items(product_category, amount), project_costs(material_cost, glue_cost, cutting_cost, install_cost, parking_cost, shipping_cost, total_cost), payments(invoice_no, installment_no, amount, paid_date, status, outstanding_amount, receipt_no, received_date)",
       )
       .order("project_date", { ascending: false })
       .order("installment_no", { foreignTable: "payments", ascending: true }),
@@ -98,6 +102,8 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
     paid_date: string | null;
     status: string | null;
     outstanding_amount: number;
+    receipt_no: string | null;
+    received_date: string | null;
   };
 
   const categorySet = new Set(liveCategories.map((c) => c.name));
@@ -153,9 +159,13 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
       invoiceNo1: payment1?.invoice_no ?? null,
       amount1: payment1 ? Number(payment1.amount) : null,
       paidDate1: payment1?.paid_date ?? null,
+      receiptNo1: payment1?.receipt_no ?? null,
+      receivedDate1: payment1?.received_date ?? null,
       invoiceNo2: payment2?.invoice_no ?? null,
       amount2: payment2 ? Number(payment2.amount) : null,
       paidDate2: payment2?.paid_date ?? null,
+      receiptNo2: payment2?.receipt_no ?? null,
+      receivedDate2: payment2?.received_date ?? null,
       status: payment1?.status ?? payment2?.status ?? null,
       outstanding: payment1 ? Number(payment1.outstanding_amount) : payment2 ? Number(payment2.outstanding_amount) : null,
     };

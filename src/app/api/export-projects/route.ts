@@ -49,10 +49,14 @@ export async function GET() {
       row["กำไร"] = p.profit ?? "";
       row["เลขที่เอกสาร (งวด 1)"] = p.invoiceNo1 ?? "";
       row["งวดที่ 1 จำนวนเงิน"] = p.amount1 ?? "";
-      row["วันที่รับชำระ (งวด 1)"] = p.paidDate1 ?? "";
+      row["วันที่ออกเอกสาร (งวด 1)"] = p.paidDate1 ?? "";
+      row["เลขที่ใบเสร็จ (งวด 1)"] = p.receiptNo1 ?? "";
+      row["วันที่รับชำระเงิน (งวด 1)"] = p.receivedDate1 ?? "";
       row["เลขที่เอกสาร (งวด 2)"] = p.invoiceNo2 ?? "";
       row["งวดที่ 2 จำนวนเงิน"] = p.amount2 ?? "";
-      row["วันที่รับชำระ (งวด 2)"] = p.paidDate2 ?? "";
+      row["วันที่ออกเอกสาร (งวด 2)"] = p.paidDate2 ?? "";
+      row["เลขที่ใบเสร็จ (งวด 2)"] = p.receiptNo2 ?? "";
+      row["วันที่รับชำระเงิน (งวด 2)"] = p.receivedDate2 ?? "";
       row["สถานะ"] = p.status ?? "";
       row["ยอดคงค้าง"] = p.outstanding ?? "";
       return row;
