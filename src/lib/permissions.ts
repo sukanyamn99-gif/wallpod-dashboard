@@ -4,15 +4,15 @@ const ADMIN_ROLES: Role[] = ["owner", "manager"];
 const STOCK_STAFF: Role[] = ["owner", "manager", "support_sale", "account", "foreman", "production"];
 
 // Every page an authenticated role may reach. Owner/manager see everything
-// ("ทุกเมนู") except /dashboard/users, which stays owner-only on purpose —
-// it grants role changes (including promotion to owner) and shows every
-// user's email, a tighter risk tier than ordinary admin access.
+// ("ทุกเมนู") including /dashboard/users — user management (edit, password
+// reset, delete) is admin-tier, not owner-exclusive; only creating a brand
+// new account stays owner-only (see createUserAccount in actions.ts).
 //
 // A path with no entry here falls through to "allowed" (see canAccessPage) —
 // matches this app's existing convention of only gating list/dashboard
 // pages, not every detail/sub-route (those rely on RLS + UI button-hiding).
 const PAGE_ACCESS: Record<string, Role[]> = {
-  "/dashboard/users": ["owner"],
+  "/dashboard/users": ADMIN_ROLES,
   "/dashboard/sales": ["owner", "manager", "sales", "design", "support_sale", "account", "foreman", "production"],
   "/dashboard/sale-report": ["owner", "manager", "sales"],
   "/dashboard/gp": ADMIN_ROLES,

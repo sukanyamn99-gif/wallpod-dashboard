@@ -25,6 +25,13 @@ function friendlyCreateUserError(message: string): string {
   return message;
 }
 
+function friendlyDeleteUserError(message: string): string {
+  if (message.toLowerCase().includes("foreign key")) {
+    return "ไม่สามารถลบผู้ใช้งานนี้ได้ เนื่องจากมีประวัติการทำรายการในระบบ (เช่น ใบรับสินค้า/ใบเบิก/ใบสำคัญจ่าย) — แนะนำให้ระงับการใช้งานแทนการลบ";
+  }
+  return message;
+}
+
 export async function updateUserAccount(userId: string, formData: FormData) {
   if (!isSupabaseConfigured()) {
     return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
@@ -36,8 +43,8 @@ export async function updateUserAccount(userId: string, formData: FormData) {
   } = await supabase.auth.getUser();
   if (!user) return { error: "กรุณาเข้าสู่ระบบ" };
   const { data: callerProfile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-  if (callerProfile?.role !== "owner") {
-    return { error: "เฉพาะเจ้าของกิจการเท่านั้นที่แก้ไขผู้ใช้งานได้" };
+  if (callerProfile?.role !== "owner" && callerProfile?.role !== "manager") {
+    return { error: "เฉพาะเจ้าของกิจการหรือผู้จัดการเท่านั้นที่แก้ไขผู้ใช้งานได้" };
   }
 
   const fullName = String(formData.get("full_name") ?? "").trim();
@@ -166,4 +173,52 @@ export async function createUserAccount(
   await logActivity("สร้างผู้ใช้งานใหม่", `${fullName} (${ROLE_LABELS[role as Role] ?? role})`);
   revalidatePath("/dashboard/users");
   return { error: null, needsConfirmation: false };
+}
+
+export async function deleteUserAccount(userId: string) {
+  if (!isSupabaseConfigured()) {
+    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถลบได้ในโหมดทดลอง" };
+  }
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return { error: "ยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY บนเซิร์ฟเวอร์ — ไม่สามารถลบผู้ใช้งานได้" };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "กรุณาเข้าสู่ระบบ" };
+  const { data: callerProfile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  if (callerProfile?.role !== "owner" && callerProfile?.role !== "manager") {
+    return { error: "เฉพาะเจ้าของกิจการหรือผู้จัดการเท่านั้นที่ลบผู้ใช้งานได้" };
+  }
+  if (userId === user.id) return { error: "ไม่สามารถลบบัญชีของตัวเองได้" };
+
+  const { data: target } = await supabase.from("profiles").select("full_name, role").eq("id", userId).single();
+  if (!target) return { error: "ไม่พบผู้ใช้งานนี้" };
+
+  // Never let the last owner account be deleted — would strand the system
+  // with no one able to reach /dashboard/users, add accounts, or grant
+  // owner-level access again.
+  if (target.role === "owner") {
+    const { count } = await supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "owner");
+    if ((count ?? 0) <= 1) return { error: "ไม่สามารถลบเจ้าของกิจการคนสุดท้ายได้" };
+  }
+
+  const adminClient = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+  // profiles.id references auth.users(id) on delete cascade, so this also
+  // removes the profile row — but tables that reference profiles for
+  // historical attribution (stock_movements.created_by, goods_receipts.
+  // received_by, payment_vouchers.recorded_by, etc.) have no cascade/set-null
+  // on that FK, so deleting a user with any recorded activity fails with a
+  // foreign-key violation rather than silently rewriting history.
+  const { error: deleteError } = await adminClient.auth.admin.deleteUser(userId);
+  if (deleteError) return { error: friendlyDeleteUserError(deleteError.message) };
+
+  await logActivity("ลบผู้ใช้งาน", `${target.full_name} (${ROLE_LABELS[target.role as Role] ?? target.role})`);
+  revalidatePath("/dashboard/users");
+  return { error: null };
 }

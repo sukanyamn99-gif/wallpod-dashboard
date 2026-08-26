@@ -84,10 +84,10 @@ export type Role =
 export const ROLE_LABELS: Record<Role, string> = {
   owner: "เจ้าของกิจการ",
   manager: "ผู้จัดการ",
-  sales: "เซลล์",
-  design: "ออกแบบ",
-  support_sale: "ซัพพอร์ตขาย",
-  account: "บัญชี",
+  sales: "Sales",
+  design: "Designer",
+  support_sale: "ทีม Support",
+  account: "ธุรการบัญชี",
   foreman: "หัวหน้าช่าง",
   production: "ฝ่ายผลิต",
 };
