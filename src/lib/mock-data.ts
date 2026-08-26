@@ -59,6 +59,9 @@ function project(p: {
     pre_vat: p.pre_vat,
     vat,
     total: p.pre_vat + vat,
+    // Demo-only proxy: a stage_percent 100 mock project reads as fully
+    // collected so the "ปิดแล้ว/ยังไม่ปิด" card has something to show.
+    outstanding: p.stage_percent === 100 ? 0 : p.pre_vat + vat,
     items: [{ category: MOCK_ITEM_CATEGORIES[p.index % MOCK_ITEM_CATEGORIES.length], amount: p.pre_vat }],
   };
 }

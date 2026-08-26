@@ -17,7 +17,7 @@ import { createProjectSale, getMaterialCostSuggestion, updateProjectSale } from 
 import type { MaterialCostSuggestion } from "@/lib/data/stock-requisitions";
 import { formatTHB } from "@/lib/format";
 import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomplete";
-import type { Customer, CustomerType, PaymentStatus, SalesRep } from "@/lib/types";
+import type { Customer, CustomerType, PaymentStatus, ProductionStatus, SalesRep } from "@/lib/types";
 import { PRODUCTION_STATUSES } from "@/lib/types";
 
 const initialState = { error: null as string | null };
@@ -290,6 +290,13 @@ export function ProjectSaleForm({
               <SelectValue placeholder="เลือกสถานะของงาน" />
             </SelectTrigger>
             <SelectContent>
+              {/* A job already saved with a status removed from the picklist
+                  (e.g. old "เก็บเงินงวดสุดท้าย" records) still gets an option
+                  here so opening its edit page doesn't silently blank out
+                  its recorded status — it just can't be chosen for other jobs. */}
+              {initialData?.productionStatus && !PRODUCTION_STATUSES.includes(initialData.productionStatus as ProductionStatus) && (
+                <SelectItem value={initialData.productionStatus}>{initialData.productionStatus}</SelectItem>
+              )}
               {PRODUCTION_STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>
                   {s}

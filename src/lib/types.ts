@@ -44,6 +44,9 @@ export type ProductCategory = string;
 
 export type PaymentStatus = "เก็บเงินเรียบร้อย" | "ชำระมาแล้ว 50%" | "รอชำระเงิน";
 
+// "เก็บเงินงวดสุดท้าย" was removed from selectable options (still allowed by
+// the DB check constraint so the handful of existing jobs already carrying
+// it aren't broken — see the fallback rendering in project-sale-form.tsx).
 export type ProductionStatus =
   | "รอเงินมัดจำ"
   | "รออนุมัติแบบ"
@@ -54,8 +57,7 @@ export type ProductionStatus =
   | "ส่งของแล้ว"
   | "ติดตั้งเสร็จ"
   | "รอใบส่งมอบ"
-  | "จบงาน"
-  | "เก็บเงินงวดสุดท้าย";
+  | "จบงาน";
 
 export const PRODUCTION_STATUSES: ProductionStatus[] = [
   "รอเงินมัดจำ",
@@ -68,7 +70,6 @@ export const PRODUCTION_STATUSES: ProductionStatus[] = [
   "ติดตั้งเสร็จ",
   "รอใบส่งมอบ",
   "จบงาน",
-  "เก็บเงินงวดสุดท้าย",
 ];
 
 export type Role =
@@ -155,6 +156,10 @@ export interface Project {
   pre_vat: number;
   vat: number;
   total: number;
+  // null = no payment recorded yet (never "closed"); 0 = fully collected
+  // (last installment's receipt filled in) — same outstanding_amount value
+  // already stored per installment by project-sales' save logic.
+  outstanding: number | null;
   items: { category: ProductCategory; amount: number }[];
 }
 

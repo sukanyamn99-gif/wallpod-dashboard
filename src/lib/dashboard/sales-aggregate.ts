@@ -108,7 +108,11 @@ export function computeSalesAggregates(projects: Project[]): FilteredSalesData {
 
   const totalPipelineValue = projects.reduce((sum, p) => sum + p.pre_vat, 0);
   const totalProjectsCount = projects.length;
-  const closedProjectsCount = projects.filter((p) => p.production_status === "เก็บเงินงวดสุดท้าย").length;
+  // "ปิดงาน" = money for the last installment has actually been collected
+  // (outstanding is 0, per the receipt-gated calc in project-sales' save
+  // logic) — not a manually-picked production_status, which used to be the
+  // only check here and could drift from what was actually paid.
+  const closedProjectsCount = projects.filter((p) => p.outstanding !== null && p.outstanding <= 0).length;
   const openProjectsCount = totalProjectsCount - closedProjectsCount;
 
   const closedThisMonthValue = projects

@@ -9,13 +9,14 @@ async function fetchLiveProjects(): Promise<Project[]> {
   const { data, error } = await supabase
     .from("projects")
     .select(
-      "id, job_no, project_date, customer_id, project_name, sales_rep_id, customer_type, stage_percent, production_status, pre_vat, vat, total, customers(name), sales_reps(name), project_items(product_category, amount)",
+      "id, job_no, project_date, customer_id, project_name, sales_rep_id, customer_type, stage_percent, production_status, pre_vat, vat, total, customers(name), sales_reps(name), project_items(product_category, amount), payments(installment_no, outstanding_amount)",
     )
     .eq("is_cancelled", false);
 
   if (error) throw error;
 
   type EmbeddedItem = { product_category: string; amount: number };
+  type EmbeddedPayment = { installment_no: number; outstanding_amount: number };
 
   return (data ?? []).map((row) => ({
     id: row.id,
@@ -34,6 +35,11 @@ async function fetchLiveProjects(): Promise<Project[]> {
     pre_vat: Number(row.pre_vat),
     vat: Number(row.vat),
     total: Number(row.total),
+    outstanding: (() => {
+      const payments = (row.payments as unknown as EmbeddedPayment[] | null) ?? [];
+      const payment = payments.find((pay) => pay.installment_no === 1) ?? payments.find((pay) => pay.installment_no === 2);
+      return payment ? Number(payment.outstanding_amount) : null;
+    })(),
     items: ((row.project_items as unknown as EmbeddedItem[] | null) ?? []).map((i) => ({
       category: i.product_category,
       amount: Number(i.amount),
