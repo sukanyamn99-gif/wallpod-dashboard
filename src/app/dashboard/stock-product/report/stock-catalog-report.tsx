@@ -27,11 +27,8 @@ function Letterhead() {
             </p>
           </div>
         </div>
-        <div className="rounded-full border border-neutral-300 bg-neutral-50 px-5 py-2.5">
-          <p className="text-lg font-bold tracking-tight text-neutral-800">
-            Wall<span className="text-sky-600">P</span>OD
-          </p>
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element -- static print asset in public/, no benefit from next/image's runtime optimization here */}
+        <img src="/wallpod-logo.png" alt="WallPOD" className="h-14 w-auto" />
       </div>
       <div className="border-t-2 border-neutral-800" />
     </div>
