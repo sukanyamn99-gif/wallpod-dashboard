@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState, type FormEvent } from "react";
 import { Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -69,8 +69,22 @@ function EditUserForm({
     wasPending.current = pending;
   }, [pending, state.error, onClose]);
 
+  // Deactivating another owner is easy to do by mistake (e.g. editing the
+  // wrong row) and locks that person out of the dashboard immediately — this
+  // extra confirmation only fires for that specific case, matching the
+  // window.confirm pattern already used for other hard-to-undo actions in
+  // this app (e.g. deleting/cancelling a project).
+  function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    if (!isSelf && account.role === "owner" && account.active && !active) {
+      const confirmed = window.confirm(
+        `ยืนยันระงับการใช้งานบัญชีเจ้าของกิจการ "${account.fullName}" ใช่หรือไม่?\nบัญชีนี้จะเข้าสู่ระบบไม่ได้ทันที`,
+      );
+      if (!confirmed) e.preventDefault();
+    }
+  }
+
   return (
-    <form action={formAction}>
+    <form action={formAction} onSubmit={handleSubmit}>
       <DialogBody className="space-y-4 py-4">
         {state.error && (
           <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>
