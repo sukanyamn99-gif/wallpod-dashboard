@@ -371,6 +371,7 @@ export interface PaymentVoucher {
   bankName: string | null;
   bankAccountNo: string | null;
   bankTransferDate: string | null;
+  jobNo: string | null;
   ledgerLines: PaymentVoucherLedgerLine[];
 }
 

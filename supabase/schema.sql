@@ -898,7 +898,8 @@ create table payment_vouchers (
   wht_amount numeric(14,2) not null default 0,
   bank_name text,
   bank_account_no text,
-  bank_transfer_date date
+  bank_transfer_date date,
+  job_no text
 );
 
 alter table payment_vouchers enable row level security;

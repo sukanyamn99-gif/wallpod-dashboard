@@ -20,7 +20,7 @@ import { deletePaymentVoucher } from "./actions";
 
 type VoucherRow = Omit<PaymentVoucher, "ledgerLines">;
 
-const TOTAL_COLUMNS = 7;
+const TOTAL_COLUMNS = 8;
 
 const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -112,7 +112,8 @@ export function PaymentVouchersTable({
         v.docNo.toLowerCase().includes(q) ||
         v.payeeName.toLowerCase().includes(q) ||
         (v.category ?? "").toLowerCase().includes(q) ||
-        (v.description ?? "").toLowerCase().includes(q),
+        (v.description ?? "").toLowerCase().includes(q) ||
+        (v.jobNo ?? "").toLowerCase().includes(q),
     );
   }, [vouchers, query]);
 
@@ -177,6 +178,7 @@ export function PaymentVouchersTable({
               <TableHead className="whitespace-nowrap">วันที่</TableHead>
               <TableHead className="whitespace-nowrap">ผู้รับเงิน</TableHead>
               <TableHead className="whitespace-nowrap">หมวดหมู่</TableHead>
+              <TableHead className="whitespace-nowrap">เลขที่ Job</TableHead>
               <TableHead className="text-right whitespace-nowrap">จำนวนเงิน</TableHead>
               <TableHead className="whitespace-nowrap">ผู้บันทึก</TableHead>
               <TableHead className="whitespace-nowrap">จัดการ</TableHead>
@@ -205,6 +207,7 @@ export function PaymentVouchersTable({
                     </TableCell>
                     <TableCell className="whitespace-nowrap">{v.payeeName}</TableCell>
                     <TableCell className="whitespace-nowrap">{v.category ?? "—"}</TableCell>
+                    <TableCell className="whitespace-nowrap">{v.jobNo ?? "—"}</TableCell>
                     <TableCell className="text-right whitespace-nowrap">{formatTHB(v.amount)}</TableCell>
                     <TableCell className="whitespace-nowrap">{v.recordedByName || "—"}</TableCell>
                     <TableCell>

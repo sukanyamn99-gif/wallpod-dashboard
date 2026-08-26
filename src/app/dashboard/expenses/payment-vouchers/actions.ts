@@ -80,6 +80,7 @@ function parseVoucherForm(formData: FormData) {
     bankName: str(formData.get("bank_name")),
     bankAccountNo: str(formData.get("bank_account_no")),
     bankTransferDate: str(formData.get("bank_transfer_date")),
+    jobNo: str(formData.get("job_no")),
     ledgerLines,
   };
 }
@@ -143,6 +144,7 @@ export async function createPaymentVoucher(formData: FormData) {
       bank_name: parsed.bankName,
       bank_account_no: parsed.bankAccountNo,
       bank_transfer_date: parsed.bankTransferDate,
+      job_no: parsed.jobNo,
     })
     .select("id")
     .single();
@@ -182,6 +184,7 @@ export async function updatePaymentVoucher(id: string, formData: FormData) {
       bank_name: parsed.bankName,
       bank_account_no: parsed.bankAccountNo,
       bank_transfer_date: parsed.bankTransferDate,
+      job_no: parsed.jobNo,
     })
     .eq("id", id);
   if (error) return { error: error.message };

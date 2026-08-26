@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getPaymentVoucherById } from "@/lib/data/payment-vouchers";
 import { getCurrentProfile } from "@/lib/data/profile";
+import { getDistinctProjectJobNos } from "@/lib/data/reference";
 import { canAccessPage } from "@/lib/permissions";
 import { PaymentVoucherForm } from "../../payment-voucher-form";
 
@@ -10,7 +11,7 @@ export default async function EditPaymentVoucherPage({ params }: { params: Promi
   if (!profile) redirect("/login");
   if (!canAccessPage(profile.role, "/dashboard/expenses/payment-vouchers")) redirect("/dashboard/sales");
 
-  const voucher = await getPaymentVoucherById(id);
+  const [voucher, jobNoSuggestions] = await Promise.all([getPaymentVoucherById(id), getDistinctProjectJobNos()]);
   if (!voucher) {
     return (
       <div className="space-y-2">
@@ -29,7 +30,7 @@ export default async function EditPaymentVoucherPage({ params }: { params: Promi
         <h1 className="text-2xl font-semibold">แก้ไขใบสำคัญจ่าย — {voucher.docNo}</h1>
       </div>
 
-      <PaymentVoucherForm mode="edit" voucherId={voucher.id} initialData={voucher} />
+      <PaymentVoucherForm mode="edit" voucherId={voucher.id} initialData={voucher} jobNoSuggestions={jobNoSuggestions} />
     </div>
   );
 }

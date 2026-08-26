@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SizeAutocomplete } from "@/components/dashboard/size-autocomplete";
 import { formatTHB } from "@/lib/format";
 import { createPaymentVoucher, updatePaymentVoucher } from "./actions";
 import type { PaymentVoucher, WhtFormType } from "@/lib/types";
@@ -44,13 +45,16 @@ export function PaymentVoucherForm({
   mode,
   voucherId,
   initialData,
+  jobNoSuggestions = [],
 }: {
   mode: "create" | "edit";
   voucherId?: string;
   initialData?: PaymentVoucher;
+  jobNoSuggestions?: string[];
 }) {
   const router = useRouter();
   const [whtFormType, setWhtFormType] = useState<string>(initialData?.whtFormType ?? "");
+  const [jobNo, setJobNo] = useState(initialData?.jobNo ?? "");
   const [lines, setLines] = useState<LedgerLineDraft[]>(() => {
     if (initialData?.ledgerLines && initialData.ledgerLines.length > 0) {
       return initialData.ledgerLines.map((l) => ({
@@ -146,7 +150,7 @@ export function PaymentVoucherForm({
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-2">
           <Label htmlFor="category">หมวดหมู่ค่าใช้จ่าย</Label>
           <Input
@@ -159,6 +163,17 @@ export function PaymentVoucherForm({
         <div className="space-y-2">
           <Label htmlFor="reference_no">เลขที่เอกสารแนบ</Label>
           <Input id="reference_no" name="reference_no" defaultValue={initialData?.referenceNo ?? undefined} />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="job_no">เลขที่ Job</Label>
+          <SizeAutocomplete
+            id="job_no"
+            name="job_no"
+            value={jobNo}
+            onChange={setJobNo}
+            suggestions={jobNoSuggestions}
+            placeholder="เช่น JB2607001 (ถ้ามี)"
+          />
         </div>
       </div>
 
