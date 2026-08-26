@@ -79,9 +79,11 @@ export async function getGoodsReceiptById(id: string): Promise<GoodsReceipt | nu
   };
 }
 
-// Flat, one-row-per-line-item view of every goods receipt ever recorded —
-// the source for the monthly receipt report page, which filters/groups by
-// month and product on the client rather than re-querying per filter change.
+// One row per product — its most recent receipt only, not a full
+// transaction log. The user explicitly asked for "latest update per item,
+// no need to keep a log": goods_receipts/goods_receipt_items themselves
+// stay fully historical (weighted-average costing and deletion both
+// depend on that), this just changes what the REPORT surfaces.
 export interface ReceiptReportRow {
   id: string;
   docNo: string;
@@ -127,5 +129,17 @@ export async function getReceiptReportRows(): Promise<ReceiptReportRow[]> {
     };
   });
 
-  return rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const sorted = rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+  // Keep only the first (= most recent, already sorted newest-first)
+  // occurrence per product.
+  const seen = new Set<string>();
+  const latestPerProduct: ReceiptReportRow[] = [];
+  for (const row of sorted) {
+    const key = row.productSku ?? row.productName;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    latestPerProduct.push(row);
+  }
+  return latestPerProduct;
 }

@@ -16,7 +16,7 @@ export default async function ReceiptReportPage() {
       <div>
         <h1 className="text-2xl font-semibold">รายงานการรับเข้าสินค้า</h1>
         <p className="text-sm text-muted-foreground">
-          ประวัติการรับสินค้าเข้าทุกรายการ ค้นหาตามเดือนหรือรหัสสินค้าได้
+          แสดงเฉพาะรายการรับเข้าล่าสุดของแต่ละสินค้า ค้นหาตามเดือนหรือรหัสสินค้าได้
         </p>
       </div>
 

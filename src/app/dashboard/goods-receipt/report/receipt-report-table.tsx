@@ -83,11 +83,11 @@ export function ReceiptReportTable({
     <div className="space-y-4">
       <div className={`grid grid-cols-2 gap-3 rounded-md border bg-muted/40 p-4 text-sm ${canSeeCosts ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
         <div>
-          <p className="text-muted-foreground">จำนวนรายการ</p>
+          <p className="text-muted-foreground">จำนวนสินค้า</p>
           <p className="font-medium">{filtered.length} รายการ</p>
         </div>
         <div>
-          <p className="text-muted-foreground">จำนวนที่รับเข้ารวม</p>
+          <p className="text-muted-foreground">จำนวนรับเข้าล่าสุดรวม</p>
           <p className="font-medium">{formatNumber(totalQuantity)}</p>
         </div>
         <div>
