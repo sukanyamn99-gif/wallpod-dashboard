@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { AlertTriangle, Boxes, PackageSearch, PackageX } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { StockByCategoryChart } from "@/components/dashboard/stock-charts";
@@ -13,12 +14,16 @@ import {
 } from "@/components/ui/table";
 import { getStockDashboardData } from "@/lib/data/stock";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { canSeeCosts } from "@/lib/permissions";
+import { canAccessPage, canSeeCosts } from "@/lib/permissions";
 import { formatTHB } from "@/lib/format";
 
 export default async function StockDashboardPage() {
-  const [data, profile] = await Promise.all([getStockDashboardData(), getCurrentProfile()]);
-  const showCosts = profile ? canSeeCosts(profile.role) : false;
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/login");
+  if (!canAccessPage(profile.role, "/dashboard/inventory")) redirect("/dashboard/sales");
+
+  const data = await getStockDashboardData();
+  const showCosts = canSeeCosts(profile.role);
 
   return (
     <div className="space-y-6">

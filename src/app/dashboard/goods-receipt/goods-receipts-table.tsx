@@ -18,8 +18,12 @@ import { deleteGoodsReceipt } from "./actions";
 
 const TOTAL_COLUMNS = 6;
 
+// Owner/manager can edit/delete any receipt; production can edit/delete
+// only its own. support_sale/account can create receipts (see canCreate on
+// the list page) but never edit/delete, even their own — "add but not edit".
 function canDelete(profile: Profile, receipt: Omit<GoodsReceipt, "items">) {
-  return profile.role === "owner" || profile.role === "manager" || receipt.receivedById === profile.id;
+  if (profile.role === "owner" || profile.role === "manager") return true;
+  return profile.role === "production" && receipt.receivedById === profile.id;
 }
 
 function DeleteButton({ receipt }: { receipt: Omit<GoodsReceipt, "items"> }) {

@@ -19,7 +19,8 @@ export default async function EditPaymentVoucherPage({ params }: { params: Promi
     );
   }
 
-  const canManage = profile.role === "owner" || profile.role === "manager" || voucher.recordedById === profile.id;
+  const canManage =
+    profile.role === "owner" || profile.role === "manager" || profile.role === "account" || voucher.recordedById === profile.id;
   if (!canManage) redirect("/dashboard/expenses/payment-vouchers");
 
   return (

@@ -195,15 +195,17 @@ function CategoryCard({
 export function CategoriesTable({
   categories,
   canManage,
+  canCreate,
   summary,
 }: {
   categories: Category[];
   canManage: boolean;
+  canCreate: boolean;
   summary: Record<string, Summary>;
 }) {
   return (
     <div className="space-y-4">
-      {canManage && <AddCategoryForm />}
+      {canCreate && <AddCategoryForm />}
 
       {categories.length === 0 ? (
         <p className="text-center text-sm text-muted-foreground">ไม่มีหมวดหมู่</p>

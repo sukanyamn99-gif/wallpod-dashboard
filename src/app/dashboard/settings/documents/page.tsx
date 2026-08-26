@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
 import { ComingSoon } from "@/components/dashboard/coming-soon";
 import { getCurrentProfile } from "@/lib/data/profile";
+import { canAccessPage } from "@/lib/permissions";
 
 export default async function DocumentSettingsPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
-  if (profile.role !== "owner") redirect("/dashboard/sales");
+  if (!canAccessPage(profile.role, "/dashboard/settings/documents")) redirect("/dashboard/sales");
 
   return (
     <ComingSoon

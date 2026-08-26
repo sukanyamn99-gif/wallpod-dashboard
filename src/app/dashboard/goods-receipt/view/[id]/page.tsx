@@ -28,7 +28,10 @@ export default async function GoodsReceiptDetailPage({
   const showCosts = canSeeCosts(profile.role);
   const totalValue = receipt ? receipt.items.reduce((sum, it) => sum + it.quantity * it.unitCost, 0) : 0;
   const canEdit =
-    receipt && (profile.role === "owner" || profile.role === "manager" || receipt.receivedById === profile.id);
+    receipt &&
+    (profile.role === "owner" ||
+      profile.role === "manager" ||
+      (profile.role === "production" && receipt.receivedById === profile.id));
 
   return (
     <div className="space-y-6">

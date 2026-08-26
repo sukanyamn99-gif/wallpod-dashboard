@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getGoodsReceipts } from "@/lib/data/goods-receipts";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { canAccessPage } from "@/lib/permissions";
+import { canAccessPage, canCreateStockMovementDoc } from "@/lib/permissions";
 import { GoodsReceiptsTable } from "./goods-receipts-table";
 
 export default async function GoodsReceiptPage() {
@@ -12,7 +12,7 @@ export default async function GoodsReceiptPage() {
   if (!canAccessPage(profile.role, "/dashboard/goods-receipt")) redirect("/dashboard/sales");
 
   const receipts = await getGoodsReceipts();
-  const canCreate = profile.role === "owner" || profile.role === "manager" || profile.role === "production";
+  const canCreate = canCreateStockMovementDoc(profile.role);
 
   return (
     <div className="space-y-6">

@@ -155,16 +155,18 @@ create policy sales_reps_write on sales_reps for all
 create policy customers_write on customers for all
   using (my_role() in ('owner','manager','support_sale')) with check (my_role() in ('owner','manager','support_sale'));
 
--- projects: owner/manager see everything; sales see only their own
+-- projects: owner/manager see everything; sales see only their own.
+-- Write access excludes both 'sales' and 'design' (Designer is view-only
+-- across the app; everyone else who could already write keeps that).
 create policy projects_select on projects for select using (my_role() <> 'sales');
 create policy projects_write on projects for all
-  using (my_role() <> 'sales') with check (my_role() <> 'sales');
+  using (my_role() not in ('sales','design')) with check (my_role() not in ('sales','design'));
 
 -- child tables inherit visibility from their parent project
 create policy project_items_select on project_items for select
   using (exists (select 1 from projects p where p.id = project_id and my_role() <> 'sales'));
 create policy project_items_write on project_items for all
-  using (exists (select 1 from projects p where p.id = project_id and my_role() <> 'sales'));
+  using (exists (select 1 from projects p where p.id = project_id and my_role() not in ('sales','design')));
 
 create policy project_costs_select on project_costs for select
   using (my_role() in ('owner','manager'));
@@ -173,7 +175,7 @@ create policy project_costs_write on project_costs for all
 
 create policy payments_select on payments for select
   using (exists (select 1 from projects p where p.id = project_id and my_role() <> 'sales'));
-create policy payments_write on payments for all using (my_role() <> 'sales');
+create policy payments_write on payments for all using (my_role() not in ('sales','design'));
 
 create policy sales_leads_select on sales_leads for select
   using (my_role() in ('owner','manager') or sales_rep_id = my_sales_rep_id());
@@ -268,8 +270,14 @@ alter table stock_products enable row level security;
 alter table stock_movements enable row level security;
 
 create policy stock_products_select on stock_products for select using (auth.uid() is not null);
-create policy stock_products_write on stock_products for all
+-- Insert (add a new product) is open to support_sale/account too; update/
+-- delete stay owner/manager only — "can add, cannot edit".
+create policy stock_products_insert on stock_products for insert
+  with check (my_role() in ('owner','manager','support_sale','account'));
+create policy stock_products_update on stock_products for update
   using (my_role() in ('owner','manager')) with check (my_role() in ('owner','manager'));
+create policy stock_products_delete on stock_products for delete
+  using (my_role() in ('owner','manager'));
 
 create policy stock_movements_select on stock_movements for select using (my_role() <> 'sales');
 create policy stock_movements_insert on stock_movements for insert
@@ -337,8 +345,13 @@ create table product_categories (
 alter table product_categories enable row level security;
 
 create policy product_categories_select on product_categories for select using (my_role() <> 'sales');
-create policy product_categories_write on product_categories for all
+-- Same "can add, cannot edit" split as stock_products.
+create policy product_categories_insert on product_categories for insert
+  with check (my_role() in ('owner','manager','support_sale','account'));
+create policy product_categories_update on product_categories for update
   using (my_role() in ('owner','manager')) with check (my_role() in ('owner','manager'));
+create policy product_categories_delete on product_categories for delete
+  using (my_role() in ('owner','manager'));
 
 insert into product_categories (name) values
   ('WALLPOD'),('ACOUSHEET'),('ACOUSOFT'),('ACUBOX'),('CNC'),('SERVICE'),('WALLPAPER'),('OTHER')
@@ -389,13 +402,13 @@ alter table stock_requisition_items enable row level security;
 
 create policy stock_requisitions_select on stock_requisitions for select using (my_role() <> 'sales');
 create policy stock_requisitions_insert on stock_requisitions for insert
-  with check (my_role() in ('owner','manager','production'));
+  with check (my_role() in ('owner','manager','production','support_sale','account'));
 create policy stock_requisitions_delete on stock_requisitions for delete
   using (my_role() in ('owner','manager') or requested_by = auth.uid());
 
 create policy stock_requisition_items_select on stock_requisition_items for select using (my_role() <> 'sales');
 create policy stock_requisition_items_insert on stock_requisition_items for insert
-  with check (my_role() in ('owner','manager','production'));
+  with check (my_role() in ('owner','manager','production','support_sale','account'));
 
 -- ============ User Permissions (ผู้ใช้งาน) ============
 -- profiles previously had no update policy at all; only owner may edit anyone's row
@@ -459,13 +472,17 @@ alter table goods_receipt_items enable row level security;
 
 create policy goods_receipts_select on goods_receipts for select using (my_role() <> 'sales');
 create policy goods_receipts_insert on goods_receipts for insert
-  with check (my_role() in ('owner','manager','production'));
+  with check (my_role() in ('owner','manager','production','support_sale','account'));
+-- Delete requires the 'production' role specifically for the self-service
+-- clause (not just any owner of the row) — otherwise support_sale/account
+-- would gain delete on receipts they just created, contradicting "can add,
+-- cannot edit/delete".
 create policy goods_receipts_delete on goods_receipts for delete
-  using (my_role() in ('owner','manager') or received_by = auth.uid());
+  using (my_role() in ('owner','manager') or (my_role() = 'production' and received_by = auth.uid()));
 
 create policy goods_receipt_items_select on goods_receipt_items for select using (my_role() <> 'sales');
 create policy goods_receipt_items_insert on goods_receipt_items for insert
-  with check (my_role() in ('owner','manager','production'));
+  with check (my_role() in ('owner','manager','production','support_sale','account'));
 
 -- New, separate RPC — does not modify record_stock_movement, which is used by
 -- flows that never asked to carry a cost basis (Stock Product quick-entry
@@ -503,13 +520,14 @@ end;
 $$;
 
 create policy goods_receipts_update on goods_receipts for update
-  using (my_role() in ('owner','manager') or received_by = auth.uid())
-  with check (my_role() in ('owner','manager') or received_by = auth.uid());
+  using (my_role() in ('owner','manager') or (my_role() = 'production' and received_by = auth.uid()))
+  with check (my_role() in ('owner','manager') or (my_role() = 'production' and received_by = auth.uid()));
 
 create policy goods_receipt_items_delete on goods_receipt_items for delete
   using (exists (
     select 1 from goods_receipts gr
-    where gr.id = receipt_id and (my_role() in ('owner','manager') or gr.received_by = auth.uid())
+    where gr.id = receipt_id
+      and (my_role() in ('owner','manager') or (my_role() = 'production' and gr.received_by = auth.uid()))
   ));
 
 -- Edits reverse the line's original (qty, cost) contribution against the
@@ -664,7 +682,7 @@ declare
   v_old_cost numeric(14,2);
   v_new_avg_cost numeric(14,2);
 begin
-  if my_role() not in ('owner', 'manager', 'production') then
+  if my_role() not in ('owner', 'manager', 'production', 'support_sale', 'account') then
     raise exception 'permission denied';
   end if;
 
@@ -703,7 +721,7 @@ declare
   v_lot record;
   v_consume numeric(14,2);
 begin
-  if my_role() not in ('owner', 'manager', 'production') then
+  if my_role() not in ('owner', 'manager', 'production', 'support_sale', 'account') then
     raise exception 'permission denied';
   end if;
 
@@ -821,7 +839,7 @@ create table login_log (
 alter table login_log enable row level security;
 
 create policy login_log_select on login_log for select
-  using (my_role() = 'owner');
+  using (my_role() in ('owner','manager'));
 
 create policy login_log_insert on login_log for insert
   with check (profile_id = auth.uid());
@@ -845,7 +863,7 @@ create table activity_log (
 alter table activity_log enable row level security;
 
 create policy activity_log_select on activity_log for select
-  using (my_role() = 'owner');
+  using (my_role() in ('owner','manager'));
 
 create policy activity_log_insert on activity_log for insert
   with check (actor_id = auth.uid());
@@ -889,11 +907,13 @@ create policy payment_vouchers_select on payment_vouchers for select
   using (my_role() <> 'sales');
 create policy payment_vouchers_insert on payment_vouchers for insert
   with check (my_role() in ('owner', 'manager', 'account'));
+-- account gets full parity with owner/manager here (not just its own
+-- vouchers) — "full add/edit/delete access to the Expenses menu".
 create policy payment_vouchers_update on payment_vouchers for update
-  using (my_role() in ('owner', 'manager') or recorded_by = auth.uid())
-  with check (my_role() in ('owner', 'manager') or recorded_by = auth.uid());
+  using (my_role() in ('owner', 'manager', 'account') or recorded_by = auth.uid())
+  with check (my_role() in ('owner', 'manager', 'account') or recorded_by = auth.uid());
 create policy payment_vouchers_delete on payment_vouchers for delete
-  using (my_role() in ('owner', 'manager') or recorded_by = auth.uid());
+  using (my_role() in ('owner', 'manager', 'account') or recorded_by = auth.uid());
 
 -- Mini double-entry ledger table printed on the voucher (รหัสบัญชี/CODE,
 -- รายการ/DESCRIPTIONS, DEBIT, CREDIT) — a child table since a real voucher
@@ -917,12 +937,12 @@ create policy payment_voucher_ledger_lines_write on payment_voucher_ledger_lines
   using (exists (
     select 1 from payment_vouchers v
     where v.id = voucher_id
-      and (my_role() in ('owner', 'manager') or v.recorded_by = auth.uid())
+      and (my_role() in ('owner', 'manager', 'account') or v.recorded_by = auth.uid())
   ))
   with check (exists (
     select 1 from payment_vouchers v
     where v.id = voucher_id
-      and (my_role() in ('owner', 'manager') or v.recorded_by = auth.uid())
+      and (my_role() in ('owner', 'manager', 'account') or v.recorded_by = auth.uid())
   ));
 
 -- ---------- เงินสดย่อย (Petty Cash) ----------

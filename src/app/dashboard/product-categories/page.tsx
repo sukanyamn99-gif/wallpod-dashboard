@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getProductCategories } from "@/lib/data/reference";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getStockProducts } from "@/lib/data/stock";
-import { canAccessPage } from "@/lib/permissions";
+import { canAccessPage, canCreateStockProduct } from "@/lib/permissions";
 import { CategoriesTable } from "./categories-table";
 
 export default async function ProductCategoriesPage() {
@@ -13,6 +13,7 @@ export default async function ProductCategoriesPage() {
   const [categories, products] = await Promise.all([getProductCategories(), getStockProducts()]);
   const currentProfile = profile;
   const canManage = currentProfile.role === "owner" || currentProfile.role === "manager";
+  const canCreate = canCreateStockProduct(currentProfile.role);
 
   const summary: Record<string, { count: number; quantity: number }> = {};
   for (const p of products) {
@@ -32,7 +33,7 @@ export default async function ProductCategoriesPage() {
         </p>
       </div>
 
-      <CategoriesTable categories={categories} canManage={canManage} summary={summary} />
+      <CategoriesTable categories={categories} canManage={canManage} canCreate={canCreate} summary={summary} />
     </div>
   );
 }

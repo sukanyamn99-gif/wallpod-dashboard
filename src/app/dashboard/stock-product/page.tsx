@@ -2,12 +2,13 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getSignedStockProductImageUrls, getStockProductLotsByProduct, getStockProducts } from "@/lib/data/stock";
 import { getCurrentProfile } from "@/lib/data/profile";
+import { canCreateStockProduct } from "@/lib/permissions";
 import { StockProductsTable } from "./stock-products-table";
 
 export default async function StockProductPage() {
   const [products, profile] = await Promise.all([getStockProducts(), getCurrentProfile()]);
   const currentProfile = profile ?? { id: "", full_name: "", role: "sales" as const, sales_rep_id: null, department: null, active: true };
-  const canCreate = currentProfile.role === "owner" || currentProfile.role === "manager";
+  const canCreate = canCreateStockProduct(currentProfile.role);
 
   const imagePaths = products.map((p) => p.imagePath).filter((p): p is string => p !== null);
   const [imageUrls, lotsByProduct] = await Promise.all([

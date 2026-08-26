@@ -8,8 +8,12 @@ import { canAccessPage } from "@/lib/permissions";
 import { GoodsReceiptForm } from "../../goods-receipt-form";
 import type { Role } from "@/lib/types";
 
+// Mirrors goods-receipts-table.tsx's canDelete rule: owner/manager can edit
+// any receipt, production only its own; support_sale/account never (they
+// can create receipts but not edit/delete them).
 function canEdit(role: Role, receivedById: string | null, profileId: string) {
-  return role === "owner" || role === "manager" || receivedById === profileId;
+  if (role === "owner" || role === "manager") return true;
+  return role === "production" && receivedById === profileId;
 }
 
 export default async function EditGoodsReceiptPage({

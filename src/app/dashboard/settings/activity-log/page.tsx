@@ -2,12 +2,13 @@ import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getLoginLog } from "@/lib/data/login-log";
 import { getActivityLog } from "@/lib/data/activity-log";
+import { canAccessPage } from "@/lib/permissions";
 import { ActivityLogTable } from "./activity-log-table";
 
 export default async function ActivityLogPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
-  if (profile.role !== "owner") redirect("/dashboard/sales");
+  if (!canAccessPage(profile.role, "/dashboard/settings/activity-log")) redirect("/dashboard/sales");
 
   const [logins, actions] = await Promise.all([getLoginLog(), getActivityLog()]);
 

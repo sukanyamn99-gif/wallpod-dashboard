@@ -116,14 +116,19 @@ export function AppSidebar({ profile }: { profile: Profile }) {
   const [settingsOpen, setSettingsOpen] = useState(isSettingsActive);
 
   const visibleNavItems = navItems.filter((item) => canAccessPage(profile.role, item.url));
-  const visibleInventoryItems = inventoryGroup.items
-    .filter((item) => canAccessPage(profile.role, item.url))
-    .map((item) => ({
-      ...item,
-      children: item.children?.filter((c) => canAccessPage(profile.role, c.url)),
-    }));
+  // A role can be granted a child (e.g. "รายงานสินค้าคงเหลือ") without
+  // access to its parent group page (e.g. the aggregate "รายงาน" page,
+  // which shows cost data Sales/Designer shouldn't see) — in that case the
+  // parent link would just redirect them away, so flatten the accessible
+  // children up to this level instead of nesting them under a dead link.
+  const visibleInventoryItems = inventoryGroup.items.flatMap((item) => {
+    const visibleChildren = item.children?.filter((c) => canAccessPage(profile.role, c.url));
+    if (canAccessPage(profile.role, item.url)) return [{ ...item, children: visibleChildren }];
+    return (visibleChildren ?? []).map((c) => ({ ...c, children: undefined }));
+  });
   const visibleExpensesItems = expensesGroup.items.filter((item) => canAccessPage(profile.role, item.url));
   const visibleRemainingNavItems = remainingNavItems.filter((item) => canAccessPage(profile.role, item.url));
+  const visibleSettingsItems = settingsGroup.items.filter((item) => canAccessPage(profile.role, item.url));
 
   return (
     <Sidebar>
@@ -242,7 +247,7 @@ export function AppSidebar({ profile }: { profile: Profile }) {
                 </SidebarMenuItem>
               ))}
 
-              {profile.role === "owner" && (
+              {visibleSettingsItems.length > 0 && (
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     isActive={isSettingsActive}
@@ -254,7 +259,7 @@ export function AppSidebar({ profile }: { profile: Profile }) {
                   </SidebarMenuButton>
                   {settingsOpen && (
                     <SidebarMenuSub>
-                      {settingsGroup.items.map((item) => (
+                      {visibleSettingsItems.map((item) => (
                         <SidebarMenuSubItem key={item.url}>
                           <SidebarMenuSubButton
                             isActive={pathname === item.url}

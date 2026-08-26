@@ -3,7 +3,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getStockRequisitions } from "@/lib/data/stock-requisitions";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { canAccessPage } from "@/lib/permissions";
+import { canAccessPage, canCreateStockMovementDoc } from "@/lib/permissions";
 import { RequisitionsTable } from "./requisitions-table";
 
 export default async function StockRequisitionPage() {
@@ -13,8 +13,7 @@ export default async function StockRequisitionPage() {
 
   const requisitions = await getStockRequisitions();
   const currentProfile = profile;
-  const canCreate =
-    currentProfile.role === "owner" || currentProfile.role === "manager" || currentProfile.role === "production";
+  const canCreate = canCreateStockMovementDoc(currentProfile.role);
 
   return (
     <div className="space-y-6">
