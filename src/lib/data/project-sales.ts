@@ -174,7 +174,7 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
   const { data: project, error: projectErr } = await supabase
     .from("projects")
     .select(
-      "id, job_no, project_date, customer_id, project_name, sales_rep_id, customer_type, pre_vat, vat, is_cancelled, production_status, customers(name), project_items(product_category, amount), project_costs(material_cost, glue_cost, cutting_cost, install_cost, parking_cost, shipping_cost), payments(invoice_no, installment_no, amount, paid_date, status, receipt_no)",
+      "id, job_no, project_date, customer_id, project_name, sales_rep_id, customer_type, pre_vat, vat, is_cancelled, production_status, customers(name), project_items(product_category, amount), project_costs(material_cost, glue_cost, cutting_cost, install_cost, parking_cost, shipping_cost), payments(invoice_no, installment_no, amount, paid_date, status, receipt_no, received_date)",
     )
     .eq("job_no", jobNo)
     .order("installment_no", { foreignTable: "payments", ascending: true })
@@ -198,6 +198,7 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
     paid_date: string | null;
     status: string | null;
     receipt_no: string | null;
+    received_date: string | null;
   };
   const items = (project.project_items as unknown as EmbeddedItem[]) ?? [];
   const costs = (project.project_costs as unknown as EmbeddedCosts | null) ?? null;
@@ -232,10 +233,12 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
       amount1: payment1?.amount != null ? String(payment1.amount) : "",
       paidDate1: payment1?.paid_date ?? "",
       receiptNo1: payment1?.receipt_no ?? "",
+      receivedDate1: payment1?.received_date ?? "",
       invoiceNo2: payment2?.invoice_no ?? "",
       amount2: payment2?.amount != null ? String(payment2.amount) : "",
       paidDate2: payment2?.paid_date ?? "",
       receiptNo2: payment2?.receipt_no ?? "",
+      receivedDate2: payment2?.received_date ?? "",
     },
   };
 }

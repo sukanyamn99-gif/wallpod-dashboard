@@ -48,9 +48,11 @@ type ParsedForm = {
   invoiceNo1: string | null;
   paidDate1: string | null;
   receiptNo1: string | null;
+  receivedDate1: string | null;
   invoiceNo2: string | null;
   paidDate2: string | null;
   receiptNo2: string | null;
+  receivedDate2: string | null;
 };
 
 function parseForm(formData: FormData): { ok: false; error: string } | ParsedForm {
@@ -133,9 +135,11 @@ function parseForm(formData: FormData): { ok: false; error: string } | ParsedFor
     invoiceNo1: str(formData.get("invoice_no_1")),
     paidDate1: str(formData.get("paid_date_1")),
     receiptNo1,
+    receivedDate1: str(formData.get("received_date_1")),
     invoiceNo2: str(formData.get("invoice_no_2")),
     paidDate2: str(formData.get("paid_date_2")),
     receiptNo2,
+    receivedDate2: str(formData.get("received_date_2")),
   };
 }
 
@@ -175,6 +179,7 @@ function buildPayments(projectId: string, parsed: ParsedForm) {
       amount: parsed.installment1Amount,
       paid_date: parsed.paidDate1,
       receipt_no: parsed.receiptNo1,
+      received_date: parsed.receivedDate1,
       status: parsed.status,
       outstanding_amount: parsed.outstanding,
     });
@@ -187,6 +192,7 @@ function buildPayments(projectId: string, parsed: ParsedForm) {
       amount: parsed.installment2Amount,
       paid_date: parsed.paidDate2,
       receipt_no: parsed.receiptNo2,
+      received_date: parsed.receivedDate2,
       status: parsed.status,
       outstanding_amount: parsed.outstanding,
     });

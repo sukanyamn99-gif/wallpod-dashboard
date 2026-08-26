@@ -67,10 +67,12 @@ export interface ProjectSaleInitialData {
   amount1: string;
   paidDate1: string;
   receiptNo1: string;
+  receivedDate1: string;
   invoiceNo2: string;
   amount2: string;
   paidDate2: string;
   receiptNo2: string;
+  receivedDate2: string;
 }
 
 export function ProjectSaleForm({
@@ -461,7 +463,7 @@ export function ProjectSaleForm({
 
         <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">งวดที่ 1</p>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
             <div className="space-y-2">
               <Label htmlFor="invoice_no_1">เลขที่เอกสาร</Label>
               <Input id="invoice_no_1" name="invoice_no_1" defaultValue={initialData?.invoiceNo1} placeholder="IV..." />
@@ -480,7 +482,7 @@ export function ProjectSaleForm({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="paid_date_1">วันที่รับชำระ</Label>
+              <Label htmlFor="paid_date_1">วันที่ออกเอกสาร</Label>
               <Input id="paid_date_1" name="paid_date_1" type="date" defaultValue={initialData?.paidDate1} />
             </div>
             <div className="space-y-2">
@@ -493,13 +495,17 @@ export function ProjectSaleForm({
                 placeholder="RE... (กรอกเมื่อได้รับเงินแล้ว)"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="received_date_1">วันที่รับชำระเงิน</Label>
+              <Input id="received_date_1" name="received_date_1" type="date" defaultValue={initialData?.receivedDate1} />
+            </div>
           </div>
         </div>
 
         {installment2 ? (
           <div className="space-y-2">
             <p className="text-sm font-medium text-muted-foreground">งวดที่ 2</p>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
               <div className="space-y-2">
                 <Label htmlFor="invoice_no_2">เลขที่เอกสาร</Label>
                 <Input id="invoice_no_2" name="invoice_no_2" defaultValue={initialData?.invoiceNo2} placeholder="IV..." />
@@ -518,7 +524,7 @@ export function ProjectSaleForm({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="paid_date_2">วันที่รับชำระ</Label>
+                <Label htmlFor="paid_date_2">วันที่ออกเอกสาร</Label>
                 <Input id="paid_date_2" name="paid_date_2" type="date" defaultValue={initialData?.paidDate2} />
               </div>
               <div className="space-y-2">
@@ -530,6 +536,10 @@ export function ProjectSaleForm({
                   onChange={(e) => setReceiptNo2(e.target.value)}
                   placeholder="RE... (กรอกเมื่อได้รับเงินแล้ว)"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="received_date_2">วันที่รับชำระเงิน</Label>
+                <Input id="received_date_2" name="received_date_2" type="date" defaultValue={initialData?.receivedDate2} />
               </div>
             </div>
           </div>

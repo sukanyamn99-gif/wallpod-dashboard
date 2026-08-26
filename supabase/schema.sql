@@ -93,7 +93,11 @@ create table payments (
   outstanding_amount numeric(14,2) not null default 0,
   -- An installment counts as actually paid only once this is filled in —
   -- invoice_no alone can be entered before the money has actually arrived.
-  receipt_no text
+  receipt_no text,
+  -- paid_date above is really "document/invoice issue date"; this is the
+  -- actual date money was received, paired with receipt_no the same way
+  -- paid_date is paired with invoice_no.
+  received_date date
 );
 
 -- ============ Sale Report (live pipeline tracking, self-reported by sales reps) ============
