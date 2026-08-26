@@ -84,6 +84,55 @@ export async function getStockRequisitionById(id: string): Promise<StockRequisit
   };
 }
 
+export interface MaterialCostSuggestion {
+  total: number;
+  requisitionCount: number;
+  itemCount: number;
+  // stock_requisition_items never stored a cost at withdrawal time, so this
+  // is quantity × the product's CURRENT unit_cost (weighted-average),
+  // applied retroactively — an approximation, not the historical cost.
+  // Items whose product was later deleted (stock_product_id set null by the
+  // FK) have no cost basis at all and are counted here rather than silently
+  // dropped, so the UI can flag the total as incomplete.
+  missingCostItemCount: number;
+}
+
+// Sums material cost across every stock requisition tagged with this JOB
+// NO. — feeds the "ดึงยอดจากใบเบิก" suggestion button on the Project Sale
+// cost form. Requires an exact job_no match (requisitions use the same
+// free-text-with-autocomplete field as Project Sales' own JOB NO., so a
+// typo'd requisition simply won't be found here rather than erroring).
+export async function getMaterialCostByJobNo(jobNo: string): Promise<MaterialCostSuggestion> {
+  const empty: MaterialCostSuggestion = { total: 0, requisitionCount: 0, itemCount: 0, missingCostItemCount: 0 };
+  const trimmed = jobNo.trim();
+  if (!trimmed || !isSupabaseConfigured()) return empty;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("stock_requisitions")
+    .select("id, stock_requisition_items(quantity, stock_product_id, stock_products(unit_cost))")
+    .eq("job_no", trimmed);
+  if (error) throw error;
+
+  let total = 0;
+  let itemCount = 0;
+  let missingCostItemCount = 0;
+  for (const req of data ?? []) {
+    for (const item of req.stock_requisition_items ?? []) {
+      itemCount++;
+      // @ts-expect-error -- Supabase types the joined relation loosely here
+      const unitCost = item.stock_products?.unit_cost;
+      if (unitCost == null) {
+        missingCostItemCount++;
+        continue;
+      }
+      total += Number(item.quantity) * Number(unitCost);
+    }
+  }
+
+  return { total, requisitionCount: (data ?? []).length, itemCount, missingCostItemCount };
+}
+
 export interface RequisitionItemReportRow {
   requisitionId: string;
   productName: string;

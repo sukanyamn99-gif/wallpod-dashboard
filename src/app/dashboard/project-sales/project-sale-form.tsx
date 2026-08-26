@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useMemo, useRef, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useActionState, useMemo, useRef, useState, useTransition } from "react";
+import { Download, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createProjectSale, updateProjectSale } from "./actions";
+import { createProjectSale, getMaterialCostSuggestion, updateProjectSale } from "./actions";
+import type { MaterialCostSuggestion } from "@/lib/data/stock-requisitions";
 import { formatTHB } from "@/lib/format";
 import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomplete";
 import type { Customer, CustomerType, PaymentStatus, SalesRep } from "@/lib/types";
@@ -101,6 +102,23 @@ export function ProjectSaleForm({
   const [amount2, setAmount2] = useState(initialData?.amount2 ?? "");
   const [savedMessage, setSavedMessage] = useState(false);
 
+  const jobNoRef = useRef<HTMLInputElement>(null);
+  const [materialCost, setMaterialCost] = useState(initialData?.costs.material_cost ?? "");
+  const [materialCostSuggestion, setMaterialCostSuggestion] = useState<MaterialCostSuggestion | null>(null);
+  const [materialCostError, setMaterialCostError] = useState<string | null>(null);
+  const [fetchingMaterialCost, startMaterialCostFetch] = useTransition();
+
+  function fetchMaterialCostSuggestion() {
+    const jobNo = jobNoRef.current?.value ?? "";
+    setMaterialCostError(null);
+    setMaterialCostSuggestion(null);
+    startMaterialCostFetch(async () => {
+      const result = await getMaterialCostSuggestion(jobNo);
+      if (result.error) setMaterialCostError(result.error);
+      else setMaterialCostSuggestion(result.suggestion);
+    });
+  }
+
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
     const result =
       mode === "edit" && projectId
@@ -114,6 +132,9 @@ export function ProjectSaleForm({
         setInstallment2(false);
         setAmount1("");
         setAmount2("");
+        setMaterialCost("");
+        setMaterialCostSuggestion(null);
+        setMaterialCostError(null);
       } else {
         setSavedMessage(true);
       }
@@ -168,6 +189,7 @@ export function ProjectSaleForm({
             <Input
               id="job_no"
               name="job_no"
+              ref={jobNoRef}
               defaultValue={mode === "edit" ? initialData?.jobNo ?? "" : suggestedJobNo()}
               readOnly={mode === "edit"}
               className={mode === "edit" ? "bg-muted" : undefined}
@@ -342,8 +364,54 @@ export function ProjectSaleForm({
             <h3 className="font-medium">ต้นทุน (ถ้ามี)</h3>
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="material_cost">ค่าวัสดุ</Label>
-                <Input id="material_cost" name="material_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.material_cost} placeholder="0" />
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="material_cost">ค่าวัสดุ</Label>
+                  <button
+                    type="button"
+                    onClick={fetchMaterialCostSuggestion}
+                    disabled={fetchingMaterialCost}
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+                    title="ดึงยอดจากใบเบิกสินค้าที่ระบุ JOB NO. นี้"
+                  >
+                    <Download className="h-3 w-3" />
+                    {fetchingMaterialCost ? "กำลังค้นหา..." : "ดึงยอดจากใบเบิก"}
+                  </button>
+                </div>
+                <Input
+                  id="material_cost"
+                  name="material_cost"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={materialCost}
+                  onChange={(e) => setMaterialCost(e.target.value)}
+                  placeholder="0"
+                />
+                {materialCostError && <p className="text-xs text-destructive">{materialCostError}</p>}
+                {materialCostSuggestion && (
+                  <div className="rounded-md border bg-muted/40 p-2 text-xs">
+                    <p className="text-muted-foreground">
+                      จากใบเบิกสินค้า {materialCostSuggestion.requisitionCount} ใบ ({materialCostSuggestion.itemCount} รายการ):{" "}
+                      <span className="font-medium text-foreground">{formatTHB(materialCostSuggestion.total)}</span>
+                      {materialCostSuggestion.missingCostItemCount > 0 && (
+                        <span className="text-amber-600 dark:text-amber-400">
+                          {" "}
+                          (มี {materialCostSuggestion.missingCostItemCount} รายการไม่ทราบต้นทุน ไม่รวมในยอดนี้)
+                        </span>
+                      )}
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      * คำนวณจากต้นทุน/หน่วยปัจจุบันของสินค้า ไม่ใช่ต้นทุน ณ วันที่เบิกจริง
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setMaterialCost(String(materialCostSuggestion.total))}
+                      className="mt-1.5 text-xs font-medium text-primary underline underline-offset-2"
+                    >
+                      ใช้ยอดนี้
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="glue_cost">ค่ากาว</Label>

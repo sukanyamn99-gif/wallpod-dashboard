@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activity-log";
+import { getMaterialCostByJobNo } from "@/lib/data/stock-requisitions";
 import type { PaymentStatus, ProductionStatus } from "@/lib/types";
 import { PRODUCTION_STATUSES } from "@/lib/types";
 
@@ -178,6 +179,17 @@ function buildPayments(projectId: string, parsed: ParsedForm) {
     });
   }
   return payments;
+}
+
+export async function getMaterialCostSuggestion(jobNo: string) {
+  if (!isSupabaseConfigured()) return { error: "ยังไม่ได้ตั้งค่า Supabase", suggestion: null };
+  if (!jobNo.trim()) return { error: "กรุณากรอก JOB NO. ก่อน", suggestion: null };
+
+  const suggestion = await getMaterialCostByJobNo(jobNo);
+  if (suggestion.requisitionCount === 0) {
+    return { error: `ไม่พบใบเบิกสินค้าที่ระบุ JOB NO. "${jobNo.trim()}"`, suggestion: null };
+  }
+  return { error: null, suggestion };
 }
 
 export async function createProjectSale(formData: FormData) {
