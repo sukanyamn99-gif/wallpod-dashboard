@@ -51,6 +51,9 @@ function EditUserForm({
   isSelf: boolean;
   onClose: () => void;
 }) {
+  const [fullName, setFullName] = useState(account.fullName);
+  const [email, setEmail] = useState(account.email ?? "");
+  const [department, setDepartment] = useState(account.department ?? "");
   const [role, setRole] = useState<Role>(account.role);
   const [active, setActive] = useState(account.active);
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
@@ -77,7 +80,8 @@ function EditUserForm({
           <Input
             id={`full_name-${account.id}`}
             name="full_name"
-            defaultValue={account.fullName}
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
             required
             disabled={pending}
           />
@@ -88,7 +92,8 @@ function EditUserForm({
             id={`email-${account.id}`}
             name="email"
             type="email"
-            defaultValue={account.email ?? ""}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             disabled={pending}
           />
         </div>
@@ -119,7 +124,8 @@ function EditUserForm({
           <Input
             id={`department-${account.id}`}
             name="department"
-            defaultValue={account.department ?? ""}
+            value={department}
+            onChange={(e) => setDepartment(e.target.value)}
             placeholder="แผนก"
             disabled={pending}
           />
