@@ -2,7 +2,7 @@
 
 import { useActionState, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { MapPin, X } from "lucide-react";
+import { MapPin, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -80,6 +80,19 @@ export function SaleReportForm({
   const [contactNameError, setContactNameError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
+  function resetForm() {
+    setLocation("");
+    images.forEach((img) => {
+      if (img.kind === "new") URL.revokeObjectURL(img.previewUrl);
+    });
+    setImages([]);
+    setContactNameError(null);
+    setPhoneError(null);
+    // Remount every field (including the custom Select dropdowns, which don't
+    // reliably clear on a plain form.reset()) so the form is fully blank again.
+    setFormKey((k) => k + 1);
+  }
+
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
     const result =
       mode === "edit" && leadId
@@ -90,16 +103,7 @@ export function SaleReportForm({
       if (mode === "edit") {
         router.push("/dashboard/sale-report");
       } else {
-        setLocation("");
-        images.forEach((img) => {
-          if (img.kind === "new") URL.revokeObjectURL(img.previewUrl);
-        });
-        setImages([]);
-        setContactNameError(null);
-        setPhoneError(null);
-        // Remount every field (including the custom Select dropdowns, which don't
-        // reliably clear on a plain form.reset()) so the form is fully blank again.
-        setFormKey((k) => k + 1);
+        resetForm();
       }
     }
     return result;
@@ -389,9 +393,17 @@ export function SaleReportForm({
         )}
       </div>
 
-      <Button type="submit" disabled={pending || resizing}>
-        {pending ? "กำลังบันทึก..." : mode === "edit" ? "บันทึกการแก้ไข" : "บันทึก Sale Report"}
-      </Button>
+      <div className="flex gap-2">
+        <Button type="submit" disabled={pending || resizing}>
+          {pending ? "กำลังบันทึก..." : mode === "edit" ? "บันทึกการแก้ไข" : "บันทึก Sale Report"}
+        </Button>
+        {mode === "create" && (
+          <Button type="button" variant="outline" onClick={resetForm} disabled={pending || resizing}>
+            <Plus className="h-4 w-4" />
+            เพิ่มรายงานใหม่
+          </Button>
+        )}
+      </div>
     </form>
   );
 }

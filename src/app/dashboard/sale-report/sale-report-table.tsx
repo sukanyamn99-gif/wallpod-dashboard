@@ -33,7 +33,7 @@ import type { Profile, SaleReport, SaleReportChangeLog, SalesRep, Stage } from "
 
 const STAGES: Stage[] = ["นำเสนอ", "ใบเสนอราคา", "เจรจาต่อรอง", "ปิดการขาย", "ไม่สำเร็จ"];
 
-const TOTAL_COLUMNS = 15;
+const TOTAL_COLUMNS = 14;
 
 function summarize(reports: SaleReport[]) {
   return {
@@ -67,7 +67,7 @@ function RowActions({ report }: { report: SaleReport }) {
   if (confirming) {
     return (
       <div className="flex flex-col gap-1">
-        <div className="flex gap-1">
+        <div className="flex gap-0.5">
           <Button
             size="icon-sm"
             variant="destructive"
@@ -88,7 +88,7 @@ function RowActions({ report }: { report: SaleReport }) {
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex gap-1">
+      <div className="flex gap-0.5">
         <Button
           size="icon-sm"
           variant="outline"
@@ -325,25 +325,24 @@ export function SaleReportTable({
           ))}
         </div>
 
-        <div className="overflow-x-auto rounded-md border">
-          <Table>
+        <div className="rounded-md border">
+          <Table className="table-fixed" containerClassName="overflow-x-visible">
             <TableHeader className="bg-muted">
               <TableRow>
-                <TableHead className="whitespace-nowrap">วันที่</TableHead>
-                <TableHead className="whitespace-nowrap">เซลล์</TableHead>
-                <TableHead className="whitespace-nowrap">ลูกค้า</TableHead>
-                <TableHead className="whitespace-nowrap">งาน/โปรเจกต์</TableHead>
-                <TableHead className="whitespace-nowrap">กลุ่มลูกค้า</TableHead>
-                <TableHead className="whitespace-nowrap">Stage</TableHead>
-                <TableHead className="text-right whitespace-nowrap">มูลค่าโดยประมาณ</TableHead>
-                <TableHead className="whitespace-nowrap">ผู้ติดต่อ</TableHead>
-                <TableHead className="whitespace-nowrap">เบอร์โทร</TableHead>
-                <TableHead className="whitespace-nowrap">ตำแหน่ง</TableHead>
-                <TableHead className="whitespace-nowrap">รูปภาพ</TableHead>
-                <TableHead className="whitespace-nowrap">Next Action</TableHead>
-                <TableHead className="whitespace-nowrap">หมายเหตุ</TableHead>
-                <TableHead className="whitespace-nowrap">รายละเอียด</TableHead>
-                <TableHead className="whitespace-nowrap">จัดการ</TableHead>
+                <TableHead className="truncate" style={{ width: "6%" }}>วันที่</TableHead>
+                <TableHead className="truncate" style={{ width: "6%" }}>เซลล์</TableHead>
+                <TableHead className="truncate" style={{ width: "8%" }}>ลูกค้า</TableHead>
+                <TableHead className="truncate" style={{ width: "8%" }}>งาน/โปรเจกต์</TableHead>
+                <TableHead className="truncate" style={{ width: "5%" }}>กลุ่มลูกค้า</TableHead>
+                <TableHead className="truncate" style={{ width: "6%" }}>Stage</TableHead>
+                <TableHead className="truncate text-right" style={{ width: "8%" }}>มูลค่าโดยประมาณ</TableHead>
+                <TableHead className="truncate" style={{ width: "8%" }}>ผู้ติดต่อ</TableHead>
+                <TableHead className="truncate" style={{ width: "8%" }}>เบอร์โทร</TableHead>
+                <TableHead className="truncate" style={{ width: "5%" }}>ตำแหน่ง</TableHead>
+                <TableHead className="truncate" style={{ width: "6%" }}>รูปภาพ</TableHead>
+                <TableHead className="truncate" style={{ width: "8%" }}>Next Action</TableHead>
+                <TableHead className="truncate" style={{ width: "8%" }}>หมายเหตุ</TableHead>
+                <TableHead className="truncate" style={{ width: "10%" }}>จัดการ</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -356,20 +355,28 @@ export function SaleReportTable({
               )}
               {filtered.map((r) => (
                 <TableRow key={r.id}>
-                  <TableCell className="whitespace-nowrap">
+                  <TableCell className="truncate">
                     {new Date(r.created_at).toLocaleDateString("th-TH")}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap font-medium">{r.sales_rep_name}</TableCell>
-                  <TableCell className="whitespace-nowrap">{r.customer_name}</TableCell>
-                  <TableCell className="whitespace-nowrap">{r.project_name ?? "—"}</TableCell>
-                  <TableCell className="whitespace-nowrap">{r.customer_type}</TableCell>
-                  <TableCell className="whitespace-nowrap">
+                  <TableCell className="truncate font-medium" title={r.sales_rep_name}>
+                    {r.sales_rep_name}
+                  </TableCell>
+                  <TableCell className="truncate" title={r.customer_name}>
+                    {r.customer_name}
+                  </TableCell>
+                  <TableCell className="truncate" title={r.project_name ?? undefined}>
+                    {r.project_name ?? "—"}
+                  </TableCell>
+                  <TableCell className="truncate">{r.customer_type}</TableCell>
+                  <TableCell className="truncate">
                     <Badge variant="secondary">{r.stage}</Badge>
                   </TableCell>
-                  <TableCell className="text-right whitespace-nowrap">{formatTHB(r.est_value)}</TableCell>
-                  <TableCell className="whitespace-nowrap">{r.contact_name ?? "—"}</TableCell>
-                  <TableCell className="whitespace-nowrap">{r.phone ?? "—"}</TableCell>
-                  <TableCell className="whitespace-nowrap">
+                  <TableCell className="truncate text-right">{formatTHB(r.est_value)}</TableCell>
+                  <TableCell className="truncate" title={r.contact_name ?? undefined}>
+                    {r.contact_name ?? "—"}
+                  </TableCell>
+                  <TableCell className="truncate">{r.phone ?? "—"}</TableCell>
+                  <TableCell className="truncate">
                     {r.location_text ? (
                       <a
                         href={r.location_text}
@@ -407,14 +414,20 @@ export function SaleReportTable({
                       </button>
                     )}
                   </TableCell>
-                  <TableCell className="whitespace-nowrap">{r.next_action ?? "—"}</TableCell>
-                  <TableCell className="whitespace-nowrap">{r.note ?? "—"}</TableCell>
-                  <TableCell>
-                    <Button size="icon-sm" variant="outline" onClick={() => setViewingReport(r)}>
-                      <Eye className="h-3.5 w-3.5" />
-                    </Button>
+                  <TableCell className="truncate" title={r.next_action ?? undefined}>
+                    {r.next_action ?? "—"}
                   </TableCell>
-                  <TableCell>{canManage(r, currentProfile) ? <RowActions report={r} /> : "—"}</TableCell>
+                  <TableCell className="truncate" title={r.note ?? undefined}>
+                    {r.note ?? "—"}
+                  </TableCell>
+                  <TableCell className="overflow-hidden p-1">
+                    <div className="flex items-start gap-0.5">
+                      <Button size="icon-sm" variant="outline" onClick={() => setViewingReport(r)} title="ดูรายละเอียด">
+                        <Eye className="h-3.5 w-3.5" />
+                      </Button>
+                      {canManage(r, currentProfile) && <RowActions report={r} />}
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
