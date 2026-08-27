@@ -52,6 +52,8 @@ function parseSaleReportForm(formData: FormData): { ok: false; error: string } |
 
   if (!salesRepId) return { ok: false, error: "กรุณาเลือกเซลล์" };
   if (!customerName) return { ok: false, error: "กรุณากรอกชื่อลูกค้า" };
+  if (!contactName) return { ok: false, error: "กรุณากรอกชื่อผู้ติดต่อ" };
+  if (!phone) return { ok: false, error: "กรุณากรอกเบอร์โทร" };
   if (!customerType) return { ok: false, error: "กรุณาเลือกกลุ่มลูกค้า" };
   if (!projectType) return { ok: false, error: "กรุณาเลือกประเภทสถานที่" };
   if (!stage || !(stage in STAGE_PERCENT_BY_STAGE)) return { ok: false, error: "กรุณาเลือก stage" };

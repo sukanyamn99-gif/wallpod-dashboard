@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { MapPin, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -75,6 +75,10 @@ export function SaleReportForm({
   const [resizing, setResizing] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const [, startTransition] = useTransition();
+  const contactNameRef = useRef<HTMLInputElement>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const [contactNameError, setContactNameError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
     const result =
@@ -91,6 +95,8 @@ export function SaleReportForm({
           if (img.kind === "new") URL.revokeObjectURL(img.previewUrl);
         });
         setImages([]);
+        setContactNameError(null);
+        setPhoneError(null);
         // Remount every field (including the custom Select dropdowns, which don't
         // reliably clear on a plain form.reset()) so the form is fully blank again.
         setFormKey((k) => k + 1);
@@ -149,8 +155,25 @@ export function SaleReportForm({
       key={formKey}
       action={formAction}
       className="space-y-4"
+      noValidate
       onSubmit={(e) => {
         e.preventDefault();
+
+        const contactNameValue = contactNameRef.current?.value.trim() ?? "";
+        const phoneValue = phoneRef.current?.value.trim() ?? "";
+        const nextContactNameError = contactNameValue ? null : "กรุณากรอกชื่อผู้ติดต่อ";
+        const nextPhoneError = phoneValue ? null : "กรุณากรอกเบอร์โทร";
+        setContactNameError(nextContactNameError);
+        setPhoneError(nextPhoneError);
+        if (nextContactNameError) {
+          contactNameRef.current?.focus();
+          return;
+        }
+        if (nextPhoneError) {
+          phoneRef.current?.focus();
+          return;
+        }
+
         const fd = new FormData(e.currentTarget);
         for (const img of images) {
           if (img.kind === "new") fd.append("images", img.blob, `image-${Date.now()}.jpg`);
@@ -200,9 +223,14 @@ export function SaleReportForm({
         <Input
           id="contact_name"
           name="contact_name"
+          ref={contactNameRef}
           defaultValue={initialData?.contactName}
           placeholder="เช่น คุณสมชาย"
+          aria-invalid={!!contactNameError}
+          onChange={() => setContactNameError(null)}
+          onBlur={(e) => setContactNameError(e.target.value.trim() ? null : "กรุณากรอกชื่อผู้ติดต่อ")}
         />
+        {contactNameError && <p className="text-xs text-destructive">{contactNameError}</p>}
       </div>
 
       <div className="space-y-2">
@@ -211,9 +239,14 @@ export function SaleReportForm({
           id="phone"
           name="phone"
           type="tel"
+          ref={phoneRef}
           defaultValue={initialData?.phone}
           placeholder="เช่น 081-234-5678"
+          aria-invalid={!!phoneError}
+          onChange={() => setPhoneError(null)}
+          onBlur={(e) => setPhoneError(e.target.value.trim() ? null : "กรุณากรอกเบอร์โทร")}
         />
+        {phoneError && <p className="text-xs text-destructive">{phoneError}</p>}
       </div>
 
       <div className="space-y-2">
