@@ -10,6 +10,13 @@ import { getJobNoError } from "@/lib/job-no";
 
 const PAYMENT_STATUSES: PaymentStatus[] = ["เก็บเงินเรียบร้อย", "ชำระมาแล้ว 50%", "รอชำระเงิน"];
 
+function friendlyProjectSaleError(message: string): string {
+  if (message.includes("projects_job_no_key")) {
+    return "บันทึกไม่สำเร็จ — เลขที่ JOB NO. นี้มีอยู่ในระบบแล้ว กรุณาตรวจสอบและใช้เลขที่อื่น";
+  }
+  return message;
+}
+
 function num(v: FormDataEntryValue | null): number {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
@@ -254,7 +261,7 @@ export async function createProjectSale(formData: FormData) {
     .select("id")
     .single();
 
-  if (projectErr) return { error: projectErr.message };
+  if (projectErr) return { error: friendlyProjectSaleError(projectErr.message) };
 
   const { error: itemsErr } = await supabase
     .from("project_items")
@@ -303,7 +310,7 @@ export async function updateProjectSale(projectId: string, formData: FormData) {
       vat: parsed.vat,
     })
     .eq("id", projectId);
-  if (projectErr) return { error: projectErr.message };
+  if (projectErr) return { error: friendlyProjectSaleError(projectErr.message) };
 
   const { error: deleteItemsErr } = await supabase.from("project_items").delete().eq("project_id", projectId);
   if (deleteItemsErr) return { error: `ลบรายการสินค้าเดิมไม่สำเร็จ: ${deleteItemsErr.message}` };
