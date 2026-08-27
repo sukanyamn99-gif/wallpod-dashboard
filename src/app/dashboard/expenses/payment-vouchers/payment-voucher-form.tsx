@@ -6,6 +6,7 @@ import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -108,10 +109,9 @@ export function PaymentVoucherForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="voucher_date">วันที่</Label>
-          <Input
+          <DateInput
             id="voucher_date"
             name="voucher_date"
-            type="date"
             defaultValue={initialData?.voucherDate ?? new Date().toISOString().slice(0, 10)}
             required
           />
@@ -232,10 +232,9 @@ export function PaymentVoucherForm({
           </div>
           <div className="space-y-2">
             <Label htmlFor="bank_transfer_date">วันที่โอน</Label>
-            <Input
+            <DateInput
               id="bank_transfer_date"
               name="bank_transfer_date"
-              type="date"
               defaultValue={initialData?.bankTransferDate ?? undefined}
             />
           </div>

@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Download, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -197,10 +198,9 @@ export function ProjectSaleForm({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="project_date">วันที่</Label>
-            <Input
+            <DateInput
               id="project_date"
               name="project_date"
-              type="date"
               defaultValue={initialData?.projectDate ?? todayISO()}
               required
             />
@@ -494,7 +494,7 @@ export function ProjectSaleForm({
             </div>
             <div className="space-y-2">
               <Label htmlFor="paid_date_1">วันที่ออกเอกสาร</Label>
-              <Input id="paid_date_1" name="paid_date_1" type="date" defaultValue={initialData?.paidDate1} />
+              <DateInput id="paid_date_1" name="paid_date_1" defaultValue={initialData?.paidDate1} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="receipt_no_1">เลขที่ใบเสร็จ</Label>
@@ -508,7 +508,7 @@ export function ProjectSaleForm({
             </div>
             <div className="space-y-2">
               <Label htmlFor="received_date_1">วันที่รับชำระเงิน</Label>
-              <Input id="received_date_1" name="received_date_1" type="date" defaultValue={initialData?.receivedDate1} />
+              <DateInput id="received_date_1" name="received_date_1" defaultValue={initialData?.receivedDate1} />
             </div>
           </div>
         </div>
@@ -536,7 +536,7 @@ export function ProjectSaleForm({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="paid_date_2">วันที่ออกเอกสาร</Label>
-                <Input id="paid_date_2" name="paid_date_2" type="date" defaultValue={initialData?.paidDate2} />
+                <DateInput id="paid_date_2" name="paid_date_2" defaultValue={initialData?.paidDate2} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="receipt_no_2">เลขที่ใบเสร็จ</Label>
@@ -550,7 +550,7 @@ export function ProjectSaleForm({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="received_date_2">วันที่รับชำระเงิน</Label>
-                <Input id="received_date_2" name="received_date_2" type="date" defaultValue={initialData?.receivedDate2} />
+                <DateInput id="received_date_2" name="received_date_2" defaultValue={initialData?.receivedDate2} />
               </div>
             </div>
           </div>

@@ -6,6 +6,7 @@ import { Download, FilterX, Plus, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import {
   Select,
   SelectContent,
@@ -110,9 +111,9 @@ export function MovementsTable({
             <SelectItem value="out">OUT</SelectItem>
           </SelectContent>
         </Select>
-        <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-[150px]" />
+        <DateInput value={dateFrom} onChange={setDateFrom} className="w-[150px]" />
         <span className="text-sm text-muted-foreground">ถึง</span>
-        <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-[150px]" />
+        <DateInput value={dateTo} onChange={setDateTo} className="w-[150px]" />
         <Button variant="outline" onClick={() => router.refresh()}>
           <RefreshCw className="h-4 w-4" />
           รีเฟรช

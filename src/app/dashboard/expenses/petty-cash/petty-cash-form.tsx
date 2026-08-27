@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -177,10 +178,9 @@ export function PettyCashForm({
 
       <div className="space-y-2">
         <Label htmlFor="transaction_date">วันที่บิล</Label>
-        <Input
+        <DateInput
           id="transaction_date"
           name="transaction_date"
-          type="date"
           defaultValue={initialData?.transactionDate ?? new Date().toISOString().slice(0, 10)}
           required
         />

@@ -6,6 +6,7 @@ import { Check, Pencil, Printer, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { Label } from "@/components/ui/label";
 import {
   Table,
@@ -110,13 +111,13 @@ export function PettyCashTable({
           <Label htmlFor="from_date" className="text-xs text-muted-foreground">
             ตั้งแต่วันที่
           </Label>
-          <Input id="from_date" type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+          <DateInput id="from_date" value={fromDate} onChange={setFromDate} className="w-[150px]" />
         </div>
         <div className="space-y-1">
           <Label htmlFor="to_date" className="text-xs text-muted-foreground">
             ถึงวันที่
           </Label>
-          <Input id="to_date" type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+          <DateInput id="to_date" value={toDate} onChange={setToDate} className="w-[150px]" />
         </div>
         <Button variant="outline" nativeButton={false} render={<Link href={printHref} target="_blank" />}>
           <Printer className="h-3.5 w-3.5" />

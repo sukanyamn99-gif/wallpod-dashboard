@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, Boxes, Download, PackageSearch, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import {
   MonthlyTrendChart,
@@ -110,11 +110,11 @@ export function InventoryReportView({
       <div className="flex flex-wrap items-end gap-2">
         <div className="space-y-1">
           <label className="text-sm text-muted-foreground">ตั้งแต่</label>
-          <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-[150px]" />
+          <DateInput value={dateFrom} onChange={setDateFrom} className="w-[150px]" />
         </div>
         <div className="space-y-1">
           <label className="text-sm text-muted-foreground">ถึง</label>
-          <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-[150px]" />
+          <DateInput value={dateTo} onChange={setDateTo} className="w-[150px]" />
         </div>
         <Button variant="outline" className="ml-auto" nativeButton={false} render={<a href="/api/export-stock-movements" download />}>
           <Download className="h-4 w-4" />
