@@ -8,6 +8,18 @@ import { STAGE_PERCENT_BY_STAGE, type Stage } from "@/lib/types";
 const IMAGE_BUCKET = "sale-report-images";
 const MAX_IMAGES = 10;
 
+// The raw Postgres RLS message ("new row violates row-level security
+// policy...") is meaningless to a non-technical user — this is what a
+// "sales"-tier user sees if they pick a เซลล์ other than their own linked
+// rep (sales_leads' insert/update policy only allows your own rep_id), or if
+// their account's profile-to-sales_rep link is ever missing.
+function friendlySaleReportError(message: string): string {
+  if (message.includes("row-level security")) {
+    return "บันทึกไม่สำเร็จ — คุณสามารถบันทึก Sale Report ได้เฉพาะในนามของตัวเองเท่านั้น กรุณาเลือก \"เซลล์\" เป็นชื่อของคุณเอง หรือติดต่อผู้ดูแลระบบหากยังไม่ถูกต้อง";
+  }
+  return message;
+}
+
 type ParsedSaleReport = {
   ok: true;
   salesRepId: string;
@@ -114,7 +126,7 @@ export async function createSaleReport(formData: FormData) {
     .select("id")
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: friendlySaleReportError(error.message) };
 
   if (images.length > 0) {
     const paths = await uploadImages(supabase, parsed.salesRepId, lead.id, images.slice(0, MAX_IMAGES));
@@ -245,7 +257,7 @@ export async function deleteSaleReport(id: string) {
   }
 
   const { error } = await supabase.from("sales_leads").delete().eq("id", id);
-  if (error) return { error: error.message };
+  if (error) return { error: friendlySaleReportError(error.message) };
 
   await logActivity("ลบ Sale Report", before.customer_name ?? null);
   revalidatePath("/dashboard/sale-report");
