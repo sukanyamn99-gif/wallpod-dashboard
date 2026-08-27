@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCustomers, getProductCategories, getSalesReps } from "@/lib/data/reference";
-import { getProjectByJobNo } from "@/lib/data/project-sales";
+import { getAdjacentJobNos, getProjectByJobNo } from "@/lib/data/project-sales";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage, canSeeCosts } from "@/lib/permissions";
 import { ProjectSaleForm } from "../../project-sale-form";
@@ -20,22 +22,53 @@ export default async function EditProjectSalePage({
   const { jobNo } = await params;
   const decodedJobNo = decodeURIComponent(jobNo);
 
-  const [salesReps, customers, categories, detail] = await Promise.all([
+  const [salesReps, customers, categories, detail, adjacent] = await Promise.all([
     getSalesReps(),
     getCustomers(),
     getProductCategories(),
     getProjectByJobNo(decodedJobNo),
+    getAdjacentJobNos(decodedJobNo),
   ]);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">แก้ไขงานขาย: {decodedJobNo}</h1>
-        <p className="text-sm text-muted-foreground">
-          <Link href="/dashboard/project-sales" className="underline underline-offset-2">
-            ← กลับไปหน้า WALLPOD Project Sales
-          </Link>
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">แก้ไขงานขาย: {decodedJobNo}</h1>
+          <p className="text-sm text-muted-foreground">
+            <Link href="/dashboard/project-sales" className="underline underline-offset-2">
+              ← กลับไปหน้า WALLPOD Project Sales
+            </Link>
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            disabled={!adjacent.prevJobNo}
+            nativeButton={!adjacent.prevJobNo}
+            render={
+              adjacent.prevJobNo ? (
+                <Link href={`/dashboard/project-sales/edit/${encodeURIComponent(adjacent.prevJobNo)}`} />
+              ) : undefined
+            }
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            ย้อนกลับ
+          </Button>
+          <Button
+            variant="outline"
+            disabled={!adjacent.nextJobNo}
+            nativeButton={!adjacent.nextJobNo}
+            render={
+              adjacent.nextJobNo ? (
+                <Link href={`/dashboard/project-sales/edit/${encodeURIComponent(adjacent.nextJobNo)}`} />
+              ) : undefined
+            }
+          >
+            หน้าถัดไป
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
 
       <Card>

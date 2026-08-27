@@ -252,3 +252,34 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
     },
   };
 }
+
+export interface AdjacentJobNos {
+  prevJobNo: string | null;
+  nextJobNo: string | null;
+}
+
+// Powers the "ย้อนกลับ/หน้าถัดไป" buttons on the edit page — lets someone
+// walk through jobs one after another (e.g. filling in cost data) without
+// returning to the list and searching each time. Ordered by job_no since
+// that's also the order jobs read in visually within the report table's
+// per-month groups (JB2601001, 002, 003, ...).
+export async function getAdjacentJobNos(jobNo: string): Promise<AdjacentJobNos> {
+  if (!isSupabaseConfigured()) return { prevJobNo: null, nextJobNo: null };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("projects")
+    .select("job_no")
+    .not("job_no", "is", null)
+    .order("job_no", { ascending: true });
+  if (error) throw error;
+
+  const jobNos = (data ?? []).map((r) => r.job_no as string);
+  const index = jobNos.indexOf(jobNo);
+  if (index === -1) return { prevJobNo: null, nextJobNo: null };
+
+  return {
+    prevJobNo: index > 0 ? jobNos[index - 1] : null,
+    nextJobNo: index < jobNos.length - 1 ? jobNos[index + 1] : null,
+  };
+}
