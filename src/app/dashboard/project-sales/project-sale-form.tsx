@@ -36,9 +36,14 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// Real data check (2026-08-27): 159/161 existing JOB NO.s use the Gregorian
+// short year ("JB26..." for 2026) — the previous BE-based suggestion here
+// ("JB69...") didn't match, so any new job saved without hand-editing the
+// suggested number got a mismatched prefix and sorted to the end of its
+// month instead of alongside the rest (JB6907155/156 in production).
 function suggestedJobNo() {
   const now = new Date();
-  const yy = String(now.getFullYear() + 543 - 2500).padStart(2, "0"); // BE short year, matches original sheet
+  const yy = String(now.getFullYear() % 100).padStart(2, "0");
   const mm = String(now.getMonth() + 1).padStart(2, "0");
   return `JB${yy}${mm}`;
 }
