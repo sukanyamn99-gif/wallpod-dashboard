@@ -119,6 +119,12 @@ export function ProjectSaleForm({
   const [receiptNo2, setReceiptNo2] = useState(initialData?.receiptNo2 ?? "");
   const [status, setStatus] = useState(initialData?.status ?? "");
   const [savedMessage, setSavedMessage] = useState(false);
+  // Bumped after every successful create to force-remount the <form> below —
+  // several fields (cost NumberInputs, DateInputs, invoice_no) are
+  // uncontrolled, so resetting individual useState variables never touched
+  // their leftover typed values; a fresh key remounts everything cleanly,
+  // the same as a real page reload would.
+  const [formKey, setFormKey] = useState(0);
 
   const jobNoRef = useRef<HTMLInputElement>(null);
   const [materialCost, setMaterialCost] = useState(initialData?.costs.material_cost ?? "");
@@ -156,6 +162,7 @@ export function ProjectSaleForm({
         setMaterialCost("");
         setMaterialCostSuggestion(null);
         setMaterialCostError(null);
+        setFormKey((k) => k + 1);
       } else {
         setSavedMessage(true);
       }
@@ -194,7 +201,7 @@ export function ProjectSaleForm({
   }
 
   return (
-    <form action={formAction} className="space-y-6">
+    <form key={formKey} action={formAction} className="space-y-6">
       {state.error && (
         <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>
       )}
