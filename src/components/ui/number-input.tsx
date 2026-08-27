@@ -24,6 +24,7 @@ export interface NumberInputProps {
   className?: string;
   min?: number;
   step?: number;
+  autoFocus?: boolean;
 }
 
 function cleanRaw(input: string): string {
@@ -55,6 +56,7 @@ export function NumberInput({
   className,
   min,
   step,
+  autoFocus,
 }: NumberInputProps) {
   const isControlled = value !== undefined;
   const [internalRaw, setInternalRaw] = useState(() =>
@@ -77,6 +79,7 @@ export function NumberInput({
         aria-required={required}
         min={min}
         step={step}
+        autoFocus={autoFocus}
         value={focused ? raw : formatDisplay(raw)}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}

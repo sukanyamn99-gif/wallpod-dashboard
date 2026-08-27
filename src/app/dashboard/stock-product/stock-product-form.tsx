@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -255,7 +256,7 @@ export function StockProductForm({
                 {mode === "create" ? (
                   <div className="space-y-2">
                     <Label htmlFor="initial_quantity">จำนวนเริ่มต้น</Label>
-                    <Input id="initial_quantity" name="initial_quantity" type="number" min="0" step="1" placeholder="0" />
+                    <NumberInput id="initial_quantity" name="initial_quantity" min={0} step={1} placeholder="0" />
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -268,12 +269,11 @@ export function StockProductForm({
 
                 <div className="space-y-2">
                   <Label htmlFor="reorder_point">จุดสั่งซื้อขั้นต่ำ</Label>
-                  <Input
+                  <NumberInput
                     id="reorder_point"
                     name="reorder_point"
-                    type="number"
-                    min="0"
-                    step="1"
+                    min={0}
+                    step={1}
                     defaultValue={initialData?.reorderPoint}
                     placeholder="0"
                   />
@@ -284,24 +284,22 @@ export function StockProductForm({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="unit_cost">ราคาต้นทุนต่อหน่วย (บาท)</Label>
-                    <Input
+                    <NumberInput
                       id="unit_cost"
                       name="unit_cost"
-                      type="number"
-                      min="0"
-                      step="0.01"
+                      min={0}
+                      step={0.01}
                       defaultValue={initialData?.unitCost}
                       placeholder="0"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="selling_price">ราคาขายต่อหน่วย (บาท)</Label>
-                    <Input
+                    <NumberInput
                       id="selling_price"
                       name="selling_price"
-                      type="number"
-                      min="0"
-                      step="0.01"
+                      min={0}
+                      step={0.01}
                       defaultValue={initialData?.sellingPrice}
                       placeholder="ยังไม่ระบุ"
                     />

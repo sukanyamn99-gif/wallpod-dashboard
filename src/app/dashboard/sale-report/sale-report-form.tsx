@@ -6,6 +6,7 @@ import { MapPin, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -279,12 +280,11 @@ export function SaleReportForm({
 
         <div className="space-y-2">
           <Label htmlFor="est_value">มูลค่าโดยประมาณ (บาท)</Label>
-          <Input
+          <NumberInput
             id="est_value"
             name="est_value"
-            type="number"
-            min="0"
-            step="1"
+            min={0}
+            step={1}
             defaultValue={initialData?.estValue}
             placeholder="250000"
           />

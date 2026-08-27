@@ -7,6 +7,7 @@ import { AlertTriangle, Factory, FlaskConical, Package, Plus, Settings2, X } fro
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -290,12 +291,11 @@ export function RequisitionForm({
                     <p className="truncate text-sm font-medium">{it.name}</p>
                     <p className="text-xs text-muted-foreground">{it.sku || "—"}</p>
                   </div>
-                  <Input
-                    type="number"
-                    min="0.01"
-                    step="0.01"
+                  <NumberInput
+                    min={0.01}
+                    step={0.01}
                     value={it.quantity}
-                    onChange={(e) => updateQuantity(it.stockProductId, Number(e.target.value))}
+                    onChange={(v) => updateQuantity(it.stockProductId, Number(v))}
                     className="w-20"
                   />
                   <span className="text-xs text-muted-foreground">{it.unit}</span>

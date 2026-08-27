@@ -6,6 +6,7 @@ import { Check, Layers, PackagePlus, Pencil, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -165,7 +166,7 @@ function MovementSheet({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="quantity">จำนวน ({product.unit})</Label>
-                <Input id="quantity" name="quantity" type="number" min="0" step="1" required placeholder="0" />
+                <NumberInput id="quantity" name="quantity" min={0} step={1} required placeholder="0" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="note">หมายเหตุ</Label>

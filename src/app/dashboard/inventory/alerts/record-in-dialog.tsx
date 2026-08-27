@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
@@ -56,7 +57,7 @@ export function RecordInDialog({
               )}
               <div className="space-y-2">
                 <Label htmlFor="quantity">จำนวนที่รับเข้า ({product.unit})</Label>
-                <Input id="quantity" name="quantity" type="number" min="0" step="1" required placeholder="0" autoFocus />
+                <NumberInput id="quantity" name="quantity" min={0} step={1} required placeholder="0" autoFocus />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="note">หมายเหตุ</Label>

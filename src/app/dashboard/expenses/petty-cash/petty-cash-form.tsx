@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { DateInput } from "@/components/ui/date-input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
@@ -188,14 +189,13 @@ export function PettyCashForm({
 
       <div className="space-y-2">
         <Label htmlFor="amount">จำนวนเงิน (รวมสุทธิ)</Label>
-        <Input
+        <NumberInput
           id="amount"
           name="amount"
-          type="number"
-          min="0"
-          step="0.01"
+          min={0}
+          step={0.01}
           value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          onChange={setAmount}
           required
         />
       </div>
@@ -288,13 +288,11 @@ export function PettyCashForm({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="vat_amount">ภาษีซื้อ</Label>
-              <Input
+              <NumberInput
                 id="vat_amount"
                 name="vat_amount"
-                type="number"
                 value={vatAmount ? vatAmount.toFixed(2) : ""}
                 readOnly
-                className="bg-muted"
               />
               <p className="text-xs text-muted-foreground">คำนวณอัตโนมัติจากยอดรวม (แยก VAT 7%)</p>
             </div>
@@ -313,13 +311,11 @@ export function PettyCashForm({
                 </SelectContent>
               </Select>
               <Label htmlFor="wht_amount">ภาษีหัก ณ ที่จ่าย</Label>
-              <Input
+              <NumberInput
                 id="wht_amount"
                 name="wht_amount"
-                type="number"
                 value={whtAmount ? whtAmount.toFixed(2) : ""}
                 readOnly
-                className="bg-muted"
               />
             </div>
           </div>

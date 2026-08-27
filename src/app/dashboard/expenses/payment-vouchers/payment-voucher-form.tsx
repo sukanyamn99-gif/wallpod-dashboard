@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { DateInput } from "@/components/ui/date-input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -129,12 +130,11 @@ export function PaymentVoucherForm({
 
       <div className="space-y-2">
         <Label htmlFor="amount">จำนวนเงิน</Label>
-        <Input
+        <NumberInput
           id="amount"
           name="amount"
-          type="number"
-          min="0"
-          step="0.01"
+          min={0}
+          step={0.01}
           defaultValue={initialData?.amount}
           required
         />
@@ -187,16 +187,15 @@ export function PaymentVoucherForm({
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="wht_rate">อัตรา (%)</Label>
-            <Input id="wht_rate" name="wht_rate" type="number" min="0" step="0.01" defaultValue={initialData?.whtRate ?? undefined} />
+            <NumberInput id="wht_rate" name="wht_rate" min={0} step={0.01} defaultValue={initialData?.whtRate ?? undefined} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="wht_amount">จำนวนภาษีหัก</Label>
-            <Input
+            <NumberInput
               id="wht_amount"
               name="wht_amount"
-              type="number"
-              min="0"
-              step="0.01"
+              min={0}
+              step={0.01}
               defaultValue={initialData?.whtAmount ?? undefined}
             />
           </div>
@@ -273,23 +272,21 @@ export function PaymentVoucherForm({
                 value={line.description}
                 onChange={(e) => updateLine(line.key, { description: e.target.value })}
               />
-              <Input
+              <NumberInput
                 name="line_debit"
-                type="number"
-                min="0"
-                step="0.01"
+                min={0}
+                step={0.01}
                 placeholder="เดบิต"
                 value={line.debit}
-                onChange={(e) => updateLine(line.key, { debit: e.target.value })}
+                onChange={(v) => updateLine(line.key, { debit: v })}
               />
-              <Input
+              <NumberInput
                 name="line_credit"
-                type="number"
-                min="0"
-                step="0.01"
+                min={0}
+                step={0.01}
                 placeholder="เครดิต"
                 value={line.credit}
-                onChange={(e) => updateLine(line.key, { credit: e.target.value })}
+                onChange={(v) => updateLine(line.key, { credit: v })}
               />
               <Button type="button" variant="outline" size="icon-sm" onClick={() => removeLine(line.key)}>
                 <X className="h-3.5 w-3.5" />

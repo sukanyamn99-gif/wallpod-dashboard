@@ -7,6 +7,7 @@ import { Package, Settings2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -266,24 +267,22 @@ export function GoodsReceiptForm({
                       <TableCell className="min-w-[140px]">{it.name}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          <Input
-                            type="number"
-                            min="0.01"
-                            step="0.01"
+                          <NumberInput
+                            min={0.01}
+                            step={0.01}
                             value={it.quantity}
-                            onChange={(e) => updateItem(it.stockProductId, "quantity", Number(e.target.value))}
+                            onChange={(v) => updateItem(it.stockProductId, "quantity", Number(v))}
                             className="w-20"
                           />
                           <span className="text-xs whitespace-nowrap text-muted-foreground">{it.unit}</span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
+                        <NumberInput
+                          min={0}
+                          step={0.01}
                           value={it.unitCost}
-                          onChange={(e) => updateItem(it.stockProductId, "unitCost", Number(e.target.value))}
+                          onChange={(v) => updateItem(it.stockProductId, "unitCost", Number(v))}
                           className="w-24"
                         />
                       </TableCell>
