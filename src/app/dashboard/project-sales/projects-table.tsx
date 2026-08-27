@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useMemo, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -388,6 +388,31 @@ export function ProjectsTable({
     monthGroups.length === 0 ? 0 : Math.min(pageIndex, monthGroups.length - 1);
   const currentGroup = monthGroups[clampedPageIndex] as (typeof monthGroups)[number] | undefined;
 
+  // Fill exactly whatever room is actually left below the table on THIS
+  // screen (filters/summary/pager height varies with content and viewport),
+  // rather than guessing a fixed vh fraction — a 27-row month can't fit
+  // every row without scrolling on a normal monitor no matter what, so the
+  // goal here is just "show as many rows as truly fit, scroll for the rest"
+  // instead of leaving unused space or cutting off mid-row too early.
+  const tableWrapperRef = useRef<HTMLDivElement>(null);
+  const [tableMaxHeight, setTableMaxHeight] = useState<number | null>(null);
+
+  useEffect(() => {
+    function updateHeight() {
+      const el = tableWrapperRef.current;
+      if (!el) return;
+      const top = el.getBoundingClientRect().top;
+      // Reserves room for what renders below the table (the "แสดง N งาน"
+      // caption line plus the surrounding Card's own bottom padding) so the
+      // outer page doesn't end up needing its own scroll just to reach them.
+      const available = window.innerHeight - top - 76;
+      setTableMaxHeight(Math.max(240, available));
+    }
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+    return () => window.removeEventListener("resize", updateHeight);
+  }, [clampedPageIndex]);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
@@ -476,8 +501,12 @@ export function ProjectsTable({
         </div>
       )}
 
-      <div className="rounded-md border">
-        <Table containerClassName="max-h-[65vh] overflow-auto">
+      <div
+        ref={tableWrapperRef}
+        className="overflow-y-auto rounded-md border"
+        style={{ maxHeight: tableMaxHeight ?? undefined }}
+      >
+        <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="sticky top-0 z-20 truncate bg-card" style={frozenColStyle(0)}>
