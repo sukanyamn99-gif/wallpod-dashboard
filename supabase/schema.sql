@@ -162,16 +162,18 @@ create policy sales_reps_write on sales_reps for all
 create policy customers_write on customers for all
   using (my_role() in ('owner','manager','support_sale')) with check (my_role() in ('owner','manager','support_sale'));
 
--- projects: owner/manager see everything; sales see only their own.
--- Write access excludes both 'sales' and 'design' (Designer is view-only
--- across the app; everyone else who could already write keeps that).
-create policy projects_select on projects for select using (my_role() <> 'sales');
+-- projects: any authenticated user can read (Sales Dashboard's rep-
+-- performance chart is meant to compare every rep, so 'sales' isn't scoped
+-- to their own rows here — unlike sales_leads, which IS scoped). Write
+-- access excludes both 'sales' and 'design' (Designer is view-only across
+-- the app; everyone else who could already write keeps that) — sales stays
+-- unable to create/edit WALLPOD Project Sales even though they can read it.
+create policy projects_select on projects for select using (auth.uid() is not null);
 create policy projects_write on projects for all
   using (my_role() not in ('sales','design')) with check (my_role() not in ('sales','design'));
 
 -- child tables inherit visibility from their parent project
-create policy project_items_select on project_items for select
-  using (exists (select 1 from projects p where p.id = project_id and my_role() <> 'sales'));
+create policy project_items_select on project_items for select using (auth.uid() is not null);
 create policy project_items_write on project_items for all
   using (exists (select 1 from projects p where p.id = project_id and my_role() not in ('sales','design')));
 
@@ -180,8 +182,7 @@ create policy project_costs_select on project_costs for select
 create policy project_costs_write on project_costs for all
   using (my_role() in ('owner','manager'));
 
-create policy payments_select on payments for select
-  using (exists (select 1 from projects p where p.id = project_id and my_role() <> 'sales'));
+create policy payments_select on payments for select using (auth.uid() is not null);
 create policy payments_write on payments for all using (my_role() not in ('sales','design'));
 
 create policy sales_leads_select on sales_leads for select
