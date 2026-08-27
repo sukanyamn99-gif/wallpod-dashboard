@@ -123,6 +123,7 @@ export function DateInput({
         onPaste={handlePaste}
         placeholder="วว"
         inputMode="numeric"
+        autoComplete="off"
         maxLength={2}
         disabled={disabled}
         className="w-5 min-w-0 bg-transparent text-center tabular-nums outline-none placeholder:text-muted-foreground"
@@ -140,6 +141,7 @@ export function DateInput({
         onKeyDown={handleMonthKeyDown}
         placeholder="ดด"
         inputMode="numeric"
+        autoComplete="off"
         maxLength={2}
         disabled={disabled}
         className="w-5 min-w-0 bg-transparent text-center tabular-nums outline-none placeholder:text-muted-foreground"
@@ -153,6 +155,7 @@ export function DateInput({
         onKeyDown={handleYearKeyDown}
         placeholder="ปปปป"
         inputMode="numeric"
+        autoComplete="off"
         maxLength={4}
         disabled={disabled}
         className="w-10 min-w-0 bg-transparent text-center tabular-nums outline-none placeholder:text-muted-foreground"
