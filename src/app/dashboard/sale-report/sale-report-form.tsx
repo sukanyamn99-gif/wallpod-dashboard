@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
+import { ImageDropzone } from "@/components/ui/image-dropzone";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -118,9 +119,7 @@ export function SaleReportForm({
     );
   }
 
-  async function handleFilesSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []);
-    e.target.value = "";
+  async function handleFilesSelected(files: File[]) {
     if (files.length === 0) return;
 
     setResizing(true);
@@ -326,12 +325,10 @@ export function SaleReportForm({
 
       <div className="space-y-2">
         <Label htmlFor="report_images">รูปภาพ (สูงสุด {MAX_IMAGES} รูป)</Label>
-        <Input
+        <ImageDropzone
           id="report_images"
-          type="file"
-          accept="image/*"
           multiple
-          onChange={handleFilesSelected}
+          onFilesSelected={handleFilesSelected}
           disabled={resizing || images.length >= MAX_IMAGES}
         />
         {resizing && <p className="text-sm text-muted-foreground">กำลังปรับขนาดรูปภาพ...</p>}

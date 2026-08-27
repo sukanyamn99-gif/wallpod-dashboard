@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
+import { ImageDropzone } from "@/components/ui/image-dropzone";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -85,10 +86,7 @@ export function StockProductForm({
     router.push("/dashboard/stock-product");
   }
 
-  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
+  async function handleFileSelected(file: File) {
     setResizing(true);
     try {
       const blob = await resizeImageToBlob(file, 800, 800, 0.85);
@@ -239,16 +237,13 @@ export function StockProductForm({
                       </button>
                     </div>
                   ) : (
-                    <Input
+                    <ImageDropzone
                       id="product_image"
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      onChange={handleFileSelected}
+                      onFilesSelected={(files) => handleFileSelected(files[0])}
                       disabled={resizing}
                     />
                   )}
                   {resizing && <p className="text-sm text-muted-foreground">กำลังปรับขนาดรูปภาพ...</p>}
-                  <p className="text-xs text-muted-foreground">รองรับ JPG, PNG, WEBP</p>
                 </div>
               </TabsPanel>
 
