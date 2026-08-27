@@ -503,10 +503,10 @@ export function ProjectsTable({
 
       <div
         ref={tableWrapperRef}
-        className="overflow-y-auto rounded-md border"
+        className="overflow-auto rounded-md border"
         style={{ maxHeight: tableMaxHeight ?? undefined }}
       >
-        <Table>
+        <Table containerClassName="overflow-visible">
           <TableHeader>
             <TableRow>
               <TableHead className="sticky top-0 z-20 truncate bg-card" style={frozenColStyle(0)}>
