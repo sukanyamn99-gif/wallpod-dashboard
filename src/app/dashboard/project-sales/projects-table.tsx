@@ -2,8 +2,10 @@
 
 import { Fragment, useMemo, useState, type CSSProperties } from "react";
 import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { MultiSelectFilter } from "@/components/dashboard/multi-select-filter";
 import {
   Table,
@@ -296,6 +298,23 @@ export function ProjectsTable({
   const [query, setQuery] = useState("");
   const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set());
   const [selectedSalesReps, setSelectedSalesReps] = useState<Set<string>>(new Set());
+  const [pageIndex, setPageIndex] = useState(0);
+
+  // Any filter change can shrink/reshuffle monthGroups, so a page index left
+  // over from before could point at the wrong month (or past the end) —
+  // reset to the first page whenever what's being filtered changes.
+  function updateQuery(v: string) {
+    setQuery(v);
+    setPageIndex(0);
+  }
+  function updateSelectedMonths(v: Set<string>) {
+    setSelectedMonths(v);
+    setPageIndex(0);
+  }
+  function updateSelectedSalesReps(v: Set<string>) {
+    setSelectedSalesReps(v);
+    setPageIndex(0);
+  }
   const totalColumns =
     BASE_COLUMNS + categories.length + TAIL_COLUMNS - (canSeeCosts ? 0 : COST_COLUMNS);
 
@@ -361,12 +380,20 @@ export function ProjectsTable({
       });
   }, [filtered]);
 
+  // One month per page — clamp rather than reset-on-every-render so a page
+  // index that's briefly out of range (e.g. mid-filter-change) never throws,
+  // it just falls back to the last available page until the reset above
+  // (triggered by the filter change itself) puts it back to 0.
+  const clampedPageIndex =
+    monthGroups.length === 0 ? 0 : Math.min(pageIndex, monthGroups.length - 1);
+  const currentGroup = monthGroups[clampedPageIndex] as (typeof monthGroups)[number] | undefined;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <Input
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => updateQuery(e.target.value)}
           placeholder="ค้นหา JOB NO. / ลูกค้า / ชื่องาน / เซลล์"
           className="max-w-sm"
         />
@@ -375,14 +402,14 @@ export function ProjectsTable({
           countLabel="เดือน"
           options={monthOptions}
           selected={selectedMonths}
-          onChange={setSelectedMonths}
+          onChange={updateSelectedMonths}
         />
         <MultiSelectFilter
           allLabel="ทุกเซลล์"
           countLabel="เซลล์"
           options={salesRepOptions}
           selected={selectedSalesReps}
-          onChange={setSelectedSalesReps}
+          onChange={updateSelectedSalesReps}
         />
       </div>
 
@@ -422,6 +449,32 @@ export function ProjectsTable({
           <SummaryStat label="ยอดคงค้างรวม" value={summary.outstanding} />
         </SummaryGroup>
       </div>
+
+      {monthGroups.length > 0 && (
+        <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={clampedPageIndex === 0}
+            onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+            ย้อนกลับ
+          </Button>
+          <span className="text-sm font-medium">
+            {currentGroup?.label} {currentGroup?.key.split("-")[0]} — หน้า {clampedPageIndex + 1} จาก {monthGroups.length}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={clampedPageIndex >= monthGroups.length - 1}
+            onClick={() => setPageIndex((i) => Math.min(monthGroups.length - 1, i + 1))}
+          >
+            หน้าถัดไป
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
 
       <div className="rounded-md border">
         <Table containerClassName="max-h-[70vh] overflow-auto">
@@ -483,41 +536,41 @@ export function ProjectsTable({
                 </TableCell>
               </TableRow>
             )}
-            {monthGroups.map((group) => (
-              <Fragment key={group.key}>
+            {currentGroup && (
+              <Fragment key={currentGroup.key}>
                 <TableRow className="bg-muted hover:bg-muted">
                   <TableCell colSpan={totalColumns} className="font-medium">
-                    {group.label} ({group.subtotal.count} งาน)
+                    {currentGroup.label} ({currentGroup.subtotal.count} งาน)
                   </TableCell>
                 </TableRow>
-                {group.rows.map((p) => (
+                {currentGroup.rows.map((p) => (
                   <ProjectRow key={p.id} p={p} categories={categories} canSeeCosts={canSeeCosts} />
                 ))}
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
                   <TableCell colSpan={totalColumns} className="py-3">
                     <div className="flex flex-wrap items-stretch gap-x-6 gap-y-2">
-                      <span className="text-sm font-medium text-muted-foreground">สรุป{group.label}</span>
-                      <SubtotalStat label="PRE.VAT" value={group.subtotal.preVat} />
-                      <SubtotalStat label="VAT" value={group.subtotal.vat} />
-                      <SubtotalStat label="รวมทั้งสิ้น" value={group.subtotal.total} emphasize />
+                      <span className="text-sm font-medium text-muted-foreground">สรุป{currentGroup.label}</span>
+                      <SubtotalStat label="PRE.VAT" value={currentGroup.subtotal.preVat} />
+                      <SubtotalStat label="VAT" value={currentGroup.subtotal.vat} />
+                      <SubtotalStat label="รวมทั้งสิ้น" value={currentGroup.subtotal.total} emphasize />
                       {canSeeCosts && (
                         <>
-                          <SubtotalStat label="ต้นทุน" value={group.subtotal.totalCost} />
-                          <SubtotalStat label="กำไร" value={group.subtotal.profit} tone="profit" />
-                          <SubtotalPercent label="%กำไร" value={marginPercent(group.subtotal.profit, group.subtotal.preVat)} />
+                          <SubtotalStat label="ต้นทุน" value={currentGroup.subtotal.totalCost} />
+                          <SubtotalStat label="กำไร" value={currentGroup.subtotal.profit} tone="profit" />
+                          <SubtotalPercent label="%กำไร" value={marginPercent(currentGroup.subtotal.profit, currentGroup.subtotal.preVat)} />
                         </>
                       )}
-                      <SubtotalStat label="คงค้าง" value={group.subtotal.outstanding} tone="outstanding" />
+                      <SubtotalStat label="คงค้าง" value={currentGroup.subtotal.outstanding} tone="outstanding" />
                     </div>
                   </TableCell>
                 </TableRow>
               </Fragment>
-            ))}
+            )}
           </TableBody>
         </Table>
       </div>
       <p className="text-sm text-muted-foreground">
-        แสดง {filtered.length} จาก {projects.length} งาน
+        แสดง {currentGroup?.rows.length ?? 0} งานในหน้านี้ — {filtered.length} งานทั้งหมดตามตัวกรอง
       </p>
     </div>
   );
