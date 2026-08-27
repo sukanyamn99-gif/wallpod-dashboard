@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useMemo, useRef, useState, useTransition } from "react";
-import { Download, Plus, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight, Download, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { createProjectSale, getMaterialCostSuggestion, updateProjectSale } from "./actions";
 import type { MaterialCostSuggestion } from "@/lib/data/stock-requisitions";
+import type { AdjacentJobNos } from "@/lib/data/project-sales";
 import { formatTHB } from "@/lib/format";
 import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomplete";
 import type { Customer, CustomerType, PaymentStatus, ProductionStatus, SalesRep } from "@/lib/types";
@@ -83,6 +85,7 @@ export function ProjectSaleForm({
   projectId,
   initialData,
   canSeeCosts = true,
+  adjacentJobNos,
 }: {
   salesReps: SalesRep[];
   customers: Customer[];
@@ -91,6 +94,7 @@ export function ProjectSaleForm({
   projectId?: string;
   initialData?: ProjectSaleInitialData;
   canSeeCosts?: boolean;
+  adjacentJobNos?: AdjacentJobNos;
 }) {
   const nextRowKey = useRef(initialData?.items.length ?? 1);
   const [items, setItems] = useState<ItemRow[]>(
@@ -580,9 +584,43 @@ export function ProjectSaleForm({
         </div>
       </div>
 
-      <Button type="submit" disabled={pending}>
-        {pending ? "กำลังบันทึก..." : mode === "edit" ? "บันทึกการแก้ไข" : "บันทึกงานขาย"}
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="submit" disabled={pending}>
+          {pending ? "กำลังบันทึก..." : mode === "edit" ? "บันทึกการแก้ไข" : "บันทึกงานขาย"}
+        </Button>
+        {adjacentJobNos && (
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!adjacentJobNos.prevJobNo}
+              nativeButton={!adjacentJobNos.prevJobNo}
+              render={
+                adjacentJobNos.prevJobNo ? (
+                  <Link href={`/dashboard/project-sales/edit/${encodeURIComponent(adjacentJobNos.prevJobNo)}`} />
+                ) : undefined
+              }
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+              ย้อนกลับ
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!adjacentJobNos.nextJobNo}
+              nativeButton={!adjacentJobNos.nextJobNo}
+              render={
+                adjacentJobNos.nextJobNo ? (
+                  <Link href={`/dashboard/project-sales/edit/${encodeURIComponent(adjacentJobNos.nextJobNo)}`} />
+                ) : undefined
+              }
+            >
+              หน้าถัดไป
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </>
+        )}
+      </div>
     </form>
   );
 }
