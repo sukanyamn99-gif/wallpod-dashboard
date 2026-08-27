@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { DateInput } from "@/components/ui/date-input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -340,13 +341,12 @@ export function ProjectSaleForm({
               </div>
               <div className="w-40 space-y-1">
                 <Label className="text-xs text-muted-foreground">จำนวนเงิน</Label>
-                <Input
+                <NumberInput
                   name="item_amount"
-                  type="number"
-                  min="0"
-                  step="0.01"
+                  min={0}
+                  step={0.01}
                   value={row.amount}
-                  onChange={(e) => updateRow(row.key, "amount", e.target.value)}
+                  onChange={(v) => updateRow(row.key, "amount", v)}
                   placeholder="0"
                 />
               </div>
@@ -405,14 +405,13 @@ export function ProjectSaleForm({
                     {fetchingMaterialCost ? "กำลังค้นหา..." : "ดึงยอดจากใบเบิก"}
                   </button>
                 </div>
-                <Input
+                <NumberInput
                   id="material_cost"
                   name="material_cost"
-                  type="number"
-                  min="0"
-                  step="0.01"
+                  min={0}
+                  step={0.01}
                   value={materialCost}
-                  onChange={(e) => setMaterialCost(e.target.value)}
+                  onChange={setMaterialCost}
                   placeholder="0"
                 />
                 {materialCostError && <p className="text-xs text-destructive">{materialCostError}</p>}
@@ -443,23 +442,23 @@ export function ProjectSaleForm({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="glue_cost">ค่ากาว</Label>
-                <Input id="glue_cost" name="glue_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.glue_cost} placeholder="0" />
+                <NumberInput id="glue_cost" name="glue_cost" min={0} step={0.01} defaultValue={initialData?.costs.glue_cost} placeholder="0" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="cutting_cost">ค่าตัด</Label>
-                <Input id="cutting_cost" name="cutting_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.cutting_cost} placeholder="0" />
+                <NumberInput id="cutting_cost" name="cutting_cost" min={0} step={0.01} defaultValue={initialData?.costs.cutting_cost} placeholder="0" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="install_cost">ค่าติดตั้งผู้รับเหมา</Label>
-                <Input id="install_cost" name="install_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.install_cost} placeholder="0" />
+                <NumberInput id="install_cost" name="install_cost" min={0} step={0.01} defaultValue={initialData?.costs.install_cost} placeholder="0" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="parking_cost">ค่าที่จอดรถ</Label>
-                <Input id="parking_cost" name="parking_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.parking_cost} placeholder="0" />
+                <NumberInput id="parking_cost" name="parking_cost" min={0} step={0.01} defaultValue={initialData?.costs.parking_cost} placeholder="0" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="shipping_cost">ค่าขนส่ง</Label>
-                <Input id="shipping_cost" name="shipping_cost" type="number" min="0" step="0.01" defaultValue={initialData?.costs.shipping_cost} placeholder="0" />
+                <NumberInput id="shipping_cost" name="shipping_cost" min={0} step={0.01} defaultValue={initialData?.costs.shipping_cost} placeholder="0" />
               </div>
             </div>
           </div>
@@ -481,14 +480,13 @@ export function ProjectSaleForm({
             </div>
             <div className="space-y-2">
               <Label htmlFor="amount_1">จำนวนเงิน</Label>
-              <Input
+              <NumberInput
                 id="amount_1"
                 name="amount_1"
-                type="number"
-                min="0"
-                step="0.01"
+                min={0}
+                step={0.01}
                 value={amount1}
-                onChange={(e) => setAmount1(e.target.value)}
+                onChange={setAmount1}
                 placeholder="0"
               />
             </div>
@@ -523,14 +521,13 @@ export function ProjectSaleForm({
               </div>
               <div className="space-y-2">
                 <Label htmlFor="amount_2">จำนวนเงิน</Label>
-                <Input
+                <NumberInput
                   id="amount_2"
                   name="amount_2"
-                  type="number"
-                  min="0"
-                  step="0.01"
+                  min={0}
+                  step={0.01}
                   value={amount2}
-                  onChange={(e) => setAmount2(e.target.value)}
+                  onChange={setAmount2}
                   placeholder="0"
                 />
               </div>
