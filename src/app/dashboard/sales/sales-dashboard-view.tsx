@@ -198,7 +198,7 @@ export function SalesDashboardView({
         />
         <KpiCard
           label="จำนวนงานทั้งหมด"
-          value={`${agg.totalProjectsCount + cancelledCount} งาน · ยกเลิก ${cancelledCount} งาน`}
+          value={`รวม ${agg.totalProjectsCount + cancelledCount} · active ${agg.totalProjectsCount} · ยกเลิก ${cancelledCount}`}
           icon={Briefcase}
           tone="green"
           onClick={canDrillDown ? showAllFiltered : undefined}
