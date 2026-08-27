@@ -33,7 +33,7 @@ import type { Profile, SaleReport, SaleReportChangeLog, SalesRep, Stage } from "
 
 const STAGES: Stage[] = ["นำเสนอ", "ใบเสนอราคา", "เจรจาต่อรอง", "ปิดการขาย", "ไม่สำเร็จ"];
 
-const TOTAL_COLUMNS = 14;
+const TOTAL_COLUMNS = 15;
 
 function summarize(reports: SaleReport[]) {
   return {
@@ -329,17 +329,18 @@ export function SaleReportTable({
           <Table className="table-fixed" containerClassName="overflow-x-visible">
             <TableHeader className="bg-muted">
               <TableRow>
+                <TableHead className="truncate" style={{ width: "3%" }}>ลำดับที่</TableHead>
                 <TableHead className="truncate" style={{ width: "6%" }}>วันที่</TableHead>
                 <TableHead className="truncate" style={{ width: "6%" }}>เซลล์</TableHead>
                 <TableHead className="truncate" style={{ width: "8%" }}>ลูกค้า</TableHead>
                 <TableHead className="truncate" style={{ width: "8%" }}>งาน/โปรเจกต์</TableHead>
-                <TableHead className="truncate" style={{ width: "5%" }}>กลุ่มลูกค้า</TableHead>
+                <TableHead className="truncate" style={{ width: "4%" }}>กลุ่มลูกค้า</TableHead>
                 <TableHead className="truncate" style={{ width: "6%" }}>Stage</TableHead>
                 <TableHead className="truncate text-right" style={{ width: "8%" }}>มูลค่าโดยประมาณ</TableHead>
                 <TableHead className="truncate" style={{ width: "8%" }}>ผู้ติดต่อ</TableHead>
                 <TableHead className="truncate" style={{ width: "8%" }}>เบอร์โทร</TableHead>
-                <TableHead className="truncate" style={{ width: "5%" }}>ตำแหน่ง</TableHead>
-                <TableHead className="truncate" style={{ width: "6%" }}>รูปภาพ</TableHead>
+                <TableHead className="truncate" style={{ width: "4%" }}>ตำแหน่ง</TableHead>
+                <TableHead className="truncate" style={{ width: "5%" }}>รูปภาพ</TableHead>
                 <TableHead className="truncate" style={{ width: "8%" }}>Next Action</TableHead>
                 <TableHead className="truncate" style={{ width: "8%" }}>หมายเหตุ</TableHead>
                 <TableHead className="truncate" style={{ width: "10%" }}>จัดการ</TableHead>
@@ -353,8 +354,13 @@ export function SaleReportTable({
                   </TableCell>
                 </TableRow>
               )}
-              {filtered.map((r) => (
-                <TableRow key={r.id}>
+              {filtered.map((r, index) => (
+                <TableRow
+                  key={r.id}
+                  className="cursor-pointer"
+                  onClick={() => setViewingReport(r)}
+                >
+                  <TableCell className="truncate text-muted-foreground">{index + 1}</TableCell>
                   <TableCell className="truncate">
                     {new Date(r.created_at).toLocaleDateString("th-TH")}
                   </TableCell>
@@ -383,6 +389,7 @@ export function SaleReportTable({
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary underline underline-offset-2"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         ดูตำแหน่ง
                       </a>
@@ -420,7 +427,7 @@ export function SaleReportTable({
                   <TableCell className="truncate" title={r.note ?? undefined}>
                     {r.note ?? "—"}
                   </TableCell>
-                  <TableCell className="overflow-hidden p-1">
+                  <TableCell className="overflow-hidden p-1" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-start gap-0.5">
                       <Button size="icon-sm" variant="outline" onClick={() => setViewingReport(r)} title="ดูรายละเอียด">
                         <Eye className="h-3.5 w-3.5" />
