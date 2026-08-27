@@ -46,7 +46,7 @@ function AddUserForm({ onClose }: { onClose: () => void }) {
   const created = !state.error && state.needsConfirmation !== undefined;
 
   return (
-    <form action={formAction}>
+    <form action={formAction} noValidate>
       <DialogBody className="space-y-4 py-4">
         {created ? (
           <p className="rounded-md bg-green-100 p-3 text-sm text-green-900">

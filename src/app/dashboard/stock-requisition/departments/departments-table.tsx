@@ -26,7 +26,7 @@ function AddDepartmentForm() {
   }, addInitialState);
 
   return (
-    <form key={formKey} action={formAction} className="flex flex-wrap items-start gap-2">
+    <form key={formKey} action={formAction} className="flex flex-wrap items-start gap-2" noValidate>
       <Input name="name" placeholder="ชื่อแผนกใหม่" className="max-w-xs" required />
       <Button type="submit" disabled={pending}>
         <Plus className="h-4 w-4" />

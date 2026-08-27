@@ -150,7 +150,7 @@ export function PettyCashForm({
   }, initialState);
 
   return (
-    <form action={formAction} className="max-w-xl space-y-4">
+    <form action={formAction} className="max-w-xl space-y-4" noValidate>
       {state.error && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>}
 
       <div className="space-y-2">

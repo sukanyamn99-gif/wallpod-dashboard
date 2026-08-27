@@ -63,7 +63,7 @@ export function RecordMovementDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
-        <form key={formKey} action={formAction}>
+        <form key={formKey} action={formAction} noValidate>
           <DialogHeader>
             <DialogTitle>บันทึกความเคลื่อนไหว</DialogTitle>
             <DialogDescription>รับเข้าหรือเบิกออกสินค้าคงคลัง</DialogDescription>

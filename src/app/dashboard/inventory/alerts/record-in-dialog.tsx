@@ -43,7 +43,7 @@ export function RecordInDialog({
     <Dialog open={product !== null} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         {product && (
-          <form key={formKey} action={formAction}>
+          <form key={formKey} action={formAction} noValidate>
             <DialogHeader>
               <DialogTitle>รับเข้าสินค้า</DialogTitle>
               <DialogDescription>

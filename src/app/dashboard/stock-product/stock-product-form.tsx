@@ -115,6 +115,7 @@ export function StockProductForm({
         <form
           action={formAction}
           className="flex min-h-0 flex-1 flex-col"
+          noValidate
           onSubmit={(e) => {
             e.preventDefault();
             const fd = new FormData(e.currentTarget);

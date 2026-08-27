@@ -26,7 +26,7 @@ function AddSupplierForm() {
   }, addInitialState);
 
   return (
-    <form key={formKey} action={formAction} className="flex flex-wrap items-start gap-2">
+    <form key={formKey} action={formAction} className="flex flex-wrap items-start gap-2" noValidate>
       <Input name="name" placeholder="ชื่อผู้จำหน่าย" className="max-w-xs" required />
       <Input name="address" placeholder="ที่อยู่ (ถ้ามี)" className="max-w-xs" />
       <Input name="tax_id" placeholder="เลขประจำตัวผู้เสียภาษี (ถ้ามี)" className="max-w-[200px]" />

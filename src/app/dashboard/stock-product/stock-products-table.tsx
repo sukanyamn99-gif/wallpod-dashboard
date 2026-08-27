@@ -148,7 +148,7 @@ function MovementSheet({
                 {product.name} — คงเหลือ {product.quantityOnHand} {product.unit}
               </SheetDescription>
             </SheetHeader>
-            <form key={formKey} action={formAction} className="space-y-4 px-4 pb-4">
+            <form key={formKey} action={formAction} className="space-y-4 px-4 pb-4" noValidate>
               {state.error && (
                 <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>
               )}

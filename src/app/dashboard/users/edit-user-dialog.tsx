@@ -84,7 +84,7 @@ function EditUserForm({
   }
 
   return (
-    <form action={formAction} onSubmit={handleSubmit}>
+    <form action={formAction} onSubmit={handleSubmit} noValidate>
       <DialogBody className="space-y-4 py-4">
         {state.error && (
           <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>

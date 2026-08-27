@@ -32,7 +32,7 @@ function AddCategoryForm() {
   }, addInitialState);
 
   return (
-    <form key={formKey} action={formAction} className="flex flex-wrap items-start gap-2">
+    <form key={formKey} action={formAction} className="flex flex-wrap items-start gap-2" noValidate>
       <Input name="name" placeholder="ชื่อหมวดหมู่ใหม่" className="max-w-xs" required />
       <Textarea name="description" placeholder="รายละเอียด (ถ้ามี)" className="max-w-sm" rows={1} />
       <Button type="submit" disabled={pending}>

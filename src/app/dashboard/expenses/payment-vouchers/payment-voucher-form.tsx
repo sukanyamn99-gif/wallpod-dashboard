@@ -99,7 +99,7 @@ export function PaymentVoucherForm({
   }
 
   return (
-    <form action={formAction} className="max-w-3xl space-y-6">
+    <form action={formAction} className="max-w-3xl space-y-6" noValidate>
       {state.error && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>}
 
       {mode === "edit" && initialData && (

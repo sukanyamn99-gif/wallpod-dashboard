@@ -126,7 +126,7 @@ function ResetPasswordButton({ account }: { account: UserAccount }) {
             รีเซ็ตรหัสผ่าน
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <DialogBody className="space-y-4 py-4">
             {error && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}
             {success && (

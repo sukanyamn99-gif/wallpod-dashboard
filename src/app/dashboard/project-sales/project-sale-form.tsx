@@ -208,6 +208,7 @@ export function ProjectSaleForm({
       key={formKey}
       action={formAction}
       className="space-y-6"
+      noValidate
       onSubmit={(e) => {
         if (mode !== "create") return;
         const error = getJobNoError(jobNoRef.current?.value ?? "", { required: true });

@@ -96,6 +96,7 @@ export function RequisitionForm({
   return (
     <form
       action={formAction}
+      noValidate
       onSubmit={(e) => {
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
