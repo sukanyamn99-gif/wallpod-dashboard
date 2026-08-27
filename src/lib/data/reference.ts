@@ -2,10 +2,15 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { mockCustomers, mockSalesReps } from "@/lib/mock-data";
 import type { Customer, Department, SalesRep } from "@/lib/types";
 
-export async function getSalesReps(): Promise<SalesRep[]> {
+export async function getSalesReps({ requireLogin = false }: { requireLogin?: boolean } = {}): Promise<SalesRep[]> {
   if (!isSupabaseConfigured()) return mockSalesReps;
   const supabase = await createClient();
-  const { data, error } = await supabase.from("sales_reps").select("id, name, active").eq("active", true);
+  let query = supabase.from("sales_reps").select("id, name, active").eq("active", true);
+  // Sale Report is filled in by the rep themselves, so the picker should only
+  // offer reps who actually have a login account (sales_reps.profile_id set) —
+  // excludes team/customer-name entries that were never real accounts.
+  if (requireLogin) query = query.not("profile_id", "is", null);
+  const { data, error } = await query;
   if (error) throw error;
   return data ?? [];
 }

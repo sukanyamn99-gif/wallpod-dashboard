@@ -3,7 +3,7 @@ import { getSalesReps } from "@/lib/data/reference";
 import { SaleReportForm } from "../sale-report-form";
 
 export default async function NewSaleReportPage() {
-  const salesReps = await getSalesReps();
+  const salesReps = await getSalesReps({ requireLogin: true });
 
   return (
     <div className="space-y-6">

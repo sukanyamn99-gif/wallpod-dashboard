@@ -11,8 +11,18 @@ export default async function EditSaleReportPage({
 }) {
   const { id } = await params;
 
-  const [salesReps, report] = await Promise.all([getSalesReps(), getSaleReportById(id)]);
+  const [loginSalesReps, report] = await Promise.all([
+    getSalesReps({ requireLogin: true }),
+    getSaleReportById(id),
+  ]);
   const imageUrls = report ? await getSignedImageUrls(report.image_paths) : {};
+  // The report's own rep might not have a login (e.g. an owner logged this
+  // visit on their behalf) — keep them selectable here so editing never
+  // silently loses/changes who the report is attributed to.
+  const salesReps =
+    report && !loginSalesReps.some((r) => r.id === report.sales_rep_id)
+      ? [...loginSalesReps, { id: report.sales_rep_id, name: report.sales_rep_name, active: true }]
+      : loginSalesReps;
 
   return (
     <div className="space-y-6">
