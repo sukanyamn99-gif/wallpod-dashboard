@@ -21,6 +21,7 @@ import { SizeAutocomplete } from "@/components/dashboard/size-autocomplete";
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/format";
 import { createStockRequisition } from "./actions";
+import { getJobNoError } from "@/lib/job-no";
 import type { Customer, Department, RequisitionPurpose, StockProduct } from "@/lib/types";
 
 const initialState = { error: null as string | null };
@@ -48,6 +49,7 @@ export function RequisitionForm({
 }) {
   const router = useRouter();
   const [jobNo, setJobNo] = useState("");
+  const jobNoError = getJobNoError(jobNo);
   const [customerName, setCustomerName] = useState("");
   const [purpose, setPurpose] = useState<RequisitionPurpose>("production");
   const [items, setItems] = useState<SelectedItem[]>([]);
@@ -149,6 +151,7 @@ export function RequisitionForm({
             suggestions={jobNoSuggestions}
             placeholder="เช่น JB2605001"
           />
+          {jobNoError && <p className="text-xs text-destructive">{jobNoError}</p>}
         </div>
 
         <div className="space-y-2">

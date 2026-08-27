@@ -6,6 +6,7 @@ import { logActivity } from "@/lib/activity-log";
 import { getMaterialCostByJobNo } from "@/lib/data/stock-requisitions";
 import type { PaymentStatus, ProductionStatus } from "@/lib/types";
 import { PRODUCTION_STATUSES } from "@/lib/types";
+import { getJobNoError } from "@/lib/job-no";
 
 const PAYMENT_STATUSES: PaymentStatus[] = ["เก็บเงินเรียบร้อย", "ชำระมาแล้ว 50%", "รอชำระเงิน"];
 
@@ -58,6 +59,13 @@ type ParsedForm = {
 function parseForm(formData: FormData): { ok: false; error: string } | ParsedForm {
   const projectDate = str(formData.get("project_date")) ?? new Date().toISOString().slice(0, 10);
   const jobNo = str(formData.get("job_no"));
+  // Server-side backstop matching the client-side check in
+  // project-sale-form.tsx — never rejects a null/empty job_no here (edit
+  // mode resubmits whatever the row already has), only a malformed one.
+  if (jobNo) {
+    const jobNoValidationError = getJobNoError(jobNo);
+    if (jobNoValidationError) return { ok: false, error: jobNoValidationError };
+  }
   const customerName = str(formData.get("customer_name"));
   const projectName = str(formData.get("project_name"));
   const salesRepId = str(formData.get("sales_rep_id"));

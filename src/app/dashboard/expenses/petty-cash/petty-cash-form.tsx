@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { createPettyCashTransaction, updatePettyCashTransaction } from "./actions";
+import { getJobNoError } from "@/lib/job-no";
 import type { PettyCashTransaction, PettyCashTransactionType } from "@/lib/types";
 
 const initialState: { error: string | null; docNo?: string } = { error: null };
@@ -95,6 +96,8 @@ export function PettyCashForm({
   const [whtRatePercent, setWhtRatePercent] = useState(() =>
     initialData ? inferWhtRatePercent(initialData.whtAmount, initialData.amount / 1.07) : "0",
   );
+  const [jobNo, setJobNo] = useState(initialData?.jobNo ?? "");
+  const jobNoError = getJobNoError(jobNo);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const billerRef = useRef<HTMLInputElement>(null);
   const categoryRef = useRef<HTMLInputElement>(null);
@@ -256,9 +259,11 @@ export function PettyCashForm({
               <Input
                 id="job_no"
                 name="job_no"
-                defaultValue={initialData?.jobNo ?? undefined}
+                value={jobNo}
+                onChange={(e) => setJobNo(e.target.value)}
                 placeholder="เช่น JB2601001 (ถ้ามี)"
               />
+              {jobNoError && <p className="text-xs text-destructive">{jobNoError}</p>}
             </div>
           </div>
 

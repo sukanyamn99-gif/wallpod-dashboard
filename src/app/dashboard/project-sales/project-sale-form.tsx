@@ -23,6 +23,7 @@ import { formatTHB } from "@/lib/format";
 import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomplete";
 import type { Customer, CustomerType, PaymentStatus, ProductionStatus, SalesRep } from "@/lib/types";
 import { PRODUCTION_STATUSES } from "@/lib/types";
+import { getJobNoError } from "@/lib/job-no";
 
 const initialState = { error: null as string | null };
 
@@ -127,6 +128,7 @@ export function ProjectSaleForm({
   const [formKey, setFormKey] = useState(0);
 
   const jobNoRef = useRef<HTMLInputElement>(null);
+  const [jobNoError, setJobNoError] = useState<string | null>(null);
   const [materialCost, setMaterialCost] = useState(initialData?.costs.material_cost ?? "");
   const [materialCostSuggestion, setMaterialCostSuggestion] = useState<MaterialCostSuggestion | null>(null);
   const [materialCostError, setMaterialCostError] = useState<string | null>(null);
@@ -162,6 +164,7 @@ export function ProjectSaleForm({
         setMaterialCost("");
         setMaterialCostSuggestion(null);
         setMaterialCostError(null);
+        setJobNoError(null);
         setFormKey((k) => k + 1);
       } else {
         setSavedMessage(true);
@@ -201,7 +204,20 @@ export function ProjectSaleForm({
   }
 
   return (
-    <form key={formKey} action={formAction} className="space-y-6">
+    <form
+      key={formKey}
+      action={formAction}
+      className="space-y-6"
+      onSubmit={(e) => {
+        if (mode !== "create") return;
+        const error = getJobNoError(jobNoRef.current?.value ?? "", { required: true });
+        if (error) {
+          e.preventDefault();
+          setJobNoError(error);
+          jobNoRef.current?.focus();
+        }
+      }}
+    >
       {state.error && (
         <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>
       )}
@@ -232,7 +248,17 @@ export function ProjectSaleForm({
               readOnly={mode === "edit"}
               className={mode === "edit" ? "bg-muted" : undefined}
               placeholder="เช่น JB2607001"
+              aria-invalid={mode === "create" && !!jobNoError}
+              onChange={mode === "create" ? () => setJobNoError(null) : undefined}
+              onBlur={
+                mode === "create"
+                  ? (e) => setJobNoError(getJobNoError(e.target.value, { required: true }))
+                  : undefined
+              }
             />
+            {mode === "create" && jobNoError && (
+              <p className="text-xs text-destructive">{jobNoError}</p>
+            )}
           </div>
         </div>
 

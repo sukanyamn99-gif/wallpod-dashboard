@@ -19,6 +19,7 @@ import {
 import { SizeAutocomplete } from "@/components/dashboard/size-autocomplete";
 import { formatTHB } from "@/lib/format";
 import { createPaymentVoucher, updatePaymentVoucher } from "./actions";
+import { getJobNoError } from "@/lib/job-no";
 import type { PaymentVoucher, WhtFormType } from "@/lib/types";
 
 const initialState: { error: string | null; docNo?: string; id?: string } = { error: null };
@@ -57,6 +58,7 @@ export function PaymentVoucherForm({
   const router = useRouter();
   const [whtFormType, setWhtFormType] = useState<string>(initialData?.whtFormType ?? "");
   const [jobNo, setJobNo] = useState(initialData?.jobNo ?? "");
+  const jobNoError = getJobNoError(jobNo);
   const [lines, setLines] = useState<LedgerLineDraft[]>(() => {
     if (initialData?.ledgerLines && initialData.ledgerLines.length > 0) {
       return initialData.ledgerLines.map((l) => ({
@@ -174,6 +176,7 @@ export function PaymentVoucherForm({
             suggestions={jobNoSuggestions}
             placeholder="เช่น JB2607001 (ถ้ามี)"
           />
+          {jobNoError && <p className="text-xs text-destructive">{jobNoError}</p>}
         </div>
       </div>
 
