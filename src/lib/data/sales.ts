@@ -52,9 +52,37 @@ async function getProjects(): Promise<Project[]> {
   return fetchLiveProjects();
 }
 
+export interface CancelledProjectSummary {
+  id: string;
+  project_date: string;
+  sales_rep_name: string;
+}
+
+// Cancelled jobs are excluded from fetchLiveProjects() entirely (their value
+// must never count toward pipeline/closed totals), but the "จำนวนงานทั้งหมด"
+// KPI still wants to show how many were cancelled — so this is a minimal,
+// separate fetch just for that count, carrying only enough fields to apply
+// the same month/sales-rep filter the dashboard already uses.
+async function fetchCancelledProjects(): Promise<CancelledProjectSummary[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("projects")
+    .select("id, project_date, sales_reps(name)")
+    .eq("is_cancelled", true);
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    project_date: row.project_date,
+    // @ts-expect-error -- Supabase types the joined relation loosely here
+    sales_rep_name: row.sales_reps?.name ?? "",
+  }));
+}
+
 export interface SalesDashboardRawData {
   projects: Project[];
   saleReports: SaleReport[];
+  cancelledProjects: CancelledProjectSummary[];
 }
 
 // Raw, unaggregated data for the Sales Dashboard — fetched once server-side
@@ -62,8 +90,12 @@ export interface SalesDashboardRawData {
 // computeSalesAggregates/computePipelineByStage) whenever the month/sales-rep
 // filter changes, instead of round-tripping to the server per filter click.
 export async function getSalesDashboardRawData(): Promise<SalesDashboardRawData> {
-  const [projects, saleReports] = await Promise.all([getProjects(), getAllSaleReports()]);
-  return { projects, saleReports };
+  const [projects, saleReports, cancelledProjects] = await Promise.all([
+    getProjects(),
+    getAllSaleReports(),
+    fetchCancelledProjects(),
+  ]);
+  return { projects, saleReports, cancelledProjects };
 }
 
 export type { FilteredSalesData };

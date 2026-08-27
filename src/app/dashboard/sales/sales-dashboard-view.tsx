@@ -15,6 +15,7 @@ import {
 } from "@/components/dashboard/sales-charts";
 import { DrillDownDialog, type DrillDown } from "./drill-down-dialog";
 import { computeSalesAggregates, computePipelineByStage, monthKeyOf, getMonthRange } from "@/lib/dashboard/sales-aggregate";
+import type { CancelledProjectSummary } from "@/lib/data/sales";
 import { formatTHB } from "@/lib/format";
 import { STAGE_LABELS, type Project, type SaleReport } from "@/lib/types";
 
@@ -27,10 +28,12 @@ function monthLabelOf(key: string) {
 export function SalesDashboardView({
   projects,
   saleReports,
+  cancelledProjects,
   canDrillDown,
 }: {
   projects: Project[];
   saleReports: SaleReport[];
+  cancelledProjects: CancelledProjectSummary[];
   canDrillDown: boolean;
 }) {
   const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set());
@@ -65,6 +68,14 @@ export function SalesDashboardView({
       return true;
     });
   }, [projects, selectedMonths, selectedSalesReps]);
+
+  const cancelledCount = useMemo(() => {
+    return cancelledProjects.filter((p) => {
+      if (selectedMonths.size > 0 && !selectedMonths.has(monthKeyOf(p.project_date))) return false;
+      if (selectedSalesReps.size > 0 && !selectedSalesReps.has(p.sales_rep_name)) return false;
+      return true;
+    }).length;
+  }, [cancelledProjects, selectedMonths, selectedSalesReps]);
 
   const filteredSaleReports = useMemo(() => {
     return saleReports.filter((r) => {
@@ -187,7 +198,7 @@ export function SalesDashboardView({
         />
         <KpiCard
           label="จำนวนงานทั้งหมด"
-          value={`${agg.totalProjectsCount} งาน`}
+          value={`${agg.totalProjectsCount + cancelledCount} งาน · ยกเลิก ${cancelledCount} งาน`}
           icon={Briefcase}
           tone="green"
           onClick={canDrillDown ? showAllFiltered : undefined}
