@@ -477,7 +477,7 @@ export function ProjectsTable({
       )}
 
       <div className="rounded-md border">
-        <Table>
+        <Table containerClassName="max-h-[65vh] overflow-auto">
           <TableHeader>
             <TableRow>
               <TableHead className="sticky top-0 z-20 truncate bg-card" style={frozenColStyle(0)}>
