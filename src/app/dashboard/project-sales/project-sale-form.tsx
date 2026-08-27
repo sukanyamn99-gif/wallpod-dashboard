@@ -170,12 +170,16 @@ export function ProjectSaleForm({
   const vat = Math.round(preVat * 0.07 * 100) / 100;
   const total = preVat + vat;
   // An installment only counts toward "paid" once its receipt number is
-  // filled in — an invoice number/amount can legitimately be entered before
-  // the actual bank transfer clears, so those alone must not reduce
-  // ยอดคงค้าง. This also means a job with no receipts yet naturally shows
-  // the full total as outstanding without needing to special-case สถานะ.
-  const paidAmount =
-    (receiptNo1.trim() ? Number(amount1) || 0 : 0) + (receiptNo2.trim() ? Number(amount2) || 0 : 0);
+  // filled in AND สถานะ isn't still "รอชำระเงิน" — a receipt number alone
+  // isn't proof money arrived for the one customer (ร้อกเวิธ) who requires
+  // an advance receipt before their own payment cycle actually pays it, so
+  // สถานะ is what they flip once the money genuinely lands. An invoice
+  // number/amount alone (no receipt) still never counts either, matching
+  // the original rule this builds on.
+  const isAwaitingPayment = status === "รอชำระเงิน";
+  const paidAmount = isAwaitingPayment
+    ? 0
+    : (receiptNo1.trim() ? Number(amount1) || 0 : 0) + (receiptNo2.trim() ? Number(amount2) || 0 : 0);
   const outstanding = Math.max(0, total - paidAmount);
 
   function addRow() {

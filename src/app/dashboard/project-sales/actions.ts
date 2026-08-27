@@ -107,10 +107,15 @@ function parseForm(formData: FormData): { ok: false; error: string } | ParsedFor
   const receiptNo1 = str(formData.get("receipt_no_1"));
   const receiptNo2 = str(formData.get("receipt_no_2"));
   // An installment only counts toward "paid" once its receipt number is
-  // filled in — mirrors project-sale-form.tsx's live preview (see comment
-  // there): an invoice number/amount can be entered before the bank
-  // transfer actually clears, so those alone must not reduce ยอดคงค้าง.
-  const paidAmount = (receiptNo1 ? installment1Amount : 0) + (receiptNo2 ? installment2Amount : 0);
+  // filled in AND สถานะ isn't still "รอชำระเงิน" — mirrors
+  // project-sale-form.tsx's live preview (see comment there). สถานะ is the
+  // override for customers who require an advance receipt before their own
+  // payment cycle actually pays it (receipt number alone isn't proof money
+  // arrived for them); an invoice number/amount alone still never counts.
+  const isAwaitingPayment = status === "รอชำระเงิน";
+  const paidAmount = isAwaitingPayment
+    ? 0
+    : (receiptNo1 ? installment1Amount : 0) + (receiptNo2 ? installment2Amount : 0);
   const outstanding = Math.max(0, Math.round((total - paidAmount) * 100) / 100);
 
   return {
