@@ -18,7 +18,7 @@ export default async function SaleReportPage() {
 
   const [reports, salesReps, changeLog] = await Promise.all([
     getAllSaleReports(),
-    getSalesReps(),
+    getSalesReps({ requireLogin: true }),
     getSaleReportChangeLog(),
   ]);
   const imageUrls = await getSignedImageUrls(reports.flatMap((r) => r.image_paths));
