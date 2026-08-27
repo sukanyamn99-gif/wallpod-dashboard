@@ -27,9 +27,11 @@ function monthLabelOf(key: string) {
 export function SalesDashboardView({
   projects,
   saleReports,
+  canDrillDown,
 }: {
   projects: Project[];
   saleReports: SaleReport[];
+  canDrillDown: boolean;
 }) {
   const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set());
   const [selectedSalesReps, setSelectedSalesReps] = useState<Set<string>>(new Set());
@@ -181,42 +183,42 @@ export function SalesDashboardView({
           value={formatTHB(agg.totalPipelineValue)}
           icon={CircleDollarSign}
           tone="blue"
-          onClick={showAllFiltered}
+          onClick={canDrillDown ? showAllFiltered : undefined}
         />
         <KpiCard
           label="จำนวนงานทั้งหมด"
           value={`${agg.totalProjectsCount} งาน`}
           icon={Briefcase}
           tone="green"
-          onClick={showAllFiltered}
+          onClick={canDrillDown ? showAllFiltered : undefined}
         />
         <KpiCard
           label="สถานะงาน"
           value={`ปิดแล้ว ${agg.closedProjectsCount} · ยังไม่ปิด ${agg.openProjectsCount}`}
           icon={CheckCircle2}
           tone="amber"
-          onClick={showAllFiltered}
+          onClick={canDrillDown ? showAllFiltered : undefined}
         />
         <KpiCard
           label="ยอดปิดการขายเดือนนี้"
           value={formatTHB(agg.closedThisMonthValue)}
           icon={TrendingUp}
           tone="violet"
-          onClick={showClosedThisMonth}
+          onClick={canDrillDown ? showClosedThisMonth : undefined}
         />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <PipelineByStageChart data={pipelineByStage} onBarClick={showStage} />
-        <CustomerTypeChart data={agg.customerTypeBreakdown} onSliceClick={showCustomerType} />
-        <ProductCategoryChart data={agg.categoryBreakdown} onSliceClick={showCategory} />
+        <PipelineByStageChart data={pipelineByStage} onBarClick={canDrillDown ? showStage : undefined} />
+        <CustomerTypeChart data={agg.customerTypeBreakdown} onSliceClick={canDrillDown ? showCustomerType : undefined} />
+        <ProductCategoryChart data={agg.categoryBreakdown} onSliceClick={canDrillDown ? showCategory : undefined} />
       </div>
 
-      <SalesRepPerformanceChart data={agg.salesRepPerformance} onBarClick={showSalesRep} />
-      <RepMonthlyPerformanceChart data={agg.repMonthlyPerformance} onBarClick={showRepMonth} />
-      <MonthlySalesChart data={agg.monthlySales} onBarClick={showMonth} />
+      <SalesRepPerformanceChart data={agg.salesRepPerformance} onBarClick={canDrillDown ? showSalesRep : undefined} />
+      <RepMonthlyPerformanceChart data={agg.repMonthlyPerformance} onBarClick={canDrillDown ? showRepMonth : undefined} />
+      <MonthlySalesChart data={agg.monthlySales} onBarClick={canDrillDown ? showMonth : undefined} />
 
-      <DrillDownDialog drillDown={drillDown} onClose={() => setDrillDown(null)} />
+      {canDrillDown && <DrillDownDialog drillDown={drillDown} onClose={() => setDrillDown(null)} />}
     </div>
   );
 }

@@ -60,3 +60,13 @@ export function canCreateStockProduct(role: Role): boolean {
 export function canCreateStockMovementDoc(role: Role): boolean {
   return role === "owner" || role === "manager" || role === "production" || role === "support_sale" || role === "account";
 }
+
+// Sales Dashboard KPI cards/charts show aggregate figures to every role
+// (including "sales", since Sale reps compare their own numbers against
+// the team) — but clicking through to the underlying per-job drill-down
+// list (with links into WALLPOD Project Sales) should stay off-limits for
+// "sales" specifically, matching the fact that they can't reach that
+// feature's own page.
+export function canDrillDownSalesDashboard(role: Role): boolean {
+  return role !== "sales";
+}
