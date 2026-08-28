@@ -131,7 +131,10 @@ function parseForm(formData: FormData): { ok: false; error: string } | ParsedFor
   const paidAmount = isAwaitingPayment
     ? 0
     : (receiptNo1 ? installment1Amount : 0) + (receiptNo2 ? installment2Amount : 0);
-  const outstanding = Math.max(0, Math.round((total - paidAmount) * 100) / 100);
+  // Not floored at 0 — a payment entered above the total is a real
+  // overpayment the office needs to see and follow up on, not something to
+  // silently hide behind a clean-looking ฿0.
+  const outstanding = Math.round((total - paidAmount) * 100) / 100;
 
   return {
     ok: true,

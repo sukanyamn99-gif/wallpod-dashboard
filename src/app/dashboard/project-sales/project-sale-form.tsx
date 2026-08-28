@@ -190,7 +190,9 @@ export function ProjectSaleForm({
   const paidAmount = isAwaitingPayment
     ? 0
     : (receiptNo1.trim() ? Number(amount1) || 0 : 0) + (receiptNo2.trim() ? Number(amount2) || 0 : 0);
-  const outstanding = Math.max(0, total - paidAmount);
+  // Not floored at 0 — mirrors actions.ts's parseForm: an overpayment should
+  // show as a negative number here too, not get silently hidden as ฿0.
+  const outstanding = total - paidAmount;
 
   function addRow() {
     setItems((prev) => [...prev, { key: nextRowKey.current++, category: "", amount: "" }]);
