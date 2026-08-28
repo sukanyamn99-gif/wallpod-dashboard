@@ -59,13 +59,14 @@ const navItems = [
   { title: "WALLPOD Project Sales", url: "/dashboard/project-sales", icon: ClipboardList },
   { title: "GP Dashboard", url: "/dashboard/gp", icon: BarChart3 },
   { title: "AR Dashboard", url: "/dashboard/ar", icon: Receipt },
+  { title: "Dashboard ค่าใช้จ่าย", url: "/dashboard/expenses", icon: BarChart3 },
+  { title: "Stock Dashboard", url: "/dashboard/inventory", icon: Boxes },
 ];
 
 const inventoryGroup = {
   title: "Stock Data",
   icon: Warehouse,
   items: [
-    { title: "Stock Dashboard", url: "/dashboard/inventory", icon: Boxes },
     { title: "สินค้า", url: "/dashboard/stock-product", icon: Package },
     { title: "หมวดหมู่สินค้า", url: "/dashboard/product-categories", icon: Tags },
     { title: "รับเข้าสินค้า", url: "/dashboard/goods-receipt", icon: PackagePlus },
@@ -89,7 +90,6 @@ const expensesGroup = {
   title: "ค่าใช้จ่าย",
   icon: Banknote,
   items: [
-    { title: "Dashboard ค่าใช้จ่าย", url: "/dashboard/expenses", icon: BarChart3 },
     { title: "Payment Voucher (ใบสำคัญจ่าย)", url: "/dashboard/expenses/payment-vouchers", icon: FileSpreadsheet },
     { title: "เงินสดย่อย", url: "/dashboard/expenses/petty-cash", icon: Wallet },
     { title: "เจ้าหนี้คงค้าง", url: "/dashboard/expenses/payables", icon: HandCoins },
