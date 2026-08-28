@@ -59,8 +59,8 @@ const navItems = [
   { title: "GP Dashboard", url: "/dashboard/gp", icon: BarChart3 },
   { title: "AR Dashboard", url: "/dashboard/ar", icon: Receipt },
   { title: "Ex Dashboard", url: "/dashboard/expenses", icon: BarChart3 },
-  { title: "Koonway Project Sales", url: "/dashboard/project-sales", icon: ClipboardList },
   { title: "Stock Dashboard", url: "/dashboard/inventory", icon: Boxes },
+  { title: "Koonway Project Sales", url: "/dashboard/project-sales", icon: ClipboardList },
 ];
 
 const inventoryGroup = {
