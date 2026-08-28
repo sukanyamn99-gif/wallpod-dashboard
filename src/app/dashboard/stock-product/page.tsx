@@ -1,14 +1,18 @@
-import { Plus } from "lucide-react";
+import { PackageSearch, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { KpiCard } from "@/components/dashboard/kpi-card";
 import { getSignedStockProductImageUrls, getStockProductLotsByProduct, getStockProducts } from "@/lib/data/stock";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { canCreateStockProduct } from "@/lib/permissions";
+import { canCreateStockProduct, canSeeCosts } from "@/lib/permissions";
+import { formatTHB } from "@/lib/format";
 import { StockProductsTable } from "./stock-products-table";
 
 export default async function StockProductPage() {
   const [products, profile] = await Promise.all([getStockProducts(), getCurrentProfile()]);
   const currentProfile = profile ?? { id: "", full_name: "", role: "sales" as const, sales_rep_id: null, department: null, active: true };
   const canCreate = canCreateStockProduct(currentProfile.role);
+  const showCosts = canSeeCosts(currentProfile.role);
+  const totalStockValue = products.reduce((sum, p) => sum + p.quantityOnHand * p.unitCost, 0);
 
   const imagePaths = products.map((p) => p.imagePath).filter((p): p is string => p !== null);
   const [imageUrls, lotsByProduct] = await Promise.all([
@@ -30,6 +34,12 @@ export default async function StockProductPage() {
           </Button>
         )}
       </div>
+
+      {showCosts && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard label="มูลค่าสต๊อกรวม" value={formatTHB(totalStockValue)} icon={PackageSearch} tone="green" />
+        </div>
+      )}
 
       <StockProductsTable
         products={products}
