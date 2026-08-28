@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { getGoodsReceipts } from "@/lib/data/goods-receipts";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { canAccessPage, canCreateStockMovementDoc } from "@/lib/permissions";
+import { canAccessPage, canCreateStockMovementDoc, canSeeCosts } from "@/lib/permissions";
 import { GoodsReceiptsTable } from "./goods-receipts-table";
 
 export default async function GoodsReceiptPage() {
@@ -28,7 +28,7 @@ export default async function GoodsReceiptPage() {
         )}
       </div>
 
-      <GoodsReceiptsTable receipts={receipts} currentProfile={profile} />
+      <GoodsReceiptsTable receipts={receipts} currentProfile={profile} showAmount={canSeeCosts(profile.role)} />
     </div>
   );
 }

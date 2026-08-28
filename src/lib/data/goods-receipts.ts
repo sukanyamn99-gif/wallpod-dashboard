@@ -34,18 +34,26 @@ function mapHeader(row: HeaderRow): Omit<GoodsReceipt, "items"> {
   };
 }
 
-export async function getGoodsReceipts(): Promise<Omit<GoodsReceipt, "items">[]> {
+export type GoodsReceiptListRow = Omit<GoodsReceipt, "items"> & { totalAmount: number };
+
+export async function getGoodsReceipts(): Promise<GoodsReceiptListRow[]> {
   if (!isSupabaseConfigured()) return [];
 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("goods_receipts")
-    .select(HEADER_COLUMNS)
+    .select(`${HEADER_COLUMNS}, goods_receipt_items(quantity, unit_cost)`)
     .order("created_at", { ascending: false });
   if (error) throw error;
 
-  // @ts-expect-error -- Supabase types the joined relation loosely here
-  return (data ?? []).map(mapHeader);
+  return (data ?? []).map((row) => ({
+    // @ts-expect-error -- Supabase types the joined relation loosely here
+    ...mapHeader(row),
+    totalAmount: ((row.goods_receipt_items ?? []) as { quantity: number; unit_cost: number }[]).reduce(
+      (sum, it) => sum + Number(it.quantity) * Number(it.unit_cost),
+      0,
+    ),
+  }));
 }
 
 // Minimal shape the เจ้าหนี้คงค้าง (payables) page needs — one row per

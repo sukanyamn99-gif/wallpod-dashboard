@@ -15,9 +15,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { GoodsReceipt, Profile } from "@/lib/types";
+import type { GoodsReceiptListRow } from "@/lib/data/goods-receipts";
+import { formatTHB } from "@/lib/format";
 import { deleteGoodsReceipt, markGoodsReceiptPaymentStatus } from "./actions";
-
-const TOTAL_COLUMNS = 7;
 
 function PaymentStatusCell({
   receipt,
@@ -139,11 +139,14 @@ function DeleteButton({ receipt }: { receipt: Omit<GoodsReceipt, "items"> }) {
 export function GoodsReceiptsTable({
   receipts,
   currentProfile,
+  showAmount,
 }: {
-  receipts: Omit<GoodsReceipt, "items">[];
+  receipts: GoodsReceiptListRow[];
   currentProfile: Profile;
+  showAmount: boolean;
 }) {
   const [query, setQuery] = useState("");
+  const totalColumns = showAmount ? 8 : 7;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -175,6 +178,7 @@ export function GoodsReceiptsTable({
               <TableHead className="whitespace-nowrap">ผู้รับ</TableHead>
               <TableHead className="whitespace-nowrap">เลขที่อ้างอิง</TableHead>
               <TableHead className="whitespace-nowrap">วันที่</TableHead>
+              {showAmount && <TableHead className="text-right whitespace-nowrap">จำนวนเงิน</TableHead>}
               <TableHead className="whitespace-nowrap">สถานะจ่ายเงิน</TableHead>
               <TableHead className="whitespace-nowrap">จัดการ</TableHead>
             </TableRow>
@@ -182,7 +186,7 @@ export function GoodsReceiptsTable({
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={TOTAL_COLUMNS} className="text-center text-muted-foreground">
+                <TableCell colSpan={totalColumns} className="text-center text-muted-foreground">
                   ไม่พบข้อมูล
                 </TableCell>
               </TableRow>
@@ -196,6 +200,9 @@ export function GoodsReceiptsTable({
                 <TableCell className="whitespace-nowrap">
                   {new Date(r.createdAt).toLocaleString("th-TH")}
                 </TableCell>
+                {showAmount && (
+                  <TableCell className="text-right whitespace-nowrap">{formatTHB(r.totalAmount)}</TableCell>
+                )}
                 <TableCell>
                   <PaymentStatusCell receipt={r} canManage={canTogglePayment(currentProfile, r)} />
                 </TableCell>
