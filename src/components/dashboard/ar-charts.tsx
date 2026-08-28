@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import Link from "next/link";
 import {
   Bar,
   BarChart,
@@ -14,8 +16,23 @@ import {
   YAxis,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { formatTHB } from "@/lib/format";
-import type { ArDashboardData } from "@/lib/data/ar";
+import type { ArDashboardData, ReceivableRow } from "@/lib/data/ar";
 
 const AGING_COLORS = ["var(--chart-seq-1)", "var(--chart-seq-2)", "var(--chart-seq-3)", "var(--status-critical)"];
 
@@ -133,7 +150,16 @@ export function ByStatusChart({ data }: { data: ArDashboardData["byStatus"] }) {
   );
 }
 
-export function TopDebtorsChart({ data }: { data: ArDashboardData["byCustomer"] }) {
+export function TopDebtorsChart({
+  data,
+  list,
+}: {
+  data: ArDashboardData["byCustomer"];
+  list: ReceivableRow[];
+}) {
+  const [selectedCustomer, setSelectedCustomer] = useState<string | null>(null);
+  const rowsForSelected = selectedCustomer ? list.filter((r) => r.customerName === selectedCustomer) : [];
+
   return (
     <Card>
       <CardHeader>
@@ -159,7 +185,15 @@ export function TopDebtorsChart({ data }: { data: ArDashboardData["byCustomer"] 
               width={140}
             />
             <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--muted)" }} />
-            <Bar dataKey="amount" radius={[0, 4, 4, 0]} maxBarSize={28}>
+            <Bar
+              dataKey="amount"
+              radius={[0, 4, 4, 0]}
+              maxBarSize={28}
+              cursor="pointer"
+              onClick={(entry) =>
+                setSelectedCustomer((entry.payload as ArDashboardData["byCustomer"][number]).customerName)
+              }
+            >
               {data.map((entry, i) => (
                 <Cell key={entry.customerName} fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]} />
               ))}
@@ -167,6 +201,57 @@ export function TopDebtorsChart({ data }: { data: ArDashboardData["byCustomer"] 
           </BarChart>
         </ResponsiveContainer>
       </CardContent>
+
+      <Dialog open={selectedCustomer !== null} onOpenChange={(open) => !open && setSelectedCustomer(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedCustomer} ({rowsForSelected.length} งาน)
+            </DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <div className="max-h-[60vh] overflow-y-auto rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="whitespace-nowrap">JOB NO.</TableHead>
+                    <TableHead className="whitespace-nowrap">วันที่</TableHead>
+                    <TableHead className="whitespace-nowrap">ชื่องาน</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">ค้างชำระ</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">อายุหนี้ (วัน)</TableHead>
+                    <TableHead className="whitespace-nowrap">สถานะ</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rowsForSelected.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="whitespace-nowrap font-medium">
+                        {r.jobNo ? (
+                          <Link
+                            href={`/dashboard/project-sales/edit/${encodeURIComponent(r.jobNo)}`}
+                            className="underline underline-offset-2"
+                          >
+                            {r.jobNo}
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{r.projectDate}</TableCell>
+                      <TableCell className="whitespace-nowrap">{r.projectName}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap">{formatTHB(r.outstanding ?? 0)}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap">{r.ageDays}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        <span className="text-sm">{r.status ?? "—"}</span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

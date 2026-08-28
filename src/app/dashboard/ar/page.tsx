@@ -45,7 +45,7 @@ export default async function ArDashboardPage() {
         <ByStatusChart data={data.byStatus} />
       </div>
 
-      <TopDebtorsChart data={data.byCustomer} />
+      <TopDebtorsChart data={data.byCustomer} list={data.list} />
 
       <Card>
         <CardHeader>
