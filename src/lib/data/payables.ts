@@ -25,7 +25,7 @@ export async function getPayablesDashboardData(): Promise<PayablesDashboardData>
     .map((r) => ({ ...r, ageDays: differenceInDays(now, new Date(r.createdAt)) }))
     .sort((a, b) => b.ageDays - a.ageDays);
 
-  const totalOutstanding = unpaid.reduce((sum, r) => sum + r.totalAmount, 0);
+  const totalOutstanding = unpaid.reduce((sum, r) => sum + r.remainingBalance, 0);
   const unpaidCount = unpaid.length;
   const supplierNames = Array.from(new Set(unpaid.map((r) => r.supplierName ?? "ไม่ระบุผู้จำหน่าย")));
   const oldestAgeDays = unpaidCount > 0 ? Math.max(...unpaid.map((r) => r.ageDays)) : 0;
@@ -35,7 +35,7 @@ export async function getPayablesDashboardData(): Promise<PayablesDashboardData>
       const inSupplier = unpaid.filter((r) => (r.supplierName ?? "ไม่ระบุผู้จำหน่าย") === supplierName);
       return {
         supplierName,
-        amount: inSupplier.reduce((sum, r) => sum + r.totalAmount, 0),
+        amount: inSupplier.reduce((sum, r) => sum + r.remainingBalance, 0),
         count: inSupplier.length,
       };
     })

@@ -9,10 +9,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getGoodsReceiptById } from "@/lib/data/goods-receipts";
+import { getGoodsReceiptById, getGoodsReceiptPaymentHistory } from "@/lib/data/goods-receipts";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage, canSeeCosts } from "@/lib/permissions";
 import { formatTHB } from "@/lib/format";
+import { PaymentHistoryCard } from "./payment-history-card";
 
 export default async function GoodsReceiptDetailPage({
   params,
@@ -24,7 +25,10 @@ export default async function GoodsReceiptDetailPage({
   if (!canAccessPage(profile.role, "/dashboard/goods-receipt")) redirect("/dashboard/sales");
 
   const { id } = await params;
-  const receipt = await getGoodsReceiptById(id);
+  const [receipt, paymentHistory] = await Promise.all([
+    getGoodsReceiptById(id),
+    getGoodsReceiptPaymentHistory(id),
+  ]);
   const showCosts = canSeeCosts(profile.role);
   const totalValue = receipt ? receipt.items.reduce((sum, it) => sum + it.quantity * it.unitCost, 0) : 0;
   const canEdit =
@@ -32,6 +36,9 @@ export default async function GoodsReceiptDetailPage({
     (profile.role === "owner" ||
       profile.role === "manager" ||
       (profile.role === "production" && receipt.receivedById === profile.id));
+  const canManagePayments = profile.role === "owner" || profile.role === "manager" || profile.role === "account";
+  const amountPaid = paymentHistory.reduce((sum, p) => sum + p.amount, 0);
+  const remainingBalance = Math.round((totalValue - amountPaid) * 100) / 100;
 
   return (
     <div className="space-y-6">
@@ -133,6 +140,18 @@ export default async function GoodsReceiptDetailPage({
               )}
             </CardContent>
           </Card>
+
+          {showCosts && (
+            <PaymentHistoryCard
+              receiptId={receipt.id}
+              docNo={receipt.docNo}
+              totalAmount={totalValue}
+              amountPaid={amountPaid}
+              remainingBalance={remainingBalance}
+              payments={paymentHistory}
+              canManage={canManagePayments}
+            />
+          )}
         </>
       ) : (
         <p className="text-sm text-muted-foreground">ไม่พบใบรับสินค้านี้ในระบบ</p>

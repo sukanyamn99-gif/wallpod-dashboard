@@ -70,6 +70,8 @@ export interface GoodsReceiptForPayables {
   paymentStatus: GoodsReceiptPaymentStatus;
   paidDate: string | null;
   totalAmount: number;
+  amountPaid: number;
+  remainingBalance: number;
 }
 
 export async function getGoodsReceiptsForPayables(): Promise<GoodsReceiptForPayables[]> {
@@ -79,7 +81,7 @@ export async function getGoodsReceiptsForPayables(): Promise<GoodsReceiptForPaya
   const { data, error } = await supabase
     .from("goods_receipts")
     .select(
-      "id, doc_no, supplier_id, reference_no, created_at, payment_status, paid_date, suppliers(name), goods_receipt_items(quantity, unit_cost)",
+      "id, doc_no, supplier_id, reference_no, created_at, payment_status, paid_date, suppliers(name), goods_receipt_items(quantity, unit_cost), goods_receipt_payments(amount)",
     )
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -94,18 +96,49 @@ export async function getGoodsReceiptsForPayables(): Promise<GoodsReceiptForPaya
     paid_date: string | null;
     suppliers: { name: string } | null;
     goods_receipt_items: { quantity: number; unit_cost: number }[] | null;
+    goods_receipt_payments: { amount: number }[] | null;
   };
 
-  return ((data ?? []) as unknown as Row[]).map((row) => ({
-    id: row.id,
-    docNo: row.doc_no,
-    supplierId: row.supplier_id,
-    supplierName: row.suppliers?.name ?? null,
-    referenceNo: row.reference_no,
-    createdAt: row.created_at,
-    paymentStatus: row.payment_status,
-    paidDate: row.paid_date,
-    totalAmount: (row.goods_receipt_items ?? []).reduce((sum, it) => sum + Number(it.quantity) * Number(it.unit_cost), 0),
+  return ((data ?? []) as unknown as Row[]).map((row) => {
+    const totalAmount = (row.goods_receipt_items ?? []).reduce(
+      (sum, it) => sum + Number(it.quantity) * Number(it.unit_cost),
+      0,
+    );
+    const amountPaid = (row.goods_receipt_payments ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
+    return {
+      id: row.id,
+      docNo: row.doc_no,
+      supplierId: row.supplier_id,
+      supplierName: row.suppliers?.name ?? null,
+      referenceNo: row.reference_no,
+      createdAt: row.created_at,
+      paymentStatus: row.payment_status,
+      paidDate: row.paid_date,
+      totalAmount,
+      amountPaid,
+      remainingBalance: Math.round((totalAmount - amountPaid) * 100) / 100,
+    };
+  });
+}
+
+export async function getGoodsReceiptPaymentHistory(
+  receiptId: string,
+): Promise<{ id: string; amount: number; paidDate: string; note: string | null }[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("goods_receipt_payments")
+    .select("id, amount, paid_date, note")
+    .eq("goods_receipt_id", receiptId)
+    .order("paid_date", { ascending: false });
+  if (error) throw error;
+
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    amount: Number(row.amount),
+    paidDate: row.paid_date as string,
+    note: (row.note as string | null) ?? null,
   }));
 }
 

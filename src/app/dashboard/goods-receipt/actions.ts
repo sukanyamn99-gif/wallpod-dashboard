@@ -252,6 +252,94 @@ export async function markGoodsReceiptPaymentStatus(
   return { error: null };
 }
 
+// Records one instalment against a receipt's balance (e.g. the ฿100,000/month
+// payoff on an opening-balance payable) instead of a single paid/unpaid flip.
+// Auto-flips payment_status to จ่ายแล้ว once the running balance reaches zero.
+export async function recordGoodsReceiptPayment(receiptId: string, formData: FormData) {
+  if (!isSupabaseConfigured()) {
+    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
+  }
+
+  const amount = num(formData.get("amount"));
+  const paidDate = str(formData.get("paid_date"));
+  const note = str(formData.get("note"));
+  if (amount <= 0) return { error: "กรุณาระบุจำนวนเงินที่จ่ายให้ถูกต้อง" };
+  if (!paidDate) return { error: "กรุณาระบุวันที่จ่ายเงิน" };
+
+  const receipt = await getGoodsReceiptById(receiptId);
+  if (!receipt) return { error: "ไม่พบใบรับสินค้านี้ในระบบ" };
+
+  const totalAmount = receipt.items.reduce((sum, it) => sum + it.quantity * it.unitCost, 0);
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: existingPayments, error: paymentsErr } = await supabase
+    .from("goods_receipt_payments")
+    .select("amount")
+    .eq("goods_receipt_id", receiptId);
+  if (paymentsErr) return { error: paymentsErr.message };
+
+  const amountPaidSoFar = (existingPayments ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
+  const remainingBefore = Math.round((totalAmount - amountPaidSoFar) * 100) / 100;
+  if (amount > remainingBefore + 0.01) {
+    return { error: `จำนวนเงินเกินยอดคงค้าง (คงค้าง ฿${remainingBefore.toLocaleString("th-TH")})` };
+  }
+
+  const { error: insertErr } = await supabase.from("goods_receipt_payments").insert({
+    goods_receipt_id: receiptId,
+    amount,
+    paid_date: paidDate,
+    note,
+    paid_by: user?.id ?? null,
+  });
+  if (insertErr) return { error: insertErr.message };
+
+  const remainingAfter = Math.round((remainingBefore - amount) * 100) / 100;
+  if (remainingAfter <= 0) {
+    const { error: statusErr } = await supabase
+      .from("goods_receipts")
+      .update({ payment_status: "จ่ายแล้ว", paid_date: paidDate })
+      .eq("id", receiptId);
+    if (statusErr) return { error: statusErr.message };
+  }
+
+  revalidateGoodsReceiptConsumers();
+  revalidatePath("/dashboard/expenses/payables");
+  return { error: null };
+}
+
+// Removes a mistakenly-entered instalment and un-flips จ่ายแล้ว back to
+// ยังไม่จ่าย if the receipt had been auto-marked paid by that payment.
+export async function deleteGoodsReceiptPayment(receiptId: string, paymentId: string) {
+  if (!isSupabaseConfigured()) {
+    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถลบได้ในโหมดทดลอง" };
+  }
+
+  const supabase = await createClient();
+  const { error: deleteErr } = await supabase
+    .from("goods_receipt_payments")
+    .delete()
+    .eq("id", paymentId)
+    .eq("goods_receipt_id", receiptId);
+  if (deleteErr) return { error: deleteErr.message };
+
+  const receipt = await getGoodsReceiptById(receiptId);
+  if (receipt && receipt.paymentStatus === "จ่ายแล้ว") {
+    const { error: statusErr } = await supabase
+      .from("goods_receipts")
+      .update({ payment_status: "ยังไม่จ่าย", paid_date: null })
+      .eq("id", receiptId);
+    if (statusErr) return { error: statusErr.message };
+  }
+
+  revalidateGoodsReceiptConsumers();
+  revalidatePath("/dashboard/expenses/payables");
+  return { error: null };
+}
+
 export async function deleteGoodsReceipt(id: string) {
   if (!isSupabaseConfigured()) {
     return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถลบได้ในโหมดทดลอง" };
