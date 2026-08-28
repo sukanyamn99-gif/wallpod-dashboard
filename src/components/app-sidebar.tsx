@@ -87,7 +87,7 @@ const inventoryGroup = {
 };
 
 const expensesGroup = {
-  title: "ค่าใช้จ่าย",
+  title: "Expenses",
   icon: Banknote,
   items: [
     { title: "Payment Voucher (ใบสำคัญจ่าย)", url: "/dashboard/expenses/payment-vouchers", icon: FileSpreadsheet },
