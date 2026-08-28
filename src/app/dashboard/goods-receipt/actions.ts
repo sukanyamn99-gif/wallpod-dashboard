@@ -285,7 +285,7 @@ export async function recordGoodsReceiptPayment(receiptId: string, formData: For
   const amountPaidSoFar = (existingPayments ?? []).reduce((sum, p) => sum + Number(p.amount), 0);
   const remainingBefore = Math.round((totalAmount - amountPaidSoFar) * 100) / 100;
   if (amount > remainingBefore + 0.01) {
-    return { error: `จำนวนเงินเกินยอดคงค้าง (คงค้าง ฿${remainingBefore.toLocaleString("th-TH")})` };
+    return { error: `จำนวนเงินเกินยอดคงค้าง (คงค้าง ${remainingBefore.toLocaleString("th-TH")})` };
   }
 
   const { error: insertErr } = await supabase.from("goods_receipt_payments").insert({
