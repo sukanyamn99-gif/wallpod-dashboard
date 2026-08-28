@@ -59,7 +59,7 @@ const navItems = [
   { title: "WALLPOD Project Sales", url: "/dashboard/project-sales", icon: ClipboardList },
   { title: "GP Dashboard", url: "/dashboard/gp", icon: BarChart3 },
   { title: "AR Dashboard", url: "/dashboard/ar", icon: Receipt },
-  { title: "Dashboard ค่าใช้จ่าย", url: "/dashboard/expenses", icon: BarChart3 },
+  { title: "Ex Dashboard", url: "/dashboard/expenses", icon: BarChart3 },
   { title: "Stock Dashboard", url: "/dashboard/inventory", icon: Boxes },
 ];
 
