@@ -129,6 +129,7 @@ export function ProjectSaleForm({
   const [receiptNo2, setReceiptNo2] = useState(initialData?.receiptNo2 ?? "");
   const [receiptNo3, setReceiptNo3] = useState(initialData?.receiptNo3 ?? "");
   const [status, setStatus] = useState(initialData?.status ?? "");
+  const [productionStatus, setProductionStatus] = useState(initialData?.productionStatus ?? "");
   const [savedMessage, setSavedMessage] = useState(false);
   // Bumped after every successful create to force-remount the <form> below —
   // several fields (cost NumberInputs, DateInputs, invoice_no) are
@@ -174,6 +175,7 @@ export function ProjectSaleForm({
         setReceiptNo2("");
         setReceiptNo3("");
         setStatus("");
+        setProductionStatus("");
         setMaterialCost("");
         setMaterialCostSuggestion(null);
         setMaterialCostError(null);
@@ -364,7 +366,8 @@ export function ProjectSaleForm({
           <Label htmlFor="production_status">สถานะของงาน</Label>
           <Select
             name="production_status"
-            defaultValue={initialData?.productionStatus || undefined}
+            value={productionStatus}
+            onValueChange={(v) => setProductionStatus((v as string) ?? "")}
           >
             <SelectTrigger id="production_status" className="w-full">
               <SelectValue placeholder="เลือกสถานะของงาน" />
