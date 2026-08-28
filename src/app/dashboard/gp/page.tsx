@@ -95,7 +95,7 @@ export default async function GpDashboardPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <GpBySalesRepChart data={data.bySalesRep} />
+        <GpBySalesRepChart data={data.bySalesRep} list={data.list} />
         <GpByCustomerTypeChart data={data.byCustomerType} />
       </div>
 

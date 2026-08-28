@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import Link from "next/link";
 import {
   Bar,
   BarChart,
@@ -14,8 +16,24 @@ import {
   YAxis,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { formatTHB } from "@/lib/format";
 import type { GpDashboardData } from "@/lib/data/gp";
+import type { FullProjectRow } from "@/lib/data/project-sales";
 
 const CATEGORICAL_COLORS = [
   "var(--chart-1)",
@@ -46,7 +64,16 @@ function ChartTooltip({
   );
 }
 
-export function GpBySalesRepChart({ data }: { data: GpDashboardData["bySalesRep"] }) {
+export function GpBySalesRepChart({
+  data,
+  list,
+}: {
+  data: GpDashboardData["bySalesRep"];
+  list: FullProjectRow[];
+}) {
+  const [selectedRep, setSelectedRep] = useState<string | null>(null);
+  const rowsForSelected = selectedRep ? list.filter((r) => r.salesRepName === selectedRep) : [];
+
   return (
     <Card>
       <CardHeader>
@@ -86,7 +113,15 @@ export function GpBySalesRepChart({ data }: { data: GpDashboardData["bySalesRep"
               }}
               cursor={{ fill: "var(--muted)" }}
             />
-            <Bar dataKey="profit" radius={[0, 4, 4, 0]} maxBarSize={28}>
+            <Bar
+              dataKey="profit"
+              radius={[0, 4, 4, 0]}
+              maxBarSize={28}
+              cursor="pointer"
+              onClick={(entry) =>
+                setSelectedRep((entry.payload as GpDashboardData["bySalesRep"][number]).salesRepName)
+              }
+            >
               {data.map((entry, i) => (
                 <Cell key={entry.salesRepId} fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]} />
               ))}
@@ -94,6 +129,59 @@ export function GpBySalesRepChart({ data }: { data: GpDashboardData["bySalesRep"
           </BarChart>
         </ResponsiveContainer>
       </CardContent>
+
+      <Dialog open={selectedRep !== null} onOpenChange={(open) => !open && setSelectedRep(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedRep} ({rowsForSelected.length} งาน)
+            </DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <div className="max-h-[60vh] overflow-y-auto rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="whitespace-nowrap">เลข JOB</TableHead>
+                    <TableHead className="whitespace-nowrap">ลูกค้า</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">มูลค่า</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">ต้นทุน</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">กำไร</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">%กำไร</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rowsForSelected.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="whitespace-nowrap font-medium">
+                        {r.jobNo ? (
+                          <Link
+                            href={`/dashboard/project-sales/edit/${encodeURIComponent(r.jobNo)}`}
+                            className="underline underline-offset-2"
+                          >
+                            {r.jobNo}
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">{r.customerName}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap">{formatTHB(r.preVat)}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        {formatTHB(r.costs?.totalCost ?? 0)}
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">{formatTHB(r.profit ?? 0)}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        {r.preVat > 0 ? (((r.profit ?? 0) / r.preVat) * 100).toFixed(1) : "0.0"}%
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

@@ -17,6 +17,7 @@ export interface GpDashboardData {
   byCustomerType: { type: string; profit: number }[];
   monthlyTrend: { monthLabel: string; profit: number }[];
   marginExtremes: { top: FullProjectRow[]; bottom: FullProjectRow[] };
+  list: FullProjectRow[];
 }
 
 type CostedRow = FullProjectRow & { costs: NonNullable<FullProjectRow["costs"]>; profit: number };
@@ -95,5 +96,6 @@ export async function getGpDashboardData(): Promise<GpDashboardData> {
     byCustomerType,
     monthlyTrend,
     marginExtremes: { top, bottom },
+    list: costed,
   };
 }
