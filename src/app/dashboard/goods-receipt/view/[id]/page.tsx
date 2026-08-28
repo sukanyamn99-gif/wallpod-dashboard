@@ -79,6 +79,13 @@ export default async function GoodsReceiptDetailPage({
                 <p className="text-sm text-muted-foreground">วันที่</p>
                 <p className="font-medium">{new Date(receipt.createdAt).toLocaleString("th-TH")}</p>
               </div>
+              <div>
+                <p className="text-sm text-muted-foreground">สถานะการจ่ายเงิน</p>
+                <p className="font-medium">
+                  {receipt.paymentStatus}
+                  {receipt.paymentStatus === "จ่ายแล้ว" && receipt.paidDate && ` (${receipt.paidDate})`}
+                </p>
+              </div>
               {receipt.note && (
                 <div className="sm:col-span-2">
                   <p className="text-sm text-muted-foreground">หมายเหตุ</p>

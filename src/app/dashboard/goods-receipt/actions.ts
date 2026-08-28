@@ -47,6 +47,8 @@ export async function createGoodsReceipt(formData: FormData) {
   const supplierId = str(formData.get("supplier_id"));
   const referenceNo = str(formData.get("reference_no"));
   const note = str(formData.get("note"));
+  const paymentStatus = str(formData.get("payment_status")) === "จ่ายแล้ว" ? "จ่ายแล้ว" : "ยังไม่จ่าย";
+  const paidDate = paymentStatus === "จ่ายแล้ว" ? str(formData.get("paid_date")) : null;
 
   const itemIds = formData.getAll("item_product_id");
   const itemNames = formData.getAll("item_name");
@@ -84,6 +86,8 @@ export async function createGoodsReceipt(formData: FormData) {
       received_by: user?.id ?? null,
       reference_no: referenceNo,
       note,
+      payment_status: paymentStatus,
+      paid_date: paidDate,
     })
     .select("id")
     .single();
@@ -130,6 +134,8 @@ export async function updateGoodsReceipt(id: string, formData: FormData) {
   const supplierId = str(formData.get("supplier_id"));
   const referenceNo = str(formData.get("reference_no"));
   const note = str(formData.get("note"));
+  const paymentStatus = str(formData.get("payment_status")) === "จ่ายแล้ว" ? "จ่ายแล้ว" : "ยังไม่จ่าย";
+  const paidDate = paymentStatus === "จ่ายแล้ว" ? str(formData.get("paid_date")) : null;
 
   const itemIds = formData.getAll("item_product_id");
   const itemNames = formData.getAll("item_name");
@@ -156,7 +162,13 @@ export async function updateGoodsReceipt(id: string, formData: FormData) {
 
   const { error: updateErr } = await supabase
     .from("goods_receipts")
-    .update({ supplier_id: supplierId, reference_no: referenceNo, note })
+    .update({
+      supplier_id: supplierId,
+      reference_no: referenceNo,
+      note,
+      payment_status: paymentStatus,
+      paid_date: paidDate,
+    })
     .eq("id", id);
   if (updateErr) return { error: updateErr.message };
 
@@ -210,6 +222,33 @@ export async function updateGoodsReceipt(id: string, formData: FormData) {
   revalidateGoodsReceiptConsumers();
   revalidatePath(`/dashboard/goods-receipt/edit/${id}`);
   revalidatePath(`/dashboard/goods-receipt/view/${id}`);
+  return { error: null };
+}
+
+// Quick toggle for the list/payables pages — doesn't touch items or stock,
+// just the payable's own paid/unpaid state. Reuses goods_receipts_update's
+// existing RLS (owner/manager, or production on their own receipt).
+export async function markGoodsReceiptPaymentStatus(
+  id: string,
+  paymentStatus: "จ่ายแล้ว" | "ยังไม่จ่าย",
+  paidDate: string | null,
+) {
+  if (!isSupabaseConfigured()) {
+    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("goods_receipts")
+    .update({
+      payment_status: paymentStatus,
+      paid_date: paymentStatus === "จ่ายแล้ว" ? paidDate : null,
+    })
+    .eq("id", id);
+  if (error) return { error: error.message };
+
+  revalidateGoodsReceiptConsumers();
+  revalidatePath("/dashboard/expenses/payables");
   return { error: null };
 }
 

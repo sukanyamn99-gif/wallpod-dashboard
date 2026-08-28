@@ -1,8 +1,8 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import type { GoodsReceipt, GoodsReceiptItem } from "@/lib/types";
+import type { GoodsReceipt, GoodsReceiptItem, GoodsReceiptPaymentStatus } from "@/lib/types";
 
 const HEADER_COLUMNS =
-  "id, doc_no, supplier_id, received_by, reference_no, note, created_at, suppliers(name), profiles(full_name)";
+  "id, doc_no, supplier_id, received_by, reference_no, note, created_at, payment_status, paid_date, suppliers(name), profiles(full_name)";
 
 type HeaderRow = {
   id: string;
@@ -12,6 +12,8 @@ type HeaderRow = {
   reference_no: string | null;
   note: string | null;
   created_at: string;
+  payment_status: GoodsReceiptPaymentStatus;
+  paid_date: string | null;
   suppliers: { name: string } | null;
   profiles: { full_name: string } | null;
 };
@@ -27,6 +29,8 @@ function mapHeader(row: HeaderRow): Omit<GoodsReceipt, "items"> {
     referenceNo: row.reference_no,
     note: row.note,
     createdAt: row.created_at,
+    paymentStatus: row.payment_status,
+    paidDate: row.paid_date,
   };
 }
 
@@ -42,6 +46,56 @@ export async function getGoodsReceipts(): Promise<Omit<GoodsReceipt, "items">[]>
 
   // @ts-expect-error -- Supabase types the joined relation loosely here
   return (data ?? []).map(mapHeader);
+}
+
+// Minimal shape the เจ้าหนี้คงค้าง (payables) page needs — one row per
+// receipt with its total value (sum of quantity × unit_cost across items),
+// computed here rather than stored, so it can never drift from the items
+// that actually make it up.
+export interface GoodsReceiptForPayables {
+  id: string;
+  docNo: string;
+  supplierId: string | null;
+  supplierName: string | null;
+  createdAt: string;
+  paymentStatus: GoodsReceiptPaymentStatus;
+  paidDate: string | null;
+  totalAmount: number;
+}
+
+export async function getGoodsReceiptsForPayables(): Promise<GoodsReceiptForPayables[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("goods_receipts")
+    .select(
+      "id, doc_no, supplier_id, created_at, payment_status, paid_date, suppliers(name), goods_receipt_items(quantity, unit_cost)",
+    )
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  type Row = {
+    id: string;
+    doc_no: string;
+    supplier_id: string | null;
+    created_at: string;
+    payment_status: GoodsReceiptPaymentStatus;
+    paid_date: string | null;
+    suppliers: { name: string } | null;
+    goods_receipt_items: { quantity: number; unit_cost: number }[] | null;
+  };
+
+  return ((data ?? []) as unknown as Row[]).map((row) => ({
+    id: row.id,
+    docNo: row.doc_no,
+    supplierId: row.supplier_id,
+    supplierName: row.suppliers?.name ?? null,
+    createdAt: row.created_at,
+    paymentStatus: row.payment_status,
+    paidDate: row.paid_date,
+    totalAmount: (row.goods_receipt_items ?? []).reduce((sum, it) => sum + Number(it.quantity) * Number(it.unit_cost), 0),
+  }));
 }
 
 export async function getGoodsReceiptById(id: string): Promise<GoodsReceipt | null> {

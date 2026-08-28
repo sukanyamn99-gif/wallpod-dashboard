@@ -332,6 +332,8 @@ export interface GoodsReceiptItem {
   unitCost: number;
 }
 
+export type GoodsReceiptPaymentStatus = "จ่ายแล้ว" | "ยังไม่จ่าย";
+
 export interface GoodsReceipt {
   id: string;
   docNo: string;
@@ -342,6 +344,8 @@ export interface GoodsReceipt {
   referenceNo: string | null;
   note: string | null;
   createdAt: string;
+  paymentStatus: GoodsReceiptPaymentStatus;
+  paidDate: string | null;
   items: GoodsReceiptItem[];
 }
 

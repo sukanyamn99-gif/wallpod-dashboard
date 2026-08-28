@@ -461,7 +461,9 @@ create table goods_receipts (
   received_by uuid references profiles(id),
   reference_no text,
   note text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  payment_status text not null default 'ยังไม่จ่าย' check (payment_status in ('จ่ายแล้ว', 'ยังไม่จ่าย')),
+  paid_date date
 );
 
 create table goods_receipt_items (
@@ -528,8 +530,8 @@ end;
 $$;
 
 create policy goods_receipts_update on goods_receipts for update
-  using (my_role() in ('owner','manager') or (my_role() = 'production' and received_by = auth.uid()))
-  with check (my_role() in ('owner','manager') or (my_role() = 'production' and received_by = auth.uid()));
+  using (my_role() in ('owner','manager','account') or (my_role() = 'production' and received_by = auth.uid()))
+  with check (my_role() in ('owner','manager','account') or (my_role() = 'production' and received_by = auth.uid()));
 
 create policy goods_receipt_items_delete on goods_receipt_items for delete
   using (exists (

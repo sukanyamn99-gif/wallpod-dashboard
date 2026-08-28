@@ -32,6 +32,7 @@ const PAGE_ACCESS: Record<string, Role[]> = {
   "/dashboard/expenses": [...ADMIN_ROLES, "account"],
   "/dashboard/expenses/payment-vouchers": [...ADMIN_ROLES, "account"],
   "/dashboard/expenses/petty-cash": [...ADMIN_ROLES, "account"],
+  "/dashboard/expenses/payables": [...ADMIN_ROLES, "account"],
   "/dashboard/settings/documents": [...ADMIN_ROLES, "support_sale", "account"],
   "/dashboard/settings/activity-log": ADMIN_ROLES,
 };

@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { Check, Eye, Pencil, Trash2, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,9 +15,63 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { GoodsReceipt, Profile } from "@/lib/types";
-import { deleteGoodsReceipt } from "./actions";
+import { deleteGoodsReceipt, markGoodsReceiptPaymentStatus } from "./actions";
 
-const TOTAL_COLUMNS = 6;
+const TOTAL_COLUMNS = 7;
+
+function PaymentStatusCell({
+  receipt,
+  canManage,
+}: {
+  receipt: Omit<GoodsReceipt, "items">;
+  canManage: boolean;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const next = receipt.paymentStatus === "จ่ายแล้ว" ? "ยังไม่จ่าย" : "จ่ายแล้ว";
+
+  function confirmToggle() {
+    setError(null);
+    startTransition(async () => {
+      const result = await markGoodsReceiptPaymentStatus(
+        receipt.id,
+        next,
+        next === "จ่ายแล้ว" ? new Date().toISOString().slice(0, 10) : null,
+      );
+      if (result.error) setError(result.error);
+      setConfirming(false);
+    });
+  }
+
+  if (confirming) {
+    return (
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-1">
+          <span className="text-xs whitespace-nowrap text-muted-foreground">เปลี่ยนเป็น &quot;{next}&quot;?</span>
+          <Button size="icon-sm" variant="outline" onClick={confirmToggle} disabled={pending} title="ยืนยัน">
+            <Check className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="icon-sm" variant="outline" onClick={() => setConfirming(false)} disabled={pending} title="ยกเลิก">
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+        {error && <p className="text-xs text-destructive">{error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <button type="button" onClick={canManage ? () => setConfirming(true) : undefined} disabled={!canManage}>
+        <Badge variant={receipt.paymentStatus === "จ่ายแล้ว" ? "secondary" : "destructive"}>
+          {receipt.paymentStatus}
+        </Badge>
+      </button>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
 
 // Owner/manager can edit/delete any receipt; production can edit/delete
 // only its own. support_sale/account can create receipts (see canCreate on
@@ -24,6 +79,15 @@ const TOTAL_COLUMNS = 6;
 function canDelete(profile: Profile, receipt: Omit<GoodsReceipt, "items">) {
   if (profile.role === "owner" || profile.role === "manager") return true;
   return profile.role === "production" && receipt.receivedById === profile.id;
+}
+
+// Payment status alone is a narrower permission than full edit/delete —
+// 'account' can toggle it (matches goods_receipts_update's RLS, widened
+// specifically for the เจ้าหนี้คงค้าง page) even though they can't touch
+// items/stock on a receipt.
+function canTogglePayment(profile: Profile, receipt: Omit<GoodsReceipt, "items">) {
+  if (profile.role === "account") return true;
+  return canDelete(profile, receipt);
 }
 
 function DeleteButton({ receipt }: { receipt: Omit<GoodsReceipt, "items"> }) {
@@ -111,6 +175,7 @@ export function GoodsReceiptsTable({
               <TableHead className="whitespace-nowrap">ผู้รับ</TableHead>
               <TableHead className="whitespace-nowrap">เลขที่อ้างอิง</TableHead>
               <TableHead className="whitespace-nowrap">วันที่</TableHead>
+              <TableHead className="whitespace-nowrap">สถานะจ่ายเงิน</TableHead>
               <TableHead className="whitespace-nowrap">จัดการ</TableHead>
             </TableRow>
           </TableHeader>
@@ -130,6 +195,9 @@ export function GoodsReceiptsTable({
                 <TableCell className="whitespace-nowrap">{r.referenceNo ?? "—"}</TableCell>
                 <TableCell className="whitespace-nowrap">
                   {new Date(r.createdAt).toLocaleString("th-TH")}
+                </TableCell>
+                <TableCell>
+                  <PaymentStatusCell receipt={r} canManage={canTogglePayment(currentProfile, r)} />
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-1">

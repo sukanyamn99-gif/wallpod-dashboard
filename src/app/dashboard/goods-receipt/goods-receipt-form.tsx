@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { NumberInput } from "@/components/ui/number-input";
+import { DateInput } from "@/components/ui/date-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -67,6 +68,8 @@ export function GoodsReceiptForm({
   );
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState(initialData?.paymentStatus ?? "ยังไม่จ่าย");
+  const [paidDate, setPaidDate] = useState(initialData?.paidDate ?? new Date().toISOString().slice(0, 10));
   const [, startTransition] = useTransition();
 
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
@@ -192,6 +195,35 @@ export function GoodsReceiptForm({
         <div className="space-y-2">
           <Label htmlFor="note">หมายเหตุ</Label>
           <Textarea id="note" name="note" placeholder="ข้อมูลเพิ่มเติม..." defaultValue={initialData?.note ?? undefined} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="payment_status">สถานะการจ่ายเงิน</Label>
+            <Select
+              name="payment_status"
+              value={paymentStatus}
+              onValueChange={(v) => setPaymentStatus((v as "จ่ายแล้ว" | "ยังไม่จ่าย") ?? "ยังไม่จ่าย")}
+              items={[
+                { value: "ยังไม่จ่าย", label: "ยังไม่จ่าย" },
+                { value: "จ่ายแล้ว", label: "จ่ายแล้ว" },
+              ]}
+            >
+              <SelectTrigger id="payment_status" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ยังไม่จ่าย">ยังไม่จ่าย</SelectItem>
+                <SelectItem value="จ่ายแล้ว">จ่ายแล้ว</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {paymentStatus === "จ่ายแล้ว" && (
+            <div className="space-y-2">
+              <Label htmlFor="paid_date">วันที่จ่ายเงิน</Label>
+              <DateInput id="paid_date" name="paid_date" value={paidDate} onChange={setPaidDate} />
+            </div>
+          )}
         </div>
 
         <div className="rounded-lg border p-3 text-sm">
