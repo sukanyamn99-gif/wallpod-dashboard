@@ -33,19 +33,19 @@ export default async function OwnerDashboardPage() {
           ยอดขายและกำไรปี {data.year} ({data.yearlyJobCount} งาน — คำนวณต้นทุน/กำไรจาก {data.yearlyCostedJobCount} งานที่มีข้อมูลต้นทุน)
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard label="ยอดขายรวม (Pre-VAT)" value={formatTHB(data.yearlySales)} icon={CircleDollarSign} tone="blue" />
-          <KpiCard label="ต้นทุนรวม" value={formatTHB(data.yearlyCost)} icon={Receipt} tone="amber" />
-          <KpiCard label="กำไรรวม" value={formatTHB(data.yearlyProfit)} icon={TrendingUp} tone="green" />
-          <KpiCard label="อัตรากำไร" value={`${data.yearlyMarginPercent.toFixed(1)}%`} icon={Percent} tone="violet" />
+          <KpiCard label="ยอดขายรวม (Pre-VAT)" value={formatTHB(data.yearlySales)} icon={CircleDollarSign} tone="blue" colorValue />
+          <KpiCard label="ต้นทุนรวม" value={formatTHB(data.yearlyCost)} icon={Receipt} tone="amber" colorValue />
+          <KpiCard label="กำไรรวม" value={formatTHB(data.yearlyProfit)} icon={TrendingUp} tone="green" colorValue />
+          <KpiCard label="อัตรากำไร" value={`${data.yearlyMarginPercent.toFixed(1)}%`} icon={Percent} tone="violet" colorValue />
         </div>
       </div>
 
       <div className="space-y-3">
         <h2 className="text-sm font-medium text-muted-foreground">สถานะการเงิน ณ วันนี้</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <KpiCard label="ลูกหนี้คงค้างรวม" value={formatTHB(data.receivablesTotal)} icon={Users} tone="violet" />
-          <KpiCard label="เจ้าหนี้คงค้างรวม" value={formatTHB(data.payablesTotal)} icon={HandCoins} tone="rose" />
-          <KpiCard label="มูลค่าสต๊อกคงเหลือ" value={formatTHB(data.stockValue)} icon={Boxes} tone="blue" />
+          <KpiCard label="ลูกหนี้คงค้างรวม" value={formatTHB(data.receivablesTotal)} icon={Users} tone="violet" colorValue />
+          <KpiCard label="เจ้าหนี้คงค้างรวม" value={formatTHB(data.payablesTotal)} icon={HandCoins} tone="rose" colorValue />
+          <KpiCard label="มูลค่าสต๊อกคงเหลือ" value={formatTHB(data.stockValue)} icon={Boxes} tone="blue" colorValue />
         </div>
       </div>
     </div>

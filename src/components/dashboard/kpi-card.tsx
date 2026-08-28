@@ -10,18 +10,28 @@ const TONE_CLASSES = {
   rose: "bg-[color-mix(in_oklch,var(--destructive),transparent_86%)] text-[var(--destructive)]",
 } as const;
 
+const VALUE_TONE_CLASSES = {
+  blue: "text-[var(--chart-1)]",
+  green: "text-[var(--chart-2)]",
+  amber: "text-[var(--chart-3)]",
+  violet: "text-[var(--chart-5)]",
+  rose: "text-[var(--destructive)]",
+} as const;
+
 export function KpiCard({
   label,
   value,
   icon: Icon,
   tone = "blue",
   onClick,
+  colorValue = false,
 }: {
   label: string;
   value: string;
   icon: LucideIcon;
   tone?: keyof typeof TONE_CLASSES;
   onClick?: () => void;
+  colorValue?: boolean;
 }) {
   return (
     <Card
@@ -35,7 +45,7 @@ export function KpiCard({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+        <div className={cn("text-2xl font-bold", colorValue && VALUE_TONE_CLASSES[tone])}>{value}</div>
       </CardContent>
     </Card>
   );
