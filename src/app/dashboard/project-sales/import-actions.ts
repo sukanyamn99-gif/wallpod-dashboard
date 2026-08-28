@@ -276,12 +276,21 @@ function parseExportFormatSheet(sheet: XLSX.WorkSheet, warnings: string[]): Pars
     const amount2 = parseNumber(r["งวดที่ 2 จำนวนเงิน"]);
     const invoiceNo2 = String(r["เลขที่เอกสาร (งวด 2)"] ?? "").trim() || null;
     const receiptNo2 = String(r["เลขที่ใบเสร็จ (งวด 2)"] ?? "").trim() || null;
+    const amount3 = parseNumber(r["งวดที่ 3 จำนวนเงิน"]);
+    const invoiceNo3 = String(r["เลขที่เอกสาร (งวด 3)"] ?? "").trim() || null;
+    const receiptNo3 = String(r["เลขที่ใบเสร็จ (งวด 3)"] ?? "").trim() || null;
     // Matches the create/edit form's rule (project-sale-form.tsx): an
     // installment only counts as paid once its receipt number is filled
     // in, not just because an invoice/amount was entered.
-    const paidAmount = (receiptNo1 ? amount1 : 0) + (receiptNo2 ? amount2 : 0);
-    const outstanding = Math.max(0, Math.round((total - paidAmount) * 100) / 100);
-    const status = amount1 > 0 || amount2 > 0 || invoiceNo1 || invoiceNo2 ? normalizeStatus(r["สถานะ"], warnings, jobNo ?? customerName) : "รอชำระเงิน";
+    const paidAmount = (receiptNo1 ? amount1 : 0) + (receiptNo2 ? amount2 : 0) + (receiptNo3 ? amount3 : 0);
+    // Not floored at 0 — matches parseForm's rule (actions.ts): a real
+    // overpayment should round-trip as a negative outstanding, not silently
+    // reset to ฿0 on export/reimport.
+    const outstanding = Math.round((total - paidAmount) * 100) / 100;
+    const status =
+      amount1 > 0 || amount2 > 0 || amount3 > 0 || invoiceNo1 || invoiceNo2 || invoiceNo3
+        ? normalizeStatus(r["สถานะ"], warnings, jobNo ?? customerName)
+        : "รอชำระเงิน";
 
     // "วันที่รับชำระ (งวด N)" is the pre-rename column name — accepted as a
     // fallback so a backup file exported before this change still imports
@@ -302,6 +311,15 @@ function parseExportFormatSheet(sheet: XLSX.WorkSheet, warnings: string[]): Pars
         paidDate: parseDate(r["วันที่ออกเอกสาร (งวด 2)"] || r["วันที่รับชำระ (งวด 2)"]),
         receiptNo: receiptNo2,
         receivedDate: parseDate(r["วันที่รับชำระเงิน (งวด 2)"]),
+        status, outstandingAmount: outstanding,
+      });
+    }
+    if (amount3 > 0 || invoiceNo3) {
+      payments.push({
+        invoiceNo: invoiceNo3, installmentNo: 3, amount: amount3,
+        paidDate: parseDate(r["วันที่ออกเอกสาร (งวด 3)"]),
+        receiptNo: receiptNo3,
+        receivedDate: parseDate(r["วันที่รับชำระเงิน (งวด 3)"]),
         status, outstandingAmount: outstanding,
       });
     }

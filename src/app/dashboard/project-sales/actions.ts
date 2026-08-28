@@ -52,6 +52,7 @@ type ParsedForm = {
   status: string;
   installment1Amount: number;
   installment2Amount: number;
+  installment3Amount: number;
   outstanding: number;
   invoiceNo1: string | null;
   paidDate1: string | null;
@@ -61,6 +62,10 @@ type ParsedForm = {
   paidDate2: string | null;
   receiptNo2: string | null;
   receivedDate2: string | null;
+  invoiceNo3: string | null;
+  paidDate3: string | null;
+  receiptNo3: string | null;
+  receivedDate3: string | null;
 };
 
 function parseForm(formData: FormData): { ok: false; error: string } | ParsedForm {
@@ -119,8 +124,10 @@ function parseForm(formData: FormData): { ok: false; error: string } | ParsedFor
 
   const installment1Amount = num(formData.get("amount_1"));
   const installment2Amount = num(formData.get("amount_2"));
+  const installment3Amount = num(formData.get("amount_3"));
   const receiptNo1 = str(formData.get("receipt_no_1"));
   const receiptNo2 = str(formData.get("receipt_no_2"));
+  const receiptNo3 = str(formData.get("receipt_no_3"));
   // An installment only counts toward "paid" once its receipt number is
   // filled in AND สถานะ isn't still "รอชำระเงิน" — mirrors
   // project-sale-form.tsx's live preview (see comment there). สถานะ is the
@@ -130,7 +137,9 @@ function parseForm(formData: FormData): { ok: false; error: string } | ParsedFor
   const isAwaitingPayment = status === "รอชำระเงิน";
   const paidAmount = isAwaitingPayment
     ? 0
-    : (receiptNo1 ? installment1Amount : 0) + (receiptNo2 ? installment2Amount : 0);
+    : (receiptNo1 ? installment1Amount : 0) +
+      (receiptNo2 ? installment2Amount : 0) +
+      (receiptNo3 ? installment3Amount : 0);
   // Not floored at 0 — a payment entered above the total is a real
   // overpayment the office needs to see and follow up on, not something to
   // silently hide behind a clean-looking ฿0.
@@ -154,6 +163,7 @@ function parseForm(formData: FormData): { ok: false; error: string } | ParsedFor
     status,
     installment1Amount,
     installment2Amount,
+    installment3Amount,
     outstanding,
     invoiceNo1: str(formData.get("invoice_no_1")),
     paidDate1: str(formData.get("paid_date_1")),
@@ -163,6 +173,10 @@ function parseForm(formData: FormData): { ok: false; error: string } | ParsedFor
     paidDate2: str(formData.get("paid_date_2")),
     receiptNo2,
     receivedDate2: str(formData.get("received_date_2")),
+    invoiceNo3: str(formData.get("invoice_no_3")),
+    paidDate3: str(formData.get("paid_date_3")),
+    receiptNo3,
+    receivedDate3: str(formData.get("received_date_3")),
   };
 }
 
@@ -216,6 +230,19 @@ function buildPayments(projectId: string, parsed: ParsedForm) {
       paid_date: parsed.paidDate2,
       receipt_no: parsed.receiptNo2,
       received_date: parsed.receivedDate2,
+      status: parsed.status,
+      outstanding_amount: parsed.outstanding,
+    });
+  }
+  if (parsed.installment3Amount > 0 || parsed.invoiceNo3) {
+    payments.push({
+      project_id: projectId,
+      invoice_no: parsed.invoiceNo3,
+      installment_no: 3,
+      amount: parsed.installment3Amount,
+      paid_date: parsed.paidDate3,
+      receipt_no: parsed.receiptNo3,
+      received_date: parsed.receivedDate3,
       status: parsed.status,
       outstanding_amount: parsed.outstanding,
     });

@@ -43,6 +43,11 @@ export interface FullProjectRow {
   paidDate2: string | null;
   receiptNo2: string | null;
   receivedDate2: string | null;
+  invoiceNo3: string | null;
+  amount3: number | null;
+  paidDate3: string | null;
+  receiptNo3: string | null;
+  receivedDate3: string | null;
   status: string | null;
   outstanding: number | null;
 }
@@ -118,6 +123,7 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
     const projectPayments = (p.payments as unknown as EmbeddedPayment[]) ?? [];
     const payment1 = projectPayments.find((pay) => pay.installment_no === 1);
     const payment2 = projectPayments.find((pay) => pay.installment_no === 2);
+    const payment3 = projectPayments.find((pay) => pay.installment_no === 3);
 
     const itemsByCategory = Object.fromEntries(
       categories.map((cat) => [
@@ -166,8 +172,17 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
       paidDate2: payment2?.paid_date ?? null,
       receiptNo2: payment2?.receipt_no ?? null,
       receivedDate2: payment2?.received_date ?? null,
-      status: payment1?.status ?? payment2?.status ?? null,
-      outstanding: payment1 ? Number(payment1.outstanding_amount) : payment2 ? Number(payment2.outstanding_amount) : null,
+      invoiceNo3: payment3?.invoice_no ?? null,
+      amount3: payment3 ? Number(payment3.amount) : null,
+      paidDate3: payment3?.paid_date ?? null,
+      receiptNo3: payment3?.receipt_no ?? null,
+      receivedDate3: payment3?.received_date ?? null,
+      status: payment1?.status ?? payment2?.status ?? payment3?.status ?? null,
+      outstanding:
+        payment1 ? Number(payment1.outstanding_amount)
+        : payment2 ? Number(payment2.outstanding_amount)
+        : payment3 ? Number(payment3.outstanding_amount)
+        : null,
     };
   });
 
@@ -216,6 +231,7 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
 
   const payment1 = payments.find((p) => p.installment_no === 1);
   const payment2 = payments.find((p) => p.installment_no === 2);
+  const payment3 = payments.find((p) => p.installment_no === 3);
 
   return {
     id: project.id,
@@ -238,7 +254,7 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
         parking_cost: costs?.parking_cost != null ? String(costs.parking_cost) : "",
         shipping_cost: costs?.shipping_cost != null ? String(costs.shipping_cost) : "",
       },
-      status: payment1?.status ?? payment2?.status ?? "",
+      status: payment1?.status ?? payment2?.status ?? payment3?.status ?? "",
       invoiceNo1: payment1?.invoice_no ?? "",
       amount1: payment1?.amount != null ? String(payment1.amount) : "",
       paidDate1: payment1?.paid_date ?? "",
@@ -249,6 +265,11 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
       paidDate2: payment2?.paid_date ?? "",
       receiptNo2: payment2?.receipt_no ?? "",
       receivedDate2: payment2?.received_date ?? "",
+      invoiceNo3: payment3?.invoice_no ?? "",
+      amount3: payment3?.amount != null ? String(payment3.amount) : "",
+      paidDate3: payment3?.paid_date ?? "",
+      receiptNo3: payment3?.receipt_no ?? "",
+      receivedDate3: payment3?.received_date ?? "",
     },
   };
 }

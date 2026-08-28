@@ -83,6 +83,11 @@ export interface ProjectSaleInitialData {
   paidDate2: string;
   receiptNo2: string;
   receivedDate2: string;
+  invoiceNo3: string;
+  amount3: string;
+  paidDate3: string;
+  receiptNo3: string;
+  receivedDate3: string;
 }
 
 export function ProjectSaleForm({
@@ -114,10 +119,15 @@ export function ProjectSaleForm({
   const [installment2, setInstallment2] = useState(
     Boolean(initialData?.amount2 || initialData?.invoiceNo2),
   );
+  const [installment3, setInstallment3] = useState(
+    Boolean(initialData?.amount3 || initialData?.invoiceNo3),
+  );
   const [amount1, setAmount1] = useState(initialData?.amount1 ?? "");
   const [amount2, setAmount2] = useState(initialData?.amount2 ?? "");
+  const [amount3, setAmount3] = useState(initialData?.amount3 ?? "");
   const [receiptNo1, setReceiptNo1] = useState(initialData?.receiptNo1 ?? "");
   const [receiptNo2, setReceiptNo2] = useState(initialData?.receiptNo2 ?? "");
+  const [receiptNo3, setReceiptNo3] = useState(initialData?.receiptNo3 ?? "");
   const [status, setStatus] = useState(initialData?.status ?? "");
   const [savedMessage, setSavedMessage] = useState(false);
   // Bumped after every successful create to force-remount the <form> below —
@@ -156,10 +166,13 @@ export function ProjectSaleForm({
         setItems([{ key: 0, category: "", amount: "" }]);
         setCustomerName("");
         setInstallment2(false);
+        setInstallment3(false);
         setAmount1("");
         setAmount2("");
+        setAmount3("");
         setReceiptNo1("");
         setReceiptNo2("");
+        setReceiptNo3("");
         setStatus("");
         setMaterialCost("");
         setMaterialCostSuggestion(null);
@@ -189,10 +202,27 @@ export function ProjectSaleForm({
   const isAwaitingPayment = status === "รอชำระเงิน";
   const paidAmount = isAwaitingPayment
     ? 0
-    : (receiptNo1.trim() ? Number(amount1) || 0 : 0) + (receiptNo2.trim() ? Number(amount2) || 0 : 0);
+    : (receiptNo1.trim() ? Number(amount1) || 0 : 0) +
+      (receiptNo2.trim() ? Number(amount2) || 0 : 0) +
+      (receiptNo3.trim() ? Number(amount3) || 0 : 0);
   // Not floored at 0 — mirrors actions.ts's parseForm: an overpayment should
   // show as a negative number here too, not get silently hidden as ฿0.
   const outstanding = total - paidAmount;
+
+  // Fills every active installment with an equal share of the total,
+  // rounded to the satang — any leftover from the division (e.g. a total
+  // that doesn't split evenly by 2 or 3) goes onto the last installment so
+  // the installments always sum to exactly `total`, not a few satang short.
+  function splitEvenly() {
+    const activeCount = installment3 ? 3 : installment2 ? 2 : 1;
+    const base = Math.floor((total / activeCount) * 100) / 100;
+    const amounts = Array<number>(activeCount).fill(base);
+    const remainder = Math.round((total - base * activeCount) * 100) / 100;
+    amounts[activeCount - 1] = Math.round((amounts[activeCount - 1] + remainder) * 100) / 100;
+    setAmount1(String(amounts[0]));
+    if (installment2) setAmount2(String(amounts[1]));
+    if (installment3) setAmount3(String(amounts[2]));
+  }
 
   function addRow() {
     setItems((prev) => [...prev, { key: nextRowKey.current++, category: "", amount: "" }]);
@@ -514,7 +544,12 @@ export function ProjectSaleForm({
 
       {/* Section 4: payments */}
       <div className="space-y-4">
-        <h3 className="font-medium">การชำระเงิน</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-medium">การชำระเงิน</h3>
+          <Button type="button" variant="outline" size="sm" onClick={splitEvenly} disabled={total <= 0}>
+            แบ่งยอดเท่ากันทุกงวด
+          </Button>
+        </div>
 
         <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">งวดที่ 1</p>
@@ -602,6 +637,54 @@ export function ProjectSaleForm({
             เพิ่มงวดที่ 2
           </Button>
         )}
+
+        {installment2 &&
+          (installment3 ? (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-muted-foreground">งวดที่ 3</p>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+                <div className="space-y-2">
+                  <Label htmlFor="invoice_no_3">เลขที่เอกสาร</Label>
+                  <Input id="invoice_no_3" name="invoice_no_3" defaultValue={initialData?.invoiceNo3} placeholder="IV..." />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="amount_3">จำนวนเงิน</Label>
+                  <NumberInput
+                    id="amount_3"
+                    name="amount_3"
+                    min={0}
+                    step={0.01}
+                    value={amount3}
+                    onChange={setAmount3}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="paid_date_3">วันที่ออกเอกสาร</Label>
+                  <DateInput id="paid_date_3" name="paid_date_3" defaultValue={initialData?.paidDate3} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="receipt_no_3">เลขที่ใบเสร็จ</Label>
+                  <Input
+                    id="receipt_no_3"
+                    name="receipt_no_3"
+                    value={receiptNo3}
+                    onChange={(e) => setReceiptNo3(e.target.value)}
+                    placeholder="RE... (กรอกเมื่อได้รับเงินแล้ว)"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="received_date_3">วันที่รับชำระเงิน</Label>
+                  <DateInput id="received_date_3" name="received_date_3" defaultValue={initialData?.receivedDate3} />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <Button type="button" variant="outline" size="sm" onClick={() => setInstallment3(true)}>
+              <Plus className="h-4 w-4" />
+              เพิ่มงวดที่ 3
+            </Button>
+          ))}
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">

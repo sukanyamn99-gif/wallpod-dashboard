@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import type { FullProjectRow } from "@/lib/data/project-sales";
 
 const BASE_COLUMNS = 7;
-const TAIL_COLUMNS = 19;
+const TAIL_COLUMNS = 22;
 const COST_COLUMNS = 9;
 
 const THAI_MONTHS = [
@@ -270,6 +270,9 @@ function ProjectRow({
       <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.invoiceNo2 ?? "—"}</TableCell>
       <Money value={p.amount2} className={PAYMENT_GROUP_CLASS} />
       <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.paidDate2 ?? "—"}</TableCell>
+      <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.invoiceNo3 ?? "—"}</TableCell>
+      <Money value={p.amount3} className={PAYMENT_GROUP_CLASS} />
+      <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.paidDate3 ?? "—"}</TableCell>
       <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.status ?? "—"}</TableCell>
       <Money value={p.outstanding} className={PAYMENT_GROUP_CLASS} />
     </TableRow>
@@ -553,6 +556,9 @@ export function ProjectsTable({
               <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>เลขที่เอกสาร (งวด 2)</TableHead>
               <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>งวดที่ 2 จำนวนเงิน</TableHead>
               <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>วันที่ออกเอกสาร (งวด 2)</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>เลขที่เอกสาร (งวด 3)</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>งวดที่ 3 จำนวนเงิน</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>วันที่ออกเอกสาร (งวด 3)</TableHead>
               <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>สถานะ</TableHead>
               <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>ยอดคงค้าง</TableHead>
             </TableRow>

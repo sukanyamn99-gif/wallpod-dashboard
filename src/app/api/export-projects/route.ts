@@ -57,6 +57,11 @@ export async function GET() {
       row["วันที่ออกเอกสาร (งวด 2)"] = p.paidDate2 ?? "";
       row["เลขที่ใบเสร็จ (งวด 2)"] = p.receiptNo2 ?? "";
       row["วันที่รับชำระเงิน (งวด 2)"] = p.receivedDate2 ?? "";
+      row["เลขที่เอกสาร (งวด 3)"] = p.invoiceNo3 ?? "";
+      row["งวดที่ 3 จำนวนเงิน"] = p.amount3 ?? "";
+      row["วันที่ออกเอกสาร (งวด 3)"] = p.paidDate3 ?? "";
+      row["เลขที่ใบเสร็จ (งวด 3)"] = p.receiptNo3 ?? "";
+      row["วันที่รับชำระเงิน (งวด 3)"] = p.receivedDate3 ?? "";
       row["สถานะ"] = p.status ?? "";
       row["ยอดคงค้าง"] = p.outstanding ?? "";
       return row;
