@@ -46,6 +46,7 @@ export default async function EditProjectSalePage({
         <CardContent>
           {detail ? (
             <ProjectSaleForm
+              key={detail.id}
               salesReps={salesReps}
               customers={customers}
               categories={categories.map((c) => c.name)}
