@@ -37,11 +37,16 @@ export async function getOwnerDashboardData(): Promise<OwnerDashboardData> {
   // Cost/profit can only be summed over jobs that actually have cost data
   // entered — same honest-gap convention GP Dashboard already uses, surfaced
   // here as yearlyCostedJobCount so the KPI card can say so rather than
-  // implying 100% coverage.
+  // implying 100% coverage. The margin % must divide profit by the SALES OF
+  // THOSE SAME costed jobs (not all of yearlySales) — otherwise revenue from
+  // jobs with no cost data dilutes the denominator and understates the
+  // margin, which is what made this drift from GP Dashboard's own
+  // totalProfit/totalPreVat (computed over the same costed population).
   const costedYearRows = yearRows.filter((r) => r.costs !== null && r.profit !== null);
+  const costedYearSales = costedYearRows.reduce((sum, r) => sum + r.preVat, 0);
   const yearlyCost = costedYearRows.reduce((sum, r) => sum + (r.costs?.totalCost ?? 0), 0);
   const yearlyProfit = costedYearRows.reduce((sum, r) => sum + (r.profit ?? 0), 0);
-  const yearlyMarginPercent = yearlySales > 0 ? (yearlyProfit / yearlySales) * 100 : 0;
+  const yearlyMarginPercent = costedYearSales > 0 ? (yearlyProfit / costedYearSales) * 100 : 0;
 
   return {
     year,
