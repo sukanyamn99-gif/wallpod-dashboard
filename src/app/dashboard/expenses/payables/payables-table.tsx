@@ -70,6 +70,7 @@ export function PayablesTable({ rows, canManage }: { rows: PayableRow[]; canMana
         <TableHeader>
           <TableRow>
             <TableHead className="whitespace-nowrap">เลขที่เอกสาร</TableHead>
+            <TableHead className="whitespace-nowrap">เลขที่อ้างอิง</TableHead>
             <TableHead className="whitespace-nowrap">ผู้จำหน่าย</TableHead>
             <TableHead className="whitespace-nowrap">วันที่</TableHead>
             <TableHead className="text-right whitespace-nowrap">ยอดเงิน</TableHead>
@@ -80,7 +81,7 @@ export function PayablesTable({ rows, canManage }: { rows: PayableRow[]; canMana
         <TableBody>
           {rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={canManage ? 6 : 5} className="text-center text-muted-foreground">
+              <TableCell colSpan={canManage ? 7 : 6} className="text-center text-muted-foreground">
                 ไม่มีเจ้าหนี้คงค้าง
               </TableCell>
             </TableRow>
@@ -92,6 +93,7 @@ export function PayablesTable({ rows, canManage }: { rows: PayableRow[]; canMana
                   {r.docNo}
                 </Link>
               </TableCell>
+              <TableCell className="whitespace-nowrap">{r.referenceNo ?? "—"}</TableCell>
               <TableCell className="whitespace-nowrap">{r.supplierName ?? "—"}</TableCell>
               <TableCell className="whitespace-nowrap">{new Date(r.createdAt).toLocaleDateString("th-TH")}</TableCell>
               <TableCell className="text-right whitespace-nowrap">{formatTHB(r.totalAmount)}</TableCell>

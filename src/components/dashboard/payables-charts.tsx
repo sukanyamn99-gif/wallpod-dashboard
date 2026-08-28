@@ -130,6 +130,7 @@ export function PayablesBySupplierChart({
                 <TableHeader>
                   <TableRow>
                     <TableHead className="whitespace-nowrap">เลขที่เอกสาร</TableHead>
+                    <TableHead className="whitespace-nowrap">เลขที่อ้างอิง</TableHead>
                     <TableHead className="whitespace-nowrap">วันที่</TableHead>
                     <TableHead className="text-right whitespace-nowrap">ยอดเงิน</TableHead>
                     <TableHead className="text-right whitespace-nowrap">ค้างมา (วัน)</TableHead>
@@ -146,6 +147,7 @@ export function PayablesBySupplierChart({
                           {r.docNo}
                         </Link>
                       </TableCell>
+                      <TableCell className="whitespace-nowrap">{r.referenceNo ?? "—"}</TableCell>
                       <TableCell className="whitespace-nowrap">
                         {new Date(r.createdAt).toLocaleDateString("th-TH")}
                       </TableCell>

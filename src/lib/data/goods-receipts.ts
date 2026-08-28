@@ -65,6 +65,7 @@ export interface GoodsReceiptForPayables {
   docNo: string;
   supplierId: string | null;
   supplierName: string | null;
+  referenceNo: string | null;
   createdAt: string;
   paymentStatus: GoodsReceiptPaymentStatus;
   paidDate: string | null;
@@ -78,7 +79,7 @@ export async function getGoodsReceiptsForPayables(): Promise<GoodsReceiptForPaya
   const { data, error } = await supabase
     .from("goods_receipts")
     .select(
-      "id, doc_no, supplier_id, created_at, payment_status, paid_date, suppliers(name), goods_receipt_items(quantity, unit_cost)",
+      "id, doc_no, supplier_id, reference_no, created_at, payment_status, paid_date, suppliers(name), goods_receipt_items(quantity, unit_cost)",
     )
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -87,6 +88,7 @@ export async function getGoodsReceiptsForPayables(): Promise<GoodsReceiptForPaya
     id: string;
     doc_no: string;
     supplier_id: string | null;
+    reference_no: string | null;
     created_at: string;
     payment_status: GoodsReceiptPaymentStatus;
     paid_date: string | null;
@@ -99,6 +101,7 @@ export async function getGoodsReceiptsForPayables(): Promise<GoodsReceiptForPaya
     docNo: row.doc_no,
     supplierId: row.supplier_id,
     supplierName: row.suppliers?.name ?? null,
+    referenceNo: row.reference_no,
     createdAt: row.created_at,
     paymentStatus: row.payment_status,
     paidDate: row.paid_date,
