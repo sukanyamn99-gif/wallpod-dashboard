@@ -17,6 +17,7 @@ import {
   FileSpreadsheet,
   FileText,
   FileUp,
+  Gauge,
   HandCoins,
   History,
   TriangleAlert,
@@ -53,6 +54,7 @@ import { canAccessPage } from "@/lib/permissions";
 import type { Profile } from "@/lib/types";
 
 const navItems = [
+  { title: "Owner Dashboard", url: "/dashboard/owner", icon: Gauge },
   { title: "Sales Dashboard", url: "/dashboard/sales", icon: LineChart },
   { title: "WALLPOD Project Sales", url: "/dashboard/project-sales", icon: ClipboardList },
   { title: "GP Dashboard", url: "/dashboard/gp", icon: BarChart3 },

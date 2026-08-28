@@ -13,6 +13,7 @@ const STOCK_STAFF: Role[] = ["owner", "manager", "support_sale", "account", "for
 // pages, not every detail/sub-route (those rely on RLS + UI button-hiding).
 const PAGE_ACCESS: Record<string, Role[]> = {
   "/dashboard/users": ADMIN_ROLES,
+  "/dashboard/owner": ADMIN_ROLES,
   "/dashboard/sales": ["owner", "manager", "sales", "design", "support_sale", "account", "foreman", "production"],
   "/dashboard/sale-report": ["owner", "manager", "sales"],
   "/dashboard/gp": ADMIN_ROLES,
