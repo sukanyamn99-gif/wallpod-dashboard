@@ -16,14 +16,14 @@ const PAYMENT_STATUSES: PaymentStatus[] = ["เก็บเงินเรีย
 const KNOWN_COLUMNS = new Set([
   "JOB NO.", "DATE", "CUSTOMER NAMES", "PROJECT NAME", "SALE", "Customer Type", "สถานะของงาน",
   "PRE.VAT", "VAT", "รวมทั้งสิ้น",
-  "ค่าวัสดุ", "ค่ากาว", "ค่าตัด", "ค่าติดตั้งผู้รับเหมา", "ค่าที่จอดรถ", "ค่าขนส่ง", "รวมต้นทุน", "กำไร",
+  "ค่าวัสดุ", "ค่ากาว", "ค่าตัด", "ค่าติดตั้งผู้รับเหมา", "ค่าเดินทาง+ค่าที่จอดรถ", "ค่าขนส่ง", "รวมต้นทุน", "กำไร",
   "เลขที่เอกสาร (งวด 1)", "งวดที่ 1 จำนวนเงิน", "วันที่ออกเอกสาร (งวด 1)", "เลขที่ใบเสร็จ (งวด 1)", "วันที่รับชำระเงิน (งวด 1)",
   "เลขที่เอกสาร (งวด 2)", "งวดที่ 2 จำนวนเงิน", "วันที่ออกเอกสาร (งวด 2)", "เลขที่ใบเสร็จ (งวด 2)", "วันที่รับชำระเงิน (งวด 2)",
-  // Legacy export column names (pre-received_date rename) — accepted for
-  // backward compatibility with files exported before this change so an
-  // old backup file still imports cleanly instead of being misread as
-  // dynamic product-category columns.
-  "วันที่รับชำระ (งวด 1)", "วันที่รับชำระ (งวด 2)",
+  // Legacy export column names (pre-received_date rename, pre-ค่าที่จอดรถ
+  // rename) — accepted for backward compatibility with files exported
+  // before these changes so an old backup file still imports cleanly
+  // instead of being misread as dynamic product-category columns.
+  "วันที่รับชำระ (งวด 1)", "วันที่รับชำระ (งวด 2)", "ค่าที่จอดรถ",
   "สถานะ", "ยอดคงค้าง",
 ]);
 
@@ -265,7 +265,7 @@ function parseExportFormatSheet(sheet: XLSX.WorkSheet, warnings: string[]): Pars
       glue: parseNumber(r["ค่ากาว"]),
       cutting: parseNumber(r["ค่าตัด"]),
       install: parseNumber(r["ค่าติดตั้งผู้รับเหมา"]),
-      parking: parseNumber(r["ค่าที่จอดรถ"]),
+      parking: parseNumber(r["ค่าเดินทาง+ค่าที่จอดรถ"] ?? r["ค่าที่จอดรถ"]),
       shipping: parseNumber(r["ค่าขนส่ง"]),
     };
     const hasCosts = Object.values(costs).some((v) => v > 0);

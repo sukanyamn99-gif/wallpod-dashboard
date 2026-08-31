@@ -534,7 +534,7 @@ export function ProjectSaleForm({
                 <NumberInput id="install_cost" name="install_cost" min={0} step={0.01} defaultValue={initialData?.costs.install_cost} placeholder="0" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="parking_cost">ค่าที่จอดรถ</Label>
+                <Label htmlFor="parking_cost">ค่าเดินทาง+ค่าที่จอดรถ</Label>
                 <NumberInput id="parking_cost" name="parking_cost" min={0} step={0.01} defaultValue={initialData?.costs.parking_cost} placeholder="0" />
               </div>
               <div className="space-y-2">

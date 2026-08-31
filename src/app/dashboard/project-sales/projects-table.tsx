@@ -543,7 +543,7 @@ export function ProjectsTable({
                   <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>ค่ากาว</TableHead>
                   <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>ค่าตัด</TableHead>
                   <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>ค่าติดตั้งผู้รับเหมา</TableHead>
-                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>ค่าที่จอดรถ</TableHead>
+                  <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>ค่าเดินทาง+ค่าที่จอดรถ</TableHead>
                   <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>ค่าขนส่ง</TableHead>
                   <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>รวมต้นทุน</TableHead>
                   <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>กำไร</TableHead>

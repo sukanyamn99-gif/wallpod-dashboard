@@ -43,7 +43,7 @@ export async function GET() {
       row["ค่ากาว"] = p.costs?.glue ?? "";
       row["ค่าตัด"] = p.costs?.cutting ?? "";
       row["ค่าติดตั้งผู้รับเหมา"] = p.costs?.install ?? "";
-      row["ค่าที่จอดรถ"] = p.costs?.parking ?? "";
+      row["ค่าเดินทาง+ค่าที่จอดรถ"] = p.costs?.parking ?? "";
       row["ค่าขนส่ง"] = p.costs?.shipping ?? "";
       row["รวมต้นทุน"] = p.costs?.totalCost ?? "";
       row["กำไร"] = p.profit ?? "";
