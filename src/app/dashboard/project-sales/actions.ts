@@ -142,8 +142,11 @@ function parseForm(formData: FormData): { ok: false; error: string } | ParsedFor
       (receiptNo3 ? installment3Amount : 0);
   // Not floored at 0 — a payment entered above the total is a real
   // overpayment the office needs to see and follow up on, not something to
-  // silently hide behind a clean-looking ฿0.
-  const outstanding = Math.round((total - paidAmount) * 100) / 100;
+  // silently hide behind a clean-looking ฿0. Snapped to exactly 0 when the
+  // gap is sub-satang, since floating-point drift here can otherwise land on
+  // -0 (e.g. Math.round(-0.4) === -0), which displays as a confusing "-0.00".
+  const outstandingRaw = total - paidAmount;
+  const outstanding = Math.abs(outstandingRaw) < 0.005 ? 0 : Math.round(outstandingRaw * 100) / 100;
 
   return {
     ok: true,

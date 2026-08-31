@@ -209,7 +209,10 @@ export function ProjectSaleForm({
       (receiptNo3.trim() ? Number(amount3) || 0 : 0);
   // Not floored at 0 — mirrors actions.ts's parseForm: an overpayment should
   // show as a negative number here too, not get silently hidden as ฿0.
-  const outstanding = total - paidAmount;
+  // Snapped to exactly 0 when the gap is sub-satang so floating-point drift
+  // can't land on -0 and display as a confusing "-0.00".
+  const outstandingRaw = total - paidAmount;
+  const outstanding = Math.abs(outstandingRaw) < 0.005 ? 0 : outstandingRaw;
 
   // Fills every active installment with an equal share of the total,
   // rounded to the satang — any leftover from the division (e.g. a total

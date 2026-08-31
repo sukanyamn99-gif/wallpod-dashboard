@@ -285,8 +285,10 @@ function parseExportFormatSheet(sheet: XLSX.WorkSheet, warnings: string[]): Pars
     const paidAmount = (receiptNo1 ? amount1 : 0) + (receiptNo2 ? amount2 : 0) + (receiptNo3 ? amount3 : 0);
     // Not floored at 0 — matches parseForm's rule (actions.ts): a real
     // overpayment should round-trip as a negative outstanding, not silently
-    // reset to ฿0 on export/reimport.
-    const outstanding = Math.round((total - paidAmount) * 100) / 100;
+    // reset to ฿0 on export/reimport. Snapped to exactly 0 when the gap is
+    // sub-satang so floating-point drift can't land on -0.
+    const outstandingRaw = total - paidAmount;
+    const outstanding = Math.abs(outstandingRaw) < 0.005 ? 0 : Math.round(outstandingRaw * 100) / 100;
     const status =
       amount1 > 0 || amount2 > 0 || amount3 > 0 || invoiceNo1 || invoiceNo2 || invoiceNo3
         ? normalizeStatus(r["สถานะ"], warnings, jobNo ?? customerName)
