@@ -141,14 +141,17 @@ export function PrintCommissionView({
           % ค่าคอมมิชชั่นต่อยอดขาย {commissionPercentOfSales.toFixed(2)}%
         </p>
 
-        <div className="mt-16 flex justify-end gap-16">
-          <p>....................................ผู้จัดทำ</p>
+        <div className="mt-16 flex items-baseline justify-end gap-2">
+          <span className="w-56 border-b border-dotted border-black" />
+          <span className="w-20 whitespace-nowrap">ผู้จัดทำ</span>
         </div>
-        <div className="mt-10 flex justify-end gap-16">
-          <p>....................................ผู้ตรวจสอบ</p>
+        <div className="mt-10 flex items-baseline justify-end gap-2">
+          <span className="w-56 border-b border-dotted border-black" />
+          <span className="w-20 whitespace-nowrap">ผู้ตรวจสอบ</span>
         </div>
-        <div className="mt-10 flex justify-end gap-16">
-          <p>....................................ผู้อนุมัติ</p>
+        <div className="mt-10 flex items-baseline justify-end gap-2">
+          <span className="w-56 border-b border-dotted border-black" />
+          <span className="w-20 whitespace-nowrap">ผู้อนุมัติ</span>
         </div>
       </div>
     </div>
