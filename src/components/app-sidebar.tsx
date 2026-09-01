@@ -10,6 +10,7 @@ import {
   CalendarCheck,
   ChevronDown,
   ChevronRight,
+  CircleDollarSign,
   ClipboardList,
   ClipboardMinus,
   FileBarChart,
@@ -25,6 +26,7 @@ import {
   Package,
   PackagePlus,
   Palette,
+  Percent,
   Receipt,
   ScrollText,
   Settings,
@@ -93,6 +95,8 @@ const expensesGroup = {
     { title: "Payment Voucher (ใบสำคัญจ่าย)", url: "/dashboard/expenses/payment-vouchers", icon: FileSpreadsheet },
     { title: "เงินสดย่อย", url: "/dashboard/expenses/petty-cash", icon: Wallet },
     { title: "เจ้าหนี้คงค้าง", url: "/dashboard/expenses/payables", icon: HandCoins },
+    { title: "เงินเดือน", url: "/dashboard/expenses/payroll", icon: CircleDollarSign },
+    { title: "คำนวณค่าคอมมิชชั่น", url: "/dashboard/expenses/commission", icon: Percent },
   ],
 };
 
