@@ -50,19 +50,41 @@ export function PrintPayrollView({ entry, ytd }: { entry: PayrollEntry; ytd: Pay
           </p>
         </div>
 
-        {/* Employee info */}
-        <div className="grid grid-cols-2 border-b border-black">
-          <Field label="ชื่อ" value={entry.employeeName} />
-          <Field label="เลขที่บัตรประชาชน" value={entry.employeeIdCardNo} />
-        </div>
-        <div className="grid grid-cols-2 border-b border-black">
-          <Field label="วันที่เริ่มงาน" value={thaiShortDate(entry.employeeStartDate)} />
-          <Field label="รหัสพนักงาน" value={entry.employeeCode} />
-        </div>
-        <div className="grid grid-cols-2 border-b border-black">
-          <Field label="ตำแหน่ง" value={entry.employeePosition} />
-          <div />
-        </div>
+        {/* Employee info — one <table> (not separate grid divs per row) so
+            the browser's table layout guarantees every row's column
+            boundaries land at the exact same x-position, including the
+            center divider between the ชื่อ/เลขบัตรประชาชน pair — separate
+            CSS grid containers can't make that same cross-row guarantee. */}
+        <table className="w-full border-collapse text-center">
+          <colgroup>
+            <col style={{ width: "18%" }} />
+            <col style={{ width: "32%" }} />
+            <col style={{ width: "18%" }} />
+            <col style={{ width: "32%" }} />
+          </colgroup>
+          <tbody>
+            <tr>
+              <td className="border-r border-b border-black p-2 text-left font-medium">ชื่อ</td>
+              <td className="border-r border-b border-black p-2 text-left">{entry.employeeName}</td>
+              <td className="border-r border-b border-black p-2 text-left font-medium">เลขที่บัตรประชาชน</td>
+              <td className="border-b border-black p-2 text-left">{entry.employeeIdCardNo ?? "—"}</td>
+            </tr>
+            <tr>
+              <td className="border-r border-b border-black p-2 text-left font-medium">วันที่เริ่มงาน</td>
+              <td className="border-r border-b border-black p-2 text-left">
+                {thaiShortDate(entry.employeeStartDate)}
+              </td>
+              <td className="border-r border-b border-black p-2 text-left font-medium">รหัสพนักงาน</td>
+              <td className="border-b border-black p-2 text-left">{entry.employeeCode}</td>
+            </tr>
+            <tr>
+              <td className="border-r border-b border-black p-2 text-left font-medium">ตำแหน่ง</td>
+              <td className="border-b border-black p-2 text-left" colSpan={3}>
+                {entry.employeePosition ?? "—"}
+              </td>
+            </tr>
+          </tbody>
+        </table>
 
         {/* Income / deductions table — every cell gets a right+bottom border
             only (never left/top), so each internal line is drawn exactly
@@ -152,15 +174,6 @@ export function PrintPayrollView({ entry, ytd }: { entry: PayrollEntry; ytd: Pay
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Field({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div className="flex border-r border-black last:border-r-0">
-      <span className="w-40 shrink-0 border-r border-black p-2 font-medium">{label}</span>
-      <span className="flex-1 p-2">{value ?? "—"}</span>
     </div>
   );
 }
