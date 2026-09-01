@@ -35,8 +35,14 @@ function num(value: number): string {
 // frame: border-t/border-l on the <table> itself, and border-r/border-b on
 // every single cell — including the last column/row, since there's no
 // container border to double against here.
-const th = "border-r border-b border-black p-1 font-medium whitespace-nowrap";
+const th = "border-r border-b border-black p-1 font-medium break-words";
 const td = "border-r border-b border-black p-1 whitespace-nowrap";
+// ลูกค้า/ชื่องาน can run long (full company names, multi-lot project
+// titles) — these wrap onto a second line instead of stretching the table
+// past the page width, which is what colgroup + table-layout:fixed below
+// actually enforces (a column only wraps its content if the table itself
+// can't just grow the column to fit it).
+const tdWrap = "border-r border-b border-black p-1 break-words";
 
 export function PrintCommissionView({
   broker,
@@ -68,7 +74,22 @@ export function PrintCommissionView({
         <p className="font-medium">{broker}</p>
         <p className="font-medium">ประจำเดือน {periodLabel(windowStart, windowEnd)}</p>
 
-        <table className="mt-3 w-full border-collapse border-t border-l border-black text-center">
+        <table className="mt-3 w-full table-fixed border-collapse border-t border-l border-black text-center">
+          <colgroup>
+            <col className="w-[3%]" />
+            <col className="w-[5%]" />
+            <col className="w-[6%]" />
+            <col className="w-[16%]" />
+            <col className="w-[14%]" />
+            <col className="w-[7%]" />
+            <col className="w-[7%]" />
+            <col className="w-[5%]" />
+            <col className="w-[6%]" />
+            <col className="w-[10%]" />
+            <col className="w-[10%]" />
+            <col className="w-[5%]" />
+            <col className="w-[6%]" />
+          </colgroup>
           <thead>
             <tr>
               <th className={th}>ลำดับ</th>
@@ -76,10 +97,9 @@ export function PrintCommissionView({
               <th className={th}>เลขที่ Job</th>
               <th className={th}>ลูกค้า</th>
               <th className={th}>ชื่องาน</th>
-              <th className={th}>พนักงานขาย</th>
               <th className={th}>จำนวนเงิน</th>
               <th className={th}>จำนวนเงิน +VAT</th>
-              <th className={th}>อัตราส่วนลด</th>
+              <th className={th}>ส่วนลด</th>
               <th className={th}>อัตราค่าคอมมิชชั่น</th>
               <th className={th}>เลขที่ใบกำกับ IV</th>
               <th className={th}>เลขที่ใบรับเงิน RE</th>
@@ -93,24 +113,23 @@ export function PrintCommissionView({
                 <td className={td}>{i + 1}</td>
                 <td className={td}>{shortDate(r.projectDate)}</td>
                 <td className={td}>{r.jobNo ?? "—"}</td>
-                <td className={td + " text-left"}>{r.customerName}</td>
-                <td className={td + " text-left"}>{r.projectName}</td>
-                <td className={td}>{r.salesRepName}</td>
+                <td className={tdWrap + " text-left"}>{r.customerName}</td>
+                <td className={tdWrap + " text-left"}>{r.projectName}</td>
                 <td className={td}>{num(r.preVat)}</td>
                 <td className={td}>{num(r.total)}</td>
                 <td className={td}>{r.discountPercent}%</td>
                 <td className={td + " text-red-600"}>{r.commissionRatePercent.toFixed(1)}%</td>
-                <td className={td}>{r.invoiceNo ?? "—"}</td>
-                <td className={td}>{r.receiptNo ?? "—"}</td>
+                <td className={tdWrap}>{r.invoiceNo ?? "—"}</td>
+                <td className={tdWrap}>{r.receiptNo ?? "—"}</td>
                 <td className={td}>{shortDate(r.receivedDate)}</td>
                 <td className={td}>{num(r.commissionAmount)}</td>
               </tr>
             ))}
             <tr>
-              <td className={td} colSpan={6}></td>
+              <td className={td} colSpan={5}></td>
               <td className={td + " font-medium"}>{num(totalPreVat)}</td>
               <td className={td + " font-medium"}>{num(totalIncVat)}</td>
-              <td className={td} colSpan={4}></td>
+              <td className={td} colSpan={5}></td>
               <td className={td + " font-medium"}>{num(totalCommission)}</td>
             </tr>
           </tbody>
