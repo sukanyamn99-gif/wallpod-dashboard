@@ -258,7 +258,7 @@ export async function getJobLinkedCostSuggestion(jobNo: string) {
   if (!jobNo.trim()) return { error: "กรุณาเลือก JOB NO. ก่อน", summary: null };
 
   const summary = await getJobLinkedCostSummary(jobNo);
-  if (summary.requisitionCount === 0 && summary.voucherCount === 0 && summary.pettyCashCount === 0) {
+  if (summary.requisitions.length === 0 && summary.vouchers.length === 0 && summary.pettyCash.length === 0) {
     return { error: `ไม่พบใบเบิก/Payment Voucher/เงินสดย่อยที่ผูก JOB NO. "${jobNo.trim()}"`, summary: null };
   }
   return { error: null, summary };

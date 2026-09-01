@@ -255,72 +255,75 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
   return { categories, rows };
 }
 
+export interface JobLinkedCostDocument {
+  docNo: string;
+  amount: number;
+}
+
 export interface JobLinkedCostSummary {
-  requisitionTotal: number;
-  requisitionCount: number;
-  voucherTotal: number;
-  voucherCount: number;
-  pettyCashTotal: number;
-  pettyCashCount: number;
+  requisitions: JobLinkedCostDocument[];
+  vouchers: JobLinkedCostDocument[];
+  pettyCash: JobLinkedCostDocument[];
   total: number;
 }
 
 // Single-job breakdown behind the "ดูต้นทุนที่ผูกกับ JOB นี้" read-only
 // panel on the cost form — this total is already folded into totalCost by
 // getFullProjectReport() automatically, so this exists purely to show
-// accounting *why* the number is what it is, never to be copied into a
-// manual cost field (that would double-count it).
+// accounting *why* the number is what it is (each contributing document,
+// by its own doc no.), never to be copied into a manual cost field (that
+// would double-count it).
 export async function getJobLinkedCostSummary(jobNo: string): Promise<JobLinkedCostSummary> {
-  const empty: JobLinkedCostSummary = {
-    requisitionTotal: 0,
-    requisitionCount: 0,
-    voucherTotal: 0,
-    voucherCount: 0,
-    pettyCashTotal: 0,
-    pettyCashCount: 0,
-    total: 0,
-  };
+  const empty: JobLinkedCostSummary = { requisitions: [], vouchers: [], pettyCash: [], total: 0 };
   const trimmed = jobNo.trim();
   if (!trimmed || !isSupabaseConfigured()) return empty;
 
   const supabase = await createClient();
-  const [requisitions, vouchers, pettyCash] = await Promise.all([
+  const [requisitionsRes, vouchersRes, pettyCashRes] = await Promise.all([
     supabase
       .from("stock_requisitions")
-      .select("id, stock_requisition_items(quantity, unit_cost, stock_product_id, stock_products(unit_cost))")
+      .select("doc_no, stock_requisition_items(quantity, unit_cost, stock_product_id, stock_products(unit_cost))")
       .eq("job_no", trimmed),
-    supabase.from("payment_vouchers").select("amount").eq("job_no", trimmed),
-    supabase.from("petty_cash_transactions").select("amount").eq("job_no", trimmed).eq("transaction_type", "expense"),
+    supabase.from("payment_vouchers").select("doc_no, amount").eq("job_no", trimmed),
+    supabase
+      .from("petty_cash_transactions")
+      .select("doc_no, amount")
+      .eq("job_no", trimmed)
+      .eq("transaction_type", "expense"),
   ]);
-  if (requisitions.error) throw requisitions.error;
-  if (vouchers.error) throw vouchers.error;
-  if (pettyCash.error) throw pettyCash.error;
+  if (requisitionsRes.error) throw requisitionsRes.error;
+  if (vouchersRes.error) throw vouchersRes.error;
+  if (pettyCashRes.error) throw pettyCashRes.error;
 
   // Same live-cost fallback as getJobLinkedCosts() for requisitions
   // submitted before unit_cost was snapshotted at withdrawal time.
-  let requisitionTotal = 0;
-  for (const req of requisitions.data ?? []) {
+  const requisitions: JobLinkedCostDocument[] = (requisitionsRes.data ?? []).map((req) => {
+    let amount = 0;
     for (const item of req.stock_requisition_items ?? []) {
       const snapshotCost = Number(item.unit_cost);
       // @ts-expect-error -- Supabase types the joined relation loosely here
       const liveCost = item.stock_products?.unit_cost;
       const unitCost = snapshotCost > 0 ? snapshotCost : liveCost;
       if (unitCost == null) continue;
-      requisitionTotal += Number(item.quantity) * Number(unitCost);
+      amount += Number(item.quantity) * Number(unitCost);
     }
-  }
-  const voucherTotal = (vouchers.data ?? []).reduce((sum, v) => sum + Number(v.amount), 0);
-  const pettyCashTotal = (pettyCash.data ?? []).reduce((sum, t) => sum + Number(t.amount), 0);
+    return { docNo: req.doc_no, amount };
+  });
+  const vouchers: JobLinkedCostDocument[] = (vouchersRes.data ?? []).map((v) => ({
+    docNo: v.doc_no,
+    amount: Number(v.amount),
+  }));
+  const pettyCash: JobLinkedCostDocument[] = (pettyCashRes.data ?? []).map((t) => ({
+    docNo: t.doc_no,
+    amount: Number(t.amount),
+  }));
 
-  return {
-    requisitionTotal,
-    requisitionCount: (requisitions.data ?? []).length,
-    voucherTotal,
-    voucherCount: (vouchers.data ?? []).length,
-    pettyCashTotal,
-    pettyCashCount: (pettyCash.data ?? []).length,
-    total: requisitionTotal + voucherTotal + pettyCashTotal,
-  };
+  const total =
+    requisitions.reduce((sum, d) => sum + d.amount, 0) +
+    vouchers.reduce((sum, d) => sum + d.amount, 0) +
+    pettyCash.reduce((sum, d) => sum + d.amount, 0);
+
+  return { requisitions, vouchers, pettyCash, total };
 }
 
 export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | null> {

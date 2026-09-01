@@ -484,14 +484,29 @@ export function ProjectSaleForm({
             </div>
             {jobCostError && <p className="text-xs text-destructive">{jobCostError}</p>}
             {jobCostSummary && (
-              <div className="rounded-md border bg-muted/40 p-2 text-xs">
-                <p className="text-muted-foreground">
-                  ใบเบิกสินค้า {jobCostSummary.requisitionCount} ใบ: {formatTHB(jobCostSummary.requisitionTotal)} · Payment
-                  Voucher {jobCostSummary.voucherCount} ใบ: {formatTHB(jobCostSummary.voucherTotal)} · เงินสดย่อย{" "}
-                  {jobCostSummary.pettyCashCount} รายการ: {formatTHB(jobCostSummary.pettyCashTotal)}
-                </p>
-                <p className="mt-1 font-medium text-foreground">รวม {formatTHB(jobCostSummary.total)}</p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
+              <div className="space-y-2 rounded-md border bg-muted/40 p-2 text-xs">
+                {[
+                  { label: "ใบเบิกสินค้า", docs: jobCostSummary.requisitions },
+                  { label: "Payment Voucher", docs: jobCostSummary.vouchers },
+                  { label: "เงินสดย่อย", docs: jobCostSummary.pettyCash },
+                ].map(
+                  ({ label, docs }) =>
+                    docs.length > 0 && (
+                      <div key={label}>
+                        <p className="font-medium text-foreground">{label}</p>
+                        <ul className="text-muted-foreground">
+                          {docs.map((doc) => (
+                            <li key={doc.docNo} className="flex justify-between gap-2">
+                              <span>{doc.docNo}</span>
+                              <span>{formatTHB(doc.amount)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ),
+                )}
+                <p className="border-t pt-2 font-medium text-foreground">รวม {formatTHB(jobCostSummary.total)}</p>
+                <p className="text-[11px] text-muted-foreground">
                   * ยอดนี้รวมอยู่ในต้นทุนรวมของ JOB นี้ให้อัตโนมัติแล้ว ไม่ต้องคัดลอกมาใส่ในช่องต้นทุนด้านล่างซ้ำ
                 </p>
               </div>
