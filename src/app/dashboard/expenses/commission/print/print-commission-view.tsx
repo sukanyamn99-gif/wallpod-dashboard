@@ -59,6 +59,9 @@ export function PrintCommissionView({
   const totalPreVat = rows.reduce((sum, r) => sum + r.preVat, 0);
   const totalIncVat = rows.reduce((sum, r) => sum + r.total, 0);
   const totalCommission = rows.reduce((sum, r) => sum + r.commissionAmount, 0);
+  // e.g. ยอดขาย 1,000 ค่าคอม 100 → 10% — the overall commission payout as
+  // a share of sales for this broker/period, not just the per-job rate.
+  const commissionPercentOfSales = totalPreVat ? (totalCommission / totalPreVat) * 100 : 0;
 
   return (
     <div className="mx-auto max-w-6xl bg-white p-6 text-black print:p-0">
@@ -134,8 +137,14 @@ export function PrintCommissionView({
             </tr>
           </tbody>
         </table>
+        <p className="mt-1 text-right text-[15px] font-medium text-red-600">
+          % ค่าคอมมิชชั่นต่อยอดขาย {commissionPercentOfSales.toFixed(2)}%
+        </p>
 
         <div className="mt-16 flex justify-end gap-16">
+          <p>....................................ผู้จัดทำ</p>
+        </div>
+        <div className="mt-10 flex justify-end gap-16">
           <p>....................................ผู้ตรวจสอบ</p>
         </div>
         <div className="mt-10 flex justify-end gap-16">
