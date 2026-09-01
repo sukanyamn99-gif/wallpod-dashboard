@@ -62,6 +62,7 @@ export async function createStockRequisition(formData: FormData) {
   const itemSkus = formData.getAll("item_sku");
   const itemUnits = formData.getAll("item_unit");
   const itemQuantities = formData.getAll("item_quantity");
+  const itemUnitCosts = formData.getAll("item_unit_cost");
   const items = itemIds
     .map((id, i) => ({
       stockProductId: String(id),
@@ -69,6 +70,7 @@ export async function createStockRequisition(formData: FormData) {
       sku: String(itemSkus[i] ?? "").trim() || null,
       unit: String(itemUnits[i] ?? "ชิ้น"),
       quantity: num(itemQuantities[i]),
+      unitCost: num(itemUnitCosts[i]),
     }))
     .filter((it) => it.stockProductId && it.quantity > 0);
 
@@ -121,6 +123,7 @@ export async function createStockRequisition(formData: FormData) {
       product_sku_snapshot: it.sku,
       unit_snapshot: it.unit,
       quantity: it.quantity,
+      unit_cost: it.unitCost,
     })),
   );
   if (itemsErr) return { error: `บันทึกใบเบิกสำเร็จ แต่บันทึกรายการสินค้าไม่สำเร็จ: ${itemsErr.message}` };

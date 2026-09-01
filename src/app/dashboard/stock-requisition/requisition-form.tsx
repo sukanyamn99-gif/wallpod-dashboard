@@ -32,6 +32,7 @@ interface SelectedItem {
   name: string;
   unit: string;
   quantity: number;
+  unitCost: number;
 }
 
 export function RequisitionForm({
@@ -40,12 +41,14 @@ export function RequisitionForm({
   customers,
   stockProducts,
   frequentlyUsed,
+  showCosts = false,
 }: {
   departments: Department[];
   jobNoSuggestions: string[];
   customers: Customer[];
   stockProducts: StockProduct[];
   frequentlyUsed: StockProduct[];
+  showCosts?: boolean;
 }) {
   const router = useRouter();
   const [jobNo, setJobNo] = useState("");
@@ -81,12 +84,26 @@ export function RequisitionForm({
           it.stockProductId === product.id ? { ...it, quantity: it.quantity + qty } : it,
         );
       }
-      return [...prev, { stockProductId: product.id, sku: product.sku ?? "", name: product.name, unit: product.unit, quantity: qty }];
+      return [
+        ...prev,
+        {
+          stockProductId: product.id,
+          sku: product.sku ?? "",
+          name: product.name,
+          unit: product.unit,
+          quantity: qty,
+          unitCost: product.unitCost,
+        },
+      ];
     });
   }
 
   function updateQuantity(id: string, quantity: number) {
     setItems((prev) => prev.map((it) => (it.stockProductId === id ? { ...it, quantity } : it)));
+  }
+
+  function updateUnitCost(id: string, unitCost: number) {
+    setItems((prev) => prev.map((it) => (it.stockProductId === id ? { ...it, unitCost } : it)));
   }
 
   function removeItem(id: string) {
@@ -106,6 +123,7 @@ export function RequisitionForm({
           fd.append("item_sku", it.sku);
           fd.append("item_unit", it.unit);
           fd.append("item_quantity", String(it.quantity));
+          fd.append("item_unit_cost", String(it.unitCost));
         }
         startTransition(() => formAction(fd));
       }}
@@ -303,6 +321,18 @@ export function RequisitionForm({
                     className="w-20"
                   />
                   <span className="text-xs text-muted-foreground">{it.unit}</span>
+                  {showCosts && (
+                    <div className="flex flex-col items-center gap-0.5">
+                      <NumberInput
+                        min={0}
+                        step={0.01}
+                        value={it.unitCost}
+                        onChange={(v) => updateUnitCost(it.stockProductId, Number(v))}
+                        className="w-24"
+                      />
+                      <span className="text-[10px] text-muted-foreground">ราคาต้นทุน/หน่วย</span>
+                    </div>
+                  )}
                   <Button type="button" variant="outline" size="icon-sm" onClick={() => removeItem(it.stockProductId)}>
                     <X className="h-3.5 w-3.5" />
                   </Button>

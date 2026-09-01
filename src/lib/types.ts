@@ -295,6 +295,7 @@ export interface StockRequisitionItem {
   productSku: string | null;
   quantity: number;
   unit: string;
+  unitCost: number;
 }
 
 export interface StockRequisition {

@@ -1,16 +1,20 @@
 import Link from "next/link";
 import { getCustomers, getDepartments, getDistinctProjectJobNos } from "@/lib/data/reference";
 import { getFrequentlyUsedStockProducts, getStockProducts } from "@/lib/data/stock";
+import { getCurrentProfile } from "@/lib/data/profile";
+import { canSeeCosts } from "@/lib/permissions";
 import { RequisitionForm } from "../requisition-form";
 
 export default async function NewStockRequisitionPage() {
-  const [departments, jobNoSuggestions, customers, stockProducts, frequentlyUsed] = await Promise.all([
+  const [departments, jobNoSuggestions, customers, stockProducts, frequentlyUsed, profile] = await Promise.all([
     getDepartments(),
     getDistinctProjectJobNos(),
     getCustomers(),
     getStockProducts(),
     getFrequentlyUsedStockProducts(),
+    getCurrentProfile(),
   ]);
+  const showCosts = canSeeCosts(profile?.role ?? "sales");
 
   return (
     <div className="space-y-6">
@@ -29,6 +33,7 @@ export default async function NewStockRequisitionPage() {
         customers={customers}
         stockProducts={stockProducts}
         frequentlyUsed={frequentlyUsed}
+        showCosts={showCosts}
       />
     </div>
   );

@@ -402,7 +402,8 @@ create table stock_requisition_items (
   product_name_snapshot text not null,
   product_sku_snapshot text,
   unit_snapshot text not null default 'ชิ้น',
-  quantity numeric(14,2) not null
+  quantity numeric(14,2) not null,
+  unit_cost numeric(14,2) not null default 0
 );
 
 alter table stock_requisitions enable row level security;

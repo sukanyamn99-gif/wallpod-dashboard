@@ -64,7 +64,7 @@ export async function getStockRequisitionById(id: string): Promise<StockRequisit
 
   const { data: items, error: itemsErr } = await supabase
     .from("stock_requisition_items")
-    .select("id, stock_product_id, product_name_snapshot, product_sku_snapshot, unit_snapshot, quantity")
+    .select("id, stock_product_id, product_name_snapshot, product_sku_snapshot, unit_snapshot, quantity, unit_cost")
     .eq("requisition_id", id);
   if (itemsErr) throw itemsErr;
 
@@ -75,6 +75,7 @@ export async function getStockRequisitionById(id: string): Promise<StockRequisit
     productSku: row.product_sku_snapshot,
     quantity: Number(row.quantity),
     unit: row.unit_snapshot,
+    unitCost: Number(row.unit_cost),
   }));
 
   return {
@@ -88,12 +89,11 @@ export interface MaterialCostSuggestion {
   total: number;
   requisitionCount: number;
   itemCount: number;
-  // stock_requisition_items never stored a cost at withdrawal time, so this
-  // is quantity × the product's CURRENT unit_cost (weighted-average),
-  // applied retroactively — an approximation, not the historical cost.
-  // Items whose product was later deleted (stock_product_id set null by the
-  // FK) have no cost basis at all and are counted here rather than silently
-  // dropped, so the UI can flag the total as incomplete.
+  // Requisitions submitted before unit_cost was snapshotted at withdrawal
+  // time (or whose product was later deleted, stock_product_id set null by
+  // the FK) have no real cost basis — those fall back to the product's
+  // CURRENT weighted-average cost where the product still exists, and are
+  // counted here so the UI can flag the total as an approximation.
   missingCostItemCount: number;
 }
 
@@ -110,7 +110,7 @@ export async function getMaterialCostByJobNo(jobNo: string): Promise<MaterialCos
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("stock_requisitions")
-    .select("id, stock_requisition_items(quantity, stock_product_id, stock_products(unit_cost))")
+    .select("id, stock_requisition_items(quantity, unit_cost, stock_product_id, stock_products(unit_cost))")
     .eq("job_no", trimmed);
   if (error) throw error;
 
@@ -120,12 +120,15 @@ export async function getMaterialCostByJobNo(jobNo: string): Promise<MaterialCos
   for (const req of data ?? []) {
     for (const item of req.stock_requisition_items ?? []) {
       itemCount++;
+      const snapshotCost = Number(item.unit_cost);
       // @ts-expect-error -- Supabase types the joined relation loosely here
-      const unitCost = item.stock_products?.unit_cost;
+      const liveCost = item.stock_products?.unit_cost;
+      const unitCost = snapshotCost > 0 ? snapshotCost : liveCost;
       if (unitCost == null) {
         missingCostItemCount++;
         continue;
       }
+      if (snapshotCost <= 0) missingCostItemCount++;
       total += Number(item.quantity) * Number(unitCost);
     }
   }

@@ -10,6 +10,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getStockRequisitionById } from "@/lib/data/stock-requisitions";
+import { getCurrentProfile } from "@/lib/data/profile";
+import { canSeeCosts } from "@/lib/permissions";
+import { formatTHB } from "@/lib/format";
 import { REQUISITION_PURPOSE_LABELS } from "@/lib/types";
 
 export default async function StockRequisitionDetailPage({
@@ -18,7 +21,9 @@ export default async function StockRequisitionDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const requisition = await getStockRequisitionById(id);
+  const [requisition, profile] = await Promise.all([getStockRequisitionById(id), getCurrentProfile()]);
+  const showCosts = canSeeCosts(profile?.role ?? "sales");
+  const totalValue = requisition ? requisition.items.reduce((sum, it) => sum + it.quantity * it.unitCost, 0) : 0;
 
   return (
     <div className="space-y-6">
@@ -92,6 +97,8 @@ export default async function StockRequisitionDetailPage({
                     <TableHead>รหัสสินค้า</TableHead>
                     <TableHead>ชื่อสินค้า</TableHead>
                     <TableHead className="text-right">จำนวน</TableHead>
+                    {showCosts && <TableHead className="text-right">ราคาต้นทุน/หน่วย</TableHead>}
+                    {showCosts && <TableHead className="text-right">รวม</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -102,10 +109,19 @@ export default async function StockRequisitionDetailPage({
                       <TableCell className="text-right">
                         {item.quantity} {item.unit}
                       </TableCell>
+                      {showCosts && <TableCell className="text-right">{formatTHB(item.unitCost)}</TableCell>}
+                      {showCosts && (
+                        <TableCell className="text-right">{formatTHB(item.quantity * item.unitCost)}</TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+              {showCosts && (
+                <p className="mt-4 text-right text-sm">
+                  มูลค่ารวม: <span className="font-semibold">{formatTHB(totalValue)}</span>
+                </p>
+              )}
             </CardContent>
           </Card>
         </>
