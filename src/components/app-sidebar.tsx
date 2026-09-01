@@ -15,6 +15,7 @@ import {
   ClipboardMinus,
   FileBarChart,
   FileDown,
+  FileSignature,
   FileSpreadsheet,
   FileText,
   FileUp,
@@ -62,6 +63,7 @@ const navItems = [
   { title: "AR Dashboard", url: "/dashboard/ar", icon: Receipt },
   { title: "Ex Dashboard", url: "/dashboard/expenses", icon: BarChart3 },
   { title: "Stock Dashboard", url: "/dashboard/inventory", icon: Boxes },
+  { title: "ใบเสนอราคา", url: "/dashboard/quotations", icon: FileSignature },
   { title: "Koonway Project Sales", url: "/dashboard/project-sales", icon: ClipboardList },
 ];
 

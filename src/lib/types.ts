@@ -479,3 +479,55 @@ export interface CommissionableProject {
   commissionAmount: number;
   hasCommissionEntry: boolean;
 }
+
+export type QuotationStatus = "รอตอบรับ" | "ลูกค้าตอบตกลง" | "ปฏิเสธ";
+
+export interface QuotationPaymentTerm {
+  label: string;
+  percent: number;
+  amount: number;
+}
+
+export interface QuotationItem {
+  id: string;
+  sortOrder: number;
+  productCode: string | null;
+  description: string;
+  imagePath: string | null;
+  unitPrice: number;
+  discountPercent: number;
+  netPrice: number;
+  qty: number;
+  unit: string;
+  totalPrice: number;
+}
+
+export interface Quotation {
+  id: string;
+  docNo: string;
+  quoteDate: string;
+  projectName: string;
+  attn: string | null;
+  customerName: string;
+  customerAddress: string | null;
+  customerTel: string | null;
+  customerTaxId: string | null;
+  jobNumber: string | null;
+  poNumber: string | null;
+  deliveryDate: string | null;
+  priceValidity: string | null;
+  remark: string | null;
+  paymentTerms: QuotationPaymentTerm[];
+  preVat: number;
+  vat: number;
+  total: number;
+  salesRepId: string | null;
+  salesRepName: string | null;
+  status: QuotationStatus;
+  convertedProjectId: string | null;
+  createdAt: string;
+}
+
+export interface QuotationDetail extends Quotation {
+  items: QuotationItem[];
+}

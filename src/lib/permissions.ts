@@ -19,6 +19,7 @@ const PAGE_ACCESS: Record<string, Role[]> = {
   "/dashboard/gp": ADMIN_ROLES,
   "/dashboard/ar": [...ADMIN_ROLES, "account"],
   "/dashboard/project-sales": STOCK_STAFF,
+  "/dashboard/quotations": STOCK_STAFF,
   "/dashboard/inventory": STOCK_STAFF,
   "/dashboard/stock-product": STOCK_STAFF,
   "/dashboard/stock-product/report": [...STOCK_STAFF, "sales", "design"],
