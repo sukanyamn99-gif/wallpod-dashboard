@@ -22,12 +22,15 @@ function defaultPayDate(): string {
   return target.toISOString().slice(0, 10);
 }
 
-export function PrintSelector({ brokerNames }: { brokerNames: string[] }) {
+export function PrintSelector({ salesRepNames }: { salesRepNames: string[] }) {
   const router = useRouter();
   const [broker, setBroker] = useState("");
   const [payDate, setPayDate] = useState(defaultPayDate());
 
-  const items = [{ value: NONE_VALUE, label: "— เลือกพนักงานขาย/นายหน้า —" }, ...brokerNames.map((b) => ({ value: b, label: b }))];
+  const items = [
+    { value: NONE_VALUE, label: "— เลือกพนักงานขาย/นายหน้า —" },
+    ...salesRepNames.map((b) => ({ value: b, label: b })),
+  ];
 
   function handleGenerate() {
     if (!broker || !payDate) return;

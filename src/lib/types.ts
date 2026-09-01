@@ -458,25 +458,26 @@ export interface CommissionRateTier {
   commissionRatePercent: number;
 }
 
-export interface CommissionEntry {
-  id: string;
-  entryDate: string;
+// One fully-collected WALLPOD Project Sales job, auto-pulled (job_no,
+// customer, sales rep, amount, invoice/receipt no, received date all read
+// live from projects/payments) with commission fields either from an
+// existing commission_entries row or defaulted to 0/unsaved.
+export interface CommissionableProject {
+  projectId: string;
   jobNo: string | null;
-  projectTitle: string;
-  projectName: string | null;
-  brokerName: string;
-  amount: number;
-  amountInclVat: number;
+  projectName: string;
+  customerName: string;
+  salesRepName: string;
+  projectDate: string;
+  preVat: number;
+  total: number;
+  invoiceNo: string | null;
+  receiptNo: string | null;
+  receivedDate: string;
   discountPercent: number;
   commissionRatePercent: number;
   commissionAmount: number;
-  installmentLabel: string | null;
-  paidAmount: number | null;
-  invoiceNo: string | null;
-  receiptNo: string | null;
-  receivedDate: string | null;
-  note: string | null;
-  createdAt: string;
+  hasCommissionEntry: boolean;
 }
 
 export interface CommissionBrokerTotal {

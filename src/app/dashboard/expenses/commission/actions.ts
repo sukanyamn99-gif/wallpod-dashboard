@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { logActivity } from "@/lib/activity-log";
 
 function friendlyError(error: { code?: string; message: string }): string {
   if (error.code === "23505") return "มีอัตราส่วนลดนี้อยู่แล้วในตารางค่าคอมมิชชั่น";
@@ -12,11 +11,6 @@ function friendlyError(error: { code?: string; message: string }): string {
 function num(v: FormDataEntryValue | null): number {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
-}
-
-function str(v: FormDataEntryValue | null): string | null {
-  const s = String(v ?? "").trim();
-  return s === "" ? null : s;
 }
 
 function revalidateCommissionConsumers() {
@@ -73,118 +67,74 @@ export async function deleteRateTier(id: string) {
   return { error: null };
 }
 
-function parseCommissionEntryForm(formData: FormData) {
-  const entryDate = str(formData.get("entry_date"));
-  const projectTitle = str(formData.get("project_title"));
-  const brokerName = str(formData.get("broker_name"));
-  if (!entryDate) return { ok: false as const, error: "กรุณาระบุวันที่" };
-  if (!projectTitle) return { ok: false as const, error: "กรุณาระบุชื่องาน/บริษัท" };
-  if (!brokerName) return { ok: false as const, error: "กรุณาระบุพนักงานขาย/นายหน้า" };
-
-  return {
-    ok: true as const,
-    entryDate,
-    jobNo: str(formData.get("job_no")),
-    projectTitle,
-    projectName: str(formData.get("project_name")),
-    brokerName,
-    amount: num(formData.get("amount")),
-    discountPercent: num(formData.get("discount_percent")),
-    commissionRatePercent: num(formData.get("commission_rate_percent")),
-    installmentLabel: str(formData.get("installment_label")),
-    paidAmount: formData.get("paid_amount") ? num(formData.get("paid_amount")) : null,
-    invoiceNo: str(formData.get("invoice_no")),
-    receiptNo: str(formData.get("receipt_no")),
-    receivedDate: str(formData.get("received_date")),
-    note: str(formData.get("note")),
-  };
-}
-
-export async function createCommissionEntry(formData: FormData) {
+// The only real write path in this feature now — everything else about a
+// commissionable job (customer, amount, sales rep, received date) is read
+// live from projects/payments, so saving a job's commission is just: look
+// up the rate for this discount % (falls back to 0 if the discount doesn't
+// match any known tier — an unusual discount needs a rate tier added
+// first, rather than silently guessing), compute the amount from the
+// project's own pre_vat, and upsert.
+export async function saveProjectCommission(projectId: string, discountPercent: number) {
   if (!isSupabaseConfigured()) {
     return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
   }
-
-  const parsed = parseCommissionEntryForm(formData);
-  if (!parsed.ok) return { error: parsed.error };
+  if (!Number.isFinite(discountPercent) || discountPercent < 0) {
+    return { error: "กรุณาระบุส่วนลดให้ถูกต้อง" };
+  }
 
   const supabase = await createClient();
+
+  const { data: project, error: projectErr } = await supabase
+    .from("projects")
+    .select("pre_vat")
+    .eq("id", projectId)
+    .single();
+  if (projectErr) return { error: projectErr.message };
+
+  const { data: tier } = await supabase
+    .from("commission_rate_tiers")
+    .select("commission_rate_percent")
+    .eq("discount_percent", discountPercent)
+    .maybeSingle();
+  if (!tier) {
+    return {
+      error: `ไม่พบอัตราค่าคอมมิชชั่นสำหรับส่วนลด ${discountPercent}% — กรุณาเพิ่มอัตรานี้ในตารางด้านบนก่อน`,
+    };
+  }
+
+  const commissionRatePercent = Number(tier.commission_rate_percent);
+  const preVat = Number(project.pre_vat);
+  const commissionAmount = Math.round(((preVat * commissionRatePercent) / 100) * 100) / 100;
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { error } = await supabase.from("commission_entries").insert({
-    entry_date: parsed.entryDate,
-    job_no: parsed.jobNo,
-    project_title: parsed.projectTitle,
-    project_name: parsed.projectName,
-    broker_name: parsed.brokerName,
-    amount: parsed.amount,
-    discount_percent: parsed.discountPercent,
-    commission_rate_percent: parsed.commissionRatePercent,
-    installment_label: parsed.installmentLabel,
-    paid_amount: parsed.paidAmount,
-    invoice_no: parsed.invoiceNo,
-    receipt_no: parsed.receiptNo,
-    received_date: parsed.receivedDate,
-    note: parsed.note,
-    created_by: user?.id ?? null,
-  });
+  const { error } = await supabase.from("commission_entries").upsert(
+    {
+      project_id: projectId,
+      discount_percent: discountPercent,
+      commission_rate_percent: commissionRatePercent,
+      commission_amount: commissionAmount,
+      created_by: user?.id ?? null,
+    },
+    { onConflict: "project_id" },
+  );
   if (error) return { error: error.message };
 
   revalidateCommissionConsumers();
-  return { error: null };
+  return { error: null, commissionRatePercent, commissionAmount };
 }
 
-export async function updateCommissionEntry(id: string, formData: FormData) {
+export async function clearProjectCommission(projectId: string) {
   if (!isSupabaseConfigured()) {
     return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
   }
 
-  const parsed = parseCommissionEntryForm(formData);
-  if (!parsed.ok) return { error: parsed.error };
-
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("commission_entries")
-    .update({
-      entry_date: parsed.entryDate,
-      job_no: parsed.jobNo,
-      project_title: parsed.projectTitle,
-      project_name: parsed.projectName,
-      broker_name: parsed.brokerName,
-      amount: parsed.amount,
-      discount_percent: parsed.discountPercent,
-      commission_rate_percent: parsed.commissionRatePercent,
-      installment_label: parsed.installmentLabel,
-      paid_amount: parsed.paidAmount,
-      invoice_no: parsed.invoiceNo,
-      receipt_no: parsed.receiptNo,
-      received_date: parsed.receivedDate,
-      note: parsed.note,
-    })
-    .eq("id", id);
+  const { error } = await supabase.from("commission_entries").delete().eq("project_id", projectId);
   if (error) return { error: error.message };
 
-  revalidateCommissionConsumers();
-  return { error: null };
-}
-
-export async function deleteCommissionEntry(id: string) {
-  if (!isSupabaseConfigured()) {
-    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถลบได้ในโหมดทดลอง" };
-  }
-
-  const supabase = await createClient();
-  const { data: entry } = await supabase
-    .from("commission_entries")
-    .select("project_title, broker_name")
-    .eq("id", id)
-    .single();
-  const { error } = await supabase.from("commission_entries").delete().eq("id", id);
-  if (error) return { error: error.message };
-
-  await logActivity("ลบรายการค่าคอมมิชชั่น", entry ? `${entry.project_title} — ${entry.broker_name}` : null);
   revalidateCommissionConsumers();
   return { error: null };
 }

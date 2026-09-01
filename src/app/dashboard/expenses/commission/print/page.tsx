@@ -2,9 +2,9 @@ import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
 import {
-  getCommissionEntriesForReport,
+  getCommissionForReport,
   getCommissionPayoutWindow,
-  getDistinctBrokerNames,
+  getCommissionableProjects,
   summarizeByBroker,
 } from "@/lib/data/commission";
 import { PrintCommissionView } from "./print-commission-view";
@@ -22,28 +22,29 @@ export default async function PrintCommissionPage({
   const { broker, payDate } = await searchParams;
 
   if (!broker || !payDate) {
-    const brokerNames = await getDistinctBrokerNames();
+    const projects = await getCommissionableProjects();
+    const salesRepNames = Array.from(new Set(projects.map((p) => p.salesRepName))).sort();
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-semibold">พิมพ์รายงานค่าคอมมิชชั่น</h1>
-          <p className="text-sm text-muted-foreground">เลือกพนักงานขาย/นายหน้า และรอบวันที่จ่าย</p>
+          <p className="text-sm text-muted-foreground">เลือกพนักงานขาย และรอบวันที่จ่าย</p>
         </div>
-        <PrintSelector brokerNames={brokerNames} />
+        <PrintSelector salesRepNames={salesRepNames} />
       </div>
     );
   }
 
   const { windowStart, windowEnd } = getCommissionPayoutWindow(payDate);
-  const entries = await getCommissionEntriesForReport(windowStart, windowEnd);
-  const brokerTotals = summarizeByBroker(entries);
+  const projects = await getCommissionForReport(windowStart, windowEnd);
+  const brokerTotals = summarizeByBroker(projects);
 
   return (
     <PrintCommissionView
       broker={broker}
       windowStart={windowStart}
       windowEnd={windowEnd}
-      entries={entries}
+      projects={projects}
       brokerTotals={brokerTotals}
     />
   );

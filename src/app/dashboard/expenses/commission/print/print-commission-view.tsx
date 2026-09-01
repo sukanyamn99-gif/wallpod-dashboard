@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { formatTHB } from "@/lib/format";
-import type { CommissionBrokerTotal, CommissionEntry } from "@/lib/types";
+import type { CommissionBrokerTotal, CommissionableProject } from "@/lib/types";
 
 const THAI_MONTH_ABBR = [
   "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
@@ -31,11 +31,10 @@ function num(value: number): string {
   return value ? formatTHB(value) : "-";
 }
 
-// The table has no outer bordered wrapper (unlike the payroll slip), so it
-// draws its own complete frame: border-t/border-l on the <table> itself
-// (see below), and border-r/border-b on every single cell — including the
-// last column/row, which is what actually closes off the right/bottom
-// edges here (there's no container border to double against).
+// The table has no outer bordered wrapper, so it draws its own complete
+// frame: border-t/border-l on the <table> itself, and border-r/border-b on
+// every single cell — including the last column/row, since there's no
+// container border to double against here.
 const th = "border-r border-b border-black p-1 font-medium whitespace-nowrap";
 const td = "border-r border-b border-black p-1 whitespace-nowrap";
 
@@ -43,19 +42,18 @@ export function PrintCommissionView({
   broker,
   windowStart,
   windowEnd,
-  entries,
+  projects,
   brokerTotals,
 }: {
   broker: string;
   windowStart: string;
   windowEnd: string;
-  entries: CommissionEntry[];
+  projects: CommissionableProject[];
   brokerTotals: CommissionBrokerTotal[];
 }) {
-  const rows = entries.filter((e) => e.brokerName === broker);
-  const totalAmount = rows.reduce((sum, r) => sum + r.amount, 0);
-  const totalInclVat = rows.reduce((sum, r) => sum + r.amountInclVat, 0);
-  const totalPaid = rows.reduce((sum, r) => sum + (r.paidAmount ?? r.amountInclVat), 0);
+  const rows = projects.filter((p) => p.salesRepName === broker);
+  const totalPreVat = rows.reduce((sum, r) => sum + r.preVat, 0);
+  const totalIncVat = rows.reduce((sum, r) => sum + r.total, 0);
   const totalCommission = rows.reduce((sum, r) => sum + r.commissionAmount, 0);
 
   return (
@@ -78,15 +76,13 @@ export function PrintCommissionView({
               <th className={th}>ลำดับ</th>
               <th className={th}>วันที่</th>
               <th className={th}>เลขที่ Job</th>
-              <th className={th}>ชื่องาน/บริษัท</th>
-              <th className={th}>ชื่อโปรเจค</th>
+              <th className={th}>ลูกค้า</th>
+              <th className={th}>ชื่องาน</th>
               <th className={th}>พนักงานขาย</th>
               <th className={th}>จำนวนเงิน</th>
               <th className={th}>จำนวนเงิน +VAT</th>
               <th className={th}>อัตราส่วนลด</th>
               <th className={th}>อัตราค่าคอมมิชชั่น</th>
-              <th className={th}>รายการ</th>
-              <th className={th}>จำนวนเงิน +VAT</th>
               <th className={th}>เลขที่ใบกำกับ IV</th>
               <th className={th}>เลขที่ใบรับเงิน RE</th>
               <th className={th}>วันที่รับชำระ</th>
@@ -95,19 +91,17 @@ export function PrintCommissionView({
           </thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.id}>
+              <tr key={r.projectId}>
                 <td className={td}>{i + 1}</td>
-                <td className={td}>{shortDate(r.entryDate)}</td>
+                <td className={td}>{shortDate(r.projectDate)}</td>
                 <td className={td}>{r.jobNo ?? "—"}</td>
-                <td className={td + " text-left"}>{r.projectTitle}</td>
-                <td className={td + " text-left"}>{r.projectName ?? "—"}</td>
-                <td className={td}>{r.brokerName}</td>
-                <td className={td}>{num(r.amount)}</td>
-                <td className={td}>{num(r.amountInclVat)}</td>
+                <td className={td + " text-left"}>{r.customerName}</td>
+                <td className={td + " text-left"}>{r.projectName}</td>
+                <td className={td}>{r.salesRepName}</td>
+                <td className={td}>{num(r.preVat)}</td>
+                <td className={td}>{num(r.total)}</td>
                 <td className={td}>{r.discountPercent}%</td>
                 <td className={td + " text-red-600"}>{r.commissionRatePercent.toFixed(1)}%</td>
-                <td className={td}>{r.installmentLabel ?? "—"}</td>
-                <td className={td}>{num(r.paidAmount ?? r.amountInclVat)}</td>
                 <td className={td}>{r.invoiceNo ?? "—"}</td>
                 <td className={td}>{r.receiptNo ?? "—"}</td>
                 <td className={td}>{shortDate(r.receivedDate)}</td>
@@ -116,11 +110,9 @@ export function PrintCommissionView({
             ))}
             <tr>
               <td className={td} colSpan={6}></td>
-              <td className={td + " font-medium"}>{num(totalAmount)}</td>
-              <td className={td + " font-medium"}>{num(totalInclVat)}</td>
-              <td className={td} colSpan={3}></td>
-              <td className={td + " font-medium"}>{num(totalPaid)}</td>
-              <td className={td} colSpan={3}></td>
+              <td className={td + " font-medium"}>{num(totalPreVat)}</td>
+              <td className={td + " font-medium"}>{num(totalIncVat)}</td>
+              <td className={td} colSpan={4}></td>
               <td className={td + " font-medium"}>{num(totalCommission)}</td>
             </tr>
           </tbody>

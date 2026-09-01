@@ -1188,29 +1188,19 @@ create policy commission_rate_tiers_write on commission_rate_tiers for all
 insert into commission_rate_tiers (discount_percent, commission_rate_percent) values
   (0, 4.50), (5, 4.25), (10, 4.00), (15, 3.00), (20, 2.50), (25, 2.00), (30, 1.50), (40, 1.00);
 
+-- One commission row per fully-collected Project Sales job ("เอาเฉพาะ
+-- Project ที่เก็บเงินเรียบร้อยแล้ว") — everything else (job_no, customer,
+-- sales rep, amount, invoice/receipt no, received date) is read live from
+-- projects/payments; the only real input here is discount_percent.
 create table commission_entries (
   id uuid primary key default gen_random_uuid(),
-  entry_date date not null,
-  job_no text,
-  project_title text not null,
-  project_name text,
-  broker_name text not null,
-  amount numeric(14,2) not null default 0,
-  -- Standard 7% VAT, matching how every other document in this app derives
-  -- it — stored (not just computed in the UI) so the report/print totals
-  -- never drift from what the entry actually recorded.
-  amount_incl_vat numeric(14,2) generated always as (round(amount * 1.07, 2)) stored,
+  project_id uuid not null unique references projects(id) on delete cascade,
   discount_percent numeric(5,2) not null default 0,
-  -- Looked up from commission_rate_tiers at entry time and snapshotted here
+  -- Looked up from commission_rate_tiers when discount_percent is saved
   -- (editable/overridable) rather than joined live, so a later change to
-  -- the rate table never silently rewrites the commission on a past sale.
+  -- the rate table never silently rewrites a job's already-paid commission.
   commission_rate_percent numeric(5,2) not null default 0,
-  commission_amount numeric(14,2) generated always as (round(amount * commission_rate_percent / 100, 2)) stored,
-  installment_label text,
-  paid_amount numeric(14,2),
-  invoice_no text,
-  receipt_no text,
-  received_date date,
+  commission_amount numeric(14,2) not null default 0,
   note text,
   created_by uuid references profiles(id),
   created_at timestamptz not null default now()
