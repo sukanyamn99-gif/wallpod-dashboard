@@ -24,11 +24,12 @@ export default async function StockRequisitionDetailPage({
   const [requisition, profile] = await Promise.all([getStockRequisitionById(id), getCurrentProfile()]);
   const showCosts = canSeeCosts(profile?.role ?? "sales");
   const totalValue = requisition ? requisition.items.reduce((sum, it) => sum + it.quantity * it.unitCost, 0) : 0;
-  // Requisitions submitted before unit_cost was snapshotted at withdrawal
-  // time (migration_038) default to 0 — showing "0.00" there would read as
-  // "this cost nothing" rather than "cost wasn't recorded", so those show a
-  // dash instead, same honest-gap convention used elsewhere in this app.
+  // getStockRequisitionById() already falls back to the product's current
+  // cost (isEstimatedCost) when the withdrawal-time snapshot is missing —
+  // only an item whose product was later deleted (no snapshot, no live
+  // product to fall back to) still has a genuine 0 here.
   const hasAnyCost = requisition ? requisition.items.some((it) => it.unitCost > 0) : false;
+  const hasEstimatedCost = requisition ? requisition.items.some((it) => it.isEstimatedCost) : false;
 
   return (
     <div className="space-y-6">
@@ -117,11 +118,13 @@ export default async function StockRequisitionDetailPage({
                       {showCosts && (
                         <TableCell className="text-right">
                           {item.unitCost > 0 ? formatTHB(item.unitCost) : "—"}
+                          {item.isEstimatedCost && "*"}
                         </TableCell>
                       )}
                       {showCosts && (
                         <TableCell className="text-right">
                           {item.unitCost > 0 ? formatTHB(item.quantity * item.unitCost) : "—"}
+                          {item.isEstimatedCost && "*"}
                         </TableCell>
                       )}
                     </TableRow>
@@ -130,12 +133,19 @@ export default async function StockRequisitionDetailPage({
               </Table>
               {showCosts &&
                 (hasAnyCost ? (
-                  <p className="mt-4 text-right text-sm">
-                    มูลค่ารวม: <span className="font-semibold">{formatTHB(totalValue)}</span>
-                  </p>
+                  <div className="mt-4 text-right text-sm">
+                    <p>
+                      มูลค่ารวม: <span className="font-semibold">{formatTHB(totalValue)}</span>
+                    </p>
+                    {hasEstimatedCost && (
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        * ประมาณจากต้นทุน/หน่วยปัจจุบันของสินค้า (ใบเบิกนี้บันทึกก่อนระบบเริ่มบันทึกราคาต้นทุน ณ วันที่เบิกจริง)
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   <p className="mt-4 text-right text-sm text-muted-foreground">
-                    ไม่มีข้อมูลต้นทุน (เบิกก่อนระบบเริ่มบันทึกราคาต้นทุนต่อรายการ)
+                    ไม่มีข้อมูลต้นทุน (สินค้าถูกลบออกจากระบบแล้ว)
                   </p>
                 ))}
             </CardContent>

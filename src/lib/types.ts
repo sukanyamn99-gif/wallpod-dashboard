@@ -296,6 +296,10 @@ export interface StockRequisitionItem {
   quantity: number;
   unit: string;
   unitCost: number;
+  // True when unitCost is a live fallback (the product's current cost)
+  // rather than the real snapshot taken at withdrawal time — requisitions
+  // submitted before that snapshot existed (migration_038).
+  isEstimatedCost: boolean;
 }
 
 export interface StockRequisition {

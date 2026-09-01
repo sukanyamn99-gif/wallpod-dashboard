@@ -64,19 +64,34 @@ export async function getStockRequisitionById(id: string): Promise<StockRequisit
 
   const { data: items, error: itemsErr } = await supabase
     .from("stock_requisition_items")
-    .select("id, stock_product_id, product_name_snapshot, product_sku_snapshot, unit_snapshot, quantity, unit_cost")
+    .select(
+      "id, stock_product_id, product_name_snapshot, product_sku_snapshot, unit_snapshot, quantity, unit_cost, stock_products(unit_cost)",
+    )
     .eq("requisition_id", id);
   if (itemsErr) throw itemsErr;
 
-  const mappedItems: StockRequisitionItem[] = (items ?? []).map((row) => ({
-    id: row.id,
-    stockProductId: row.stock_product_id,
-    productName: row.product_name_snapshot,
-    productSku: row.product_sku_snapshot,
-    quantity: Number(row.quantity),
-    unit: row.unit_snapshot,
-    unitCost: Number(row.unit_cost),
-  }));
+  // Requisitions submitted before unit_cost was snapshotted at withdrawal
+  // time (migration_038) default to 0 — fall back to the product's CURRENT
+  // weighted-average cost (an approximation, flagged via isEstimatedCost)
+  // rather than showing no cost at all, same convention already used for
+  // getJobLinkedCosts()/getMaterialCostByJobNo().
+  const mappedItems: StockRequisitionItem[] = (items ?? []).map((row) => {
+    const snapshotCost = Number(row.unit_cost);
+    // @ts-expect-error -- Supabase types the joined relation loosely here
+    const liveCost = row.stock_products?.unit_cost;
+    const isEstimatedCost = snapshotCost <= 0 && liveCost != null;
+    const unitCost = snapshotCost > 0 ? snapshotCost : (liveCost ?? 0);
+    return {
+      id: row.id,
+      stockProductId: row.stock_product_id,
+      productName: row.product_name_snapshot,
+      productSku: row.product_sku_snapshot,
+      quantity: Number(row.quantity),
+      unit: row.unit_snapshot,
+      unitCost: Number(unitCost),
+      isEstimatedCost,
+    };
+  });
 
   return {
     // @ts-expect-error -- Supabase types the joined relation loosely here
