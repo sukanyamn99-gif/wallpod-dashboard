@@ -408,3 +408,46 @@ export interface PettyCashTransaction {
   vatAmount: number;
   whtAmount: number;
 }
+
+export interface Employee {
+  id: string;
+  employeeCode: string;
+  fullName: string;
+  position: string | null;
+  idCardNo: string | null;
+  startDate: string | null;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface PayrollEntry {
+  id: string;
+  employeeId: string;
+  employeeCode: string;
+  employeeName: string;
+  employeePosition: string | null;
+  employeeIdCardNo: string | null;
+  employeeStartDate: string | null;
+  payPeriod: string;
+  payDate: string | null;
+  baseSalary: number;
+  fuelAllowance: number;
+  commission: number;
+  incentive: number;
+  socialSecurity: number;
+  withholdingTax: number;
+  otherDeductions: number;
+  totalIncome: number;
+  totalDeductions: number;
+  netSalary: number;
+  note: string | null;
+  preparedByName: string | null;
+  createdAt: string;
+}
+
+export interface PayrollYtdSummary {
+  cumulativeIncome: number;
+  cumulativeTax: number;
+  cumulativeSocialSecurity: number;
+  cumulativeOtherDeductions: number;
+}
