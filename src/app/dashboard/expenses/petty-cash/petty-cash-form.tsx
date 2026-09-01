@@ -98,16 +98,22 @@ export function PettyCashForm({
   );
   const [jobNo, setJobNo] = useState(initialData?.jobNo ?? "");
   const jobNoError = getJobNoError(jobNo);
+  // Not every bill has VAT (many small/non-VAT-registered vendors don't
+  // charge it) — checked by default since that's the common case, but a
+  // biller with no VAT needs to be able to clear it back to 0 instead of
+  // having it force-extracted from the total.
+  const [hasVat, setHasVat] = useState(true);
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const billerRef = useRef<HTMLInputElement>(null);
   const categoryRef = useRef<HTMLInputElement>(null);
 
   // "จำนวนเงิน (รวมสุทธิ)" is entered VAT-inclusive, so VAT is extracted
   // out of it (×7/107) rather than added on top; WHT then applies to the
-  // pre-VAT portion, matching standard Thai withholding-tax practice.
+  // pre-VAT portion, matching standard Thai withholding-tax practice. When
+  // hasVat is off, the full amount is treated as pre-VAT instead.
   const amountNum = Number(amount) || 0;
-  const preVatAmount = amountNum / 1.07;
-  const vatAmount = amountNum > 0 ? amountNum - preVatAmount : 0;
+  const preVatAmount = hasVat ? amountNum / 1.07 : amountNum;
+  const vatAmount = hasVat && amountNum > 0 ? amountNum - preVatAmount : 0;
   const whtRateNum = Number(whtRatePercent) || 0;
   const whtAmount = whtRateNum > 0 ? preVatAmount * (whtRateNum / 100) : 0;
 
@@ -299,7 +305,14 @@ export function PettyCashForm({
                 value={vatAmount ? vatAmount.toFixed(2) : ""}
                 readOnly
               />
-              <p className="text-xs text-muted-foreground">คำนวณอัตโนมัติจากยอดรวม (แยก VAT 7%)</p>
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={hasVat}
+                  onChange={(e) => setHasVat(e.target.checked)}
+                />
+                บิลนี้มีภาษีมูลค่าเพิ่ม (คำนวณอัตโนมัติจากยอดรวม แยก VAT 7%)
+              </label>
             </div>
             <div className="space-y-2">
               <Label htmlFor="wht_rate">อัตราภาษีหัก ณ ที่จ่าย</Label>
