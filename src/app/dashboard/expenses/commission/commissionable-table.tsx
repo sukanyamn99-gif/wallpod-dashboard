@@ -4,7 +4,16 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DateInput } from "@/components/ui/date-input";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -17,6 +26,8 @@ import { formatTHB } from "@/lib/format";
 import { clearProjectCommission, saveProjectCommission } from "./actions";
 import type { CommissionableProject } from "@/lib/types";
 
+const ALL_VALUE = "all";
+
 const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
@@ -25,6 +36,11 @@ const THAI_MONTHS = [
 function monthLabel(dateStr: string): string {
   const d = new Date(dateStr);
   return `${THAI_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`;
+}
+
+function monthKey(dateStr: string): string {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function ProjectRow({ project }: { project: CommissionableProject }) {
@@ -113,16 +129,46 @@ function ProjectRow({ project }: { project: CommissionableProject }) {
 }
 
 export function CommissionableTable({ projects }: { projects: CommissionableProject[] }) {
-  const [salesRepFilter, setSalesRepFilter] = useState("all");
+  const [monthFilter, setMonthFilter] = useState(ALL_VALUE);
+  const [salesRepFilter, setSalesRepFilter] = useState(ALL_VALUE);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const monthOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of projects) {
+      const key = monthKey(p.receivedDate);
+      if (!map.has(key)) map.set(key, monthLabel(p.receivedDate));
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([value, label]) => ({ value, label }));
+  }, [projects]);
 
   const salesReps = useMemo(
     () => Array.from(new Set(projects.map((p) => p.salesRepName))).sort(),
     [projects],
   );
 
+  const monthSelectItems = useMemo(
+    () => [{ value: ALL_VALUE, label: "ทุกเดือน" }, ...monthOptions],
+    [monthOptions],
+  );
+  const salesRepSelectItems = useMemo(
+    () => [{ value: ALL_VALUE, label: "พนักงานขายทั้งหมด" }, ...salesReps.map((rep) => ({ value: rep, label: rep }))],
+    [salesReps],
+  );
+
   const filtered = useMemo(
-    () => (salesRepFilter === "all" ? projects : projects.filter((p) => p.salesRepName === salesRepFilter)),
-    [projects, salesRepFilter],
+    () =>
+      projects.filter((p) => {
+        if (monthFilter !== ALL_VALUE && monthKey(p.receivedDate) !== monthFilter) return false;
+        if (salesRepFilter !== ALL_VALUE && p.salesRepName !== salesRepFilter) return false;
+        if (dateFrom && p.receivedDate < dateFrom) return false;
+        if (dateTo && p.receivedDate > dateTo) return false;
+        return true;
+      }),
+    [projects, monthFilter, salesRepFilter, dateFrom, dateTo],
   );
 
   const grouped = useMemo(() => {
@@ -139,26 +185,66 @@ export function CommissionableTable({ projects }: { projects: CommissionableProj
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-muted-foreground">พนักงานขาย:</span>
-          <button
-            type="button"
-            onClick={() => setSalesRepFilter("all")}
-            className={salesRepFilter === "all" ? "font-medium text-primary underline" : "text-muted-foreground"}
-          >
-            ทั้งหมด
-          </button>
-          {salesReps.map((rep) => (
-            <button
-              key={rep}
-              type="button"
-              onClick={() => setSalesRepFilter(rep)}
-              className={salesRepFilter === rep ? "font-medium text-primary underline" : "text-muted-foreground"}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">เดือน</Label>
+            <Select
+              value={monthFilter}
+              onValueChange={(v) => setMonthFilter((v as string) ?? ALL_VALUE)}
+              items={monthSelectItems}
             >
-              {rep}
-            </button>
-          ))}
+              <SelectTrigger className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {monthSelectItems.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">พนักงานขาย</Label>
+            <Select
+              value={salesRepFilter}
+              onValueChange={(v) => setSalesRepFilter((v as string) ?? ALL_VALUE)}
+              items={salesRepSelectItems}
+            >
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {salesRepSelectItems.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">วันที่รับชำระ จากวันที่</Label>
+            <DateInput value={dateFrom || null} onChange={setDateFrom} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">ถึงวันที่</Label>
+            <DateInput value={dateTo || null} onChange={setDateTo} />
+          </div>
+          {(dateFrom || dateTo) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setDateFrom("");
+                setDateTo("");
+              }}
+            >
+              ล้างช่วงวันที่
+            </Button>
+          )}
         </div>
         <Button
           variant="outline"
@@ -169,7 +255,7 @@ export function CommissionableTable({ projects }: { projects: CommissionableProj
         </Button>
       </div>
 
-      {grouped.size === 0 && <p className="text-center text-sm text-muted-foreground">ไม่พบ Project ที่เก็บเงินเรียบร้อยแล้ว</p>}
+      {grouped.size === 0 && <p className="text-center text-sm text-muted-foreground">ไม่พบ Project ตามเงื่อนไขที่เลือก</p>}
 
       {Array.from(grouped.entries()).map(([month, byRep]) => (
         <div key={month} className="space-y-3">
