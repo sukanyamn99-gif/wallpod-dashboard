@@ -451,3 +451,36 @@ export interface PayrollYtdSummary {
   cumulativeSocialSecurity: number;
   cumulativeOtherDeductions: number;
 }
+
+export interface CommissionRateTier {
+  id: string;
+  discountPercent: number;
+  commissionRatePercent: number;
+}
+
+export interface CommissionEntry {
+  id: string;
+  entryDate: string;
+  jobNo: string | null;
+  projectTitle: string;
+  projectName: string | null;
+  brokerName: string;
+  amount: number;
+  amountInclVat: number;
+  discountPercent: number;
+  commissionRatePercent: number;
+  commissionAmount: number;
+  installmentLabel: string | null;
+  paidAmount: number | null;
+  invoiceNo: string | null;
+  receiptNo: string | null;
+  receivedDate: string | null;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface CommissionBrokerTotal {
+  brokerName: string;
+  totalCommission: number;
+  entryCount: number;
+}
