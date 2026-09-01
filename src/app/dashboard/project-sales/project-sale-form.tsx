@@ -16,9 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createProjectSale, getMaterialCostSuggestion, updateProjectSale } from "./actions";
-import type { MaterialCostSuggestion } from "@/lib/data/stock-requisitions";
-import type { AdjacentJobNos } from "@/lib/data/project-sales";
+import { createProjectSale, getJobLinkedCostSuggestion, updateProjectSale } from "./actions";
+import type { AdjacentJobNos, JobLinkedCostSummary } from "@/lib/data/project-sales";
 import { formatTHB } from "@/lib/format";
 import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomplete";
 import type { Customer, CustomerType, PaymentStatus, ProductionStatus, SalesRep } from "@/lib/types";
@@ -141,18 +140,18 @@ export function ProjectSaleForm({
   const jobNoRef = useRef<HTMLInputElement>(null);
   const [jobNoError, setJobNoError] = useState<string | null>(null);
   const [materialCost, setMaterialCost] = useState(initialData?.costs.material_cost ?? "");
-  const [materialCostSuggestion, setMaterialCostSuggestion] = useState<MaterialCostSuggestion | null>(null);
-  const [materialCostError, setMaterialCostError] = useState<string | null>(null);
-  const [fetchingMaterialCost, startMaterialCostFetch] = useTransition();
+  const [jobCostSummary, setJobCostSummary] = useState<JobLinkedCostSummary | null>(null);
+  const [jobCostError, setJobCostError] = useState<string | null>(null);
+  const [fetchingJobCost, startJobCostFetch] = useTransition();
 
-  function fetchMaterialCostSuggestion() {
+  function fetchJobCostSummary() {
     const jobNo = jobNoRef.current?.value ?? "";
-    setMaterialCostError(null);
-    setMaterialCostSuggestion(null);
-    startMaterialCostFetch(async () => {
-      const result = await getMaterialCostSuggestion(jobNo);
-      if (result.error) setMaterialCostError(result.error);
-      else setMaterialCostSuggestion(result.suggestion);
+    setJobCostError(null);
+    setJobCostSummary(null);
+    startJobCostFetch(async () => {
+      const result = await getJobLinkedCostSuggestion(jobNo);
+      if (result.error) setJobCostError(result.error);
+      else setJobCostSummary(result.summary);
     });
   }
 
@@ -177,8 +176,8 @@ export function ProjectSaleForm({
         setStatus("");
         setProductionStatus("");
         setMaterialCost("");
-        setMaterialCostSuggestion(null);
-        setMaterialCostError(null);
+        setJobCostSummary(null);
+        setJobCostError(null);
         setJobNoError(null);
         setFormKey((k) => k + 1);
       } else {
@@ -470,22 +469,36 @@ export function ProjectSaleForm({
 
           {/* Section 3: costs */}
           <div className="space-y-4">
-            <h3 className="font-medium">ต้นทุน (ถ้ามี)</h3>
+            <div className="flex items-center justify-between gap-2">
+              <h3 className="font-medium">ต้นทุน (ถ้ามี)</h3>
+              <button
+                type="button"
+                onClick={fetchJobCostSummary}
+                disabled={fetchingJobCost}
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+                title="แสดงยอดใบเบิกสินค้า/Payment Voucher/เงินสดย่อยที่ผูก JOB NO. นี้ (รวมอยู่ในต้นทุนรวมให้อัตโนมัติแล้ว)"
+              >
+                <Download className="h-3 w-3" />
+                {fetchingJobCost ? "กำลังค้นหา..." : "ดูต้นทุนที่ผูกกับ JOB นี้"}
+              </button>
+            </div>
+            {jobCostError && <p className="text-xs text-destructive">{jobCostError}</p>}
+            {jobCostSummary && (
+              <div className="rounded-md border bg-muted/40 p-2 text-xs">
+                <p className="text-muted-foreground">
+                  ใบเบิกสินค้า {jobCostSummary.requisitionCount} ใบ: {formatTHB(jobCostSummary.requisitionTotal)} · Payment
+                  Voucher {jobCostSummary.voucherCount} ใบ: {formatTHB(jobCostSummary.voucherTotal)} · เงินสดย่อย{" "}
+                  {jobCostSummary.pettyCashCount} รายการ: {formatTHB(jobCostSummary.pettyCashTotal)}
+                </p>
+                <p className="mt-1 font-medium text-foreground">รวม {formatTHB(jobCostSummary.total)}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  * ยอดนี้รวมอยู่ในต้นทุนรวมของ JOB นี้ให้อัตโนมัติแล้ว ไม่ต้องคัดลอกมาใส่ในช่องต้นทุนด้านล่างซ้ำ
+                </p>
+              </div>
+            )}
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
-                <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor="material_cost">ค่าวัสดุ</Label>
-                  <button
-                    type="button"
-                    onClick={fetchMaterialCostSuggestion}
-                    disabled={fetchingMaterialCost}
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-50"
-                    title="ดึงยอดจากใบเบิกสินค้าที่ระบุ JOB NO. นี้"
-                  >
-                    <Download className="h-3 w-3" />
-                    {fetchingMaterialCost ? "กำลังค้นหา..." : "ดึงยอดจากใบเบิก"}
-                  </button>
-                </div>
+                <Label htmlFor="material_cost">ค่าวัสดุ</Label>
                 <NumberInput
                   id="material_cost"
                   name="material_cost"
@@ -495,31 +508,6 @@ export function ProjectSaleForm({
                   onChange={setMaterialCost}
                   placeholder="0"
                 />
-                {materialCostError && <p className="text-xs text-destructive">{materialCostError}</p>}
-                {materialCostSuggestion && (
-                  <div className="rounded-md border bg-muted/40 p-2 text-xs">
-                    <p className="text-muted-foreground">
-                      จากใบเบิกสินค้า {materialCostSuggestion.requisitionCount} ใบ ({materialCostSuggestion.itemCount} รายการ):{" "}
-                      <span className="font-medium text-foreground">{formatTHB(materialCostSuggestion.total)}</span>
-                      {materialCostSuggestion.missingCostItemCount > 0 && (
-                        <span className="text-amber-600 dark:text-amber-400">
-                          {" "}
-                          (มี {materialCostSuggestion.missingCostItemCount} รายการไม่ทราบต้นทุน ไม่รวมในยอดนี้)
-                        </span>
-                      )}
-                    </p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      * คำนวณจากต้นทุน/หน่วยปัจจุบันของสินค้า ไม่ใช่ต้นทุน ณ วันที่เบิกจริง
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setMaterialCost(String(materialCostSuggestion.total))}
-                      className="mt-1.5 text-xs font-medium text-primary underline underline-offset-2"
-                    >
-                      ใช้ยอดนี้
-                    </button>
-                  </div>
-                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="glue_cost">ค่ากาว</Label>

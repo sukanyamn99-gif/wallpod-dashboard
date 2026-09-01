@@ -30,6 +30,12 @@ export interface FullProjectRow {
     install: number;
     parking: number;
     shipping: number;
+    // Sum of stock requisitions + Payment Vouchers + petty-cash "ใช้จ่าย"
+    // transactions tagged with this job's JOB NO. — computed live from
+    // those tables' own job_no column, not stored back onto project_costs,
+    // so an edited/deleted requisition or voucher is reflected immediately
+    // without a sync step. See getJobLinkedCosts() below.
+    linked: number;
     totalCost: number;
   } | null;
   profit: number | null;
@@ -57,6 +63,58 @@ export interface FullProjectReport {
   rows: FullProjectRow[];
 }
 
+// Sums, per JOB NO., every stock requisition + Payment Voucher + petty-cash
+// "ใช้จ่าย" (expense) transaction tagged with that job — the three places
+// job_no is now a real dropdown constrained to actual jobs (see
+// JobNoSelect), so a typo can no longer silently exclude an expense here.
+// A petty-cash "topup" replenishes the fund rather than spending against a
+// job, so only 'expense' rows count. Aggregated in JS (not SQL) to match
+// this app's existing convention (e.g. GP Dashboard) rather than adding a
+// database view for a 3-table sum.
+async function getJobLinkedCosts(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+): Promise<Map<string, number>> {
+  const [requisitionItems, vouchers, pettyCash] = await Promise.all([
+    // Requisitions submitted before unit_cost was snapshotted at withdrawal
+    // time default to 0 — those fall back to the product's CURRENT
+    // weighted-average cost (an approximation) rather than being silently
+    // under-counted, same convention as elsewhere in this app.
+    supabase
+      .from("stock_requisition_items")
+      .select("quantity, unit_cost, stock_product_id, stock_products(unit_cost), stock_requisitions(job_no)"),
+    supabase.from("payment_vouchers").select("job_no, amount").not("job_no", "is", null),
+    supabase
+      .from("petty_cash_transactions")
+      .select("job_no, amount")
+      .eq("transaction_type", "expense")
+      .not("job_no", "is", null),
+  ]);
+  if (requisitionItems.error) throw requisitionItems.error;
+  if (vouchers.error) throw vouchers.error;
+  if (pettyCash.error) throw pettyCash.error;
+
+  const totals = new Map<string, number>();
+  const add = (jobNo: string | null | undefined, amount: number) => {
+    const key = jobNo?.trim();
+    if (!key) return;
+    totals.set(key, (totals.get(key) ?? 0) + amount);
+  };
+
+  for (const row of requisitionItems.data ?? []) {
+    const jobNo = (row.stock_requisitions as unknown as { job_no: string | null } | null)?.job_no;
+    const snapshotCost = Number(row.unit_cost);
+    // @ts-expect-error -- Supabase types the joined relation loosely here
+    const liveCost = row.stock_products?.unit_cost;
+    const unitCost = snapshotCost > 0 ? snapshotCost : liveCost;
+    if (unitCost == null) continue;
+    add(jobNo, Number(row.quantity) * Number(unitCost));
+  }
+  for (const row of vouchers.data ?? []) add(row.job_no, Number(row.amount));
+  for (const row of pettyCash.data ?? []) add(row.job_no, Number(row.amount));
+
+  return totals;
+}
+
 /**
  * Every column from the original Excel tracking sheet, one row per project.
  * Shared by the on-screen report table (shows cancelled jobs too) and the
@@ -78,7 +136,7 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
   // round trips (projects, then Promise.all of the child tables), which
   // mattered a lot more before the Vercel function was colocated with
   // Supabase, but still adds up since this function backs 4 different pages.
-  const [{ data: projects, error: projectsErr }, liveCategories] = await Promise.all([
+  const [{ data: projects, error: projectsErr }, liveCategories, jobLinkedCosts] = await Promise.all([
     supabase
       .from("projects")
       .select(
@@ -87,6 +145,7 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
       .order("project_date", { ascending: false })
       .order("installment_no", { foreignTable: "payments", ascending: true }),
     getProductCategories(),
+    getJobLinkedCosts(supabase),
   ]);
   if (projectsErr) throw projectsErr;
 
@@ -132,17 +191,24 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
       ]),
     ) as Record<ProductCategory, number>;
 
-    const costs2 = projectCosts
-      ? {
-          material: Number(projectCosts.material_cost),
-          glue: Number(projectCosts.glue_cost),
-          cutting: Number(projectCosts.cutting_cost),
-          install: Number(projectCosts.install_cost),
-          parking: Number(projectCosts.parking_cost),
-          shipping: Number(projectCosts.shipping_cost),
-          totalCost: Number(projectCosts.total_cost),
-        }
-      : null;
+    const linkedCost = jobLinkedCosts.get((p.job_no ?? "").trim()) ?? 0;
+    // A job with linked costs but no manually-entered project_costs row
+    // still counts as "costed" — otherwise tagging a requisition/voucher to
+    // a job would silently do nothing until someone also fills the manual
+    // cost form, which defeats the point of tagging it in the first place.
+    const costs2 =
+      projectCosts || linkedCost > 0
+        ? {
+            material: Number(projectCosts?.material_cost ?? 0),
+            glue: Number(projectCosts?.glue_cost ?? 0),
+            cutting: Number(projectCosts?.cutting_cost ?? 0),
+            install: Number(projectCosts?.install_cost ?? 0),
+            parking: Number(projectCosts?.parking_cost ?? 0),
+            shipping: Number(projectCosts?.shipping_cost ?? 0),
+            linked: linkedCost,
+            totalCost: Number(projectCosts?.total_cost ?? 0) + linkedCost,
+          }
+        : null;
 
     return {
       id: p.id,
@@ -187,6 +253,74 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
   });
 
   return { categories, rows };
+}
+
+export interface JobLinkedCostSummary {
+  requisitionTotal: number;
+  requisitionCount: number;
+  voucherTotal: number;
+  voucherCount: number;
+  pettyCashTotal: number;
+  pettyCashCount: number;
+  total: number;
+}
+
+// Single-job breakdown behind the "ดูต้นทุนที่ผูกกับ JOB นี้" read-only
+// panel on the cost form — this total is already folded into totalCost by
+// getFullProjectReport() automatically, so this exists purely to show
+// accounting *why* the number is what it is, never to be copied into a
+// manual cost field (that would double-count it).
+export async function getJobLinkedCostSummary(jobNo: string): Promise<JobLinkedCostSummary> {
+  const empty: JobLinkedCostSummary = {
+    requisitionTotal: 0,
+    requisitionCount: 0,
+    voucherTotal: 0,
+    voucherCount: 0,
+    pettyCashTotal: 0,
+    pettyCashCount: 0,
+    total: 0,
+  };
+  const trimmed = jobNo.trim();
+  if (!trimmed || !isSupabaseConfigured()) return empty;
+
+  const supabase = await createClient();
+  const [requisitions, vouchers, pettyCash] = await Promise.all([
+    supabase
+      .from("stock_requisitions")
+      .select("id, stock_requisition_items(quantity, unit_cost, stock_product_id, stock_products(unit_cost))")
+      .eq("job_no", trimmed),
+    supabase.from("payment_vouchers").select("amount").eq("job_no", trimmed),
+    supabase.from("petty_cash_transactions").select("amount").eq("job_no", trimmed).eq("transaction_type", "expense"),
+  ]);
+  if (requisitions.error) throw requisitions.error;
+  if (vouchers.error) throw vouchers.error;
+  if (pettyCash.error) throw pettyCash.error;
+
+  // Same live-cost fallback as getJobLinkedCosts() for requisitions
+  // submitted before unit_cost was snapshotted at withdrawal time.
+  let requisitionTotal = 0;
+  for (const req of requisitions.data ?? []) {
+    for (const item of req.stock_requisition_items ?? []) {
+      const snapshotCost = Number(item.unit_cost);
+      // @ts-expect-error -- Supabase types the joined relation loosely here
+      const liveCost = item.stock_products?.unit_cost;
+      const unitCost = snapshotCost > 0 ? snapshotCost : liveCost;
+      if (unitCost == null) continue;
+      requisitionTotal += Number(item.quantity) * Number(unitCost);
+    }
+  }
+  const voucherTotal = (vouchers.data ?? []).reduce((sum, v) => sum + Number(v.amount), 0);
+  const pettyCashTotal = (pettyCash.data ?? []).reduce((sum, t) => sum + Number(t.amount), 0);
+
+  return {
+    requisitionTotal,
+    requisitionCount: (requisitions.data ?? []).length,
+    voucherTotal,
+    voucherCount: (vouchers.data ?? []).length,
+    pettyCashTotal,
+    pettyCashCount: (pettyCash.data ?? []).length,
+    total: requisitionTotal + voucherTotal + pettyCashTotal,
+  };
 }
 
 export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | null> {

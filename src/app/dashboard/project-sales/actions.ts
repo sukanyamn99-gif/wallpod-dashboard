@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activity-log";
-import { getMaterialCostByJobNo } from "@/lib/data/stock-requisitions";
+import { getJobLinkedCostSummary } from "@/lib/data/project-sales";
 import type { PaymentStatus, ProductionStatus } from "@/lib/types";
 import { PRODUCTION_STATUSES } from "@/lib/types";
 import { getJobNoError } from "@/lib/job-no";
@@ -253,15 +253,15 @@ function buildPayments(projectId: string, parsed: ParsedForm) {
   return payments;
 }
 
-export async function getMaterialCostSuggestion(jobNo: string) {
-  if (!isSupabaseConfigured()) return { error: "ยังไม่ได้ตั้งค่า Supabase", suggestion: null };
-  if (!jobNo.trim()) return { error: "กรุณากรอก JOB NO. ก่อน", suggestion: null };
+export async function getJobLinkedCostSuggestion(jobNo: string) {
+  if (!isSupabaseConfigured()) return { error: "ยังไม่ได้ตั้งค่า Supabase", summary: null };
+  if (!jobNo.trim()) return { error: "กรุณาเลือก JOB NO. ก่อน", summary: null };
 
-  const suggestion = await getMaterialCostByJobNo(jobNo);
-  if (suggestion.requisitionCount === 0) {
-    return { error: `ไม่พบใบเบิกสินค้าที่ระบุ JOB NO. "${jobNo.trim()}"`, suggestion: null };
+  const summary = await getJobLinkedCostSummary(jobNo);
+  if (summary.requisitionCount === 0 && summary.voucherCount === 0 && summary.pettyCashCount === 0) {
+    return { error: `ไม่พบใบเบิก/Payment Voucher/เงินสดย่อยที่ผูก JOB NO. "${jobNo.trim()}"`, summary: null };
   }
-  return { error: null, suggestion };
+  return { error: null, summary };
 }
 
 export async function createProjectSale(formData: FormData) {
