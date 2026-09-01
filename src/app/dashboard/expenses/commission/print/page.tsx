@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
-import { getCommissionForReport, getCommissionableProjects, summarizeByBroker } from "@/lib/data/commission";
+import { getCommissionForReport, getCommissionableProjects } from "@/lib/data/commission";
 import { PrintCommissionView } from "./print-commission-view";
 import { PrintSelector } from "./print-selector";
 
@@ -31,15 +31,6 @@ export default async function PrintCommissionPage({
   }
 
   const projects = await getCommissionForReport(dateFrom, dateTo);
-  const brokerTotals = summarizeByBroker(projects);
 
-  return (
-    <PrintCommissionView
-      broker={broker}
-      windowStart={dateFrom}
-      windowEnd={dateTo}
-      projects={projects}
-      brokerTotals={brokerTotals}
-    />
-  );
+  return <PrintCommissionView broker={broker} windowStart={dateFrom} windowEnd={dateTo} projects={projects} />;
 }

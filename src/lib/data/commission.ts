@@ -1,6 +1,6 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { getFullProjectReport } from "@/lib/data/project-sales";
-import type { CommissionBrokerTotal, CommissionRateTier, CommissionableProject } from "@/lib/types";
+import type { CommissionRateTier, CommissionableProject } from "@/lib/types";
 
 export async function getCommissionRateTiers(): Promise<CommissionRateTier[]> {
   if (!isSupabaseConfigured()) return [];
@@ -83,18 +83,5 @@ export async function getCommissionableProjects(): Promise<CommissionableProject
 
 export async function getCommissionForReport(dateFrom: string, dateTo: string): Promise<CommissionableProject[]> {
   const all = await getCommissionableProjects();
-  return all.filter((p) => p.hasCommissionEntry && p.receivedDate >= dateFrom && p.receivedDate <= dateTo);
-}
-
-export function summarizeByBroker(projects: CommissionableProject[]): CommissionBrokerTotal[] {
-  const totals = new Map<string, { totalCommission: number; entryCount: number }>();
-  for (const p of projects) {
-    const existing = totals.get(p.salesRepName) ?? { totalCommission: 0, entryCount: 0 };
-    existing.totalCommission += p.commissionAmount;
-    existing.entryCount += 1;
-    totals.set(p.salesRepName, existing);
-  }
-  return Array.from(totals.entries())
-    .map(([brokerName, v]) => ({ brokerName, ...v }))
-    .sort((a, b) => b.totalCommission - a.totalCommission);
+  return all.filter((p) => p.receivedDate >= dateFrom && p.receivedDate <= dateTo);
 }

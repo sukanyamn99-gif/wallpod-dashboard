@@ -479,9 +479,3 @@ export interface CommissionableProject {
   commissionAmount: number;
   hasCommissionEntry: boolean;
 }
-
-export interface CommissionBrokerTotal {
-  brokerName: string;
-  totalCommission: number;
-  entryCount: number;
-}

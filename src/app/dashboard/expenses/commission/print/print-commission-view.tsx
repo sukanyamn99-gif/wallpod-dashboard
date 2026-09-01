@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { formatTHB } from "@/lib/format";
-import type { CommissionBrokerTotal, CommissionableProject } from "@/lib/types";
+import type { CommissionableProject } from "@/lib/types";
 
 const THAI_MONTH_ABBR = [
   "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
@@ -43,13 +43,11 @@ export function PrintCommissionView({
   windowStart,
   windowEnd,
   projects,
-  brokerTotals,
 }: {
   broker: string;
   windowStart: string;
   windowEnd: string;
   projects: CommissionableProject[];
-  brokerTotals: CommissionBrokerTotal[];
 }) {
   const rows = projects.filter((p) => p.salesRepName === broker);
   const totalPreVat = rows.reduce((sum, r) => sum + r.preVat, 0);
@@ -117,16 +115,6 @@ export function PrintCommissionView({
             </tr>
           </tbody>
         </table>
-
-        <div className="mt-8 space-y-2">
-          {brokerTotals.map((b) => (
-            <p key={b.brokerName} className="flex items-baseline gap-4">
-              <span>สรุปยอดจ่ายค่านายหน้า {b.brokerName}</span>
-              <span className="flex-1 border-b border-dotted border-black" />
-              <span className="font-semibold">{formatTHB(b.totalCommission)}</span>
-            </p>
-          ))}
-        </div>
 
         <div className="mt-16 flex justify-end gap-16">
           <p>....................................ผู้ตรวจสอบ</p>
