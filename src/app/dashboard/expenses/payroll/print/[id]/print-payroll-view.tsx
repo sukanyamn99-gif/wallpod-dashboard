@@ -64,56 +64,60 @@ export function PrintPayrollView({ entry, ytd }: { entry: PayrollEntry; ytd: Pay
           <div />
         </div>
 
-        {/* Income / deductions table */}
+        {/* Income / deductions table — every cell gets a right+bottom border
+            only (never left/top), so each internal line is drawn exactly
+            once: the outer container's own border already frames the left
+            edge and the row above already closed off the top edge, so
+            adding border-l/border-t here would double those same lines. */}
         <table className="w-full border-collapse text-center">
           <thead>
             <tr>
-              <th className="border border-black p-1 font-medium" rowSpan={2}>
+              <th className="border-r border-b border-black p-1 font-medium" rowSpan={2}>
                 เดือน
               </th>
-              <th className="border border-black p-1 font-medium" colSpan={4}>
+              <th className="border-r border-b border-black p-1 font-medium" colSpan={4}>
                 รายได้
               </th>
-              <th className="border border-black p-1 font-medium" colSpan={3}>
+              <th className="border-r border-b border-black p-1 font-medium" colSpan={3}>
                 รายจ่าย
               </th>
-              <th className="border border-black p-1 font-medium" rowSpan={2}>
+              <th className="border-b border-black p-1 font-medium" rowSpan={2}>
                 วัน/เดือน/ปี
               </th>
             </tr>
             <tr>
-              <th className="border border-black p-1 font-medium">เงินเดือน</th>
-              <th className="border border-black p-1 font-medium">ค่าน้ำมัน</th>
-              <th className="border border-black p-1 font-medium">ค่าคอมฯ</th>
-              <th className="border border-black p-1 font-medium">ค่า Incentive</th>
-              <th className="border border-black p-1 font-medium">หักประกันสังคม</th>
-              <th className="border border-black p-1 font-medium">ภ.ง.ด.1</th>
-              <th className="border border-black p-1 font-medium">หักอื่นๆ</th>
+              <th className="border-r border-b border-black p-1 font-medium">เงินเดือน</th>
+              <th className="border-r border-b border-black p-1 font-medium">ค่าน้ำมัน</th>
+              <th className="border-r border-b border-black p-1 font-medium">ค่าคอมฯ</th>
+              <th className="border-r border-b border-black p-1 font-medium">ค่า Incentive</th>
+              <th className="border-r border-b border-black p-1 font-medium">หักประกันสังคม</th>
+              <th className="border-r border-b border-black p-1 font-medium">ภ.ง.ด.1</th>
+              <th className="border-r border-b border-black p-1 font-medium">หักอื่นๆ</th>
             </tr>
           </thead>
           <tbody>
             <tr className="h-10">
-              <td className="border border-black p-1">{monthName}</td>
-              <td className="border border-black p-1">{money(entry.baseSalary)}</td>
-              <td className="border border-black p-1">{money(entry.fuelAllowance)}</td>
-              <td className="border border-black p-1">{money(entry.commission)}</td>
-              <td className="border border-black p-1">{money(entry.incentive)}</td>
-              <td className="border border-black p-1">{money(entry.socialSecurity)}</td>
-              <td className="border border-black p-1">{money(entry.withholdingTax)}</td>
-              <td className="border border-black p-1">{money(entry.otherDeductions)}</td>
-              <td className="border border-black p-1">
+              <td className="border-r border-b border-black p-1">{monthName}</td>
+              <td className="border-r border-b border-black p-1">{money(entry.baseSalary)}</td>
+              <td className="border-r border-b border-black p-1">{money(entry.fuelAllowance)}</td>
+              <td className="border-r border-b border-black p-1">{money(entry.commission)}</td>
+              <td className="border-r border-b border-black p-1">{money(entry.incentive)}</td>
+              <td className="border-r border-b border-black p-1">{money(entry.socialSecurity)}</td>
+              <td className="border-r border-b border-black p-1">{money(entry.withholdingTax)}</td>
+              <td className="border-r border-b border-black p-1">{money(entry.otherDeductions)}</td>
+              <td className="border-b border-black p-1">
                 <p>{thaiDate(entry.payDate)}</p>
                 <p className="mt-1 font-medium text-red-600">เงินเดือนสุทธิ</p>
               </td>
             </tr>
             <tr>
-              <td className="border border-black p-1 font-medium" colSpan={4}>
+              <td className="border-r border-b border-black p-1 font-medium" colSpan={4}>
                 รวมรายได้ {formatTHB(entry.totalIncome)}
               </td>
-              <td className="border border-black p-1 font-medium" colSpan={3}>
+              <td className="border-r border-b border-black p-1 font-medium" colSpan={3}>
                 รวมรายการหัก {formatTHB(entry.totalDeductions)}
               </td>
-              <td className="border border-black p-1 text-lg font-semibold">{formatTHB(entry.netSalary)}</td>
+              <td className="border-b border-black p-1 text-lg font-semibold">{formatTHB(entry.netSalary)}</td>
             </tr>
           </tbody>
         </table>
@@ -122,18 +126,18 @@ export function PrintPayrollView({ entry, ytd }: { entry: PayrollEntry; ytd: Pay
         <table className="w-full border-collapse text-center">
           <thead>
             <tr>
-              <th className="border border-black p-1 font-medium">รายได้สะสมต่อปี</th>
-              <th className="border border-black p-1 font-medium">ภาษีสะสมต่อปี</th>
-              <th className="border border-black p-1 font-medium">เงินประกันสังคมต่อปี</th>
-              <th className="border border-black p-1 font-medium">ค่าลดหย่อนอื่นๆ ต่อปี</th>
+              <th className="border-r border-b border-black p-1 font-medium">รายได้สะสมต่อปี</th>
+              <th className="border-r border-b border-black p-1 font-medium">ภาษีสะสมต่อปี</th>
+              <th className="border-r border-b border-black p-1 font-medium">เงินประกันสังคมต่อปี</th>
+              <th className="border-b border-black p-1 font-medium">ค่าลดหย่อนอื่นๆ ต่อปี</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td className="border border-black p-1">{money(ytd.cumulativeIncome)}</td>
-              <td className="border border-black p-1">{money(ytd.cumulativeTax)}</td>
-              <td className="border border-black p-1">{money(ytd.cumulativeSocialSecurity)}</td>
-              <td className="border border-black p-1">{money(ytd.cumulativeOtherDeductions)}</td>
+              <td className="border-r border-b border-black p-1">{money(ytd.cumulativeIncome)}</td>
+              <td className="border-r border-b border-black p-1">{money(ytd.cumulativeTax)}</td>
+              <td className="border-r border-b border-black p-1">{money(ytd.cumulativeSocialSecurity)}</td>
+              <td className="border-b border-black p-1">{money(ytd.cumulativeOtherDeductions)}</td>
             </tr>
           </tbody>
         </table>
