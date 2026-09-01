@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { formatTHB } from "@/lib/format";
 import type { CommissionableProject } from "@/lib/types";
 
@@ -65,13 +64,6 @@ export function PrintCommissionView({
 
   return (
     <div className="mx-auto max-w-6xl bg-white p-6 text-black print:p-0">
-      <div className="mb-4 flex justify-end gap-2 print:hidden">
-        <Button variant="outline" onClick={() => window.close()}>
-          ปิด
-        </Button>
-        <Button onClick={() => window.print()}>พิมพ์</Button>
-      </div>
-
       <div className="text-[11px] leading-tight">
         <p className="text-3xl font-bold tracking-tight">
           KOO<span className="text-sky-600">N</span>WAY

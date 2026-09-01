@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import Link from "next/link";
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -180,54 +179,45 @@ export function CommissionableTable({ projects }: { projects: CommissionableProj
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">เดือน</Label>
-            <Select
-              value={monthFilter}
-              onValueChange={(v) => setMonthFilter((v as string) ?? ALL_VALUE)}
-              items={monthSelectItems}
-            >
-              <SelectTrigger className="w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {monthSelectItems.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">พนักงานขาย</Label>
-            <Select
-              value={salesRepFilter}
-              onValueChange={(v) => setSalesRepFilter((v as string) ?? ALL_VALUE)}
-              items={salesRepSelectItems}
-            >
-              <SelectTrigger className="w-48">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {salesRepSelectItems.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">เดือน</Label>
+          <Select
+            value={monthFilter}
+            onValueChange={(v) => setMonthFilter((v as string) ?? ALL_VALUE)}
+            items={monthSelectItems}
+          >
+            <SelectTrigger className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {monthSelectItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <Button
-          variant="outline"
-          nativeButton={false}
-          render={<Link href="/dashboard/expenses/commission/print" target="_blank" />}
-        >
-          พิมพ์รายงาน
-        </Button>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">พนักงานขาย</Label>
+          <Select
+            value={salesRepFilter}
+            onValueChange={(v) => setSalesRepFilter((v as string) ?? ALL_VALUE)}
+            items={salesRepSelectItems}
+          >
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {salesRepSelectItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {grouped.size === 0 && <p className="text-center text-sm text-muted-foreground">ไม่พบ Project ตามเงื่อนไขที่เลือก</p>}
