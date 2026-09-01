@@ -9,9 +9,9 @@ import { DateInput } from "@/components/ui/date-input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { JobNoSelect } from "@/components/dashboard/job-no-select";
 import { cn } from "@/lib/utils";
 import { createPettyCashTransaction, updatePettyCashTransaction } from "./actions";
-import { getJobNoError } from "@/lib/job-no";
 import type { PettyCashTransaction, PettyCashTransactionType } from "@/lib/types";
 
 const initialState: { error: string | null; docNo?: string } = { error: null };
@@ -79,6 +79,7 @@ export function PettyCashForm({
   categorySuggestions = SUGGESTED_CATEGORIES,
   recentDescriptions,
   recentBillers = [],
+  jobNoSuggestions = [],
   mode = "create",
   transactionId,
   initialData,
@@ -86,6 +87,7 @@ export function PettyCashForm({
   categorySuggestions?: string[];
   recentDescriptions?: Record<PettyCashTransactionType, string[]>;
   recentBillers?: string[];
+  jobNoSuggestions?: string[];
   mode?: "create" | "edit";
   transactionId?: string;
   initialData?: PettyCashTransaction;
@@ -97,7 +99,6 @@ export function PettyCashForm({
     initialData ? inferWhtRatePercent(initialData.whtAmount, initialData.amount / 1.07) : "0",
   );
   const [jobNo, setJobNo] = useState(initialData?.jobNo ?? "");
-  const jobNoError = getJobNoError(jobNo);
   // Not every bill has VAT (many small/non-VAT-registered vendors don't
   // charge it) — checked by default since that's the common case, but a
   // biller with no VAT needs to be able to clear it back to 0 instead of
@@ -262,14 +263,8 @@ export function PettyCashForm({
             </div>
             <div className="space-y-2">
               <Label htmlFor="job_no">งาน/Job</Label>
-              <Input
-                id="job_no"
-                name="job_no"
-                value={jobNo}
-                onChange={(e) => setJobNo(e.target.value)}
-                placeholder="เช่น JB2601001 (ถ้ามี)"
-              />
-              {jobNoError && <p className="text-xs text-destructive">{jobNoError}</p>}
+              <input type="hidden" name="job_no" value={jobNo} />
+              <JobNoSelect id="job_no" value={jobNo} onChange={setJobNo} jobNos={jobNoSuggestions} />
             </div>
           </div>
 

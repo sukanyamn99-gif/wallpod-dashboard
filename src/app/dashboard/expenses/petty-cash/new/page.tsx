@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getRecentPettyCashDescriptions, getRecentPettyCashBillers } from "@/lib/data/petty-cash";
+import { getDistinctProjectJobNos } from "@/lib/data/reference";
 import { canAccessPage } from "@/lib/permissions";
 import { PettyCashForm } from "../petty-cash-form";
 
@@ -10,9 +11,10 @@ export default async function NewPettyCashPage() {
   if (!canAccessPage(profile.role, "/dashboard/expenses/petty-cash")) redirect("/dashboard/sales");
   if (!["owner", "manager", "account"].includes(profile.role)) redirect("/dashboard/expenses/petty-cash");
 
-  const [recentDescriptions, recentBillers] = await Promise.all([
+  const [recentDescriptions, recentBillers, jobNoSuggestions] = await Promise.all([
     getRecentPettyCashDescriptions(),
     getRecentPettyCashBillers(),
+    getDistinctProjectJobNos(),
   ]);
 
   return (
@@ -21,7 +23,11 @@ export default async function NewPettyCashPage() {
         <h1 className="text-2xl font-semibold">บันทึกรายการเงินสดย่อย</h1>
       </div>
 
-      <PettyCashForm recentDescriptions={recentDescriptions} recentBillers={recentBillers} />
+      <PettyCashForm
+        recentDescriptions={recentDescriptions}
+        recentBillers={recentBillers}
+        jobNoSuggestions={jobNoSuggestions}
+      />
     </div>
   );
 }

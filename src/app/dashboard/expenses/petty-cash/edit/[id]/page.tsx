@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getPettyCashTransactionById, getRecentPettyCashDescriptions, getRecentPettyCashBillers } from "@/lib/data/petty-cash";
+import { getDistinctProjectJobNos } from "@/lib/data/reference";
 import { canAccessPage } from "@/lib/permissions";
 import { PettyCashForm } from "../../petty-cash-form";
 
@@ -12,10 +13,11 @@ export default async function EditPettyCashPage({ params }: { params: Promise<{ 
   if (!canAccessPage(profile.role, "/dashboard/expenses/petty-cash")) redirect("/dashboard/sales");
   if (!["owner", "manager", "account"].includes(profile.role)) redirect("/dashboard/expenses/petty-cash");
 
-  const [transaction, recentDescriptions, recentBillers] = await Promise.all([
+  const [transaction, recentDescriptions, recentBillers, jobNoSuggestions] = await Promise.all([
     getPettyCashTransactionById(id),
     getRecentPettyCashDescriptions(),
     getRecentPettyCashBillers(),
+    getDistinctProjectJobNos(),
   ]);
 
   if (!transaction) {
@@ -42,6 +44,7 @@ export default async function EditPettyCashPage({ params }: { params: Promise<{ 
         initialData={transaction}
         recentDescriptions={recentDescriptions}
         recentBillers={recentBillers}
+        jobNoSuggestions={jobNoSuggestions}
       />
     </div>
   );
