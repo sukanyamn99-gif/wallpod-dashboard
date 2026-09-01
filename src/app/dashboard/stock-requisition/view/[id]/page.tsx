@@ -24,6 +24,11 @@ export default async function StockRequisitionDetailPage({
   const [requisition, profile] = await Promise.all([getStockRequisitionById(id), getCurrentProfile()]);
   const showCosts = canSeeCosts(profile?.role ?? "sales");
   const totalValue = requisition ? requisition.items.reduce((sum, it) => sum + it.quantity * it.unitCost, 0) : 0;
+  // Requisitions submitted before unit_cost was snapshotted at withdrawal
+  // time (migration_038) default to 0 — showing "0.00" there would read as
+  // "this cost nothing" rather than "cost wasn't recorded", so those show a
+  // dash instead, same honest-gap convention used elsewhere in this app.
+  const hasAnyCost = requisition ? requisition.items.some((it) => it.unitCost > 0) : false;
 
   return (
     <div className="space-y-6">
@@ -109,19 +114,30 @@ export default async function StockRequisitionDetailPage({
                       <TableCell className="text-right">
                         {item.quantity} {item.unit}
                       </TableCell>
-                      {showCosts && <TableCell className="text-right">{formatTHB(item.unitCost)}</TableCell>}
                       {showCosts && (
-                        <TableCell className="text-right">{formatTHB(item.quantity * item.unitCost)}</TableCell>
+                        <TableCell className="text-right">
+                          {item.unitCost > 0 ? formatTHB(item.unitCost) : "—"}
+                        </TableCell>
+                      )}
+                      {showCosts && (
+                        <TableCell className="text-right">
+                          {item.unitCost > 0 ? formatTHB(item.quantity * item.unitCost) : "—"}
+                        </TableCell>
                       )}
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-              {showCosts && (
-                <p className="mt-4 text-right text-sm">
-                  มูลค่ารวม: <span className="font-semibold">{formatTHB(totalValue)}</span>
-                </p>
-              )}
+              {showCosts &&
+                (hasAnyCost ? (
+                  <p className="mt-4 text-right text-sm">
+                    มูลค่ารวม: <span className="font-semibold">{formatTHB(totalValue)}</span>
+                  </p>
+                ) : (
+                  <p className="mt-4 text-right text-sm text-muted-foreground">
+                    ไม่มีข้อมูลต้นทุน (เบิกก่อนระบบเริ่มบันทึกราคาต้นทุนต่อรายการ)
+                  </p>
+                ))}
             </CardContent>
           </Card>
         </>
