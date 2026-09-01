@@ -15,17 +15,31 @@ import {
 
 const NONE_VALUE = "__none__";
 
-function defaultPayDate(): string {
+// toISOString() converts to UTC, which shifts the date backward a day in
+// any timezone ahead of UTC (e.g. Thailand, UTC+7) — build the yyyy-mm-dd
+// string from local date parts instead.
+function toLocalIso(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Default to the standard payout cycle (15th of last month through the
+// nearest upcoming 15th) so the common case needs no editing — but both
+// dates stay freely editable for any other range.
+function defaultWindow(): { from: string; to: string } {
   const now = new Date();
-  // Nearest upcoming 15th, matching this payout cycle's own rule.
-  const target = now.getDate() <= 15 ? new Date(now.getFullYear(), now.getMonth(), 15) : new Date(now.getFullYear(), now.getMonth() + 1, 15);
-  return target.toISOString().slice(0, 10);
+  const to =
+    now.getDate() <= 15
+      ? new Date(now.getFullYear(), now.getMonth(), 15)
+      : new Date(now.getFullYear(), now.getMonth() + 1, 15);
+  const from = new Date(to.getFullYear(), to.getMonth() - 1, 15);
+  return { from: toLocalIso(from), to: toLocalIso(to) };
 }
 
 export function PrintSelector({ salesRepNames }: { salesRepNames: string[] }) {
   const router = useRouter();
   const [broker, setBroker] = useState("");
-  const [payDate, setPayDate] = useState(defaultPayDate());
+  const [dateFrom, setDateFrom] = useState(() => defaultWindow().from);
+  const [dateTo, setDateTo] = useState(() => defaultWindow().to);
 
   const items = [
     { value: NONE_VALUE, label: "— เลือกพนักงานขาย/นายหน้า —" },
@@ -33,8 +47,10 @@ export function PrintSelector({ salesRepNames }: { salesRepNames: string[] }) {
   ];
 
   function handleGenerate() {
-    if (!broker || !payDate) return;
-    router.push(`/dashboard/expenses/commission/print?broker=${encodeURIComponent(broker)}&payDate=${payDate}`);
+    if (!broker || !dateFrom || !dateTo) return;
+    router.push(
+      `/dashboard/expenses/commission/print?broker=${encodeURIComponent(broker)}&dateFrom=${dateFrom}&dateTo=${dateTo}`,
+    );
   }
 
   return (
@@ -58,14 +74,20 @@ export function PrintSelector({ salesRepNames }: { salesRepNames: string[] }) {
           </SelectContent>
         </Select>
       </div>
-      <div className="space-y-2">
-        <Label>วันที่จ่าย (ทุกวันที่ 15)</Label>
-        <DateInput value={payDate} onChange={setPayDate} />
-        <p className="text-xs text-muted-foreground">
-          ดึงรายการที่วันที่รับชำระอยู่ระหว่างวันที่ 15 ของเดือนก่อนหน้า ถึงวันที่จ่ายนี้
-        </p>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label>จากวันที่</Label>
+          <DateInput value={dateFrom} onChange={setDateFrom} />
+        </div>
+        <div className="space-y-2">
+          <Label>ถึงวันที่</Label>
+          <DateInput value={dateTo} onChange={setDateTo} />
+        </div>
       </div>
-      <Button onClick={handleGenerate} disabled={!broker || !payDate}>
+      <p className="text-xs text-muted-foreground">
+        ดึงรายการที่วันที่รับชำระอยู่ในช่วงวันที่เลือก (ค่าเริ่มต้นคือรอบจ่ายวันที่ 15 ของเดือนก่อนหน้าถึงวันที่ 15 นี้ ปรับได้ตามต้องการ)
+      </p>
+      <Button onClick={handleGenerate} disabled={!broker || !dateFrom || !dateTo}>
         ดูรายงาน
       </Button>
     </div>

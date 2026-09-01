@@ -4,7 +4,6 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DateInput } from "@/components/ui/date-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -131,8 +130,6 @@ function ProjectRow({ project }: { project: CommissionableProject }) {
 export function CommissionableTable({ projects }: { projects: CommissionableProject[] }) {
   const [monthFilter, setMonthFilter] = useState(ALL_VALUE);
   const [salesRepFilter, setSalesRepFilter] = useState(ALL_VALUE);
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
 
   const monthOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -164,11 +161,9 @@ export function CommissionableTable({ projects }: { projects: CommissionableProj
       projects.filter((p) => {
         if (monthFilter !== ALL_VALUE && monthKey(p.receivedDate) !== monthFilter) return false;
         if (salesRepFilter !== ALL_VALUE && p.salesRepName !== salesRepFilter) return false;
-        if (dateFrom && p.receivedDate < dateFrom) return false;
-        if (dateTo && p.receivedDate > dateTo) return false;
         return true;
       }),
-    [projects, monthFilter, salesRepFilter, dateFrom, dateTo],
+    [projects, monthFilter, salesRepFilter],
   );
 
   const grouped = useMemo(() => {
@@ -225,26 +220,6 @@ export function CommissionableTable({ projects }: { projects: CommissionableProj
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">วันที่รับชำระ จากวันที่</Label>
-            <DateInput value={dateFrom || null} onChange={setDateFrom} />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">ถึงวันที่</Label>
-            <DateInput value={dateTo || null} onChange={setDateTo} />
-          </div>
-          {(dateFrom || dateTo) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setDateFrom("");
-                setDateTo("");
-              }}
-            >
-              ล้างช่วงวันที่
-            </Button>
-          )}
         </div>
         <Button
           variant="outline"

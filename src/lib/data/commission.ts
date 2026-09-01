@@ -81,18 +81,6 @@ export async function getCommissionableProjects(): Promise<CommissionableProject
   return results.sort((a, b) => b.receivedDate.localeCompare(a.receivedDate));
 }
 
-// Commission is only paid once the customer's payment has actually cleared
-// — payouts run on the 15th of every month, covering every job whose
-// วันที่รับชำระ (received_date) falls in the window (15th of the PREVIOUS
-// month, 15th of this month]. A job with no saved discount % yet is never
-// eligible for any payout window until someone reviews and saves it.
-export function getCommissionPayoutWindow(payDate: string): { windowStart: string; windowEnd: string } {
-  const [y, m, d] = payDate.split("-").map(Number);
-  const prevMonth = new Date(Date.UTC(y, m - 2, d));
-  const windowStart = prevMonth.toISOString().slice(0, 10);
-  return { windowStart, windowEnd: payDate };
-}
-
 export async function getCommissionForReport(dateFrom: string, dateTo: string): Promise<CommissionableProject[]> {
   const all = await getCommissionableProjects();
   return all.filter((p) => p.hasCommissionEntry && p.receivedDate >= dateFrom && p.receivedDate <= dateTo);
