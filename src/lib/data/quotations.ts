@@ -90,7 +90,9 @@ export async function getQuotationById(id: string): Promise<QuotationDetail | nu
 
   const { data: items, error: itemsErr } = await supabase
     .from("quotation_items")
-    .select("id, sort_order, product_code, description, image_path, unit_price, discount_percent, net_price, qty, unit, total_price")
+    .select(
+      "id, sort_order, product_code, product_name, thickness, size, color, image_path, unit_price, discount_percent, net_price, qty, unit, total_price",
+    )
     .eq("quotation_id", id)
     .order("sort_order", { ascending: true });
   if (itemsErr) throw itemsErr;
@@ -99,7 +101,10 @@ export async function getQuotationById(id: string): Promise<QuotationDetail | nu
     id: row.id,
     sortOrder: row.sort_order,
     productCode: row.product_code,
-    description: row.description,
+    productName: row.product_name,
+    thickness: row.thickness,
+    size: row.size,
+    color: row.color,
     imagePath: row.image_path,
     unitPrice: Number(row.unit_price),
     discountPercent: Number(row.discount_percent),
@@ -113,6 +118,35 @@ export async function getQuotationById(id: string): Promise<QuotationDetail | nu
     // @ts-expect-error -- Supabase types the joined relation loosely here
     ...mapHeader(header),
     items: mappedItems,
+  };
+}
+
+// Powers the Product Name/Thickness/Size/Color autocompletes in the item
+// form — every distinct value ever typed into those fields, so a repeated
+// spec (e.g. "9 mm.") is a click instead of a re-type. One query across all
+// quotations' items, not scoped per-quotation, since the whole point is
+// reusing values entered on OTHER quotes too.
+export interface QuotationItemFieldSuggestions {
+  productNames: string[];
+  thicknesses: string[];
+  sizes: string[];
+  colors: string[];
+}
+
+export async function getDistinctQuotationItemFields(): Promise<QuotationItemFieldSuggestions> {
+  if (!isSupabaseConfigured()) return { productNames: [], thicknesses: [], sizes: [], colors: [] };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("quotation_items").select("product_name, thickness, size, color");
+  if (error) throw error;
+
+  const distinct = (values: (string | null)[]) => Array.from(new Set(values.filter((v): v is string => !!v))).sort();
+
+  return {
+    productNames: distinct((data ?? []).map((r) => r.product_name)),
+    thicknesses: distinct((data ?? []).map((r) => r.thickness)),
+    sizes: distinct((data ?? []).map((r) => r.size)),
+    colors: distinct((data ?? []).map((r) => r.color)),
   };
 }
 

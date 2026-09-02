@@ -36,7 +36,10 @@ async function generateDocNo(supabase: Awaited<ReturnType<typeof createClient>>)
 
 type ParsedItem = {
   productCode: string | null;
-  description: string;
+  productName: string;
+  thickness: string | null;
+  size: string | null;
+  color: string | null;
   unitPrice: number;
   discountPercent: number;
   qty: number;
@@ -50,7 +53,10 @@ type ParsedItem = {
 
 function parseItems(formData: FormData): ParsedItem[] {
   const codes = formData.getAll("item_product_code");
-  const descriptions = formData.getAll("item_description");
+  const productNames = formData.getAll("item_product_name");
+  const thicknesses = formData.getAll("item_thickness");
+  const sizes = formData.getAll("item_size");
+  const colors = formData.getAll("item_color");
   const unitPrices = formData.getAll("item_unit_price");
   const discountPercents = formData.getAll("item_discount_percent");
   const qtys = formData.getAll("item_qty");
@@ -59,8 +65,8 @@ function parseItems(formData: FormData): ParsedItem[] {
   const removeImageFlags = formData.getAll("item_remove_image");
   const existingImagePaths = formData.getAll("item_existing_image_path");
 
-  return descriptions
-    .map((description, i) => {
+  return productNames
+    .map((productName, i) => {
       const unitPrice = num(unitPrices[i]);
       const discountPercent = num(discountPercents[i]);
       const qty = num(qtys[i]) || 1;
@@ -68,7 +74,10 @@ function parseItems(formData: FormData): ParsedItem[] {
       const image = images[i];
       return {
         productCode: str(codes[i] ?? null),
-        description: String(description ?? "").trim(),
+        productName: String(productName ?? "").trim(),
+        thickness: str(thicknesses[i] ?? null),
+        size: str(sizes[i] ?? null),
+        color: str(colors[i] ?? null),
         unitPrice,
         discountPercent,
         qty,
@@ -80,7 +89,7 @@ function parseItems(formData: FormData): ParsedItem[] {
         existingImagePath: str(existingImagePaths[i] ?? null),
       };
     })
-    .filter((it) => it.description);
+    .filter((it) => it.productName);
 }
 
 function parsePaymentTerms(formData: FormData, grandTotal: number): QuotationPaymentTerm[] {
@@ -185,7 +194,10 @@ export async function createQuotation(formData: FormData) {
       quotation_id: quotation.id,
       sort_order: i,
       product_code: it.productCode,
-      description: it.description,
+      product_name: it.productName,
+      thickness: it.thickness,
+      size: it.size,
+      color: it.color,
       image_path: imagePath,
       unit_price: it.unitPrice,
       discount_percent: it.discountPercent,
@@ -270,7 +282,10 @@ export async function updateQuotation(id: string, formData: FormData) {
       quotation_id: id,
       sort_order: i,
       product_code: it.productCode,
-      description: it.description,
+      product_name: it.productName,
+      thickness: it.thickness,
+      size: it.size,
+      color: it.color,
       image_path: imagePath,
       unit_price: it.unitPrice,
       discount_percent: it.discountPercent,

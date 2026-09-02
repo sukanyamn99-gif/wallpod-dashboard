@@ -14,7 +14,7 @@ import {
 import { getQuotationById } from "@/lib/data/quotations";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
-import { formatTHB } from "@/lib/format";
+import { formatQuotationItemDescription, formatTHB } from "@/lib/format";
 import { QuotationStatusActions } from "../quotation-actions";
 
 function statusVariant(status: string): "secondary" | "destructive" | "outline" {
@@ -125,7 +125,7 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
               {quotation.items.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>{item.productCode ?? "—"}</TableCell>
-                  <TableCell className="whitespace-pre-line">{item.description}</TableCell>
+                  <TableCell className="whitespace-pre-line">{formatQuotationItemDescription(item)}</TableCell>
                   <TableCell className="text-right">{formatTHB(item.unitPrice)}</TableCell>
                   <TableCell className="text-right">{item.discountPercent}%</TableCell>
                   <TableCell className="text-right">{formatTHB(item.netPrice)}</TableCell>

@@ -492,7 +492,10 @@ export interface QuotationItem {
   id: string;
   sortOrder: number;
   productCode: string | null;
-  description: string;
+  productName: string;
+  thickness: string | null;
+  size: string | null;
+  color: string | null;
   imagePath: string | null;
   unitPrice: number;
   discountPercent: number;

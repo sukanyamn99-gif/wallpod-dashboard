@@ -18,10 +18,12 @@ import {
 } from "@/components/ui/select";
 import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomplete";
 import { PaymentTermLabelAutocomplete } from "@/components/dashboard/payment-term-label-autocomplete";
+import { SizeAutocomplete } from "@/components/dashboard/size-autocomplete";
 import { formatTHB } from "@/lib/format";
 import { resizeImageToBlob } from "@/lib/image-resize";
 import { createQuotation, updateQuotation } from "./actions";
 import type { Customer, QuotationDetail, SalesRep } from "@/lib/types";
+import type { QuotationItemFieldSuggestions } from "@/lib/data/quotations";
 
 const NONE_VALUE = "__none__";
 
@@ -30,7 +32,10 @@ type ItemImage = { kind: "existing"; path: string; previewUrl: string } | { kind
 interface ItemRow {
   key: number;
   productCode: string;
-  description: string;
+  productName: string;
+  thickness: string;
+  size: string;
+  color: string;
   unitPrice: string;
   discountPercent: string;
   qty: string;
@@ -52,7 +57,10 @@ function itemsFromInitial(initialData?: QuotationDetail): ItemRow[] {
       {
         key: nextKey++,
         productCode: "",
-        description: "",
+        productName: "",
+        thickness: "",
+        size: "",
+        color: "",
         unitPrice: "",
         discountPercent: "0",
         qty: "1",
@@ -64,7 +72,10 @@ function itemsFromInitial(initialData?: QuotationDetail): ItemRow[] {
   return initialData.items.map((it) => ({
     key: nextKey++,
     productCode: it.productCode ?? "",
-    description: it.description,
+    productName: it.productName,
+    thickness: it.thickness ?? "",
+    size: it.size ?? "",
+    color: it.color ?? "",
     unitPrice: String(it.unitPrice),
     discountPercent: String(it.discountPercent),
     qty: String(it.qty),
@@ -85,6 +96,7 @@ export function QuotationForm({
   quotationId,
   initialData,
   imageUrlsByItemId,
+  itemFieldSuggestions,
 }: {
   salesReps: SalesRep[];
   customers: Customer[];
@@ -92,7 +104,9 @@ export function QuotationForm({
   quotationId?: string;
   initialData?: QuotationDetail;
   imageUrlsByItemId?: Record<string, string>;
+  itemFieldSuggestions?: QuotationItemFieldSuggestions;
 }) {
+  const suggestions = itemFieldSuggestions ?? { productNames: [], thicknesses: [], sizes: [], colors: [] };
   const router = useRouter();
   const [, startTransition] = useTransition();
 
@@ -121,7 +135,19 @@ export function QuotationForm({
   function addItem() {
     setItems((prev) => [
       ...prev,
-      { key: nextKey++, productCode: "", description: "", unitPrice: "", discountPercent: "0", qty: "1", unit: "Pcs.", image: null },
+      {
+        key: nextKey++,
+        productCode: "",
+        productName: "",
+        thickness: "",
+        size: "",
+        color: "",
+        unitPrice: "",
+        discountPercent: "0",
+        qty: "1",
+        unit: "Pcs.",
+        image: null,
+      },
     ]);
   }
 
@@ -186,7 +212,7 @@ export function QuotationForm({
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, _formData: FormData) => {
     if (!projectName.trim()) return { error: "กรุณากรอกชื่อโครงการ" };
     if (!customerName.trim()) return { error: "กรุณากรอกชื่อลูกค้า" };
-    if (computedItems.every((it) => !it.description.trim())) {
+    if (computedItems.every((it) => !it.productName.trim())) {
       return { error: "กรุณาเพิ่มรายการสินค้าอย่างน้อย 1 รายการ" };
     }
 
@@ -206,9 +232,12 @@ export function QuotationForm({
     fd.set("sales_rep_id", salesRepId === NONE_VALUE ? "" : salesRepId);
 
     for (const it of computedItems) {
-      if (!it.description.trim()) continue;
+      if (!it.productName.trim()) continue;
       fd.append("item_product_code", it.productCode);
-      fd.append("item_description", it.description);
+      fd.append("item_product_name", it.productName);
+      fd.append("item_thickness", it.thickness);
+      fd.append("item_size", it.size);
+      fd.append("item_color", it.color);
       fd.append("item_unit_price", it.unitPrice || "0");
       fd.append("item_discount_percent", it.discountPercent || "0");
       fd.append("item_qty", it.qty || "1");
@@ -365,12 +394,48 @@ export function QuotationForm({
 
             <div className="space-y-2 sm:col-span-1 lg:col-span-1">
               <Input placeholder="รหัสสินค้า" value={it.productCode} onChange={(e) => updateItem(it.key, { productCode: e.target.value })} />
-              <Textarea
-                placeholder="รายละเอียด เช่น ชื่อสินค้า / ความหนา / ขนาด / สี"
-                value={it.description}
-                onChange={(e) => updateItem(it.key, { description: e.target.value })}
-                rows={3}
-              />
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Product Name</Label>
+                  <SizeAutocomplete
+                    name={`item_product_name_${it.key}`}
+                    value={it.productName}
+                    onChange={(v) => updateItem(it.key, { productName: v })}
+                    suggestions={suggestions.productNames}
+                    placeholder="ชื่อสินค้า"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Thickness /หนา</Label>
+                  <SizeAutocomplete
+                    name={`item_thickness_${it.key}`}
+                    value={it.thickness}
+                    onChange={(v) => updateItem(it.key, { thickness: v })}
+                    suggestions={suggestions.thicknesses}
+                    placeholder="เช่น 9 mm."
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Size /ขนาด</Label>
+                  <SizeAutocomplete
+                    name={`item_size_${it.key}`}
+                    value={it.size}
+                    onChange={(v) => updateItem(it.key, { size: v })}
+                    suggestions={suggestions.sizes}
+                    placeholder="เช่น 1200*2400 mm."
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">Color/สี</Label>
+                  <SizeAutocomplete
+                    name={`item_color_${it.key}`}
+                    value={it.color}
+                    onChange={(v) => updateItem(it.key, { color: v })}
+                    suggestions={suggestions.colors}
+                    placeholder="เช่น MARIGOLD"
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="space-y-1">

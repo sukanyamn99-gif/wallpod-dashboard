@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
 import { getSalesReps, getCustomers } from "@/lib/data/reference";
-import { getQuotationById, getSignedQuotationImageUrls } from "@/lib/data/quotations";
+import { getDistinctQuotationItemFields, getQuotationById, getSignedQuotationImageUrls } from "@/lib/data/quotations";
 import { QuotationForm } from "../../quotation-form";
 
 export default async function EditQuotationPage({ params }: { params: Promise<{ id: string }> }) {
@@ -11,7 +11,12 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
   if (!canAccessPage(profile.role, "/dashboard/quotations")) redirect("/dashboard/sales");
 
   const { id } = await params;
-  const [salesReps, customers, quotation] = await Promise.all([getSalesReps(), getCustomers(), getQuotationById(id)]);
+  const [salesReps, customers, quotation, itemFieldSuggestions] = await Promise.all([
+    getSalesReps(),
+    getCustomers(),
+    getQuotationById(id),
+    getDistinctQuotationItemFields(),
+  ]);
 
   if (!quotation) {
     return (
@@ -38,6 +43,7 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
         quotationId={id}
         initialData={quotation}
         imageUrlsByItemId={imageUrlsByItemId}
+        itemFieldSuggestions={itemFieldSuggestions}
       />
     </div>
   );

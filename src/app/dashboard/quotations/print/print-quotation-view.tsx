@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { formatTHB } from "@/lib/format";
+import { formatQuotationItemDescription, formatTHB } from "@/lib/format";
 import type { QuotationDetail } from "@/lib/types";
 
 function shortDate(dateStr: string | null): string {
@@ -187,7 +187,7 @@ export function PrintQuotationView({
                       "—"
                     )}
                   </td>
-                  <td className={rowTd + " whitespace-pre-line text-left"}>{it.description}</td>
+                  <td className={rowTd + " whitespace-pre-line text-left"}>{formatQuotationItemDescription(it)}</td>
                   <td className={rowTd + " text-right whitespace-nowrap"}>{num(it.unitPrice)}</td>
                   <td className={rowTd + " text-right whitespace-nowrap"}>
                     {it.discountPercent ? `${it.discountPercent}%` : "-"}
