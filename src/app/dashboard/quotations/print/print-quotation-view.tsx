@@ -102,7 +102,7 @@ export function PrintQuotationView({
         </table>
 
         {/* Banner */}
-        <div className="mt-2 border-2 border-black bg-blue-100 py-1 text-center text-sm font-bold">
+        <div className="mt-2 border-2 border-black bg-gray-400 py-1 text-center text-sm font-bold">
           QUOTATION / ใบแจ้งการผลิต / ใบแจ้งการจัดส่ง
         </div>
 
