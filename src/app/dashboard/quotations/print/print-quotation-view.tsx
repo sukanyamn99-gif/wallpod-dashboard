@@ -74,28 +74,29 @@ export function PrintQuotationView({
           <span>วันที่ : {shortDate(quotation.quoteDate)}</span>
         </div>
 
-        {/* Customer/document info grid */}
-        <table className="w-full border-collapse border-r-2 border-b-2 border-l-2 border-black">
+        {/* Customer/document info grid — outer frame only, no internal
+            row/column rules (kept plain deliberately, per feedback). */}
+        <table className="w-full border-collapse border-2 border-black">
           <tbody>
             <tr>
-              <td className={td + " w-1/2"}>Attn / ผู้ติดต่อ : {quotation.attn ?? "—"}</td>
-              <td className={td}>Quotation No. : {quotation.docNo}</td>
+              <td className="w-1/2 p-1">Attn / ผู้ติดต่อ : {quotation.attn ?? "—"}</td>
+              <td className="p-1">Quotation No. : {quotation.docNo}</td>
             </tr>
             <tr>
-              <td className={td}>Company Name / ชื่อบริษัทลูกค้า : {quotation.customerName}</td>
-              <td className={td}>JOB Number : {quotation.jobNumber ?? "—"}</td>
+              <td className="p-1">Company Name / ชื่อบริษัทลูกค้า : {quotation.customerName}</td>
+              <td className="p-1">JOB Number : {quotation.jobNumber ?? "—"}</td>
             </tr>
             <tr>
-              <td className={td}>Customer Address / ที่อยู่ผู้ซื้อ : {quotation.customerAddress ?? "—"}</td>
-              <td className={td}>PO. Number : {quotation.poNumber ?? "—"}</td>
+              <td className="p-1">Customer Address / ที่อยู่ผู้ซื้อ : {quotation.customerAddress ?? "—"}</td>
+              <td className="p-1">PO. Number : {quotation.poNumber ?? "—"}</td>
             </tr>
             <tr>
-              <td className={td}>Tel. / เบอร์โทร : {quotation.customerTel ?? "—"}</td>
-              <td className={td}>Delivery Date / วันที่ส่งของ : {shortDate(quotation.deliveryDate)}</td>
+              <td className="p-1">Tel. / เบอร์โทร : {quotation.customerTel ?? "—"}</td>
+              <td className="p-1">Delivery Date / วันที่ส่งของ : {shortDate(quotation.deliveryDate)}</td>
             </tr>
             <tr>
-              <td className={td + " border-b-0"}>Tax ID/เลขที่ผู้เสียภาษี : {quotation.customerTaxId ?? "—"}</td>
-              <td className={td + " border-b-0"}>Remark /หมายเหตุ : {quotation.remark ?? "—"}</td>
+              <td className="p-1">Tax ID/เลขที่ผู้เสียภาษี : {quotation.customerTaxId ?? "—"}</td>
+              <td className="p-1">Remark /หมายเหตุ : {quotation.remark ?? "—"}</td>
             </tr>
           </tbody>
         </table>
