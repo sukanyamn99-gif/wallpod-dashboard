@@ -59,12 +59,14 @@ export function PrintQuotationView({
             <Image src="/koonwaylogo.png" alt="KOONWAY" width={229} height={36} className="h-9 w-auto" priority />
             <p className="mt-1 font-semibold">Koonway Co.,Ltd. / บริษัท คูนเว จำกัด</p>
             <p>24/2-4 Sukhapiban 2 Prawet, Prawet, Bangkok 10250</p>
-            <p>
-              โทร (+66) 91-524-4441 — <span className="underline">www.thewallpod.com</span>
-            </p>
             <p>เลขที่ผู้เสียภาษี: 0-1055-5981-97-3</p>
           </div>
-          <Image src="/wallpod-logo.png" alt="WallPOD" width={70} height={32} className="h-8 w-auto" />
+          <div className="flex flex-col items-end gap-1">
+            <Image src="/wallpod-logo.png" alt="WallPOD" width={70} height={32} className="h-8 w-auto" />
+            <p className="underline">www.thewallpod.com</p>
+            <p>(+66)91-524-4441</p>
+            <Image src="/QR_code.png" alt="QR code" width={56} height={55} className="h-14 w-auto" />
+          </div>
         </div>
 
         {/* Project name / date bar */}
