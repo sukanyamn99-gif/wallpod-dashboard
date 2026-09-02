@@ -64,11 +64,11 @@ export function PrintQuotationView({
             </p>
             <p>เลขที่ผู้เสียภาษี: 0-1055-5981-97-3</p>
           </div>
-          <div className="rounded border border-sky-600 px-3 py-1 text-center font-bold text-sky-600">WallPod</div>
+          <Image src="/wallpod-logo.png" alt="WallPOD" width={70} height={32} className="h-8 w-auto" />
         </div>
 
         {/* Project name / date bar */}
-        <div className="mt-2 flex items-center justify-between border-2 border-black bg-black px-2 py-1 font-bold text-white">
+        <div className="mt-2 flex items-center justify-between border-2 border-black bg-[#373737] px-2 py-2 font-bold text-white">
           <span>Project name / ชื่อโครงการ : {quotation.projectName}</span>
           <span>วันที่ : {shortDate(quotation.quoteDate)}</span>
         </div>
