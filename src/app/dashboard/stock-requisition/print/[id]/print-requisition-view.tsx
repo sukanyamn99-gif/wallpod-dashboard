@@ -8,15 +8,6 @@ import type { StockRequisition } from "@/lib/types";
 const MIN_ITEM_ROWS = 6;
 const SIGNATURE_BLOCKS = ["ผู้เบิก", "ผู้อนุมัติ", "ผู้จ่ายสินค้า (สโตร์)"];
 
-function Field({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div className="flex border-b border-black">
-      <span className="w-40 shrink-0 border-r border-black p-2 font-medium">{label}</span>
-      <span className="flex-1 p-2">{value ?? "—"}</span>
-    </div>
-  );
-}
-
 export function PrintRequisitionView({
   requisition,
   showCosts,
@@ -72,14 +63,18 @@ export function PrintRequisitionView({
           ใบเบิกสินค้า / STOCK REQUISITION
         </div>
 
-        <Field label="วันที่ /Date" value={new Date(requisition.createdAt).toLocaleDateString("th-TH")} />
-        <Field label="แผนก /Department" value={requisition.departmentName} />
-        <Field label="ผู้เบิก /Requested by" value={requisition.requestedByName} />
-        <Field label="เลข JOB" value={requisition.jobNo} />
-        <Field label="ชื่องาน /โครงการ" value={requisition.projectName} />
-        <Field label="วัตถุประสงค์ /Purpose" value={REQUISITION_PURPOSE_LABELS[requisition.purpose]} />
-        <Field label="ลูกค้า /Customer" value={requisition.customerName} />
-        <Field label="หมายเหตุ /Note" value={requisition.note} />
+        {/* Doc info — outer border only, no internal row/column rules (matches
+            the quotation print view's customer-info grid convention). */}
+        <div className="grid grid-cols-2 border-b border-black">
+          <p className="p-2">วันที่ /Date : {new Date(requisition.createdAt).toLocaleDateString("th-TH")}</p>
+          <p className="p-2">ชื่องาน /โครงการ : {requisition.projectName ?? "—"}</p>
+          <p className="p-2">แผนก /Department : {requisition.departmentName ?? "—"}</p>
+          <p className="p-2">วัตถุประสงค์ /Purpose : {REQUISITION_PURPOSE_LABELS[requisition.purpose]}</p>
+          <p className="p-2">ผู้เบิก /Requested by : {requisition.requestedByName}</p>
+          <p className="p-2">ลูกค้า /Customer : {requisition.customerName ?? "—"}</p>
+          <p className="p-2">เลข JOB : {requisition.jobNo ?? "—"}</p>
+          <p className="p-2">หมายเหตุ /Note : {requisition.note ?? "—"}</p>
+        </div>
 
         {/* Items */}
         <table className="w-full border-collapse border-b border-black text-center">
