@@ -22,7 +22,7 @@ function num(value: number): string {
 // outer-most table needs border-t/border-l since every inner cell already
 // contributes its own border-r/border-b.
 const cell = "border-r border-b border-black p-1";
-const th = cell + " p-1.5 font-medium bg-gray-100 text-center";
+const th = cell + " p-1.5 font-bold bg-gray-300 text-center";
 const td = cell + " p-1.5";
 
 // Standard fixed print terms — same on every quotation, not a per-quote
@@ -53,13 +53,15 @@ export function PrintQuotationView({
       <div className="text-[10.5px] leading-tight">
         {/* Logo + company info */}
         <div className="flex items-start justify-between">
-          <div>
-            <p className="text-3xl font-bold tracking-tight">
+          <div className="text-sky-700">
+            <p className="text-3xl font-bold tracking-tight text-black">
               KOO<span className="text-sky-600">N</span>WAY
             </p>
-            <p className="mt-1 font-medium">Koonway Co.,Ltd. / บริษัท คูนเว จำกัด</p>
+            <p className="mt-1 font-semibold">Koonway Co.,Ltd. / บริษัท คูนเว จำกัด</p>
             <p>24/2-4 Sukhapiban 2 Prawet, Prawet, Bangkok 10250</p>
-            <p>โทร (+66) 91-524-4441 — www.thewallpod.com</p>
+            <p>
+              โทร (+66) 91-524-4441 — <span className="underline">www.thewallpod.com</span>
+            </p>
             <p>เลขที่ผู้เสียภาษี: 0-1055-5981-97-3</p>
           </div>
           <div className="rounded border border-sky-600 px-3 py-1 text-center font-bold text-sky-600">WallPod</div>
@@ -98,7 +100,7 @@ export function PrintQuotationView({
         </table>
 
         {/* Banner */}
-        <div className="border border-t-0 border-black bg-gray-200 py-1 text-center text-sm font-bold">
+        <div className="border border-t-0 border-black bg-gray-300 py-1 text-center text-sm font-bold">
           QUOTATION / ใบแจ้งการผลิต / ใบแจ้งการจัดส่ง
         </div>
 
@@ -204,15 +206,15 @@ export function PrintQuotationView({
             )}
           </div>
           <div className="w-56 space-y-0.5 self-start">
-            <div className="flex justify-between">
+            <div className="flex justify-between border border-black px-1 py-0.5">
               <span>Total/ยอดรวม</span>
               <span>{num(quotation.preVat)}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between border border-t-0 border-black px-1 py-0.5">
               <span>Vate 7% /ภาษีมูลค่าเพิ่ม</span>
               <span>{num(quotation.vat)}</span>
             </div>
-            <div className="flex justify-between bg-amber-300 px-1 py-0.5 font-bold">
+            <div className="flex justify-between border border-t-0 border-black bg-orange-400 px-1 py-0.5 font-bold">
               <span>Grand Total/ยอดรวมทั้งสิ้น</span>
               <span>{num(quotation.total)}</span>
             </div>
