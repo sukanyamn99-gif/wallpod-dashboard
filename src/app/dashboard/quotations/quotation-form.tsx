@@ -328,9 +328,22 @@ export function QuotationForm({
                   </button>
                 </div>
               ) : (
-                <label className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded border border-dashed text-muted-foreground hover:text-foreground">
+                <label
+                  tabIndex={0}
+                  title="คลิกเพื่อเลือกไฟล์ หรือคลิกแล้ววางรูป (Ctrl+V) เช่น รูปที่แคปหน้าจอมา"
+                  className="flex h-20 w-20 cursor-pointer flex-col items-center justify-center gap-1 rounded border border-dashed text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                  onPaste={(e) => {
+                    const item = Array.from(e.clipboardData.items).find((it) => it.type.startsWith("image/"));
+                    const file = item?.getAsFile();
+                    if (file) {
+                      e.preventDefault();
+                      handleImageSelect(it.key, file);
+                    }
+                  }}
+                >
                   <ImagePlus className="h-5 w-5" />
                   <span className="text-[10px]">เพิ่มรูป</span>
+                  <span className="text-[9px] leading-none">หรือวาง (Ctrl+V)</span>
                   <input
                     type="file"
                     accept="image/*"
