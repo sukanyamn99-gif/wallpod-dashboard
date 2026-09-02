@@ -268,20 +268,17 @@ export function PrintQuotationView({
           ชื่อบัญชี : บริษัท คูนเว จำกัด ธนาคารกรุงศรี : 403-0-00726-8
         </p>
 
-        {/* Signatures */}
-        <div className="mt-8 grid grid-cols-3 gap-4 text-center">
-          <div className="space-y-8">
-            <p>Checked by /ตรวจสอบโดย</p>
-            <p className="border-t border-black pt-1">Date :</p>
-          </div>
-          <div className="space-y-8">
-            <p>Pre-production rechecked and approved/ผู้อนุมัติผลิต</p>
-            <p className="border-t border-black pt-1">Date :</p>
-          </div>
-          <div className="space-y-8">
-            <p>Customer Approved ยืนยันคำสั่งซื้อ</p>
-            <p className="border-t border-black pt-1">Date :</p>
-          </div>
+        {/* Signatures — labels and date-lines are separate grid rows (not
+            per-column stacks) so CSS Grid sizes each row to its tallest
+            cell, keeping all 3 signature lines aligned even when a label
+            wraps to 2 lines. */}
+        <div className="mt-8 grid grid-cols-3 gap-x-4 gap-y-8 text-center">
+          <p className="self-end">Checked by /ตรวจสอบโดย</p>
+          <p className="self-end">Pre-production rechecked and approved/ผู้อนุมัติผลิต</p>
+          <p className="self-end">Customer Approved ยืนยันคำสั่งซื้อ</p>
+          <p className="border-t border-black pt-1">Date :</p>
+          <p className="border-t border-black pt-1">Date :</p>
+          <p className="border-t border-black pt-1">Date :</p>
         </div>
       </div>
     </div>
