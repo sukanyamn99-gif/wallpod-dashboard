@@ -18,12 +18,11 @@ function num(value: number): string {
   return value ? formatTHB(value) : "-";
 }
 
-// Matches the reference's Excel-style ruling: a thick 2px frame around each
-// boxed section, thin 1px lines dividing the cells inside it. Every inner
-// cell only ever contributes border-r/border-b (never border-l/border-t),
-// since the section's own border-2 (or the previous row) already draws
-// that edge — giving every cell its own full border would double the line
-// weight at every shared boundary.
+// Every boxed section uses a plain 1px frame, with 1px lines dividing the
+// cells inside it. Every inner cell only ever contributes border-r/border-b
+// (never border-l/border-t), since the section's own border (or the
+// previous row) already draws that edge — giving every cell its own full
+// border would double the line weight at every shared boundary.
 const td = "border-r border-b border-black p-1";
 const th = td + " p-1.5 font-bold bg-[#c8d7d6] text-center";
 
@@ -72,14 +71,14 @@ export function PrintQuotationView({
         </div>
 
         {/* Project name / date bar */}
-        <div className="mt-2 flex items-center justify-between border-2 border-black bg-[#373737] px-2 py-2 font-bold text-white">
+        <div className="mt-2 flex items-center justify-between border border-black bg-[#373737] px-2 py-2 font-bold text-white">
           <span>Project name / ชื่อโครงการ : {quotation.projectName}</span>
           <span>วันที่ : {shortDate(quotation.quoteDate)}</span>
         </div>
 
         {/* Customer/document info grid — outer frame only, no internal
             row/column rules (kept plain deliberately, per feedback). */}
-        <table className="w-full border-collapse border-2 border-black">
+        <table className="w-full border-collapse border border-black">
           <tbody>
             <tr>
               <td className="w-[70%] p-1">Attn / ผู้ติดต่อ : {quotation.attn ?? "—"}</td>
@@ -105,12 +104,12 @@ export function PrintQuotationView({
         </table>
 
         {/* Banner */}
-        <div className="mt-2 border-2 border-black bg-gray-400 py-1 text-center text-sm font-bold">
+        <div className="mt-2 border border-black bg-gray-400 py-1 text-center text-sm font-bold">
           QUOTATION / ใบแจ้งการผลิต / ใบแจ้งการจัดส่ง
         </div>
 
         {/* Items table */}
-        <table className="w-full border-collapse border-r-2 border-b-2 border-l-2 border-black text-center">
+        <table className="w-full border-collapse border-r border-b border-l border-black text-center">
           <colgroup>
             <col className="w-[4%]" />
             <col className="w-[8%]" />
@@ -206,7 +205,7 @@ export function PrintQuotationView({
         </table>
 
         {/* Remark/disclaimers + totals */}
-        <div className="mt-2 grid grid-cols-[1fr_auto] gap-4 border-2 border-black p-2">
+        <div className="mt-2 grid grid-cols-[1fr_auto] gap-4 border border-black p-2">
           <div className="space-y-0.5">
             <p className="font-medium">Remake : หมายเหตุ :</p>
             {STANDARD_NOTES.map((line, i) => (
@@ -218,7 +217,7 @@ export function PrintQuotationView({
               <p className="mt-1">Price Validity Period (กำหนดยืนราคา) : {quotation.priceValidity}</p>
             )}
           </div>
-          <table className="w-56 self-start border-collapse border-2 border-black">
+          <table className="w-56 self-start border-collapse border border-black">
             <tbody>
               <tr>
                 <td className="border-b border-black px-1 py-0.5">Total/ยอดรวม</td>
@@ -237,7 +236,7 @@ export function PrintQuotationView({
         </div>
 
         {/* Payment terms + prepared by */}
-        <div className="mt-2 grid grid-cols-[1fr_auto] gap-4 border-2 border-black p-2">
+        <div className="mt-2 grid grid-cols-[1fr_auto] gap-4 border border-black p-2">
           <div>
             {quotation.paymentTerms.length > 0 && (
               <>
@@ -264,7 +263,7 @@ export function PrintQuotationView({
           </div>
         </div>
 
-        <p className="mt-2 border-2 border-black bg-[#e3ebeb] p-2 text-[15px] font-bold">
+        <p className="mt-2 border border-black bg-[#e3ebeb] p-2 text-[15px] font-bold">
           ชื่อบัญชี : บริษัท คูนเว จำกัด ธนาคารกรุงศรี : 403-0-00726-8
         </p>
 
