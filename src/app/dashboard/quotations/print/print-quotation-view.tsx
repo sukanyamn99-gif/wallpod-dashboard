@@ -55,7 +55,7 @@ export function PrintQuotationView({
       <div className="text-[10.5px] leading-tight">
         {/* Logo + company info */}
         <div className="flex items-start justify-between">
-          <div className="text-sky-700">
+          <div className="text-black">
             <Image src="/koonwaylogo.png" alt="KOONWAY" width={229} height={36} className="h-9 w-auto" priority />
             <p className="mt-1 font-semibold">Koonway Co.,Ltd. / บริษัท คูนเว จำกัด</p>
             <p>24/2-4 Sukhapiban 2 Prawet, Prawet, Bangkok 10250</p>
