@@ -158,9 +158,16 @@
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
-  /* The app is forced dark-theme, so body's dark background otherwise
-     shows through as solid black in the paper margins around a printed
-     page's own white content box. */
+  /* The app is forced dark-theme via an inline `style={{colorScheme:"dark"}}`
+     on <html> (src/app/layout.tsx) — Chromium uses color-scheme to pick the
+     canvas fill it paints beneath everything, including the unprintable
+     page margins, so leaving it "dark" here still prints solid black around
+     the white content box even with an explicit white background set.
+     Overriding it back to light for print (an author !important stylesheet
+     rule beats a non-!important inline style) fixes the canvas fill too. */
+  html {
+    color-scheme: light !important;
+  }
   html,
   body {
     background: #fff !important;
