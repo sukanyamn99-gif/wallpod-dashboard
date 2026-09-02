@@ -24,7 +24,7 @@ function num(value: number): string {
 // that edge — giving every cell its own full border would double the line
 // weight at every shared boundary.
 const td = "border-r border-b border-black p-1";
-const th = td + " p-1.5 font-bold bg-blue-100 text-center";
+const th = td + " p-1.5 font-bold bg-gray-400 text-center";
 
 // Standard fixed print terms — same on every quotation, not a per-quote
 // field (confirmed: these are boilerplate, not something staff re-type).
