@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -33,15 +34,27 @@ export default async function StockRequisitionDetailPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">
-          {requisition ? `ใบเบิกสินค้า ${requisition.docNo}` : "ไม่พบข้อมูล"}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          <Link href="/dashboard/stock-requisition" className="underline underline-offset-2">
-            ← กลับไปหน้าใบเบิกสินค้า
-          </Link>
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">
+            {requisition ? `ใบเบิกสินค้า ${requisition.docNo}` : "ไม่พบข้อมูล"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            <Link href="/dashboard/stock-requisition" className="underline underline-offset-2">
+              ← กลับไปหน้าใบเบิกสินค้า
+            </Link>
+          </p>
+        </div>
+        {requisition && (
+          <Button
+            size="sm"
+            variant="outline"
+            nativeButton={false}
+            render={<Link href={`/dashboard/stock-requisition/print/${id}`} target="_blank" />}
+          >
+            พิมพ์
+          </Button>
+        )}
       </div>
 
       {requisition ? (
