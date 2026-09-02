@@ -55,7 +55,9 @@ export function PrintQuotationView({
         {/* Logo + company info */}
         <div className="flex items-start justify-between">
           <div className="text-black">
-            <Image src="/koonwaylogo.png" alt="KOONWAY" width={229} height={36} className="h-9 w-auto" priority />
+            <p className="text-3xl font-bold tracking-tight">
+              KOO<span style={{ color: "#2793a2" }}>N</span>WAY
+            </p>
             <p className="mt-1 w-[230px] text-left text-[13px] font-semibold" style={{ color: "#2793a2" }}>
               Koonway Co.,Ltd. / บริษัท คูนเว จำกัด
             </p>
