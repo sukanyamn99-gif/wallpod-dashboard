@@ -79,7 +79,7 @@ export function PrintQuotationView({
         <table className="w-full border-collapse border-2 border-black">
           <tbody>
             <tr>
-              <td className="w-1/2 p-1">Attn / ผู้ติดต่อ : {quotation.attn ?? "—"}</td>
+              <td className="w-[70%] p-1">Attn / ผู้ติดต่อ : {quotation.attn ?? "—"}</td>
               <td className="p-1">Quotation No. : {quotation.docNo}</td>
             </tr>
             <tr>
