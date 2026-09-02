@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { getStockRequisitionById } from "@/lib/data/stock-requisitions";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { canSeeCosts } from "@/lib/permissions";
+import { canSeeRequisitionCosts } from "@/lib/permissions";
 import { formatTHB } from "@/lib/format";
 import { REQUISITION_PURPOSE_LABELS } from "@/lib/types";
 
@@ -22,7 +22,7 @@ export default async function StockRequisitionDetailPage({
 }) {
   const { id } = await params;
   const [requisition, profile] = await Promise.all([getStockRequisitionById(id), getCurrentProfile()]);
-  const showCosts = canSeeCosts(profile?.role ?? "sales");
+  const showCosts = canSeeRequisitionCosts(profile?.role ?? "sales");
   const totalValue = requisition ? requisition.items.reduce((sum, it) => sum + it.quantity * it.unitCost, 0) : 0;
   // getStockRequisitionById() already falls back to the product's current
   // cost (isEstimatedCost) when the withdrawal-time snapshot is missing —

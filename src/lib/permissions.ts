@@ -54,6 +54,14 @@ export function canSeeCosts(role: Role): boolean {
   return ADMIN_ROLES.includes(role);
 }
 
+// Stock Requisition (ใบเบิกสินค้า) specifically also opens cost visibility to
+// support_sale — they process requisitions day-to-day and need to see the
+// line cost/total value, unlike Stock Product's cost columns or the GP/AR
+// dashboards which stay admin-only via canSeeCosts above.
+export function canSeeRequisitionCosts(role: Role): boolean {
+  return canSeeCosts(role) || role === "support_sale";
+}
+
 // "Can add" rights, split per feature since they don't all start from the
 // same base rule — Stock Product/Categories were owner/manager-only before
 // this change, Goods Receipt/Requisition already included 'production'.

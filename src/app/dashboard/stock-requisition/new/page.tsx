@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getCustomers, getDepartments, getDistinctProjectJobNos } from "@/lib/data/reference";
 import { getFrequentlyUsedStockProducts, getStockProducts } from "@/lib/data/stock";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { canSeeCosts } from "@/lib/permissions";
+import { canSeeRequisitionCosts } from "@/lib/permissions";
 import { RequisitionForm } from "../requisition-form";
 
 export default async function NewStockRequisitionPage() {
@@ -14,7 +14,7 @@ export default async function NewStockRequisitionPage() {
     getFrequentlyUsedStockProducts(),
     getCurrentProfile(),
   ]);
-  const showCosts = canSeeCosts(profile?.role ?? "sales");
+  const showCosts = canSeeRequisitionCosts(profile?.role ?? "sales");
 
   return (
     <div className="space-y-6">
