@@ -225,7 +225,7 @@ export function PrintQuotationView({
                 <td className="border-b border-black px-1 py-0.5">Vate 7% /ภาษีมูลค่าเพิ่ม</td>
                 <td className="border-b border-black px-1 py-0.5 text-right">{num(quotation.vat)}</td>
               </tr>
-              <tr className="bg-orange-400 font-bold">
+              <tr className="bg-[#345c5f] text-[13px] font-bold text-white">
                 <td className="px-1 py-0.5">Grand Total/ยอดรวมทั้งสิ้น</td>
                 <td className="px-1 py-0.5 text-right">{num(quotation.total)}</td>
               </tr>
