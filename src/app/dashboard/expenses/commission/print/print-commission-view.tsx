@@ -66,7 +66,7 @@ export function PrintCommissionView({
     <div className="mx-auto max-w-6xl bg-white p-6 text-black print:p-0">
       <div className="text-[11px] leading-tight">
         <p className="text-3xl font-bold tracking-tight">
-          KOO<span className="text-sky-600">N</span>WAY
+          KOO<span style={{ color: "#2793a2" }}>N</span>WAY
         </p>
         <p className="mt-2 font-medium">บริษัท คูนเว จำกัด</p>
         <p className="font-medium">{broker}</p>

@@ -47,7 +47,7 @@ export function PrintRequisitionView({
         <div className="flex items-start justify-between border-b border-black p-3">
           <div>
             <p className="text-3xl font-bold tracking-tight">
-              KOO<span className="text-sky-600">N</span>WAY
+              KOO<span style={{ color: "#2793a2" }}>N</span>WAY
             </p>
             <p className="mt-1">บริษัท คูนเว จำกัด</p>
             <p>เลขที่ 24/2-4 ถนนสุขาภิบาล 2</p>
