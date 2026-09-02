@@ -17,13 +17,14 @@ function num(value: number): string {
   return value ? formatTHB(value) : "-";
 }
 
-// Every info-grid/table cell shares this border so the whole document reads
-// as one continuous ruled form, matching the reference layout — only the
-// outer-most table needs border-t/border-l since every inner cell already
-// contributes its own border-r/border-b.
-const cell = "border-r border-b border-black p-1";
-const th = cell + " p-1.5 font-bold bg-gray-300 text-center";
-const td = cell + " p-1.5";
+// Matches the reference's Excel-style ruling: a thick 2px frame around each
+// boxed section, thin 1px lines dividing the cells inside it. Every inner
+// cell only ever contributes border-r/border-b (never border-l/border-t),
+// since the section's own border-2 (or the previous row) already draws
+// that edge — giving every cell its own full border would double the line
+// weight at every shared boundary.
+const td = "border-r border-b border-black p-1";
+const th = td + " p-1.5 font-bold bg-blue-100 text-center";
 
 // Standard fixed print terms — same on every quotation, not a per-quote
 // field (confirmed: these are boilerplate, not something staff re-type).
@@ -68,13 +69,13 @@ export function PrintQuotationView({
         </div>
 
         {/* Project name / date bar */}
-        <div className="mt-2 flex items-center justify-between border border-black bg-black px-2 py-1 font-bold text-white">
+        <div className="mt-2 flex items-center justify-between border-2 border-black bg-black px-2 py-1 font-bold text-white">
           <span>Project name / ชื่อโครงการ : {quotation.projectName}</span>
           <span>วันที่ : {shortDate(quotation.quoteDate)}</span>
         </div>
 
         {/* Customer/document info grid */}
-        <table className="w-full border-collapse border-l border-black">
+        <table className="w-full border-collapse border-r-2 border-b-2 border-l-2 border-black">
           <tbody>
             <tr>
               <td className={td + " w-1/2"}>Attn / ผู้ติดต่อ : {quotation.attn ?? "—"}</td>
@@ -93,19 +94,19 @@ export function PrintQuotationView({
               <td className={td}>Delivery Date / วันที่ส่งของ : {shortDate(quotation.deliveryDate)}</td>
             </tr>
             <tr>
-              <td className={td}>Tax ID/เลขที่ผู้เสียภาษี : {quotation.customerTaxId ?? "—"}</td>
-              <td className={td}>Remark /หมายเหตุ : {quotation.remark ?? "—"}</td>
+              <td className={td + " border-b-0"}>Tax ID/เลขที่ผู้เสียภาษี : {quotation.customerTaxId ?? "—"}</td>
+              <td className={td + " border-b-0"}>Remark /หมายเหตุ : {quotation.remark ?? "—"}</td>
             </tr>
           </tbody>
         </table>
 
         {/* Banner */}
-        <div className="border border-t-0 border-black bg-gray-300 py-1 text-center text-sm font-bold">
+        <div className="mt-2 border-2 border-black bg-blue-100 py-1 text-center text-sm font-bold">
           QUOTATION / ใบแจ้งการผลิต / ใบแจ้งการจัดส่ง
         </div>
 
         {/* Items table */}
-        <table className="w-full border-collapse border-l border-black text-center">
+        <table className="w-full border-collapse border-r-2 border-b-2 border-l-2 border-black text-center">
           <colgroup>
             <col className="w-[4%]" />
             <col className="w-[8%]" />
@@ -159,7 +160,7 @@ export function PrintQuotationView({
                 <br />
                 จำนวน
               </th>
-              <th className={th}>
+              <th className={th + " border-r-0"}>
                 TOTAL PRICE
                 <br />
                 ราคารวม
@@ -167,33 +168,41 @@ export function PrintQuotationView({
             </tr>
           </thead>
           <tbody>
-            {quotation.items.map((it, i) => (
-              <tr key={it.id}>
-                <td className={td + " text-center"}>{i + 1}</td>
-                <td className={td + " text-center whitespace-nowrap"}>{it.productCode ?? "—"}</td>
-                <td className={td + " text-center"}>
-                  {it.imagePath && imageUrlsByPath[it.imagePath] ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- private signed URL preview, not an optimizable remote asset
-                    <img src={imageUrlsByPath[it.imagePath]} alt="" className="mx-auto h-16 w-16 object-cover" />
-                  ) : (
-                    "—"
-                  )}
-                </td>
-                <td className={td + " whitespace-pre-line text-left"}>{it.description}</td>
-                <td className={td + " text-right whitespace-nowrap"}>{num(it.unitPrice)}</td>
-                <td className={td + " text-right whitespace-nowrap"}>{it.discountPercent ? `${it.discountPercent}%` : "-"}</td>
-                <td className={td + " text-right whitespace-nowrap"}>{num(it.netPrice)}</td>
-                <td className={td + " text-right whitespace-nowrap"}>
-                  {it.qty} {it.unit}
-                </td>
-                <td className={td + " text-right whitespace-nowrap font-medium"}>{num(it.totalPrice)}</td>
-              </tr>
-            ))}
+            {quotation.items.map((it, i, arr) => {
+              const last = i === arr.length - 1;
+              const rowTd = last ? td + " border-b-0" : td;
+              return (
+                <tr key={it.id}>
+                  <td className={rowTd + " text-center"}>{i + 1}</td>
+                  <td className={rowTd + " text-center whitespace-nowrap"}>{it.productCode ?? "—"}</td>
+                  <td className={rowTd + " text-center"}>
+                    {it.imagePath && imageUrlsByPath[it.imagePath] ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- private signed URL preview, not an optimizable remote asset
+                      <img src={imageUrlsByPath[it.imagePath]} alt="" className="mx-auto h-16 w-16 object-cover" />
+                    ) : (
+                      "—"
+                    )}
+                  </td>
+                  <td className={rowTd + " whitespace-pre-line text-left"}>{it.description}</td>
+                  <td className={rowTd + " text-right whitespace-nowrap"}>{num(it.unitPrice)}</td>
+                  <td className={rowTd + " text-right whitespace-nowrap"}>
+                    {it.discountPercent ? `${it.discountPercent}%` : "-"}
+                  </td>
+                  <td className={rowTd + " text-right whitespace-nowrap"}>{num(it.netPrice)}</td>
+                  <td className={rowTd + " text-right whitespace-nowrap"}>
+                    {it.qty} {it.unit}
+                  </td>
+                  <td className={(last ? td + " border-b-0" : td) + " border-r-0 text-right whitespace-nowrap font-medium"}>
+                    {num(it.totalPrice)}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
 
         {/* Remark/disclaimers + totals */}
-        <div className="grid grid-cols-[1fr_auto] gap-4 border-r border-b border-l border-black p-2">
+        <div className="mt-2 grid grid-cols-[1fr_auto] gap-4 border-2 border-black p-2">
           <div className="space-y-0.5">
             <p className="font-medium">Remake : หมายเหตุ :</p>
             {STANDARD_NOTES.map((line, i) => (
@@ -205,24 +214,26 @@ export function PrintQuotationView({
               <p className="mt-1">Price Validity Period (กำหนดยืนราคา) : {quotation.priceValidity}</p>
             )}
           </div>
-          <div className="w-56 space-y-0.5 self-start">
-            <div className="flex justify-between border border-black px-1 py-0.5">
-              <span>Total/ยอดรวม</span>
-              <span>{num(quotation.preVat)}</span>
-            </div>
-            <div className="flex justify-between border border-t-0 border-black px-1 py-0.5">
-              <span>Vate 7% /ภาษีมูลค่าเพิ่ม</span>
-              <span>{num(quotation.vat)}</span>
-            </div>
-            <div className="flex justify-between border border-t-0 border-black bg-orange-400 px-1 py-0.5 font-bold">
-              <span>Grand Total/ยอดรวมทั้งสิ้น</span>
-              <span>{num(quotation.total)}</span>
-            </div>
-          </div>
+          <table className="w-56 self-start border-collapse border-2 border-black">
+            <tbody>
+              <tr>
+                <td className="border-b border-black px-1 py-0.5">Total/ยอดรวม</td>
+                <td className="border-b border-black px-1 py-0.5 text-right">{num(quotation.preVat)}</td>
+              </tr>
+              <tr>
+                <td className="border-b border-black px-1 py-0.5">Vate 7% /ภาษีมูลค่าเพิ่ม</td>
+                <td className="border-b border-black px-1 py-0.5 text-right">{num(quotation.vat)}</td>
+              </tr>
+              <tr className="bg-orange-400 font-bold">
+                <td className="px-1 py-0.5">Grand Total/ยอดรวมทั้งสิ้น</td>
+                <td className="px-1 py-0.5 text-right">{num(quotation.total)}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
         {/* Payment terms + prepared by */}
-        <div className="grid grid-cols-[1fr_auto] gap-4 border-r border-b border-l border-black p-2">
+        <div className="mt-2 grid grid-cols-[1fr_auto] gap-4 border-2 border-black p-2">
           <div>
             {quotation.paymentTerms.length > 0 && (
               <>
@@ -249,7 +260,7 @@ export function PrintQuotationView({
           </div>
         </div>
 
-        <p className="border-r border-b border-l border-black p-2">
+        <p className="mt-2 border-2 border-black p-2">
           ชื่อบัญชี : บริษัท คูนเว จำกัด ธนาคารกรุงศรี : 403-0-00726-8
         </p>
 
