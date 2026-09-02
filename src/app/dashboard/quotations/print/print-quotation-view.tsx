@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { formatTHB } from "@/lib/format";
 import type { QuotationDetail } from "@/lib/types";
@@ -55,9 +56,7 @@ export function PrintQuotationView({
         {/* Logo + company info */}
         <div className="flex items-start justify-between">
           <div className="text-sky-700">
-            <p className="text-3xl font-bold tracking-tight text-black">
-              KOO<span className="text-sky-600">N</span>WAY
-            </p>
+            <Image src="/koonwaylogo.png" alt="KOONWAY" width={254} height={40} className="h-10 w-auto" priority />
             <p className="mt-1 font-semibold">Koonway Co.,Ltd. / บริษัท คูนเว จำกัด</p>
             <p>24/2-4 Sukhapiban 2 Prawet, Prawet, Bangkok 10250</p>
             <p>
