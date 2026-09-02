@@ -260,7 +260,7 @@ export function PrintQuotationView({
           </div>
         </div>
 
-        <p className="mt-2 border-2 border-black bg-[#dcfafc] p-2 text-[21px] font-bold">
+        <p className="mt-2 border-2 border-black bg-[#e3ebeb] p-2 text-[15px] font-bold">
           ชื่อบัญชี : บริษัท คูนเว จำกัด ธนาคารกรุงศรี : 403-0-00726-8
         </p>
 
