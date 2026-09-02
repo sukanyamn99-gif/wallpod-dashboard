@@ -414,10 +414,18 @@ create policy stock_requisitions_insert on stock_requisitions for insert
   with check (my_role() in ('owner','manager','production','support_sale','account'));
 create policy stock_requisitions_delete on stock_requisitions for delete
   using (my_role() in ('owner','manager') or requested_by = auth.uid());
+create policy stock_requisitions_update on stock_requisitions for update
+  using (my_role() in ('owner','manager') or requested_by = auth.uid())
+  with check (my_role() in ('owner','manager') or requested_by = auth.uid());
 
 create policy stock_requisition_items_select on stock_requisition_items for select using (my_role() <> 'sales');
 create policy stock_requisition_items_insert on stock_requisition_items for insert
   with check (my_role() in ('owner','manager','production','support_sale','account'));
+create policy stock_requisition_items_delete on stock_requisition_items for delete
+  using (exists (
+    select 1 from stock_requisitions sr
+    where sr.id = requisition_id and (my_role() in ('owner','manager') or sr.requested_by = auth.uid())
+  ));
 
 -- ============ User Permissions (ผู้ใช้งาน) ============
 -- profiles previously had no update policy at all; only owner may edit anyone's row

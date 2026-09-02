@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, Eye, Trash2, X } from "lucide-react";
+import { Check, Eye, Pencil, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -150,6 +150,16 @@ export function RequisitionsTable({
                     >
                       <Eye className="h-3.5 w-3.5" />
                     </Button>
+                    {canDelete(currentProfile, r) && (
+                      <Button
+                        size="icon-sm"
+                        variant="outline"
+                        nativeButton={false}
+                        render={<Link href={`/dashboard/stock-requisition/edit/${r.id}`} />}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                     {canDelete(currentProfile, r) && <DeleteButton requisition={r} />}
                   </div>
                 </TableCell>

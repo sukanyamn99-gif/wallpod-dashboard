@@ -16,6 +16,13 @@ import { canSeeRequisitionCosts } from "@/lib/permissions";
 import { formatTHB } from "@/lib/format";
 import { REQUISITION_PURPOSE_LABELS } from "@/lib/types";
 
+// Mirrors requisitions-table.tsx's canDelete rule — owner/manager can edit
+// any requisition, anyone else only their own.
+function canEdit(role: string, requestedById: string | null, profileId: string) {
+  if (role === "owner" || role === "manager") return true;
+  return requestedById === profileId;
+}
+
 export default async function StockRequisitionDetailPage({
   params,
 }: {
@@ -24,6 +31,8 @@ export default async function StockRequisitionDetailPage({
   const { id } = await params;
   const [requisition, profile] = await Promise.all([getStockRequisitionById(id), getCurrentProfile()]);
   const showCosts = canSeeRequisitionCosts(profile?.role ?? "sales");
+  const allowEdit =
+    !!requisition && !!profile && canEdit(profile.role, requisition.requestedById, profile.id);
   const totalValue = requisition ? requisition.items.reduce((sum, it) => sum + it.quantity * it.unitCost, 0) : 0;
   // getStockRequisitionById() already falls back to the product's current
   // cost (isEstimatedCost) when the withdrawal-time snapshot is missing —
@@ -46,14 +55,26 @@ export default async function StockRequisitionDetailPage({
           </p>
         </div>
         {requisition && (
-          <Button
-            size="sm"
-            variant="outline"
-            nativeButton={false}
-            render={<Link href={`/dashboard/stock-requisition/print/${id}`} target="_blank" />}
-          >
-            พิมพ์
-          </Button>
+          <div className="flex gap-2">
+            {allowEdit && (
+              <Button
+                size="sm"
+                variant="outline"
+                nativeButton={false}
+                render={<Link href={`/dashboard/stock-requisition/edit/${id}`} />}
+              >
+                แก้ไข
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              nativeButton={false}
+              render={<Link href={`/dashboard/stock-requisition/print/${id}`} target="_blank" />}
+            >
+              พิมพ์
+            </Button>
+          </div>
         )}
       </div>
 

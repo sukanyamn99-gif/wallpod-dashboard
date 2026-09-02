@@ -20,8 +20,8 @@ import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomple
 import { JobNoSelect } from "@/components/dashboard/job-no-select";
 import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/format";
-import { createStockRequisition } from "./actions";
-import type { Customer, Department, RequisitionPurpose, StockProduct } from "@/lib/types";
+import { createStockRequisition, updateStockRequisition } from "./actions";
+import type { Customer, Department, RequisitionPurpose, StockProduct, StockRequisition } from "@/lib/types";
 import type { JobLookupEntry } from "@/lib/data/reference";
 
 const initialState = { error: null as string | null };
@@ -43,6 +43,9 @@ export function RequisitionForm({
   stockProducts,
   frequentlyUsed,
   showCosts = false,
+  mode = "create",
+  requisitionId,
+  initialData,
 }: {
   departments: Department[];
   jobNoSuggestions: string[];
@@ -51,11 +54,14 @@ export function RequisitionForm({
   stockProducts: StockProduct[];
   frequentlyUsed: StockProduct[];
   showCosts?: boolean;
+  mode?: "create" | "edit";
+  requisitionId?: string;
+  initialData?: StockRequisition;
 }) {
   const router = useRouter();
-  const [jobNo, setJobNo] = useState("");
-  const [projectName, setProjectName] = useState("");
-  const [customerName, setCustomerName] = useState("");
+  const [jobNo, setJobNo] = useState(initialData?.jobNo ?? "");
+  const [projectName, setProjectName] = useState(initialData?.projectName ?? "");
+  const [customerName, setCustomerName] = useState(initialData?.customerName ?? "");
 
   // Picking a JOB NO. auto-fills project name/customer from that job's own
   // WALLPOD Project Sales record — both stay editable afterward in case the
@@ -68,16 +74,34 @@ export function RequisitionForm({
       setCustomerName(match.customerName);
     }
   }
-  const [purpose, setPurpose] = useState<RequisitionPurpose>("production");
-  const [items, setItems] = useState<SelectedItem[]>([]);
+  const [purpose, setPurpose] = useState<RequisitionPurpose>(initialData?.purpose ?? "production");
+  const [items, setItems] = useState<SelectedItem[]>(
+    (initialData?.items ?? [])
+      .filter((it) => it.stockProductId)
+      .map((it) => ({
+        stockProductId: it.stockProductId as string,
+        sku: it.productSku ?? "",
+        name: it.productName,
+        unit: it.unit,
+        quantity: it.quantity,
+        unitCost: it.unitCost,
+      })),
+  );
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [, startTransition] = useTransition();
 
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
-    const result = await createStockRequisition(formData);
+    const result =
+      mode === "edit" && requisitionId
+        ? await updateStockRequisition(requisitionId, formData)
+        : await createStockRequisition(formData);
     if (!result.error) {
-      router.push("/dashboard/stock-requisition");
+      router.push(
+        mode === "edit" && requisitionId
+          ? `/dashboard/stock-requisition/view/${requisitionId}`
+          : "/dashboard/stock-requisition",
+      );
     }
     return result;
   }, initialState);
@@ -145,6 +169,12 @@ export function RequisitionForm({
     >
       {/* Left column */}
       <div className="space-y-4">
+        {mode === "edit" && initialData && (
+          <p className="text-sm text-muted-foreground">
+            เลขที่เอกสาร: <span className="font-medium text-foreground">{initialData.docNo}</span>
+          </p>
+        )}
+
         {state.error && (
           <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>
         )}
@@ -160,7 +190,12 @@ export function RequisitionForm({
               จัดการ
             </Link>
           </div>
-          <Select name="department_id" required items={departments.map((d) => ({ value: d.id, label: d.name }))}>
+          <Select
+            name="department_id"
+            required
+            items={departments.map((d) => ({ value: d.id, label: d.name }))}
+            defaultValue={initialData?.departmentId ?? undefined}
+          >
             <SelectTrigger id="department_id" className="w-full">
               <SelectValue placeholder="— เลือกแผนก —" />
             </SelectTrigger>
@@ -234,7 +269,12 @@ export function RequisitionForm({
 
         <div className="space-y-2">
           <Label htmlFor="note">หมายเหตุ</Label>
-          <Textarea id="note" name="note" placeholder="เหตุผลหรือข้อมูลเพิ่มเติม..." />
+          <Textarea
+            id="note"
+            name="note"
+            placeholder="เหตุผลหรือข้อมูลเพิ่มเติม..."
+            defaultValue={initialData?.note ?? undefined}
+          />
         </div>
       </div>
 
@@ -359,12 +399,18 @@ export function RequisitionForm({
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.push("/dashboard/stock-requisition")}
+            onClick={() =>
+              router.push(
+                mode === "edit" && requisitionId
+                  ? `/dashboard/stock-requisition/view/${requisitionId}`
+                  : "/dashboard/stock-requisition",
+              )
+            }
           >
             ยกเลิก
           </Button>
           <Button type="submit" disabled={pending}>
-            {pending ? "กำลังส่ง..." : "ส่งคำขอเบิก"}
+            {pending ? "กำลังบันทึก..." : mode === "edit" ? "บันทึกการแก้ไข" : "ส่งคำขอเบิก"}
           </Button>
         </div>
       </div>

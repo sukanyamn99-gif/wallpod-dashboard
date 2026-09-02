@@ -7,6 +7,7 @@ const HEADER_COLUMNS =
 type HeaderRow = {
   id: string;
   doc_no: string;
+  department_id: string | null;
   requested_by: string | null;
   job_no: string | null;
   project_name: string | null;
@@ -23,6 +24,7 @@ function mapHeader(row: HeaderRow): Omit<StockRequisition, "items"> {
   return {
     id: row.id,
     docNo: row.doc_no,
+    departmentId: row.department_id,
     departmentName: row.departments?.name ?? null,
     requestedById: row.requested_by,
     requestedByName: row.profiles?.full_name ?? "",

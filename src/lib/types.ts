@@ -305,6 +305,7 @@ export interface StockRequisitionItem {
 export interface StockRequisition {
   id: string;
   docNo: string;
+  departmentId: string | null;
   departmentName: string | null;
   requestedById: string | null;
   requestedByName: string;
