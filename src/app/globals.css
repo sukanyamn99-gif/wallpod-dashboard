@@ -158,4 +158,11 @@
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
+  /* The app is forced dark-theme, so body's dark background otherwise
+     shows through as solid black in the paper margins around a printed
+     page's own white content box. */
+  html,
+  body {
+    background: #fff !important;
+  }
 }
