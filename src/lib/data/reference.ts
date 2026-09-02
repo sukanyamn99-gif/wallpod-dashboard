@@ -52,3 +52,31 @@ export async function getDistinctProjectJobNos(): Promise<string[]> {
   const jobNos = new Set((data ?? []).map((row) => row.job_no as string).filter((j) => j.trim().length > 0));
   return Array.from(jobNos).sort();
 }
+
+export interface JobLookupEntry {
+  projectName: string;
+  customerName: string;
+}
+
+// Lightweight job_no -> project name/customer lookup for auto-filling forms
+// (e.g. Stock Requisition) once a JOB NO. is picked — deliberately a plain
+// 3-column select rather than reusing getFullProjectReport(), which also
+// joins costs/payments/items this lookup has no use for.
+export async function getJobNoLookup(): Promise<Record<string, JobLookupEntry>> {
+  if (!isSupabaseConfigured()) return {};
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("projects")
+    .select("job_no, project_name, customers(name)")
+    .not("job_no", "is", null);
+  if (error) throw error;
+  const lookup: Record<string, JobLookupEntry> = {};
+  for (const row of data ?? []) {
+    const jobNo = row.job_no as string | null;
+    if (!jobNo || !jobNo.trim()) continue;
+    const customer = row.customers as { name: string } | { name: string }[] | null;
+    const customerName = Array.isArray(customer) ? (customer[0]?.name ?? "") : (customer?.name ?? "");
+    lookup[jobNo] = { projectName: row.project_name ?? "", customerName };
+  }
+  return lookup;
+}

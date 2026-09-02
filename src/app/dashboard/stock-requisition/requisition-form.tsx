@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { formatNumber } from "@/lib/format";
 import { createStockRequisition } from "./actions";
 import type { Customer, Department, RequisitionPurpose, StockProduct } from "@/lib/types";
+import type { JobLookupEntry } from "@/lib/data/reference";
 
 const initialState = { error: null as string | null };
 
@@ -37,6 +38,7 @@ interface SelectedItem {
 export function RequisitionForm({
   departments,
   jobNoSuggestions,
+  jobNoLookup,
   customers,
   stockProducts,
   frequentlyUsed,
@@ -44,6 +46,7 @@ export function RequisitionForm({
 }: {
   departments: Department[];
   jobNoSuggestions: string[];
+  jobNoLookup: Record<string, JobLookupEntry>;
   customers: Customer[];
   stockProducts: StockProduct[];
   frequentlyUsed: StockProduct[];
@@ -51,7 +54,20 @@ export function RequisitionForm({
 }) {
   const router = useRouter();
   const [jobNo, setJobNo] = useState("");
+  const [projectName, setProjectName] = useState("");
   const [customerName, setCustomerName] = useState("");
+
+  // Picking a JOB NO. auto-fills project name/customer from that job's own
+  // WALLPOD Project Sales record — both stay editable afterward in case the
+  // requisition is for a different customer contact than the job's own.
+  function handleJobNoChange(value: string) {
+    setJobNo(value);
+    const match = jobNoLookup[value];
+    if (match) {
+      setProjectName(match.projectName);
+      setCustomerName(match.customerName);
+    }
+  }
   const [purpose, setPurpose] = useState<RequisitionPurpose>("production");
   const [items, setItems] = useState<SelectedItem[]>([]);
   const [query, setQuery] = useState("");
@@ -161,12 +177,18 @@ export function RequisitionForm({
         <div className="space-y-2">
           <Label htmlFor="job_no"># เลข JOB</Label>
           <input type="hidden" name="job_no" value={jobNo} />
-          <JobNoSelect id="job_no" value={jobNo} onChange={setJobNo} jobNos={jobNoSuggestions} />
+          <JobNoSelect id="job_no" value={jobNo} onChange={handleJobNoChange} jobNos={jobNoSuggestions} />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="project_name">ชื่องาน / โครงการ</Label>
-          <Input id="project_name" name="project_name" placeholder="เช่น Phone Boot Lot 1" />
+          <Input
+            id="project_name"
+            name="project_name"
+            value={projectName}
+            onChange={(e) => setProjectName(e.target.value)}
+            placeholder="เช่น Phone Boot Lot 1"
+          />
         </div>
 
         <div className="space-y-2">
