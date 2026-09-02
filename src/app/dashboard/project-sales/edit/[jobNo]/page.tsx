@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCustomers, getProductCategories, getSalesReps } from "@/lib/data/reference";
 import { getAdjacentJobNos, getProjectByJobNo } from "@/lib/data/project-sales";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { canAccessPage, canSeeCosts } from "@/lib/permissions";
+import { canAccessPage, canSeeProjectCosts } from "@/lib/permissions";
 import { ProjectSaleForm } from "../../project-sale-form";
 import { DangerZone } from "../../danger-zone";
 
@@ -53,7 +53,7 @@ export default async function EditProjectSalePage({
               mode="edit"
               projectId={detail.id}
               initialData={detail.initialData}
-              canSeeCosts={canSeeCosts(profile.role)}
+              canSeeCosts={canSeeProjectCosts(profile.role)}
               adjacentJobNos={adjacent}
             />
           ) : (

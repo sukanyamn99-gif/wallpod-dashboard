@@ -62,6 +62,15 @@ export function canSeeRequisitionCosts(role: Role): boolean {
   return canSeeCosts(role) || role === "support_sale";
 }
 
+// WALLPOD Project Sales (Koonway Project Sales) also opens its cost/profit
+// breakdown (material/glue/cutting/install/transport/shipping, total cost,
+// profit, %profit) to support_sale, same reasoning as the requisition case
+// above — Stock Product's cost columns and the GP/AR dashboards stay
+// admin-only via canSeeCosts.
+export function canSeeProjectCosts(role: Role): boolean {
+  return canSeeCosts(role) || role === "support_sale";
+}
+
 // "Can add" rights, split per feature since they don't all start from the
 // same base rule — Stock Product/Categories were owner/manager-only before
 // this change, Goods Receipt/Requisition already included 'production'.

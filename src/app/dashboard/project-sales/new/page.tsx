@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCustomers, getProductCategories, getSalesReps } from "@/lib/data/reference";
 import { getQuotationById } from "@/lib/data/quotations";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { canAccessPage, canSeeCosts } from "@/lib/permissions";
+import { canAccessPage, canSeeProjectCosts } from "@/lib/permissions";
 import { ProjectSaleForm, type ProjectSaleInitialData } from "../project-sale-form";
 
 export default async function NewProjectSalePage({
@@ -94,7 +94,7 @@ export default async function NewProjectSalePage({
             salesReps={salesReps}
             customers={customers}
             categories={categories.map((c) => c.name)}
-            canSeeCosts={canSeeCosts(profile.role)}
+            canSeeCosts={canSeeProjectCosts(profile.role)}
             initialData={initialData}
           />
         </CardContent>

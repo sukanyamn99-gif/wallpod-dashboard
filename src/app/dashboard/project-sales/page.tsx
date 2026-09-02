@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getFullProjectReport } from "@/lib/data/project-sales";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { canAccessPage, canSeeCosts } from "@/lib/permissions";
+import { canAccessPage, canSeeProjectCosts } from "@/lib/permissions";
 import { ProjectsTable } from "./projects-table";
 
 export default async function ProjectSalesPage() {
@@ -46,7 +46,7 @@ export default async function ProjectSalesPage() {
           <CardTitle>งานขายทั้งหมด ({projects.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <ProjectsTable projects={projects} categories={categories} canSeeCosts={canSeeCosts(profile.role)} />
+          <ProjectsTable projects={projects} categories={categories} canSeeCosts={canSeeProjectCosts(profile.role)} />
         </CardContent>
       </Card>
     </div>
