@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomplete";
+import { PaymentTermLabelAutocomplete } from "@/components/dashboard/payment-term-label-autocomplete";
 import { formatTHB } from "@/lib/format";
 import { resizeImageToBlob } from "@/lib/image-resize";
 import { createQuotation, updateQuotation } from "./actions";
@@ -414,11 +415,10 @@ export function QuotationForm({
           const amount = Math.round(((grandTotal * (Number(t.percent) || 0)) / 100) * 100) / 100;
           return (
             <div key={t.key} className="flex flex-wrap items-center gap-2">
-              <Input
+              <PaymentTermLabelAutocomplete
                 placeholder="เช่น Deposit / มัดจำก่อนผลิต"
                 value={t.label}
-                onChange={(e) => updateTerm(t.key, { label: e.target.value })}
-                className="flex-1"
+                onChange={(label) => updateTerm(t.key, { label })}
               />
               <div className="flex items-center gap-1">
                 <NumberInput value={t.percent} onChange={(v) => updateTerm(t.key, { percent: v })} min={0} className="w-20" />
