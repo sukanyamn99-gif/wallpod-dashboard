@@ -137,7 +137,11 @@ export function QuotationForm({
   }
 
   async function handleImageSelect(key: number, file: File) {
-    const blob = await resizeImageToBlob(file, 800, 800, 0.85);
+    // Item photos only ever render as small thumbnails (64-80px on screen,
+    // ~64px on the printed quote), so 800x800 was needlessly large for what
+    // gets stored — 400x400 at a lower quality cuts file size noticeably
+    // while still looking sharp at the sizes this actually displays.
+    const blob = await resizeImageToBlob(file, 400, 400, 0.7);
     const item = items.find((it) => it.key === key);
     if (item?.image) URL.revokeObjectURL(item.image.previewUrl);
     updateItem(key, { image: { kind: "new", blob, previewUrl: URL.createObjectURL(blob) } });
