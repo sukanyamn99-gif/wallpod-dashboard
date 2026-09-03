@@ -15,6 +15,7 @@ import {
   ClipboardMinus,
   FileBarChart,
   FileDown,
+  Files,
   FileSignature,
   FileSpreadsheet,
   FileText,
@@ -63,9 +64,14 @@ const navItems = [
   { title: "AR Dashboard", url: "/dashboard/ar", icon: Receipt },
   { title: "Ex Dashboard", url: "/dashboard/expenses", icon: BarChart3 },
   { title: "Stock Dashboard", url: "/dashboard/inventory", icon: Boxes },
-  { title: "ใบเสนอราคา", url: "/dashboard/quotations", icon: FileSignature },
   { title: "Koonway Project Sales", url: "/dashboard/project-sales", icon: ClipboardList },
 ];
+
+const salesDocsGroup = {
+  title: "เอกสารขาย",
+  icon: Files,
+  items: [{ title: "ใบเสนอราคา", url: "/dashboard/quotations", icon: FileSignature }],
+};
 
 const inventoryGroup = {
   title: "Stock Data",
@@ -116,6 +122,8 @@ const settingsGroup = {
 
 export function AppSidebar({ profile }: { profile: Profile }) {
   const pathname = usePathname();
+  const isSalesDocsActive = salesDocsGroup.items.some((item) => pathname === item.url);
+  const [salesDocsOpen, setSalesDocsOpen] = useState(isSalesDocsActive);
   const isInventoryActive = inventoryGroup.items.some(
     (item) => pathname === item.url || item.children?.some((c) => pathname === c.url),
   );
@@ -126,6 +134,7 @@ export function AppSidebar({ profile }: { profile: Profile }) {
   const [settingsOpen, setSettingsOpen] = useState(isSettingsActive);
 
   const visibleNavItems = navItems.filter((item) => canAccessPage(profile.role, item.url));
+  const visibleSalesDocsItems = salesDocsGroup.items.filter((item) => canAccessPage(profile.role, item.url));
   // A role can be granted a child (e.g. "รายงานสินค้าคงเหลือ") without
   // access to its parent group page (e.g. the aggregate "รายงาน" page,
   // which shows cost data Sales/Designer shouldn't see) — in that case the
@@ -164,6 +173,36 @@ export function AppSidebar({ profile }: { profile: Profile }) {
                   />
                 </SidebarMenuItem>
               ))}
+
+              {visibleSalesDocsItems.length > 0 && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={isSalesDocsActive}
+                    onClick={() => setSalesDocsOpen((open) => !open)}
+                  >
+                    <salesDocsGroup.icon />
+                    <span>{salesDocsGroup.title}</span>
+                    {salesDocsOpen ? <ChevronDown className="ml-auto" /> : <ChevronRight className="ml-auto" />}
+                  </SidebarMenuButton>
+                  {salesDocsOpen && (
+                    <SidebarMenuSub>
+                      {visibleSalesDocsItems.map((item) => (
+                        <SidebarMenuSubItem key={item.url}>
+                          <SidebarMenuSubButton
+                            isActive={pathname === item.url}
+                            render={
+                              <Link href={item.url}>
+                                <item.icon />
+                                <span>{item.title}</span>
+                              </Link>
+                            }
+                          />
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  )}
+                </SidebarMenuItem>
+              )}
 
               {visibleInventoryItems.length > 0 && (
                 <SidebarMenuItem>
