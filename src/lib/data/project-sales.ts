@@ -39,16 +39,22 @@ export interface FullProjectRow {
     totalCost: number;
   } | null;
   profit: number | null;
+  billingNoteNo1: string | null;
+  billingNoteDate1: string | null;
   invoiceNo1: string | null;
   amount1: number | null;
   paidDate1: string | null;
   receiptNo1: string | null;
   receivedDate1: string | null;
+  billingNoteNo2: string | null;
+  billingNoteDate2: string | null;
   invoiceNo2: string | null;
   amount2: number | null;
   paidDate2: string | null;
   receiptNo2: string | null;
   receivedDate2: string | null;
+  billingNoteNo3: string | null;
+  billingNoteDate3: string | null;
   invoiceNo3: string | null;
   amount3: number | null;
   paidDate3: string | null;
@@ -140,7 +146,7 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
     supabase
       .from("projects")
       .select(
-        "id, job_no, project_date, project_name, customer_type, pre_vat, vat, total, is_cancelled, production_status, customers(name), sales_reps(name), project_items(product_category, amount), project_costs(material_cost, glue_cost, cutting_cost, install_cost, parking_cost, shipping_cost, total_cost), payments(invoice_no, installment_no, amount, paid_date, status, outstanding_amount, receipt_no, received_date)",
+        "id, job_no, project_date, project_name, customer_type, pre_vat, vat, total, is_cancelled, production_status, customers(name), sales_reps(name), project_items(product_category, amount), project_costs(material_cost, glue_cost, cutting_cost, install_cost, parking_cost, shipping_cost, total_cost), payments(invoice_no, installment_no, amount, paid_date, status, outstanding_amount, receipt_no, received_date, billing_note_no, billing_note_date)",
       )
       .order("project_date", { ascending: false })
       .order("installment_no", { foreignTable: "payments", ascending: true }),
@@ -168,6 +174,8 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
     outstanding_amount: number;
     receipt_no: string | null;
     received_date: string | null;
+    billing_note_no: string | null;
+    billing_note_date: string | null;
   };
 
   const categorySet = new Set(liveCategories.map((c) => c.name));
@@ -228,16 +236,22 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
       total: Number(p.total),
       costs: costs2,
       profit: costs2 ? Number(p.pre_vat) - costs2.totalCost : null,
+      billingNoteNo1: payment1?.billing_note_no ?? null,
+      billingNoteDate1: payment1?.billing_note_date ?? null,
       invoiceNo1: payment1?.invoice_no ?? null,
       amount1: payment1 ? Number(payment1.amount) : null,
       paidDate1: payment1?.paid_date ?? null,
       receiptNo1: payment1?.receipt_no ?? null,
       receivedDate1: payment1?.received_date ?? null,
+      billingNoteNo2: payment2?.billing_note_no ?? null,
+      billingNoteDate2: payment2?.billing_note_date ?? null,
       invoiceNo2: payment2?.invoice_no ?? null,
       amount2: payment2 ? Number(payment2.amount) : null,
       paidDate2: payment2?.paid_date ?? null,
       receiptNo2: payment2?.receipt_no ?? null,
       receivedDate2: payment2?.received_date ?? null,
+      billingNoteNo3: payment3?.billing_note_no ?? null,
+      billingNoteDate3: payment3?.billing_note_date ?? null,
       invoiceNo3: payment3?.invoice_no ?? null,
       amount3: payment3 ? Number(payment3.amount) : null,
       paidDate3: payment3?.paid_date ?? null,
@@ -336,7 +350,7 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
   const { data: project, error: projectErr } = await supabase
     .from("projects")
     .select(
-      "id, job_no, project_date, customer_id, project_name, sales_rep_id, customer_type, pre_vat, vat, is_cancelled, production_status, customers(name), project_items(product_category, amount), project_costs(material_cost, glue_cost, cutting_cost, install_cost, parking_cost, shipping_cost), payments(invoice_no, installment_no, amount, paid_date, status, receipt_no, received_date)",
+      "id, job_no, project_date, customer_id, project_name, sales_rep_id, customer_type, pre_vat, vat, is_cancelled, production_status, customers(name), project_items(product_category, amount), project_costs(material_cost, glue_cost, cutting_cost, install_cost, parking_cost, shipping_cost), payments(invoice_no, installment_no, amount, paid_date, status, receipt_no, received_date, billing_note_no, billing_note_date)",
     )
     .eq("job_no", jobNo)
     .order("installment_no", { foreignTable: "payments", ascending: true })
@@ -361,6 +375,8 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
     status: string | null;
     receipt_no: string | null;
     received_date: string | null;
+    billing_note_no: string | null;
+    billing_note_date: string | null;
   };
   const items = (project.project_items as unknown as EmbeddedItem[]) ?? [];
   const costs = (project.project_costs as unknown as EmbeddedCosts | null) ?? null;
@@ -392,16 +408,22 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
         shipping_cost: costs?.shipping_cost != null ? String(costs.shipping_cost) : "",
       },
       status: payment1?.status ?? payment2?.status ?? payment3?.status ?? "",
+      billingNoteNo1: payment1?.billing_note_no ?? "",
+      billingNoteDate1: payment1?.billing_note_date ?? "",
       invoiceNo1: payment1?.invoice_no ?? "",
       amount1: payment1?.amount != null ? String(payment1.amount) : "",
       paidDate1: payment1?.paid_date ?? "",
       receiptNo1: payment1?.receipt_no ?? "",
       receivedDate1: payment1?.received_date ?? "",
+      billingNoteNo2: payment2?.billing_note_no ?? "",
+      billingNoteDate2: payment2?.billing_note_date ?? "",
       invoiceNo2: payment2?.invoice_no ?? "",
       amount2: payment2?.amount != null ? String(payment2.amount) : "",
       paidDate2: payment2?.paid_date ?? "",
       receiptNo2: payment2?.receipt_no ?? "",
       receivedDate2: payment2?.received_date ?? "",
+      billingNoteNo3: payment3?.billing_note_no ?? "",
+      billingNoteDate3: payment3?.billing_note_date ?? "",
       invoiceNo3: payment3?.invoice_no ?? "",
       amount3: payment3?.amount != null ? String(payment3.amount) : "",
       paidDate3: payment3?.paid_date ?? "",

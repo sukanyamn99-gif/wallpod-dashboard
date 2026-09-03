@@ -54,14 +54,20 @@ type ParsedForm = {
   installment2Amount: number;
   installment3Amount: number;
   outstanding: number;
+  billingNoteNo1: string | null;
+  billingNoteDate1: string | null;
   invoiceNo1: string | null;
   paidDate1: string | null;
   receiptNo1: string | null;
   receivedDate1: string | null;
+  billingNoteNo2: string | null;
+  billingNoteDate2: string | null;
   invoiceNo2: string | null;
   paidDate2: string | null;
   receiptNo2: string | null;
   receivedDate2: string | null;
+  billingNoteNo3: string | null;
+  billingNoteDate3: string | null;
   invoiceNo3: string | null;
   paidDate3: string | null;
   receiptNo3: string | null;
@@ -168,14 +174,20 @@ function parseForm(formData: FormData): { ok: false; error: string } | ParsedFor
     installment2Amount,
     installment3Amount,
     outstanding,
+    billingNoteNo1: str(formData.get("billing_note_no_1")),
+    billingNoteDate1: str(formData.get("billing_note_date_1")),
     invoiceNo1: str(formData.get("invoice_no_1")),
     paidDate1: str(formData.get("paid_date_1")),
     receiptNo1,
     receivedDate1: str(formData.get("received_date_1")),
+    billingNoteNo2: str(formData.get("billing_note_no_2")),
+    billingNoteDate2: str(formData.get("billing_note_date_2")),
     invoiceNo2: str(formData.get("invoice_no_2")),
     paidDate2: str(formData.get("paid_date_2")),
     receiptNo2,
     receivedDate2: str(formData.get("received_date_2")),
+    billingNoteNo3: str(formData.get("billing_note_no_3")),
+    billingNoteDate3: str(formData.get("billing_note_date_3")),
     invoiceNo3: str(formData.get("invoice_no_3")),
     paidDate3: str(formData.get("paid_date_3")),
     receiptNo3,
@@ -211,9 +223,11 @@ export async function resolveCustomerId(
 
 function buildPayments(projectId: string, parsed: ParsedForm) {
   const payments = [];
-  if (parsed.installment1Amount > 0 || parsed.invoiceNo1) {
+  if (parsed.installment1Amount > 0 || parsed.invoiceNo1 || parsed.billingNoteNo1) {
     payments.push({
       project_id: projectId,
+      billing_note_no: parsed.billingNoteNo1,
+      billing_note_date: parsed.billingNoteDate1,
       invoice_no: parsed.invoiceNo1,
       installment_no: 1,
       amount: parsed.installment1Amount,
@@ -224,9 +238,11 @@ function buildPayments(projectId: string, parsed: ParsedForm) {
       outstanding_amount: parsed.outstanding,
     });
   }
-  if (parsed.installment2Amount > 0 || parsed.invoiceNo2) {
+  if (parsed.installment2Amount > 0 || parsed.invoiceNo2 || parsed.billingNoteNo2) {
     payments.push({
       project_id: projectId,
+      billing_note_no: parsed.billingNoteNo2,
+      billing_note_date: parsed.billingNoteDate2,
       invoice_no: parsed.invoiceNo2,
       installment_no: 2,
       amount: parsed.installment2Amount,
@@ -237,9 +253,11 @@ function buildPayments(projectId: string, parsed: ParsedForm) {
       outstanding_amount: parsed.outstanding,
     });
   }
-  if (parsed.installment3Amount > 0 || parsed.invoiceNo3) {
+  if (parsed.installment3Amount > 0 || parsed.invoiceNo3 || parsed.billingNoteNo3) {
     payments.push({
       project_id: projectId,
+      billing_note_no: parsed.billingNoteNo3,
+      billing_note_date: parsed.billingNoteDate3,
       invoice_no: parsed.invoiceNo3,
       installment_no: 3,
       amount: parsed.installment3Amount,

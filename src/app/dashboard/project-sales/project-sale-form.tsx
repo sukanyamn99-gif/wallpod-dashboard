@@ -72,16 +72,22 @@ export interface ProjectSaleInitialData {
     shipping_cost: string;
   };
   status: string;
+  billingNoteNo1: string;
+  billingNoteDate1: string;
   invoiceNo1: string;
   amount1: string;
   paidDate1: string;
   receiptNo1: string;
   receivedDate1: string;
+  billingNoteNo2: string;
+  billingNoteDate2: string;
   invoiceNo2: string;
   amount2: string;
   paidDate2: string;
   receiptNo2: string;
   receivedDate2: string;
+  billingNoteNo3: string;
+  billingNoteDate3: string;
   invoiceNo3: string;
   amount3: string;
   paidDate3: string;
@@ -562,7 +568,20 @@ export function ProjectSaleForm({
 
         <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">งวดที่ 1</p>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 xl:grid-cols-7">
+            <div className="space-y-2">
+              <Label htmlFor="billing_note_no_1">เลขที่ใบวางบิล</Label>
+              <Input
+                id="billing_note_no_1"
+                name="billing_note_no_1"
+                defaultValue={initialData?.billingNoteNo1}
+                placeholder="BN..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="billing_note_date_1">วันที่ออกใบวางบิล</Label>
+              <DateInput id="billing_note_date_1" name="billing_note_date_1" defaultValue={initialData?.billingNoteDate1} />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="invoice_no_1">เลขที่เอกสาร</Label>
               <Input id="invoice_no_1" name="invoice_no_1" defaultValue={initialData?.invoiceNo1} placeholder="IV..." />
@@ -603,7 +622,20 @@ export function ProjectSaleForm({
         {installment2 ? (
           <div className="space-y-2">
             <p className="text-sm font-medium text-muted-foreground">งวดที่ 2</p>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 xl:grid-cols-7">
+              <div className="space-y-2">
+                <Label htmlFor="billing_note_no_2">เลขที่ใบวางบิล</Label>
+                <Input
+                  id="billing_note_no_2"
+                  name="billing_note_no_2"
+                  defaultValue={initialData?.billingNoteNo2}
+                  placeholder="BN..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="billing_note_date_2">วันที่ออกใบวางบิล</Label>
+                <DateInput id="billing_note_date_2" name="billing_note_date_2" defaultValue={initialData?.billingNoteDate2} />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="invoice_no_2">เลขที่เอกสาร</Label>
                 <Input id="invoice_no_2" name="invoice_no_2" defaultValue={initialData?.invoiceNo2} placeholder="IV..." />
@@ -651,7 +683,20 @@ export function ProjectSaleForm({
           (installment3 ? (
             <div className="space-y-2">
               <p className="text-sm font-medium text-muted-foreground">งวดที่ 3</p>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 xl:grid-cols-7">
+                <div className="space-y-2">
+                  <Label htmlFor="billing_note_no_3">เลขที่ใบวางบิล</Label>
+                  <Input
+                    id="billing_note_no_3"
+                    name="billing_note_no_3"
+                    defaultValue={initialData?.billingNoteNo3}
+                    placeholder="BN..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="billing_note_date_3">วันที่ออกใบวางบิล</Label>
+                  <DateInput id="billing_note_date_3" name="billing_note_date_3" defaultValue={initialData?.billingNoteDate3} />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="invoice_no_3">เลขที่เอกสาร</Label>
                   <Input id="invoice_no_3" name="invoice_no_3" defaultValue={initialData?.invoiceNo3} placeholder="IV..." />

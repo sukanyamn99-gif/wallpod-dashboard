@@ -101,7 +101,10 @@ create table payments (
   -- paid_date above is really "document/invoice issue date"; this is the
   -- actual date money was received, paired with receipt_no the same way
   -- paid_date is paired with invoice_no.
-  received_date date
+  received_date date,
+  -- Earlier still in the same sequence (ใบวางบิล -> invoice -> receipt).
+  billing_note_no text,
+  billing_note_date date
 );
 
 -- ============ Sale Report (live pipeline tracking, self-reported by sales reps) ============
