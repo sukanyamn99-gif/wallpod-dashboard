@@ -100,59 +100,69 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
             </tr>
           </thead>
           <tbody>
-            {document.items.map((it, i) => {
-              const detail = it.quotationItems;
-              // Items billed directly from a quotation (no invoice behind
-              // them yet) are labeled "ใบเสนอราคา", not "เลขที่เอกสาร".
-              const refLabel = it.quotationId ? "ใบเสนอราคา" : "เลขที่เอกสาร";
-              if (!detail || detail.length === 0) {
-                // No matching quotation found for this invoice's JOB —
-                // fall back to a single summary row so nothing is lost.
-                return (
-                  <tr key={it.id}>
-                    <td className="border-r border-t border-black p-1.5">{i + 1}</td>
-                    <td className="border-r border-t border-black p-1.5 text-left whitespace-pre-line">
-                      {refLabel} {it.invoiceNo} ลงวันที่ {fmtDate(it.invoiceDate)}
-                    </td>
-                    <td className="border-r border-t border-black p-1.5">—</td>
-                    <td className="border-r border-t border-black p-1.5 text-right">—</td>
-                    <td className="border-t border-black p-1.5 text-right">{formatTHB(it.amount)}</td>
-                  </tr>
-                );
-              }
-              return (
-                <Fragment key={it.id}>
-                  <tr className="bg-neutral-50">
-                    <td className="border-r border-t border-black p-1.5"></td>
-                    <td colSpan={4} className="border-t border-black p-1.5 text-left text-neutral-600">
-                      {refLabel} {it.invoiceNo} ลงวันที่ {fmtDate(it.invoiceDate)}
-                      {!it.quotationId && it.quotationDocNo && <> (อ้างอิงใบเสนอราคา {it.quotationDocNo})</>}
-                    </td>
-                  </tr>
-                  {detail.map((qi, qidx) => (
-                    <tr key={qidx}>
-                      <td className="border-r border-t border-black p-1.5">{i + 1}.{qidx + 1}</td>
+            {(() => {
+              // Plain running sequence across every product line (1, 2, 3, …)
+              // regardless of which invoice/quotation it's grouped under —
+              // group header and subtotal rows don't get a number.
+              let seq = 0;
+              return document.items.map((it) => {
+                const detail = it.quotationItems;
+                // Items billed directly from a quotation (no invoice behind
+                // them yet) are labeled "ใบเสนอราคา", not "เลขที่เอกสาร".
+                const refLabel = it.quotationId ? "ใบเสนอราคา" : "เลขที่เอกสาร";
+                if (!detail || detail.length === 0) {
+                  // No matching quotation found for this invoice's JOB —
+                  // fall back to a single summary row so nothing is lost.
+                  seq += 1;
+                  return (
+                    <tr key={it.id}>
+                      <td className="border-r border-t border-black p-1.5">{seq}</td>
                       <td className="border-r border-t border-black p-1.5 text-left whitespace-pre-line">
-                        {qi.productCode ? `[${qi.productCode}] ` : ""}
-                        {qi.description}
+                        {refLabel} {it.invoiceNo} ลงวันที่ {fmtDate(it.invoiceDate)}
                       </td>
-                      <td className="border-r border-t border-black p-1.5">
-                        {qi.qty} {qi.unit}
-                      </td>
-                      <td className="border-r border-t border-black p-1.5 text-right">{formatTHB(qi.unitPrice)}</td>
-                      <td className="border-t border-black p-1.5 text-right">{formatTHB(qi.totalPrice)}</td>
+                      <td className="border-r border-t border-black p-1.5">—</td>
+                      <td className="border-r border-t border-black p-1.5 text-right">—</td>
+                      <td className="border-t border-black p-1.5 text-right">{formatTHB(it.amount)}</td>
                     </tr>
-                  ))}
-                  <tr>
-                    <td className="border-r border-t border-black p-1.5"></td>
-                    <td colSpan={3} className="border-r border-t border-black p-1.5 text-right text-neutral-600">
-                      ยอดรวมตามเอกสาร {it.invoiceNo}
-                    </td>
-                    <td className="border-t border-black p-1.5 text-right font-medium">{formatTHB(it.amount)}</td>
-                  </tr>
-                </Fragment>
-              );
-            })}
+                  );
+                }
+                return (
+                  <Fragment key={it.id}>
+                    <tr className="bg-neutral-50">
+                      <td className="border-r border-t border-black p-1.5"></td>
+                      <td colSpan={4} className="border-t border-black p-1.5 text-left text-neutral-600">
+                        {refLabel} {it.invoiceNo} ลงวันที่ {fmtDate(it.invoiceDate)}
+                        {!it.quotationId && it.quotationDocNo && <> (อ้างอิงใบเสนอราคา {it.quotationDocNo})</>}
+                      </td>
+                    </tr>
+                    {detail.map((qi, qidx) => {
+                      seq += 1;
+                      return (
+                        <tr key={qidx}>
+                          <td className="border-r border-t border-black p-1.5">{seq}</td>
+                          <td className="border-r border-t border-black p-1.5 text-left whitespace-pre-line">
+                            {qi.productCode ? `[${qi.productCode}] ` : ""}
+                            {qi.description}
+                          </td>
+                          <td className="border-r border-t border-black p-1.5">
+                            {qi.qty} {qi.unit}
+                          </td>
+                          <td className="border-r border-t border-black p-1.5 text-right">{formatTHB(qi.unitPrice)}</td>
+                          <td className="border-t border-black p-1.5 text-right">{formatTHB(qi.totalPrice)}</td>
+                        </tr>
+                      );
+                    })}
+                    <tr>
+                      <td className="border-r border-t border-black p-1.5"></td>
+                      <td colSpan={3} className="border-r border-t border-black p-1.5 text-right text-neutral-600">
+                        ยอดรวมตามเอกสาร {it.invoiceNo}
+                      </td>
+                      <td className="border-t border-black p-1.5 text-right font-medium">{formatTHB(it.amount)}</td>
+                    </tr>
+                  </Fragment>
+                );
+              });
+            })()}
           </tbody>
         </table>
       ) : (
