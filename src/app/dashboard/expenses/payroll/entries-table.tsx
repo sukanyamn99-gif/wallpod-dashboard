@@ -78,32 +78,59 @@ function DeleteButton({ entryId, label }: { entryId: string; label: string }) {
 
 export function EntriesTable({ entries, employees }: { entries: PayrollEntry[]; employees: Employee[] }) {
   const [employeeFilter, setEmployeeFilter] = useState("all");
+  const [monthFilter, setMonthFilter] = useState("all");
 
   const filtered = useMemo(() => {
-    if (employeeFilter === "all") return entries;
-    return entries.filter((e) => e.employeeId === employeeFilter);
-  }, [entries, employeeFilter]);
+    return entries.filter(
+      (e) =>
+        (employeeFilter === "all" || e.employeeId === employeeFilter) &&
+        (monthFilter === "all" || e.payPeriod === monthFilter),
+    );
+  }, [entries, employeeFilter, monthFilter]);
 
   const employeeItems = [
     { value: "all", label: "ทุกคน" },
     ...employees.map((e) => ({ value: e.id, label: `${e.employeeCode} — ${e.fullName}` })),
   ];
 
+  // Newest month first — only months that actually have an entry, so the
+  // filter never offers an empty result.
+  const monthItems = [
+    { value: "all", label: "ทุกเดือน" },
+    ...Array.from(new Set(entries.map((e) => e.payPeriod)))
+      .sort((a, b) => b.localeCompare(a))
+      .map((period) => ({ value: period, label: payPeriodLabel(period) })),
+  ];
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <Select value={employeeFilter} onValueChange={(v) => setEmployeeFilter((v as string) ?? "all")} items={employeeItems}>
-          <SelectTrigger className="w-64">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {employeeItems.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={employeeFilter} onValueChange={(v) => setEmployeeFilter((v as string) ?? "all")} items={employeeItems}>
+            <SelectTrigger className="w-64">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {employeeItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={monthFilter} onValueChange={(v) => setMonthFilter((v as string) ?? "all")} items={monthItems}>
+            <SelectTrigger className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {monthItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <Button nativeButton={false} render={<Link href="/dashboard/expenses/payroll/new" />}>
           <Plus className="h-4 w-4" />
           บันทึกเงินเดือน
