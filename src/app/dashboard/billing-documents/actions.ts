@@ -26,6 +26,7 @@ export async function fetchBillableQuotations(customerName: string): Promise<Bil
 }
 
 const DOC_PREFIX: Record<BillingDocumentType, string> = {
+  invoice: "IV",
   billing_note: "BL",
   tax_invoice: "TX",
   // Deliberately reuses the "RE" prefix payments.receipt_no values already
@@ -233,8 +234,9 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
       return { error: `บันทึกเอกสารสำเร็จ แต่อัปเดตเลขที่ใบเสร็จใน Project Sales ไม่สำเร็จ: ${syncErr.message}`, id: doc.id };
     }
   }
-  // tax_invoice: no field to sync — eligibility already requires invoice_no
-  // to already be set on the payment, so this document formalizes/prints it.
+  // invoice / tax_invoice: no field to sync — eligibility already requires
+  // invoice_no to already be set on the payment, so this document just
+  // formalizes/prints it.
 
   await logActivity(`สร้าง${BILLING_DOCUMENT_LABELS[docType]}`, docNo);
   revalidateBillingDocumentConsumers(docType);

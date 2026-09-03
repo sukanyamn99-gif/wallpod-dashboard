@@ -541,15 +541,17 @@ export interface QuotationDetail extends Quotation {
   items: QuotationItem[];
 }
 
-export type BillingDocumentType = "billing_note" | "tax_invoice" | "receipt";
+export type BillingDocumentType = "invoice" | "billing_note" | "tax_invoice" | "receipt";
 
 export const BILLING_DOCUMENT_LABELS: Record<BillingDocumentType, string> = {
+  invoice: "ใบแจ้งหนี้",
   billing_note: "ใบวางบิล",
   tax_invoice: "ใบกำกับภาษี",
   receipt: "ใบเสร็จรับเงิน",
 };
 
 export const BILLING_DOCUMENT_LIST_PATH: Record<BillingDocumentType, string> = {
+  invoice: "/dashboard/billing-documents/invoice",
   billing_note: "/dashboard/billing-documents/billing-note",
   tax_invoice: "/dashboard/billing-documents/tax-invoice",
   receipt: "/dashboard/billing-documents/receipt",

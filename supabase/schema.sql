@@ -1313,7 +1313,7 @@ create table billing_notes (
   credit_days int not null default 0,
   due_date date not null,
   sales_rep_id uuid references sales_reps(id),
-  doc_type text not null check (doc_type in ('billing_note', 'tax_invoice', 'receipt')),
+  doc_type text not null check (doc_type in ('billing_note', 'tax_invoice', 'receipt', 'invoice')),
   discount_amount numeric(14,2) not null default 0,
   wht_percent numeric(5,2) not null default 0,
   retention_percent numeric(5,2) not null default 0,

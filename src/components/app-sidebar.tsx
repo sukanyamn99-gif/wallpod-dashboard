@@ -16,6 +16,7 @@ import {
   ClipboardMinus,
   FileBarChart,
   FileCheck2,
+  FileClock,
   FileDown,
   Files,
   FileSignature,
@@ -76,6 +77,7 @@ const salesDocsGroup = {
   icon: Files,
   items: [
     { title: "ใบเสนอราคา", url: "/dashboard/quotations", icon: FileSignature },
+    { title: "ใบแจ้งหนี้", url: "/dashboard/billing-documents/invoice", icon: FileClock },
     { title: "ใบวางบิล", url: "/dashboard/billing-documents/billing-note", icon: FileStack },
     { title: "ใบกำกับภาษี", url: "/dashboard/billing-documents/tax-invoice", icon: FileCheck2 },
     { title: "ใบเสร็จรับเงิน", url: "/dashboard/billing-documents/receipt", icon: ReceiptText },

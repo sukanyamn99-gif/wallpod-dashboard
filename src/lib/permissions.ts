@@ -21,6 +21,7 @@ const PAGE_ACCESS: Record<string, Role[]> = {
   "/dashboard/project-sales": STOCK_STAFF,
   "/dashboard/quotations": STOCK_STAFF,
   "/dashboard/customers": STOCK_STAFF,
+  "/dashboard/billing-documents/invoice": STOCK_STAFF,
   "/dashboard/billing-documents/billing-note": STOCK_STAFF,
   "/dashboard/billing-documents/tax-invoice": STOCK_STAFF,
   "/dashboard/billing-documents/receipt": STOCK_STAFF,

@@ -102,14 +102,14 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
   if (headerErr) throw headerErr;
   if (!header) return null;
 
-  // For tax invoices only, also pull each line's JOB NO. (via its payment's
-  // project) so the itemized product/service detail from that job's
-  // quotation can be printed underneath — see getQuotationItemsByJobNumbers.
-  // quotation_id is always selected (cheap) since it also drives the
-  // "ใบเสนอราคา" vs "เลขที่เอกสาร" label on every doc type, not just tax
-  // invoices.
-  const isTaxInvoice = header.doc_type === "tax_invoice";
-  const itemsSelect = isTaxInvoice
+  // For invoices and tax invoices — the two document types that legally
+  // need itemized detail — also pull each line's JOB NO. (via its payment's
+  // project) so the product/service detail from that job's quotation can be
+  // printed underneath — see getQuotationItemsByJobNumbers. quotation_id is
+  // always selected (cheap) since it also drives the "ใบเสนอราคา" vs
+  // "เลขที่เอกสาร" label on every doc type, not just these two.
+  const showsItemizedDetail = header.doc_type === "invoice" || header.doc_type === "tax_invoice";
+  const itemsSelect = showsItemizedDetail
     ? "id, payment_id, quotation_id, invoice_no_snapshot, invoice_date_snapshot, amount, payments(projects(job_no))"
     : "id, payment_id, quotation_id, invoice_no_snapshot, invoice_date_snapshot, amount";
   const { data: items, error: itemsErr } = await supabase
@@ -131,7 +131,7 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
 
   let quotationDetailByJobNo: Record<string, { quotationDocNo: string; items: QuotationItemDetail[] }> = {};
   let quotationDetailById: Record<string, { quotationDocNo: string; items: QuotationItemDetail[] }> = {};
-  if (isTaxInvoice) {
+  if (showsItemizedDetail) {
     const jobNos = itemRows.filter((it) => !it.quotation_id).map((it) => it.payments?.projects?.job_no ?? null);
     const quotationIds = itemRows.filter((it) => it.quotation_id).map((it) => it.quotation_id as string);
     [quotationDetailByJobNo, quotationDetailById] = await Promise.all([
@@ -157,7 +157,9 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
         invoiceNo: it.invoice_no_snapshot,
         invoiceDate: it.invoice_date_snapshot,
         amount: Number(it.amount),
-        ...(isTaxInvoice ? { quotationDocNo: quotationDetail?.quotationDocNo ?? null, quotationItems: quotationDetail?.items ?? null } : {}),
+        ...(showsItemizedDetail
+          ? { quotationDocNo: quotationDetail?.quotationDocNo ?? null, quotationItems: quotationDetail?.items ?? null }
+          : {}),
       };
     }),
   };

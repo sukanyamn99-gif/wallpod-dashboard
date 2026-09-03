@@ -85,8 +85,10 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
         </table>
       </div>
 
-      {/* Items */}
-      {document.docType === "tax_invoice" ? (
+      {/* Items — ใบแจ้งหนี้/ใบกำกับภาษี itemize each line's actual products
+          (see BillingDocumentItem.quotationItems); ใบวางบิล/ใบเสร็จรับเงิน
+          keep the plain one-row-per-invoice summary table. */}
+      {document.docType === "invoice" || document.docType === "tax_invoice" ? (
         <table className="w-full border-collapse border border-black text-center">
           <thead>
             <tr className="bg-neutral-100">
