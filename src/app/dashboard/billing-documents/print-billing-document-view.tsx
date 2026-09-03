@@ -1,0 +1,177 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { formatTHB } from "@/lib/format";
+import { thaiBahtText } from "@/lib/thai-baht-text";
+import { computeBillingDocumentSummary } from "@/lib/billing-document-summary";
+import { BILLING_DOCUMENT_LABELS } from "@/lib/types";
+import type { BillingDocumentDetail } from "@/lib/types";
+
+function fmtDate(dateStr: string | null): string {
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleDateString("th-TH");
+}
+
+export function PrintBillingDocumentView({ document }: { document: BillingDocumentDetail }) {
+  const summary = computeBillingDocumentSummary(
+    document.items.map((it) => it.amount),
+    document.discountAmount,
+    document.whtPercent,
+    document.retentionPercent,
+  );
+  const title = BILLING_DOCUMENT_LABELS[document.docType];
+
+  return (
+    <div className="mx-auto max-w-3xl bg-white p-6 text-black print:p-0">
+      <div className="mb-4 flex justify-end gap-2 print:hidden">
+        <Button variant="outline" onClick={() => window.close()}>
+          ปิด
+        </Button>
+        <Button onClick={() => window.print()}>พิมพ์</Button>
+      </div>
+
+      <div className="text-[13px] leading-tight">
+        {/* Header */}
+        <div className="flex items-start justify-between border-b-2 border-black pb-3">
+          <div>
+            <p className="text-3xl font-bold tracking-tight">
+              KOO<span style={{ color: "#2793a2" }}>N</span>WAY
+            </p>
+            <p className="mt-1 font-semibold">บริษัท คูนเว จำกัด (สำนักงานใหญ่)</p>
+            <p>24/2-4 สุขาภิบาล 2 แขวงประเวศ เขตประเวศ กรุงเทพฯ 10250</p>
+            <p>เลขประจำตัวผู้เสียภาษี 0-1055-5981-97-3</p>
+            <p>โทร. 091-524-4441</p>
+          </div>
+          <div className="text-right">
+            <p className="text-2xl font-bold" style={{ color: "#2793a2" }}>
+              {title}
+            </p>
+            <p className="text-xs text-neutral-500">ต้นฉบับ</p>
+          </div>
+        </div>
+
+        {/* Doc info grid */}
+        <div className="grid grid-cols-2 gap-x-8 border-b border-black py-2">
+          <div>
+            <p className="font-medium">ลูกค้า</p>
+            <p>{document.customerName}</p>
+          </div>
+          <table className="ml-auto text-right">
+            <tbody>
+              <tr>
+                <td className="pr-2 text-left text-neutral-500">เลขที่</td>
+                <td className="font-medium">{document.docNo}</td>
+              </tr>
+              <tr>
+                <td className="pr-2 text-left text-neutral-500">วันที่</td>
+                <td>{fmtDate(document.docDate)}</td>
+              </tr>
+              <tr>
+                <td className="pr-2 text-left text-neutral-500">เครดิต</td>
+                <td>{document.creditDays} วัน</td>
+              </tr>
+              <tr>
+                <td className="pr-2 text-left text-neutral-500">ครบกำหนด</td>
+                <td>{fmtDate(document.dueDate)}</td>
+              </tr>
+              <tr>
+                <td className="pr-2 text-left text-neutral-500">ผู้ขาย</td>
+                <td>{document.salesRepName ?? "—"}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* Items */}
+        <table className="w-full border-collapse border-b border-black text-center">
+          <thead>
+            <tr className="bg-neutral-100">
+              <th className="w-10 border-r border-black p-1.5 font-medium">#</th>
+              <th className="border-r border-black p-1.5 font-medium">เลขที่เอกสาร</th>
+              <th className="w-32 border-r border-black p-1.5 font-medium">เอกสารวันที่</th>
+              <th className="w-32 p-1.5 font-medium">ยอดรวมตามเอกสาร</th>
+            </tr>
+          </thead>
+          <tbody>
+            {document.items.map((it, i) => (
+              <tr key={it.id}>
+                <td className="border-r border-t border-black p-1.5">{i + 1}</td>
+                <td className="border-r border-t border-black p-1.5">{it.invoiceNo}</td>
+                <td className="border-r border-t border-black p-1.5">{fmtDate(it.invoiceDate)}</td>
+                <td className="border-t border-black p-1.5 text-right">{formatTHB(it.amount)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Summary */}
+        <div className="flex justify-end py-2">
+          <table className="w-72">
+            <tbody>
+              <tr>
+                <td className="py-0.5 text-neutral-600">รวมเป็นเงิน</td>
+                <td className="py-0.5 text-right">{formatTHB(summary.subtotal)}</td>
+              </tr>
+              {summary.discountAmount > 0 && (
+                <>
+                  <tr>
+                    <td className="py-0.5 text-red-600">หักส่วนลด</td>
+                    <td className="py-0.5 text-right text-red-600">{formatTHB(summary.discountAmount)}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-0.5 text-neutral-600">จำนวนเงินรวมหลังหักส่วนลด</td>
+                    <td className="py-0.5 text-right">{formatTHB(summary.afterDiscount)}</td>
+                  </tr>
+                </>
+              )}
+              <tr>
+                <td className="py-0.5 text-neutral-600">ภาษีมูลค่าเพิ่ม 7%</td>
+                <td className="py-0.5 text-right">{formatTHB(summary.vat)}</td>
+              </tr>
+              <tr>
+                <td className="py-0.5 font-medium">จำนวนเงินรวม</td>
+                <td className="py-0.5 text-right font-medium">{formatTHB(summary.totalAfterVat)}</td>
+              </tr>
+              {document.whtPercent > 0 && (
+                <tr>
+                  <td className="py-0.5 text-red-600">หัก ณ ที่จ่าย {document.whtPercent}%</td>
+                  <td className="py-0.5 text-right text-red-600">{formatTHB(summary.whtAmount)}</td>
+                </tr>
+              )}
+              {document.retentionPercent > 0 && (
+                <tr>
+                  <td className="py-0.5 text-red-600">หักประกันผลงาน {document.retentionPercent}%</td>
+                  <td className="py-0.5 text-right text-red-600">{formatTHB(summary.retentionAmount)}</td>
+                </tr>
+              )}
+              <tr className="bg-neutral-100">
+                <td className="px-1 py-1.5 font-bold">จำนวนเงินรวมทั้งสิ้น</td>
+                <td className="px-1 py-1.5 text-right font-bold">{formatTHB(summary.netPayable)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p className="border-t border-black pt-2 text-sm">({thaiBahtText(summary.netPayable)})</p>
+
+        {document.note && (
+          <p className="mt-2 text-sm">
+            <span className="text-neutral-500">หมายเหตุ:</span> {document.note}
+          </p>
+        )}
+
+        {/* Signatures */}
+        <div className="mt-10 grid grid-cols-2 gap-8 text-center">
+          <div className="space-y-8">
+            <p>ผู้รับวางบิล</p>
+            <p className="border-t border-black pt-1">วันที่ :</p>
+          </div>
+          <div className="space-y-8">
+            <p>ผู้วางบิล</p>
+            <p className="border-t border-black pt-1">วันที่ :</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

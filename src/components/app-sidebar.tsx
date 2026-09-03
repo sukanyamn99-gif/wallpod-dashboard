@@ -14,10 +14,12 @@ import {
   ClipboardList,
   ClipboardMinus,
   FileBarChart,
+  FileCheck2,
   FileDown,
   Files,
   FileSignature,
   FileSpreadsheet,
+  FileStack,
   FileText,
   FileUp,
   Gauge,
@@ -30,6 +32,7 @@ import {
   Palette,
   Percent,
   Receipt,
+  ReceiptText,
   ScrollText,
   Settings,
   Tags,
@@ -70,7 +73,12 @@ const navItems = [
 const salesDocsGroup = {
   title: "เอกสารขาย",
   icon: Files,
-  items: [{ title: "ใบเสนอราคา", url: "/dashboard/quotations", icon: FileSignature }],
+  items: [
+    { title: "ใบเสนอราคา", url: "/dashboard/quotations", icon: FileSignature },
+    { title: "ใบวางบิล", url: "/dashboard/billing-documents/billing-note", icon: FileStack },
+    { title: "ใบกำกับภาษี", url: "/dashboard/billing-documents/tax-invoice", icon: FileCheck2 },
+    { title: "ใบเสร็จรับเงิน", url: "/dashboard/billing-documents/receipt", icon: ReceiptText },
+  ],
 };
 
 const inventoryGroup = {

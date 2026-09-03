@@ -539,3 +539,52 @@ export interface Quotation {
 export interface QuotationDetail extends Quotation {
   items: QuotationItem[];
 }
+
+export type BillingDocumentType = "billing_note" | "tax_invoice" | "receipt";
+
+export const BILLING_DOCUMENT_LABELS: Record<BillingDocumentType, string> = {
+  billing_note: "ใบวางบิล",
+  tax_invoice: "ใบกำกับภาษี",
+  receipt: "ใบเสร็จรับเงิน",
+};
+
+// A payment installment eligible to be bundled into a billing document —
+// already invoiced (invoice_no set) and not yet fully received.
+export interface UnbilledInvoice {
+  paymentId: string;
+  jobNo: string | null;
+  projectName: string;
+  invoiceNo: string;
+  invoiceDate: string | null;
+  amount: number;
+}
+
+export interface BillingDocumentItem {
+  id: string;
+  paymentId: string | null;
+  invoiceNo: string;
+  invoiceDate: string | null;
+  amount: number;
+}
+
+export interface BillingDocument {
+  id: string;
+  docNo: string;
+  docType: BillingDocumentType;
+  customerId: string;
+  customerName: string;
+  docDate: string;
+  creditDays: number;
+  dueDate: string;
+  salesRepName: string | null;
+  discountAmount: number;
+  whtPercent: number;
+  retentionPercent: number;
+  note: string | null;
+  createdById: string | null;
+  createdAt: string;
+}
+
+export interface BillingDocumentDetail extends BillingDocument {
+  items: BillingDocumentItem[];
+}
