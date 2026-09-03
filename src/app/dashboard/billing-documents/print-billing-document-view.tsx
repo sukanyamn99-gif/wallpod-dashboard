@@ -72,6 +72,11 @@ export function PrintBillingDocumentView({
           <div>
             <p className="font-medium">ลูกค้า</p>
             <p>{document.customerName}</p>
+            {document.customerAddress && <p className="text-neutral-600">{document.customerAddress}</p>}
+            <p className="text-neutral-600">
+              เลขประจำตัวผู้เสียภาษี: {document.customerTaxId ?? "—"}
+              {document.customerPhone && <> &nbsp;|&nbsp; โทร. {document.customerPhone}</>}
+            </p>
           </div>
           <table className="ml-auto text-right">
             <tbody>

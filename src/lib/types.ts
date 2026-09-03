@@ -573,6 +573,9 @@ export interface BillingDocument {
   docType: BillingDocumentType;
   customerId: string;
   customerName: string;
+  customerAddress: string | null;
+  customerTaxId: string | null;
+  customerPhone: string | null;
   docDate: string;
   creditDays: number;
   dueDate: string;

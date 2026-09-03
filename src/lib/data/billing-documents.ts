@@ -32,7 +32,7 @@ export async function getUnbilledInvoicesForCustomer(customerId: string): Promis
 }
 
 const HEADER_COLUMNS =
-  "id, doc_no, doc_type, customer_id, doc_date, credit_days, due_date, sales_rep_id, discount_amount, wht_percent, retention_percent, note, created_by, created_at, customers(name), sales_reps(name)";
+  "id, doc_no, doc_type, customer_id, doc_date, credit_days, due_date, sales_rep_id, discount_amount, wht_percent, retention_percent, note, created_by, created_at, customers(name, address, phone, tax_id), sales_reps(name)";
 
 type HeaderRow = {
   id: string;
@@ -49,7 +49,7 @@ type HeaderRow = {
   note: string | null;
   created_by: string | null;
   created_at: string;
-  customers: { name: string } | null;
+  customers: { name: string; address: string | null; phone: string | null; tax_id: string | null } | null;
   sales_reps: { name: string } | null;
 };
 
@@ -60,6 +60,9 @@ function mapHeader(row: HeaderRow): BillingDocument {
     docType: row.doc_type,
     customerId: row.customer_id,
     customerName: row.customers?.name ?? "",
+    customerAddress: row.customers?.address ?? null,
+    customerTaxId: row.customers?.tax_id ?? null,
+    customerPhone: row.customers?.phone ?? null,
     docDate: row.doc_date,
     creditDays: row.credit_days,
     dueDate: row.due_date,
