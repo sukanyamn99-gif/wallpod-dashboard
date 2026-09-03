@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   Banknote,
+  BookUser,
   Boxes,
   CalendarCheck,
   ChevronDown,
@@ -78,6 +79,7 @@ const salesDocsGroup = {
     { title: "ใบวางบิล", url: "/dashboard/billing-documents/billing-note", icon: FileStack },
     { title: "ใบกำกับภาษี", url: "/dashboard/billing-documents/tax-invoice", icon: FileCheck2 },
     { title: "ใบเสร็จรับเงิน", url: "/dashboard/billing-documents/receipt", icon: ReceiptText },
+    { title: "ลูกค้า", url: "/dashboard/customers", icon: BookUser },
   ],
 };
 
