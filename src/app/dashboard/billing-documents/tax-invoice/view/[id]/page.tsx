@@ -20,5 +20,5 @@ export default async function ViewTaxInvoicePage({ params }: { params: Promise<{
     );
   }
 
-  return <PrintBillingDocumentView document={document} />;
+  return <PrintBillingDocumentView document={document} closeHref="/dashboard/billing-documents/tax-invoice" />;
 }

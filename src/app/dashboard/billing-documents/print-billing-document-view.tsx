@@ -17,9 +17,11 @@ function fmtDate(dateStr: string | null): string {
 export function PrintBillingDocumentView({
   document,
   editHref,
+  closeHref,
 }: {
   document: BillingDocumentDetail;
   editHref?: string;
+  closeHref: string;
 }) {
   const router = useRouter();
   const summary = computeBillingDocumentSummary(
@@ -39,9 +41,12 @@ export function PrintBillingDocumentView({
           </Button>
         )}
         {/* Reached via router.push/Link in the same tab (never a
-            script-opened window), so window.close() is a silent no-op —
-            go back to wherever the user came from instead. */}
-        <Button variant="outline" onClick={() => router.back()}>
+            script-opened window), so window.close() is a silent no-op.
+            router.back() also isn't reliable here — a page opened fresh
+            (direct link, refresh) has no history to go back to, which made
+            this button appear to do nothing — so navigate to this
+            document's own list page explicitly instead. */}
+        <Button variant="outline" onClick={() => router.push(closeHref)}>
           ปิด
         </Button>
         <Button onClick={() => window.print()}>พิมพ์</Button>

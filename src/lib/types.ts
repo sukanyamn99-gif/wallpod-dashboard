@@ -548,6 +548,12 @@ export const BILLING_DOCUMENT_LABELS: Record<BillingDocumentType, string> = {
   receipt: "ใบเสร็จรับเงิน",
 };
 
+export const BILLING_DOCUMENT_LIST_PATH: Record<BillingDocumentType, string> = {
+  billing_note: "/dashboard/billing-documents/billing-note",
+  tax_invoice: "/dashboard/billing-documents/tax-invoice",
+  receipt: "/dashboard/billing-documents/receipt",
+};
+
 // A payment installment eligible to be bundled into a billing document —
 // already invoiced (invoice_no set) and not yet fully received.
 export interface UnbilledInvoice {

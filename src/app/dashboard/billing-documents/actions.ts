@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activity-log";
 import { getBillingDocumentById, getUnbilledInvoicesForCustomer } from "@/lib/data/billing-documents";
-import { BILLING_DOCUMENT_LABELS } from "@/lib/types";
+import { BILLING_DOCUMENT_LABELS, BILLING_DOCUMENT_LIST_PATH } from "@/lib/types";
 import type { BillingDocumentType, UnbilledInvoice } from "@/lib/types";
 
 // Thin server-action wrapper so the create form (client component) can
@@ -23,11 +23,7 @@ const DOC_PREFIX: Record<BillingDocumentType, string> = {
   receipt: "RE",
 };
 
-const LIST_PATH: Record<BillingDocumentType, string> = {
-  billing_note: "/dashboard/billing-documents/billing-note",
-  tax_invoice: "/dashboard/billing-documents/tax-invoice",
-  receipt: "/dashboard/billing-documents/receipt",
-};
+const LIST_PATH = BILLING_DOCUMENT_LIST_PATH;
 
 function num(v: FormDataEntryValue | null): number {
   const n = Number(v);

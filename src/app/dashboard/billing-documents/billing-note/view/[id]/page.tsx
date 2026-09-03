@@ -33,6 +33,7 @@ export default async function ViewBillingNotePage({ params }: { params: Promise<
     <PrintBillingDocumentView
       document={document}
       editHref={allowEdit ? `/dashboard/billing-documents/billing-note/edit/${id}` : undefined}
+      closeHref="/dashboard/billing-documents/billing-note"
     />
   );
 }

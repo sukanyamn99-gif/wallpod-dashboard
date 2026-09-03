@@ -20,5 +20,5 @@ export default async function ViewReceiptPage({ params }: { params: Promise<{ id
     );
   }
 
-  return <PrintBillingDocumentView document={document} />;
+  return <PrintBillingDocumentView document={document} closeHref="/dashboard/billing-documents/receipt" />;
 }
