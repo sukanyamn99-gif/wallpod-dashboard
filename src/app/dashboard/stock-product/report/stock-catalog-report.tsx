@@ -35,23 +35,24 @@ function Letterhead() {
   );
 }
 
-// Product names encode a leading catalog code (e.g. "017-HAY") — not every
-// name has one (Acubox, กาว Wallpod, ...), so only strip it when present.
-function nameWithoutCode(name: string): string {
-  return name.replace(/^\d+-\s*/, "");
-}
-
 function SwatchCard({
   product,
   imageUrl,
   showCode,
+  previewMode = false,
 }: {
   product: StockProduct;
   imageUrl: string | null;
   showCode: boolean;
+  // The print-preview overlay is itself print:hidden (never actually
+  // prints), so it needs the SKU line to actually appear/disappear on
+  // screen to simulate what will print. The real report page, outside the
+  // overlay, is what actually gets printed — there the SKU line always
+  // shows on screen and print:hidden (not previewMode's plain removal)
+  // controls whether it survives into the real printout.
+  previewMode?: boolean;
 }) {
   const lowStock = product.quantityOnHand <= product.reorderPoint;
-  const displayName = showCode ? product.name : nameWithoutCode(product.name);
   return (
     <div className="rounded-lg border bg-white p-2 shadow-sm print:break-inside-avoid print:shadow-none">
       <div className="relative aspect-square overflow-hidden rounded-md bg-neutral-100">
@@ -74,8 +75,16 @@ function SwatchCard({
         </span>
       </div>
       <div className="mt-1.5 text-center">
-        <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-neutral-800" title={displayName}>
-          {displayName}
+        {previewMode
+          ? showCode &&
+            product.sku && <p className="truncate text-[9px] font-medium text-neutral-500">{product.sku}</p>
+          : product.sku && (
+              <p className={`truncate text-[9px] font-medium text-neutral-500 ${showCode ? "" : "print:hidden"}`}>
+                {product.sku}
+              </p>
+            )}
+        <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-neutral-800" title={product.name}>
+          {product.name}
         </p>
         {(product.size || product.thickness) && (
           <p className="truncate text-[9px] text-neutral-500">
@@ -93,11 +102,13 @@ function CatalogGrid({
   products,
   imageUrls,
   showCode,
+  previewMode,
   className,
 }: {
   products: StockProduct[];
   imageUrls: Record<string, string>;
   showCode: boolean;
+  previewMode?: boolean;
   className: string;
 }) {
   return (
@@ -108,6 +119,7 @@ function CatalogGrid({
           product={p}
           imageUrl={p.imagePath ? (imageUrls[p.imagePath] ?? null) : null}
           showCode={showCode}
+          previewMode={previewMode}
         />
       ))}
     </div>
@@ -236,6 +248,7 @@ export function StockCatalogReport({
                   products={filtered}
                   imageUrls={imageUrls}
                   showCode={showCode}
+                  previewMode
                   className="grid grid-cols-6 gap-2"
                 />
               )}
