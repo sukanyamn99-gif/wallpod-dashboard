@@ -10,7 +10,7 @@ export const mockSalesReps: SalesRep[] = [
   { id: "rep-3", name: "สมชาย", active: true },
 ];
 
-const NO_CONTACT_FIELDS = { contactPerson: null, address: null, phone: null, taxId: null };
+const NO_CONTACT_FIELDS = { contactPerson: null, address: null, phone: null, taxId: null, customerCode: null };
 
 export const mockCustomers: Customer[] = [
   { id: "cus-1", name: "บจก. สยามดีไซน์", customer_type: "Designer", ...NO_CONTACT_FIELDS },

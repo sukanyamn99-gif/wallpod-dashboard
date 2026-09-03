@@ -22,6 +22,7 @@ function str(v: FormDataEntryValue | null): string | null {
 interface ParsedCustomer {
   name: string;
   customerType: CustomerType;
+  customerCode: string | null;
   contactPerson: string | null;
   address: string | null;
   phone: string | null;
@@ -39,6 +40,7 @@ function parseCustomerForm(formData: FormData): { error: string } | ({ error: nu
     error: null,
     name,
     customerType: customerType as CustomerType,
+    customerCode: str(formData.get("customer_code")),
     contactPerson: str(formData.get("contact_person")),
     address: str(formData.get("address")),
     phone: str(formData.get("phone")),
@@ -59,6 +61,7 @@ export async function createCustomer(formData: FormData): Promise<{ error: strin
   const { error } = await supabase.from("customers").insert({
     name: parsed.name,
     customer_type: parsed.customerType,
+    customer_code: parsed.customerCode,
     contact_person: parsed.contactPerson,
     address: parsed.address,
     phone: parsed.phone,
@@ -85,6 +88,7 @@ export async function updateCustomer(id: string, formData: FormData): Promise<{ 
     .update({
       name: parsed.name,
       customer_type: parsed.customerType,
+      customer_code: parsed.customerCode,
       contact_person: parsed.contactPerson,
       address: parsed.address,
       phone: parsed.phone,

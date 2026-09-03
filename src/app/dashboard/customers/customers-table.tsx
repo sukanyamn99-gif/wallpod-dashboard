@@ -36,6 +36,7 @@ function AddCustomerForm() {
   return (
     <form key={formKey} action={formAction} className="flex flex-wrap items-start gap-2" noValidate>
       <Input name="name" placeholder="ชื่อลูกค้า/บริษัท" className="max-w-xs" required />
+      <Input name="customer_code" placeholder="รหัสลูกค้า (ถ้ามี)" className="max-w-[140px]" />
       <Select
         name="customer_type"
         value={customerType}
@@ -71,6 +72,7 @@ function CustomerRow({ customer, canManage }: { customer: Customer; canManage: b
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [name, setName] = useState(customer.name);
   const [customerType, setCustomerType] = useState<CustomerType>(customer.customer_type);
+  const [customerCode, setCustomerCode] = useState(customer.customerCode ?? "");
   const [contactPerson, setContactPerson] = useState(customer.contactPerson ?? "");
   const [address, setAddress] = useState(customer.address ?? "");
   const [phone, setPhone] = useState(customer.phone ?? "");
@@ -81,6 +83,7 @@ function CustomerRow({ customer, canManage }: { customer: Customer; canManage: b
   function reset() {
     setName(customer.name);
     setCustomerType(customer.customer_type);
+    setCustomerCode(customer.customerCode ?? "");
     setContactPerson(customer.contactPerson ?? "");
     setAddress(customer.address ?? "");
     setPhone(customer.phone ?? "");
@@ -99,6 +102,7 @@ function CustomerRow({ customer, canManage }: { customer: Customer; canManage: b
       const fd = new FormData();
       fd.set("name", trimmed);
       fd.set("customer_type", customerType);
+      fd.set("customer_code", customerCode.trim());
       fd.set("contact_person", contactPerson.trim());
       fd.set("address", address.trim());
       fd.set("phone", phone.trim());
@@ -128,6 +132,13 @@ function CustomerRow({ customer, canManage }: { customer: Customer; canManage: b
           <Input value={name} onChange={(e) => setName(e.target.value)} className="max-w-[180px]" autoFocus disabled={pending} />
         ) : (
           customer.name
+        )}
+      </TableCell>
+      <TableCell className="whitespace-nowrap">
+        {editing ? (
+          <Input value={customerCode} onChange={(e) => setCustomerCode(e.target.value)} className="max-w-[110px]" disabled={pending} />
+        ) : (
+          customer.customerCode || "—"
         )}
       </TableCell>
       <TableCell className="whitespace-nowrap">
@@ -238,7 +249,7 @@ export function CustomersTable({ customers, canManage }: { customers: Customer[]
     const q = search.trim().toLowerCase();
     if (!q) return customers;
     return customers.filter((c) =>
-      [c.name, c.contactPerson, c.phone, c.taxId, c.address].some((v) => v?.toLowerCase().includes(q)),
+      [c.name, c.customerCode, c.contactPerson, c.phone, c.taxId, c.address].some((v) => v?.toLowerCase().includes(q)),
     );
   }, [customers, search]);
 
@@ -251,7 +262,7 @@ export function CustomersTable({ customers, canManage }: { customers: Customer[]
         <Input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="ค้นหาชื่อ, ผู้ติดต่อ, เบอร์โทร, เลขผู้เสียภาษี..."
+          placeholder="ค้นหาชื่อ, รหัสลูกค้า, ผู้ติดต่อ, เบอร์โทร, เลขผู้เสียภาษี..."
           className="pl-8"
         />
       </div>
@@ -261,6 +272,7 @@ export function CustomersTable({ customers, canManage }: { customers: Customer[]
           <TableHeader>
             <TableRow>
               <TableHead>ชื่อลูกค้า/บริษัท</TableHead>
+              <TableHead>รหัสลูกค้า</TableHead>
               <TableHead>ประเภทลูกค้า</TableHead>
               <TableHead>ผู้ติดต่อ</TableHead>
               <TableHead>เบอร์โทร</TableHead>
@@ -272,7 +284,7 @@ export function CustomersTable({ customers, canManage }: { customers: Customer[]
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={8} className="text-center text-muted-foreground">
                   {customers.length === 0 ? "ยังไม่มีลูกค้าในระบบ" : "ไม่พบลูกค้าที่ค้นหา"}
                 </TableCell>
               </TableRow>

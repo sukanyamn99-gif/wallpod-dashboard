@@ -143,6 +143,7 @@ export interface Customer {
   address: string | null;
   phone: string | null;
   taxId: string | null;
+  customerCode: string | null;
 }
 
 export interface Project {

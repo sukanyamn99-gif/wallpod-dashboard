@@ -20,7 +20,7 @@ export async function getCustomers(): Promise<Customer[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("customers")
-    .select("id, name, customer_type, contact_person, address, phone, tax_id");
+    .select("id, name, customer_type, contact_person, address, phone, tax_id, customer_code");
   if (error) throw error;
   return (data ?? []).map((row) => ({
     id: row.id,
@@ -30,6 +30,7 @@ export async function getCustomers(): Promise<Customer[]> {
     address: row.address,
     phone: row.phone,
     taxId: row.tax_id,
+    customerCode: row.customer_code,
   }));
 }
 

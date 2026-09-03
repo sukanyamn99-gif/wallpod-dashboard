@@ -22,7 +22,8 @@ create table customers (
   contact_person text,
   address text,
   phone text,
-  tax_id text
+  tax_id text,
+  customer_code text
 );
 
 -- ============ Auth / roles ============
