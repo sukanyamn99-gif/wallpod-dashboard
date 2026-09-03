@@ -162,6 +162,12 @@ export function BillingDocumentForm({
     });
   }
 
+  // Shows automatically whenever a customer is picked — whether via the
+  // JOB NO. picker, CustomerAutocomplete, or (edit mode) already fixed —
+  // same as the customer name itself already does, so staff can confirm
+  // the contact details that will print on the document before issuing it.
+  const selectedCustomer = useMemo(() => customers.find((c) => c.id === customerId), [customers, customerId]);
+
   const selectedAmounts = useMemo(
     () => [
       ...invoices.filter((inv) => selected.has(inv.paymentId)).map((inv) => inv.amount),
@@ -234,6 +240,15 @@ export function BillingDocumentForm({
               placeholder="ค้นหาลูกค้า"
               required
             />
+          )}
+          {selectedCustomer && (
+            <p className="text-xs text-muted-foreground">
+              {selectedCustomer.address ?? "ไม่มีที่อยู่ในระบบ"}
+              {" • "}
+              เลขผู้เสียภาษี: {selectedCustomer.taxId ?? "—"}
+              {" • "}
+              โทร. {selectedCustomer.phone ?? "—"}
+            </p>
           )}
         </div>
 
