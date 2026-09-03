@@ -10,11 +10,13 @@ import { DateInput } from "@/components/ui/date-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomplete";
+import { JobNoSelect } from "@/components/dashboard/job-no-select";
 import { formatTHB } from "@/lib/format";
 import { computeBillingDocumentSummary } from "@/lib/billing-document-summary";
 import { createBillingDocument, fetchUnbilledInvoices, updateBillingDocument } from "./actions";
 import { BILLING_DOCUMENT_LABELS } from "@/lib/types";
 import type { BillingDocumentDetail, BillingDocumentType, Customer, SalesRep, UnbilledInvoice } from "@/lib/types";
+import type { JobLookupEntry } from "@/lib/data/reference";
 
 const NONE_VALUE = "__none__";
 const initialState = { error: null as string | null };
@@ -29,6 +31,8 @@ export function BillingDocumentForm({
   docType,
   customers,
   salesReps,
+  jobNoSuggestions = [],
+  jobNoLookup = {},
   listPath,
   mode = "create",
   docId,
@@ -37,12 +41,18 @@ export function BillingDocumentForm({
   docType: BillingDocumentType;
   customers: Customer[];
   salesReps: SalesRep[];
+  // Only used in create mode (edit mode fixes the customer, so the JOB NO.
+  // picker isn't rendered there) — optional so the edit route doesn't need
+  // to fetch data its form usage never reads.
+  jobNoSuggestions?: string[];
+  jobNoLookup?: Record<string, JobLookupEntry>;
   listPath: string;
   mode?: "create" | "edit";
   docId?: string;
   initialData?: BillingDocumentDetail;
 }) {
   const router = useRouter();
+  const [jobNo, setJobNo] = useState("");
   const [customerId, setCustomerId] = useState(initialData?.customerId ?? "");
   const [customerName, setCustomerName] = useState(initialData?.customerName ?? "");
   const [invoices, setInvoices] = useState<UnbilledInvoice[]>([]);
@@ -70,15 +80,38 @@ export function BillingDocumentForm({
     return { error: result.error };
   }, initialState);
 
-  async function handleCustomerSelect(customer: Customer) {
-    setCustomerId(customer.id);
+  // Shared by both entry points into picking a customer — searching by name
+  // (CustomerAutocomplete) or by JOB NO. (handleJobNoChange below). `preselectJobNo`
+  // pre-checks that one job's own invoice(s) once loaded, since picking a
+  // specific job is a strong signal that's the one being billed — the
+  // customer's other open invoices still show up, just unchecked, so more
+  // can be added to the same bundle if wanted.
+  async function pickCustomer(id: string, name: string, preselectJobNo?: string) {
+    setCustomerId(id);
+    setCustomerName(name);
     setSelected(new Set());
     setLoadingInvoices(true);
     try {
-      const rows = await fetchUnbilledInvoices(customer.id);
+      const rows = await fetchUnbilledInvoices(id);
       setInvoices(rows);
+      if (preselectJobNo) {
+        setSelected(new Set(rows.filter((r) => r.jobNo === preselectJobNo).map((r) => r.paymentId)));
+      }
     } finally {
       setLoadingInvoices(false);
+    }
+  }
+
+  function handleCustomerSelect(customer: Customer) {
+    setJobNo("");
+    void pickCustomer(customer.id, customer.name);
+  }
+
+  function handleJobNoChange(value: string) {
+    setJobNo(value);
+    const match = jobNoLookup[value];
+    if (match?.customerId) {
+      void pickCustomer(match.customerId, match.customerName, value);
     }
   }
 
@@ -147,6 +180,16 @@ export function BillingDocumentForm({
         )}
 
         {state.error && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>}
+
+        {mode === "create" && (
+          <div className="space-y-2">
+            <Label htmlFor="job_no_picker">เลขที่ Job</Label>
+            <JobNoSelect id="job_no_picker" value={jobNo} onChange={handleJobNoChange} jobNos={jobNoSuggestions} />
+            <p className="text-xs text-muted-foreground">
+              เลือก JOB เพื่อดึงลูกค้าและรายการใบแจ้งหนี้ของ JOB นั้นมาให้อัตโนมัติ (หรือค้นหาลูกค้าด้านล่างแทนก็ได้)
+            </p>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="customer_id">ลูกค้า</Label>
