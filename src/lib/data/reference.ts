@@ -34,6 +34,34 @@ export async function getCustomers(): Promise<Customer[]> {
   }));
 }
 
+// Looks up a customer's current master-data record by exact (case-
+// insensitive) name match — same matching rule already used by the
+// quotation form's best-effort sync-back. Used to show live customer
+// contact info on read-only views instead of a possibly-stale per-document
+// snapshot (e.g. a quotation's own customer_address/customer_tel columns).
+export async function getCustomerByName(name: string): Promise<Customer | null> {
+  if (!name || !isSupabaseConfigured()) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("customers")
+    .select("id, name, customer_type, contact_person, address, phone, tax_id, customer_code")
+    .ilike("name", name)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    id: data.id,
+    name: data.name,
+    customer_type: data.customer_type,
+    contactPerson: data.contact_person,
+    address: data.address,
+    phone: data.phone,
+    taxId: data.tax_id,
+    customerCode: data.customer_code,
+  };
+}
+
 export async function getProductCategories(): Promise<
   { id: string; name: string; description: string | null; created_at: string }[]
 > {

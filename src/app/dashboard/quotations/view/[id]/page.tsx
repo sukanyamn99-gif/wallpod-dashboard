@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getQuotationById } from "@/lib/data/quotations";
+import { getCustomerByName } from "@/lib/data/reference";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
 import { formatQuotationItemDescription, formatTHB } from "@/lib/format";
@@ -39,6 +40,13 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
       </div>
     );
   }
+
+  // Prefer the customer's current master-data record (kept up to date on
+  // the new Customers page) over this quotation's own address/tel columns,
+  // which are only a snapshot from whenever the quotation was last saved.
+  const masterCustomer = await getCustomerByName(quotation.customerName);
+  const customerAddress = masterCustomer?.address ?? quotation.customerAddress;
+  const customerPhone = masterCustomer?.phone ?? quotation.customerTel;
 
   return (
     <div className="space-y-6">
@@ -80,6 +88,14 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
           <div>
             <p className="text-sm text-muted-foreground">Attn</p>
             <p className="font-medium">{quotation.attn ?? "—"}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">ที่อยู่ลูกค้า</p>
+            <p className="font-medium">{customerAddress ?? "—"}</p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">เบอร์โทรลูกค้า</p>
+            <p className="font-medium">{customerPhone ?? "—"}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">พนักงานขาย</p>
