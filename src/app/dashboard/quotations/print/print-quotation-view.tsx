@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { formatQuotationItemDescription, formatTHB } from "@/lib/format";
 import type { QuotationDetail } from "@/lib/types";
@@ -42,10 +43,22 @@ export function PrintQuotationView({
   quotation: QuotationDetail;
   imageUrlsByPath: Record<string, string>;
 }) {
+  const router = useRouter();
   return (
     <div className="mx-auto max-w-5xl bg-white p-6 text-black print:p-0">
       <div className="mb-4 flex justify-end gap-2 print:hidden">
-        <Button variant="outline" onClick={() => window.close()}>
+        {/* This tab is opened via a target="_blank" link, so window.close()
+            is supposed to work — but some browsers still refuse it (e.g.
+            after the print dialog has been open), leaving the button
+            appearing stuck. Fall back to navigating to the quotation list
+            so the button always does something useful either way. */}
+        <Button
+          variant="outline"
+          onClick={() => {
+            window.close();
+            router.push("/dashboard/quotations");
+          }}
+        >
           ปิด
         </Button>
         <Button onClick={() => window.print()}>พิมพ์</Button>
