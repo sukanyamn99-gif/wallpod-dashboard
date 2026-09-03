@@ -1334,7 +1334,16 @@ create table billing_note_items (
   -- job yet (see quotations.converted_project_id) — lets a document be
   -- issued ahead of the formal invoice, with no auto-sync back onto a
   -- payments row (none exists yet); staff fill that in manually later.
-  quotation_id uuid references quotations(id) on delete set null
+  quotation_id uuid references quotations(id) on delete set null,
+  -- A third source alongside payment_id/quotation_id: a line typed
+  -- directly into the document, with no underlying invoice or quotation
+  -- at all (e.g. a one-off charge). manual_description doubles as
+  -- invoice_no_snapshot's value so the simple one-row-per-line tables
+  -- (ใบวางบิล/ใบเสร็จ) render it without special-casing.
+  manual_description text,
+  manual_qty numeric(14,2),
+  manual_unit text,
+  manual_unit_price numeric(14,2)
 );
 
 alter table billing_notes enable row level security;

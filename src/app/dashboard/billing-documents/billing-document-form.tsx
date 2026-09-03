@@ -2,8 +2,9 @@
 
 import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Package } from "lucide-react";
+import { Package, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NumberInput } from "@/components/ui/number-input";
 import { DateInput } from "@/components/ui/date-input";
@@ -25,6 +26,24 @@ function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr);
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+// A third source of line items, alongside invoices/quotations: typed
+// directly into the document. `key` is a local React key only, never sent
+// to the server (the parsed amount is computed fresh there too — never
+// trust a client-computed number for what feeds the summary math).
+interface ManualItemRow {
+  key: string;
+  description: string;
+  qty: string;
+  unit: string;
+  unitPrice: string;
+}
+
+function manualItemAmount(row: ManualItemRow): number {
+  const qty = Number(row.qty) || 0;
+  const unitPrice = Number(row.unitPrice) || 0;
+  return Math.round(qty * unitPrice * 100) / 100;
 }
 
 export function BillingDocumentForm({
@@ -62,6 +81,17 @@ export function BillingDocumentForm({
   const [quotations, setQuotations] = useState<BillableQuotation[]>([]);
   const [selectedQuotations, setSelectedQuotations] = useState<Set<string>>(
     () => new Set((initialData?.items ?? []).map((it) => it.quotationId).filter((id): id is string => !!id)),
+  );
+  const [manualItems, setManualItems] = useState<ManualItemRow[]>(() =>
+    (initialData?.items ?? [])
+      .filter((it) => it.manualDescription)
+      .map((it, i) => ({
+        key: `initial-${i}`,
+        description: it.manualDescription ?? "",
+        qty: String(it.manualQty ?? 1),
+        unit: it.manualUnit ?? "หน่วย",
+        unitPrice: String(it.manualUnitPrice ?? 0),
+      })),
   );
   const [loadingInvoices, setLoadingInvoices] = useState(mode === "edit");
   const [docDate, setDocDate] = useState(initialData?.docDate ?? new Date().toISOString().slice(0, 10));
@@ -167,6 +197,21 @@ export function BillingDocumentForm({
     });
   }
 
+  function addManualItem() {
+    setManualItems((prev) => [
+      ...prev,
+      { key: `manual-${Date.now()}-${prev.length}`, description: "", qty: "1", unit: "หน่วย", unitPrice: "0" },
+    ]);
+  }
+
+  function updateManualItem(key: string, field: keyof Omit<ManualItemRow, "key">, value: string) {
+    setManualItems((prev) => prev.map((row) => (row.key === key ? { ...row, [field]: value } : row)));
+  }
+
+  function removeManualItem(key: string) {
+    setManualItems((prev) => prev.filter((row) => row.key !== key));
+  }
+
   // Shows automatically whenever a customer is picked — whether via the
   // JOB NO. picker, CustomerAutocomplete, or (edit mode) already fixed —
   // same as the customer name itself already does, so staff can confirm
@@ -177,8 +222,9 @@ export function BillingDocumentForm({
     () => [
       ...invoices.filter((inv) => selected.has(inv.paymentId)).map((inv) => inv.amount),
       ...quotations.filter((q) => selectedQuotations.has(q.id)).map((q) => q.total),
+      ...manualItems.filter((row) => row.description.trim()).map(manualItemAmount),
     ],
-    [invoices, selected, quotations, selectedQuotations],
+    [invoices, selected, quotations, selectedQuotations, manualItems],
   );
   const summary = useMemo(
     () => computeBillingDocumentSummary(selectedAmounts, Number(discountAmount) || 0, Number(whtPercent) || 0, Number(retentionPercent) || 0),
@@ -198,11 +244,23 @@ export function BillingDocumentForm({
       onSubmit={(e) => {
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
+        // The Select's own hidden input mirrors its displayed value
+        // (NONE_VALUE when unset), so new FormData(form) would submit that
+        // sentinel literally — overwrite with the real state, which is
+        // already "" when no sales rep is picked.
+        fd.set("sales_rep_id", salesRepId);
         for (const paymentId of selected) {
           fd.append("item_payment_id", paymentId);
         }
         for (const quotationId of selectedQuotations) {
           fd.append("item_quotation_id", quotationId);
+        }
+        for (const row of manualItems) {
+          if (!row.description.trim()) continue;
+          fd.append("item_manual_description", row.description);
+          fd.append("item_manual_qty", row.qty);
+          fd.append("item_manual_unit", row.unit);
+          fd.append("item_manual_unit_price", row.unitPrice);
         }
         startTransition(() => formAction(fd));
       }}
@@ -403,6 +461,63 @@ export function BillingDocumentForm({
           </div>
         )}
 
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label>รายการที่พิมพ์เอง</Label>
+            <Button type="button" size="sm" variant="outline" onClick={addManualItem}>
+              <Plus className="h-3.5 w-3.5" />
+              เพิ่มรายการ
+            </Button>
+          </div>
+          {manualItems.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              ใช้เมื่อไม่มีใบแจ้งหนี้หรือใบเสนอราคาให้ดึง — พิมพ์ชื่อสินค้า/บริการ จำนวน และราคาต่อหน่วยเอง
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {manualItems.map((row) => (
+                <div key={row.key} className="flex items-start gap-2 rounded-lg border p-2">
+                  <div className="grid flex-1 grid-cols-4 gap-2">
+                    <Input
+                      className="col-span-4 sm:col-span-1"
+                      placeholder="ชื่อสินค้า/บริการ"
+                      value={row.description}
+                      onChange={(e) => updateManualItem(row.key, "description", e.target.value)}
+                    />
+                    <NumberInput
+                      placeholder="จำนวน"
+                      min={0}
+                      step={0.01}
+                      value={row.qty}
+                      onChange={(v) => updateManualItem(row.key, "qty", v)}
+                    />
+                    <Input
+                      placeholder="หน่วย"
+                      value={row.unit}
+                      onChange={(e) => updateManualItem(row.key, "unit", e.target.value)}
+                    />
+                    <NumberInput
+                      placeholder="ราคาต่อหน่วย"
+                      min={0}
+                      step={0.01}
+                      value={row.unitPrice}
+                      onChange={(v) => updateManualItem(row.key, "unitPrice", v)}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
+                    <span className="w-20 shrink-0 text-right text-sm font-medium">
+                      {formatTHB(manualItemAmount(row))}
+                    </span>
+                    <Button type="button" size="icon-sm" variant="outline" onClick={() => removeManualItem(row.key)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="space-y-1 rounded-lg border p-3 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">รวมเป็นเงิน</span>
@@ -460,7 +575,13 @@ export function BillingDocumentForm({
           >
             ยกเลิก
           </Button>
-          <Button type="submit" disabled={pending || (selected.size === 0 && selectedQuotations.size === 0)}>
+          <Button
+            type="submit"
+            disabled={
+              pending ||
+              (selected.size === 0 && selectedQuotations.size === 0 && !manualItems.some((row) => row.description.trim()))
+            }
+          >
             {pending ? "กำลังบันทึก..." : mode === "edit" ? "บันทึกการแก้ไข" : `ออก${BILLING_DOCUMENT_LABELS[docType]}`}
           </Button>
         </div>

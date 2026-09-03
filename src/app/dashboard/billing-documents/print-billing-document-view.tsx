@@ -106,6 +106,26 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
               // group header and subtotal rows don't get a number.
               let seq = 0;
               return document.items.map((it) => {
+                // Typed directly into the document — no underlying invoice
+                // or quotation to group under, so it's just one plain row.
+                if (it.manualDescription) {
+                  seq += 1;
+                  return (
+                    <tr key={it.id}>
+                      <td className="border-r border-t border-black p-1.5">{seq}</td>
+                      <td className="border-r border-t border-black p-1.5 text-left whitespace-pre-line">
+                        {it.manualDescription}
+                      </td>
+                      <td className="border-r border-t border-black p-1.5">
+                        {it.manualQty} {it.manualUnit}
+                      </td>
+                      <td className="border-r border-t border-black p-1.5 text-right">
+                        {formatTHB(it.manualUnitPrice ?? 0)}
+                      </td>
+                      <td className="border-t border-black p-1.5 text-right">{formatTHB(it.amount)}</td>
+                    </tr>
+                  );
+                }
                 const detail = it.quotationItems;
                 // Items billed directly from a quotation (no invoice behind
                 // them yet) are labeled "ใบเสนอราคา", not "เลขที่เอกสาร".
@@ -182,6 +202,7 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
                 <td className="border-r border-t border-black p-1.5">
                   {it.invoiceNo}
                   {it.quotationId && <div className="text-xs text-neutral-500">(ใบเสนอราคา)</div>}
+                  {it.manualDescription && <div className="text-xs text-neutral-500">(รายการที่พิมพ์เอง)</div>}
                 </td>
                 <td className="border-r border-t border-black p-1.5">{fmtDate(it.invoiceDate)}</td>
                 <td className="border-t border-black p-1.5 text-right">{formatTHB(it.amount)}</td>

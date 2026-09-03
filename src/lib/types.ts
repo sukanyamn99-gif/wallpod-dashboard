@@ -610,6 +610,13 @@ export interface BillingDocumentItem {
   // attempted (other doc types).
   quotationDocNo?: string | null;
   quotationItems?: QuotationItemDetail[] | null;
+  // A third source, alongside paymentId/quotationId: typed directly into
+  // the document with no underlying invoice or quotation (e.g. a one-off
+  // charge). Set together — all four or none.
+  manualDescription?: string | null;
+  manualQty?: number | null;
+  manualUnit?: string | null;
+  manualUnitPrice?: number | null;
 }
 
 export interface BillingDocument {

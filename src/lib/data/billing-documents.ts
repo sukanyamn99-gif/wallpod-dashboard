@@ -109,9 +109,10 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
   // always selected (cheap) since it also drives the "ใบเสนอราคา" vs
   // "เลขที่เอกสาร" label on every doc type, not just these two.
   const showsItemizedDetail = header.doc_type === "invoice" || header.doc_type === "tax_invoice";
+  const MANUAL_COLUMNS = "manual_description, manual_qty, manual_unit, manual_unit_price";
   const itemsSelect = showsItemizedDetail
-    ? "id, payment_id, quotation_id, invoice_no_snapshot, invoice_date_snapshot, amount, payments(projects(job_no))"
-    : "id, payment_id, quotation_id, invoice_no_snapshot, invoice_date_snapshot, amount";
+    ? `id, payment_id, quotation_id, invoice_no_snapshot, invoice_date_snapshot, amount, ${MANUAL_COLUMNS}, payments(projects(job_no))`
+    : `id, payment_id, quotation_id, invoice_no_snapshot, invoice_date_snapshot, amount, ${MANUAL_COLUMNS}`;
   const { data: items, error: itemsErr } = await supabase
     .from("billing_note_items")
     .select(itemsSelect)
@@ -125,6 +126,10 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     invoice_no_snapshot: string;
     invoice_date_snapshot: string | null;
     amount: number;
+    manual_description: string | null;
+    manual_qty: number | null;
+    manual_unit: string | null;
+    manual_unit_price: number | null;
     payments?: { projects: { job_no: string | null } | null } | null;
   };
   const itemRows = (items ?? []) as unknown as ItemRow[];
@@ -157,6 +162,10 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
         invoiceNo: it.invoice_no_snapshot,
         invoiceDate: it.invoice_date_snapshot,
         amount: Number(it.amount),
+        manualDescription: it.manual_description,
+        manualQty: it.manual_qty !== null ? Number(it.manual_qty) : null,
+        manualUnit: it.manual_unit,
+        manualUnitPrice: it.manual_unit_price !== null ? Number(it.manual_unit_price) : null,
         ...(showsItemizedDetail
           ? { quotationDocNo: quotationDetail?.quotationDocNo ?? null, quotationItems: quotationDetail?.items ?? null }
           : {}),

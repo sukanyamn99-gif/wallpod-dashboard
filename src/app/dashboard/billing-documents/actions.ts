@@ -70,6 +70,40 @@ function revalidateBillingDocumentConsumers(docType: BillingDocumentType) {
   revalidatePath("/dashboard/project-sales");
 }
 
+interface ParsedManualItem {
+  description: string;
+  qty: number;
+  unit: string;
+  unitPrice: number;
+  amount: number;
+}
+
+// A third source of line items, alongside existing invoices and
+// quotations: typed straight into the document (e.g. a one-off charge
+// with nothing tracked elsewhere). Parallel repeated fields, one entry
+// per row; rows with an empty description are dropped rather than
+// rejected, since the client always submits every row it's rendering.
+function parseManualItems(formData: FormData): ParsedManualItem[] {
+  const descriptions = formData.getAll("item_manual_description").map((v) => String(v));
+  const qtys = formData.getAll("item_manual_qty").map((v) => String(v));
+  const units = formData.getAll("item_manual_unit").map((v) => String(v));
+  const unitPrices = formData.getAll("item_manual_unit_price").map((v) => String(v));
+
+  return descriptions
+    .map((description, i) => {
+      const qty = num(qtys[i]) || 1;
+      const unitPrice = Math.max(0, num(unitPrices[i]));
+      return {
+        description: description.trim(),
+        qty,
+        unit: str(units[i]) ?? "หน่วย",
+        unitPrice,
+        amount: Math.round(qty * unitPrice * 100) / 100,
+      };
+    })
+    .filter((it) => it.description);
+}
+
 interface ParsedBillingDocument {
   customerId: string;
   docDate: string;
@@ -82,6 +116,7 @@ interface ParsedBillingDocument {
   note: string | null;
   itemPaymentIds: string[];
   itemQuotationIds: string[];
+  manualItems: ParsedManualItem[];
 }
 
 // Shared by create and update — both need the exact same fields validated
@@ -103,8 +138,9 @@ function parseBillingDocumentForm(formData: FormData): { error: string } | ({ er
 
   const itemPaymentIds = formData.getAll("item_payment_id").map((v) => String(v));
   const itemQuotationIds = formData.getAll("item_quotation_id").map((v) => String(v));
-  if (itemPaymentIds.length === 0 && itemQuotationIds.length === 0) {
-    return { error: "กรุณาเลือกรายการใบแจ้งหนี้หรือใบเสนอราคาอย่างน้อย 1 รายการ" };
+  const manualItems = parseManualItems(formData);
+  if (itemPaymentIds.length === 0 && itemQuotationIds.length === 0 && manualItems.length === 0) {
+    return { error: "กรุณาเลือกหรือกรอกรายการอย่างน้อย 1 รายการ" };
   }
 
   return {
@@ -120,6 +156,7 @@ function parseBillingDocumentForm(formData: FormData): { error: string } | ({ er
     note,
     itemPaymentIds,
     itemQuotationIds,
+    manualItems,
   };
 }
 
@@ -142,6 +179,7 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
     note,
     itemPaymentIds,
     itemQuotationIds,
+    manualItems,
   } = parsed;
 
   const supabase = await createClient();
@@ -210,6 +248,15 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
       invoice_date_snapshot: q.quote_date,
       amount: q.total,
     })),
+    ...manualItems.map((m) => ({
+      billing_note_id: doc.id,
+      invoice_no_snapshot: m.description,
+      amount: m.amount,
+      manual_description: m.description,
+      manual_qty: m.qty,
+      manual_unit: m.unit,
+      manual_unit_price: m.unitPrice,
+    })),
   ]);
   if (itemsErr) return { error: `บันทึกเอกสารสำเร็จ แต่บันทึกรายการไม่สำเร็จ: ${itemsErr.message}`, id: doc.id };
 
@@ -269,6 +316,7 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
     note,
     itemPaymentIds,
     itemQuotationIds,
+    manualItems,
   } = parsed;
 
   const supabase = await createClient();
@@ -327,6 +375,15 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
       invoice_no_snapshot: q.doc_no,
       invoice_date_snapshot: q.quote_date,
       amount: q.total,
+    })),
+    ...manualItems.map((m) => ({
+      billing_note_id: id,
+      invoice_no_snapshot: m.description,
+      amount: m.amount,
+      manual_description: m.description,
+      manual_qty: m.qty,
+      manual_unit: m.unit,
+      manual_unit_price: m.unitPrice,
     })),
   ]);
   if (itemsErr) return { error: `แก้ไขรายการไม่สำเร็จ: ${itemsErr.message}` };
