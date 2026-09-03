@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { formatTHB } from "@/lib/format";
 import { REQUISITION_PURPOSE_LABELS } from "@/lib/types";
@@ -10,11 +11,17 @@ const SIGNATURE_BLOCKS = ["ผู้เบิก", "ผู้อนุมัต�
 
 export function PrintRequisitionView({
   requisition,
-  showCosts,
+  showCosts: canSeeCosts,
 }: {
   requisition: StockRequisition;
+  // Permission (role-based) — whether cost data is present at all. A
+  // separate displayCosts toggle below lets someone who CAN see costs
+  // still choose to print without them (e.g. a copy for another
+  // department); someone without permission never gets the toggle.
   showCosts: boolean;
 }) {
+  const [displayCosts, setDisplayCosts] = useState(canSeeCosts);
+  const showCosts = canSeeCosts && displayCosts;
   const totalValue = requisition.items.reduce((sum, it) => sum + it.quantity * it.unitCost, 0);
   const hasAnyCost = requisition.items.some((it) => it.unitCost > 0);
   const hasEstimatedCost = requisition.items.some((it) => it.isEstimatedCost);
@@ -35,11 +42,24 @@ export function PrintRequisitionView({
 
   return (
     <div className="mx-auto max-w-3xl bg-white p-6 text-black print:p-0">
-      <div className="mb-4 flex justify-end gap-2 print:hidden">
-        <Button variant="outline" onClick={() => window.close()}>
-          ปิด
-        </Button>
-        <Button onClick={() => window.print()}>พิมพ์</Button>
+      <div className="mb-4 flex items-center justify-end gap-4 print:hidden">
+        {canSeeCosts && (
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={displayCosts}
+              onChange={(e) => setDisplayCosts(e.target.checked)}
+              className="h-4 w-4"
+            />
+            แสดงต้นทุน
+          </label>
+        )}
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => window.close()}>
+            ปิด
+          </Button>
+          <Button onClick={() => window.print()}>พิมพ์</Button>
+        </div>
       </div>
 
       <div className="border border-black text-[13px] leading-tight">
