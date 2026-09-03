@@ -576,6 +576,7 @@ export interface BillingDocument {
   docDate: string;
   creditDays: number;
   dueDate: string;
+  salesRepId: string | null;
   salesRepName: string | null;
   discountAmount: number;
   whtPercent: number;

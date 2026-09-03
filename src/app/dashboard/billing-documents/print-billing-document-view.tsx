@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { formatTHB } from "@/lib/format";
 import { thaiBahtText } from "@/lib/thai-baht-text";
@@ -12,7 +13,13 @@ function fmtDate(dateStr: string | null): string {
   return new Date(dateStr).toLocaleDateString("th-TH");
 }
 
-export function PrintBillingDocumentView({ document }: { document: BillingDocumentDetail }) {
+export function PrintBillingDocumentView({
+  document,
+  editHref,
+}: {
+  document: BillingDocumentDetail;
+  editHref?: string;
+}) {
   const summary = computeBillingDocumentSummary(
     document.items.map((it) => it.amount),
     document.discountAmount,
@@ -24,6 +31,11 @@ export function PrintBillingDocumentView({ document }: { document: BillingDocume
   return (
     <div className="mx-auto max-w-3xl bg-white p-6 text-black print:p-0">
       <div className="mb-4 flex justify-end gap-2 print:hidden">
+        {editHref && (
+          <Button variant="outline" nativeButton={false} render={<Link href={editHref} />}>
+            แก้ไข
+          </Button>
+        )}
         <Button variant="outline" onClick={() => window.close()}>
           ปิด
         </Button>

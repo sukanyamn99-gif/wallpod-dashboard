@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Eye, Plus, Trash2, X } from "lucide-react";
+import { Check, Eye, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -136,6 +136,18 @@ export function BillingDocumentTable({
                     >
                       <Eye className="h-3.5 w-3.5" />
                     </Button>
+                    {/* Only ใบวางบิล has an edit route so far — the other
+                        2 types can be extended the same way later. */}
+                    {docType === "billing_note" && canDelete(currentProfile, doc) && (
+                      <Button
+                        size="icon-sm"
+                        variant="outline"
+                        nativeButton={false}
+                        render={<Link href={`/dashboard/billing-documents/${routeSegment}/edit/${doc.id}`} />}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                     {canDelete(currentProfile, doc) && <DeleteButton docType={docType} doc={doc} />}
                   </div>
                 </TableCell>

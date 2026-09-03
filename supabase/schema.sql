@@ -1336,6 +1336,10 @@ alter table billing_note_items enable row level security;
 create policy billing_notes_select on billing_notes for select using (my_role() <> 'sales');
 create policy billing_notes_insert on billing_notes for insert with check (my_role() <> 'sales');
 create policy billing_notes_delete on billing_notes for delete using (my_role() <> 'sales');
+create policy billing_notes_update on billing_notes for update
+  using (my_role() <> 'sales') with check (my_role() <> 'sales');
 
 create policy billing_note_items_select on billing_note_items for select using (my_role() <> 'sales');
 create policy billing_note_items_insert on billing_note_items for insert with check (my_role() <> 'sales');
+create policy billing_note_items_delete on billing_note_items for delete
+  using (exists (select 1 from billing_notes bn where bn.id = billing_note_id and my_role() <> 'sales'));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState, useTransition } from "react";
+import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,9 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomplete";
 import { formatTHB } from "@/lib/format";
 import { computeBillingDocumentSummary } from "@/lib/billing-document-summary";
-import { createBillingDocument, fetchUnbilledInvoices } from "./actions";
+import { createBillingDocument, fetchUnbilledInvoices, updateBillingDocument } from "./actions";
 import { BILLING_DOCUMENT_LABELS } from "@/lib/types";
-import type { BillingDocumentType, Customer, SalesRep, UnbilledInvoice } from "@/lib/types";
+import type { BillingDocumentDetail, BillingDocumentType, Customer, SalesRep, UnbilledInvoice } from "@/lib/types";
 
 const NONE_VALUE = "__none__";
 const initialState = { error: null as string | null };
@@ -30,26 +30,39 @@ export function BillingDocumentForm({
   customers,
   salesReps,
   listPath,
+  mode = "create",
+  docId,
+  initialData,
 }: {
   docType: BillingDocumentType;
   customers: Customer[];
   salesReps: SalesRep[];
   listPath: string;
+  mode?: "create" | "edit";
+  docId?: string;
+  initialData?: BillingDocumentDetail;
 }) {
   const router = useRouter();
-  const [customerId, setCustomerId] = useState("");
-  const [customerName, setCustomerName] = useState("");
+  const [customerId, setCustomerId] = useState(initialData?.customerId ?? "");
+  const [customerName, setCustomerName] = useState(initialData?.customerName ?? "");
   const [invoices, setInvoices] = useState<UnbilledInvoice[]>([]);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [loadingInvoices, setLoadingInvoices] = useState(false);
-  const [docDate, setDocDate] = useState(new Date().toISOString().slice(0, 10));
-  const [creditDays, setCreditDays] = useState("0");
-  const [discountAmount, setDiscountAmount] = useState("0");
-  const [whtPercent, setWhtPercent] = useState("0");
-  const [retentionPercent, setRetentionPercent] = useState("0");
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set((initialData?.items ?? []).map((it) => it.paymentId).filter((id): id is string => !!id)),
+  );
+  const [loadingInvoices, setLoadingInvoices] = useState(mode === "edit");
+  const [docDate, setDocDate] = useState(initialData?.docDate ?? new Date().toISOString().slice(0, 10));
+  const [creditDays, setCreditDays] = useState(String(initialData?.creditDays ?? 0));
+  const [discountAmount, setDiscountAmount] = useState(String(initialData?.discountAmount ?? 0));
+  const [whtPercent, setWhtPercent] = useState(String(initialData?.whtPercent ?? 0));
+  const [retentionPercent, setRetentionPercent] = useState(String(initialData?.retentionPercent ?? 0));
   const [, startTransition] = useTransition();
 
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
+    if (mode === "edit" && docId) {
+      const result = await updateBillingDocument(docType, docId, formData);
+      if (!result.error) router.push(`/dashboard/billing-documents/${docType.replace("_", "-")}/view/${docId}`);
+      return { error: result.error };
+    }
     const result = await createBillingDocument(docType, formData);
     if (!result.error && result.id) {
       router.push(`/dashboard/billing-documents/${docType.replace("_", "-")}/view/${result.id}`);
@@ -68,6 +81,25 @@ export function BillingDocumentForm({
       setLoadingInvoices(false);
     }
   }
+
+  // Edit mode: customer is fixed (changing it would invalidate the whole
+  // invoice bundle), so fetch its open invoices once on mount instead of
+  // waiting for a CustomerAutocomplete selection that will never happen.
+  useEffect(() => {
+    if (mode !== "edit" || !initialData) return;
+    let cancelled = false;
+    (async () => {
+      const rows = await fetchUnbilledInvoices(initialData.customerId);
+      if (!cancelled) {
+        setInvoices(rows);
+        setLoadingInvoices(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once for the fixed initialData.customerId
+  }, []);
 
   function toggleInvoice(paymentId: string) {
     setSelected((prev) => {
@@ -108,21 +140,33 @@ export function BillingDocumentForm({
       className="grid grid-cols-1 gap-6 lg:grid-cols-2"
     >
       <div className="space-y-4">
+        {mode === "edit" && initialData && (
+          <p className="text-sm text-muted-foreground">
+            เลขที่เอกสาร: <span className="font-medium text-foreground">{initialData.docNo}</span>
+          </p>
+        )}
+
         {state.error && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>}
 
         <div className="space-y-2">
           <Label htmlFor="customer_id">ลูกค้า</Label>
           <input type="hidden" name="customer_id" value={customerId} />
-          <CustomerAutocomplete
-            id="customer_id"
-            name="_customer_name_display"
-            value={customerName}
-            onChange={setCustomerName}
-            onSelect={handleCustomerSelect}
-            customers={customers}
-            placeholder="ค้นหาลูกค้า"
-            required
-          />
+          {mode === "edit" ? (
+            // Fixed on edit — changing the customer would invalidate the
+            // whole open-invoices bundle, so this isn't an editable field.
+            <p className="rounded-md border bg-muted/30 px-3 py-2 text-sm">{customerName}</p>
+          ) : (
+            <CustomerAutocomplete
+              id="customer_id"
+              name="_customer_name_display"
+              value={customerName}
+              onChange={setCustomerName}
+              onSelect={handleCustomerSelect}
+              customers={customers}
+              placeholder="ค้นหาลูกค้า"
+              required
+            />
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -143,7 +187,7 @@ export function BillingDocumentForm({
 
         <div className="space-y-2">
           <Label htmlFor="sales_rep_id">ผู้ขาย</Label>
-          <Select name="sales_rep_id" items={salesRepItems}>
+          <Select name="sales_rep_id" items={salesRepItems} defaultValue={initialData?.salesRepId ?? undefined}>
             <SelectTrigger id="sales_rep_id" className="w-full">
               <SelectValue placeholder="— ไม่ระบุ —" />
             </SelectTrigger>
@@ -188,7 +232,7 @@ export function BillingDocumentForm({
 
         <div className="space-y-2">
           <Label htmlFor="note">หมายเหตุ</Label>
-          <Textarea id="note" name="note" placeholder="ข้อมูลเพิ่มเติม..." />
+          <Textarea id="note" name="note" placeholder="ข้อมูลเพิ่มเติม..." defaultValue={initialData?.note ?? undefined} />
         </div>
       </div>
 
@@ -279,11 +323,21 @@ export function BillingDocumentForm({
         </div>
 
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => router.push(listPath)}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() =>
+              router.push(
+                mode === "edit" && docId
+                  ? `/dashboard/billing-documents/${docType.replace("_", "-")}/view/${docId}`
+                  : listPath,
+              )
+            }
+          >
             ยกเลิก
           </Button>
           <Button type="submit" disabled={pending || selected.size === 0}>
-            {pending ? "กำลังบันทึก..." : `ออก${BILLING_DOCUMENT_LABELS[docType]}`}
+            {pending ? "กำลังบันทึก..." : mode === "edit" ? "บันทึกการแก้ไข" : `ออก${BILLING_DOCUMENT_LABELS[docType]}`}
           </Button>
         </div>
       </div>

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activity-log";
-import { getUnbilledInvoicesForCustomer } from "@/lib/data/billing-documents";
+import { getBillingDocumentById, getUnbilledInvoicesForCustomer } from "@/lib/data/billing-documents";
 import { BILLING_DOCUMENT_LABELS } from "@/lib/types";
 import type { BillingDocumentType, UnbilledInvoice } from "@/lib/types";
 
@@ -63,13 +63,24 @@ function revalidateBillingDocumentConsumers(docType: BillingDocumentType) {
   revalidatePath("/dashboard/project-sales");
 }
 
-export async function createBillingDocument(docType: BillingDocumentType, formData: FormData) {
-  if (!isSupabaseConfigured()) {
-    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง", id: null };
-  }
+interface ParsedBillingDocument {
+  customerId: string;
+  docDate: string;
+  creditDays: number;
+  dueDate: string;
+  salesRepId: string | null;
+  discountAmount: number;
+  whtPercent: number;
+  retentionPercent: number;
+  note: string | null;
+  itemPaymentIds: string[];
+}
 
+// Shared by create and update — both need the exact same fields validated
+// and parsed identically.
+function parseBillingDocumentForm(formData: FormData): { error: string } | ({ error: null } & ParsedBillingDocument) {
   const customerId = str(formData.get("customer_id"));
-  if (!customerId) return { error: "กรุณาเลือกลูกค้า", id: null };
+  if (!customerId) return { error: "กรุณาเลือกลูกค้า" };
 
   const docDate = str(formData.get("doc_date")) ?? new Date().toISOString().slice(0, 10);
   const creditDays = Math.max(0, Math.round(num(formData.get("credit_days"))));
@@ -84,8 +95,33 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
 
   const itemPaymentIds = formData.getAll("item_payment_id").map((v) => String(v));
   if (itemPaymentIds.length === 0) {
-    return { error: "กรุณาเลือกรายการใบแจ้งหนี้อย่างน้อย 1 รายการ", id: null };
+    return { error: "กรุณาเลือกรายการใบแจ้งหนี้อย่างน้อย 1 รายการ" };
   }
+
+  return {
+    error: null,
+    customerId,
+    docDate,
+    creditDays,
+    dueDate: dueDate.toISOString().slice(0, 10),
+    salesRepId,
+    discountAmount,
+    whtPercent,
+    retentionPercent,
+    note,
+    itemPaymentIds,
+  };
+}
+
+export async function createBillingDocument(docType: BillingDocumentType, formData: FormData) {
+  if (!isSupabaseConfigured()) {
+    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง", id: null };
+  }
+
+  const parsed = parseBillingDocumentForm(formData);
+  if (parsed.error !== null) return { error: parsed.error, id: null };
+  const { customerId, docDate, creditDays, dueDate, salesRepId, discountAmount, whtPercent, retentionPercent, note, itemPaymentIds } =
+    parsed;
 
   const supabase = await createClient();
   const {
@@ -112,7 +148,7 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
       customer_id: customerId,
       doc_date: docDate,
       credit_days: creditDays,
-      due_date: dueDate.toISOString().slice(0, 10),
+      due_date: dueDate,
       sales_rep_id: salesRepId,
       doc_type: docType,
       discount_amount: discountAmount,
@@ -161,6 +197,118 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
   await logActivity(`สร้าง${BILLING_DOCUMENT_LABELS[docType]}`, docNo);
   revalidateBillingDocumentConsumers(docType);
   return { error: null, id: doc.id as string };
+}
+
+export async function updateBillingDocument(docType: BillingDocumentType, id: string, formData: FormData) {
+  if (!isSupabaseConfigured()) {
+    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
+  }
+
+  // Fresh read, not client-supplied — this is the true "before" state used
+  // to work out which invoices were removed from the bundle below, matching
+  // this app's established audit/edit convention (e.g. Goods Receipt's
+  // updateGoodsReceipt, Stock Requisition's updateStockRequisition).
+  const existing = await getBillingDocumentById(id);
+  if (!existing) return { error: "ไม่พบเอกสารนี้ในระบบ" };
+
+  const parsed = parseBillingDocumentForm(formData);
+  if (parsed.error !== null) return { error: parsed.error };
+  const { customerId, docDate, creditDays, dueDate, salesRepId, discountAmount, whtPercent, retentionPercent, note, itemPaymentIds } =
+    parsed;
+
+  const supabase = await createClient();
+
+  const { data: livePayments, error: paymentsErr } = await supabase
+    .from("payments")
+    .select("id, invoice_no, paid_date, amount")
+    .in("id", itemPaymentIds);
+  if (paymentsErr) return { error: paymentsErr.message };
+  if (!livePayments || livePayments.length !== itemPaymentIds.length) {
+    return { error: "ไม่พบรายการใบแจ้งหนี้บางรายการ กรุณาลองใหม่" };
+  }
+
+  const { error: updateErr } = await supabase
+    .from("billing_notes")
+    .update({
+      customer_id: customerId,
+      doc_date: docDate,
+      credit_days: creditDays,
+      due_date: dueDate,
+      sales_rep_id: salesRepId,
+      discount_amount: discountAmount,
+      wht_percent: whtPercent,
+      retention_percent: retentionPercent,
+      note,
+    })
+    .eq("id", id);
+  if (updateErr) return { error: updateErr.message };
+
+  const { error: deleteItemsErr } = await supabase.from("billing_note_items").delete().eq("billing_note_id", id);
+  if (deleteItemsErr) {
+    return { error: `แก้ไขข้อมูลทั่วไปสำเร็จ แต่แก้ไขรายการไม่สำเร็จ: ${deleteItemsErr.message}` };
+  }
+
+  const { error: itemsErr } = await supabase.from("billing_note_items").insert(
+    livePayments.map((p) => ({
+      billing_note_id: id,
+      payment_id: p.id,
+      invoice_no_snapshot: p.invoice_no,
+      invoice_date_snapshot: p.paid_date,
+      amount: p.amount,
+    })),
+  );
+  if (itemsErr) return { error: `แก้ไขรายการไม่สำเร็จ: ${itemsErr.message}` };
+
+  // Reconcile the sync-back: clear the field on any invoice that was
+  // removed from the bundle (it's no longer represented by this document),
+  // then (re)set it on every invoice now selected — same fields
+  // createBillingDocument syncs on create, just with an extra "removed"
+  // step edit needs and create doesn't.
+  const oldPaymentIds = new Set(existing.items.map((it) => it.paymentId).filter((pid): pid is string => !!pid));
+  const removedPaymentIds = [...oldPaymentIds].filter((pid) => !itemPaymentIds.includes(pid));
+
+  if (docType === "billing_note") {
+    if (removedPaymentIds.length > 0) {
+      const { error: clearErr } = await supabase
+        .from("payments")
+        .update({ billing_note_no: null, billing_note_date: null })
+        .in("id", removedPaymentIds);
+      if (clearErr) {
+        return { error: `แก้ไขเอกสารสำเร็จ แต่ล้างเลขที่ใบวางบิลของรายการที่ถูกเอาออกไม่สำเร็จ: ${clearErr.message}` };
+      }
+    }
+    const { error: syncErr } = await supabase
+      .from("payments")
+      .update({ billing_note_no: existing.docNo, billing_note_date: docDate })
+      .in("id", itemPaymentIds);
+    if (syncErr) {
+      return { error: `แก้ไขเอกสารสำเร็จ แต่อัปเดตเลขที่ใบวางบิลใน Project Sales ไม่สำเร็จ: ${syncErr.message}` };
+    }
+  } else if (docType === "receipt") {
+    if (removedPaymentIds.length > 0) {
+      const { error: clearErr } = await supabase
+        .from("payments")
+        .update({ receipt_no: null, received_date: null })
+        .in("id", removedPaymentIds);
+      if (clearErr) {
+        return { error: `แก้ไขเอกสารสำเร็จ แต่ล้างเลขที่ใบเสร็จของรายการที่ถูกเอาออกไม่สำเร็จ: ${clearErr.message}` };
+      }
+    }
+    const { error: syncErr } = await supabase
+      .from("payments")
+      .update({ receipt_no: existing.docNo, received_date: docDate })
+      .in("id", itemPaymentIds);
+    if (syncErr) {
+      return { error: `แก้ไขเอกสารสำเร็จ แต่อัปเดตเลขที่ใบเสร็จใน Project Sales ไม่สำเร็จ: ${syncErr.message}` };
+    }
+  }
+
+  await logActivity(`แก้ไข${BILLING_DOCUMENT_LABELS[docType]}`, existing.docNo);
+  const routeSegment = docType.replace("_", "-");
+  revalidateBillingDocumentConsumers(docType);
+  revalidatePath(`/dashboard/billing-documents/${routeSegment}/edit/${id}`);
+  revalidatePath(`/dashboard/billing-documents/${routeSegment}/view/${id}`);
+  return { error: null };
 }
 
 export async function deleteBillingDocument(docType: BillingDocumentType, id: string) {
