@@ -96,18 +96,20 @@ export interface JobLookupEntry {
   projectName: string;
   customerId: string | null;
   customerName: string;
+  salesRepId: string | null;
 }
 
-// Lightweight job_no -> project name/customer lookup for auto-filling forms
-// (e.g. Stock Requisition, Billing Documents) once a JOB NO. is picked —
-// deliberately a plain select rather than reusing getFullProjectReport(),
-// which also joins costs/payments/items this lookup has no use for.
+// Lightweight job_no -> project name/customer/sales-rep lookup for
+// auto-filling forms (e.g. Stock Requisition, Billing Documents) once a
+// JOB NO. is picked — deliberately a plain select rather than reusing
+// getFullProjectReport(), which also joins costs/payments/items this
+// lookup has no use for.
 export async function getJobNoLookup(): Promise<Record<string, JobLookupEntry>> {
   if (!isSupabaseConfigured()) return {};
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("projects")
-    .select("job_no, project_name, customer_id, customers(name)")
+    .select("job_no, project_name, customer_id, sales_rep_id, customers(name)")
     .not("job_no", "is", null);
   if (error) throw error;
   const lookup: Record<string, JobLookupEntry> = {};
@@ -116,7 +118,12 @@ export async function getJobNoLookup(): Promise<Record<string, JobLookupEntry>> 
     if (!jobNo || !jobNo.trim()) continue;
     const customer = row.customers as { name: string } | { name: string }[] | null;
     const customerName = Array.isArray(customer) ? (customer[0]?.name ?? "") : (customer?.name ?? "");
-    lookup[jobNo] = { projectName: row.project_name ?? "", customerId: row.customer_id ?? null, customerName };
+    lookup[jobNo] = {
+      projectName: row.project_name ?? "",
+      customerId: row.customer_id ?? null,
+      customerName,
+      salesRepId: row.sales_rep_id ?? null,
+    };
   }
   return lookup;
 }

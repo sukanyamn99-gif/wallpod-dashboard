@@ -66,6 +66,7 @@ export function BillingDocumentForm({
   const [loadingInvoices, setLoadingInvoices] = useState(mode === "edit");
   const [docDate, setDocDate] = useState(initialData?.docDate ?? new Date().toISOString().slice(0, 10));
   const [creditDays, setCreditDays] = useState(String(initialData?.creditDays ?? 0));
+  const [salesRepId, setSalesRepId] = useState(initialData?.salesRepId ?? "");
   const [discountAmount, setDiscountAmount] = useState(String(initialData?.discountAmount ?? 0));
   const [whtPercent, setWhtPercent] = useState(String(initialData?.whtPercent ?? 0));
   const [retentionPercent, setRetentionPercent] = useState(String(initialData?.retentionPercent ?? 0));
@@ -118,6 +119,10 @@ export function BillingDocumentForm({
     const match = jobNoLookup[value];
     if (match?.customerId) {
       void pickCustomer(match.customerId, match.customerName, value);
+      // A JOB has exactly one assigned sales rep — a stronger, unambiguous
+      // signal than the customer alone (who can have deals across several
+      // reps), so this is the one path that auto-fills ผู้ขาย too.
+      setSalesRepId(match.salesRepId ?? "");
     }
   }
 
@@ -270,7 +275,12 @@ export function BillingDocumentForm({
 
         <div className="space-y-2">
           <Label htmlFor="sales_rep_id">ผู้ขาย</Label>
-          <Select name="sales_rep_id" items={salesRepItems} defaultValue={initialData?.salesRepId ?? undefined}>
+          <Select
+            name="sales_rep_id"
+            items={salesRepItems}
+            value={salesRepId || NONE_VALUE}
+            onValueChange={(v) => setSalesRepId(v === NONE_VALUE ? "" : ((v as string) ?? ""))}
+          >
             <SelectTrigger id="sales_rep_id" className="w-full">
               <SelectValue placeholder="— ไม่ระบุ —" />
             </SelectTrigger>
