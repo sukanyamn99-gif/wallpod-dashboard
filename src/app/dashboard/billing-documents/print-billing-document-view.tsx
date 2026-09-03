@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { formatTHB } from "@/lib/format";
 import { thaiBahtText } from "@/lib/thai-baht-text";
@@ -20,6 +21,7 @@ export function PrintBillingDocumentView({
   document: BillingDocumentDetail;
   editHref?: string;
 }) {
+  const router = useRouter();
   const summary = computeBillingDocumentSummary(
     document.items.map((it) => it.amount),
     document.discountAmount,
@@ -36,7 +38,10 @@ export function PrintBillingDocumentView({
             แก้ไข
           </Button>
         )}
-        <Button variant="outline" onClick={() => window.close()}>
+        {/* Reached via router.push/Link in the same tab (never a
+            script-opened window), so window.close() is a silent no-op —
+            go back to wherever the user came from instead. */}
+        <Button variant="outline" onClick={() => router.back()}>
           ปิด
         </Button>
         <Button onClick={() => window.print()}>พิมพ์</Button>
