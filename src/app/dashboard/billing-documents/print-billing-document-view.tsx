@@ -83,10 +83,10 @@ export function PrintBillingDocumentView({ document }: { document: BillingDocume
         </div>
 
         {/* Items */}
-        <table className="w-full border-collapse border-b border-black text-center">
+        <table className="w-full border-collapse border border-black text-center">
           <thead>
             <tr className="bg-neutral-100">
-              <th className="w-10 border-r border-black p-1.5 font-medium">#</th>
+              <th className="w-10 border-r border-black p-1.5 font-medium">ลำดับ</th>
               <th className="border-r border-black p-1.5 font-medium">เลขที่เอกสาร</th>
               <th className="w-32 border-r border-black p-1.5 font-medium">เอกสารวันที่</th>
               <th className="w-32 p-1.5 font-medium">ยอดรวมตามเอกสาร</th>
