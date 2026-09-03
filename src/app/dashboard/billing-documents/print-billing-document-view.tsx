@@ -44,6 +44,9 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
           <p className="text-2xl font-bold" style={{ color: "#2793a2" }}>
             {title}
           </p>
+          {/* ใบแจ้งหนี้/ใบกำกับภาษี share the same INV-prefixed doc number
+              series, so this clarifies which one a printed page is. */}
+          {document.docType === "invoice" && <p className="text-xs text-black">(ไม่ใช่ใบกำกับภาษี)</p>}
           <p className="text-xs text-neutral-500">{copyLabel}</p>
         </div>
       </div>

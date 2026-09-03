@@ -14,7 +14,7 @@ export default async function InvoiceListPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">ใบแจ้งหนี้</h1>
+        <h1 className="text-2xl font-semibold">ใบแจ้งหนี้ (ไม่ใช่ใบกำกับภาษี)</h1>
         <p className="text-sm text-muted-foreground">ออกใบแจ้งหนี้จากรายการที่ยังไม่ได้ชำระของ WALLPOD Project Sales</p>
       </div>
       <BillingDocumentTable docType="invoice" documents={documents} currentProfile={profile} />
