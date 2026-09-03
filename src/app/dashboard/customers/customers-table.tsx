@@ -35,8 +35,8 @@ function AddCustomerForm() {
 
   return (
     <form key={formKey} action={formAction} className="flex flex-wrap items-start gap-2" noValidate>
-      <Input name="name" placeholder="ชื่อลูกค้า/บริษัท" className="max-w-xs" required />
       <Input name="customer_code" placeholder="รหัสลูกค้า (ถ้ามี)" className="max-w-[140px]" />
+      <Input name="name" placeholder="ชื่อลูกค้า/บริษัท" className="max-w-xs" required />
       <Select
         name="customer_type"
         value={customerType}
@@ -129,16 +129,16 @@ function CustomerRow({ customer, canManage }: { customer: Customer; canManage: b
     <TableRow>
       <TableCell className="whitespace-nowrap">
         {editing ? (
-          <Input value={name} onChange={(e) => setName(e.target.value)} className="max-w-[180px]" autoFocus disabled={pending} />
+          <Input value={customerCode} onChange={(e) => setCustomerCode(e.target.value)} className="max-w-[110px]" autoFocus disabled={pending} />
         ) : (
-          customer.name
+          customer.customerCode || "—"
         )}
       </TableCell>
       <TableCell className="whitespace-nowrap">
         {editing ? (
-          <Input value={customerCode} onChange={(e) => setCustomerCode(e.target.value)} className="max-w-[110px]" disabled={pending} />
+          <Input value={name} onChange={(e) => setName(e.target.value)} className="max-w-[180px]" disabled={pending} />
         ) : (
-          customer.customerCode || "—"
+          customer.name
         )}
       </TableCell>
       <TableCell className="whitespace-nowrap">
@@ -271,8 +271,8 @@ export function CustomersTable({ customers, canManage }: { customers: Customer[]
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>ชื่อลูกค้า/บริษัท</TableHead>
               <TableHead>รหัสลูกค้า</TableHead>
+              <TableHead>ชื่อลูกค้า/บริษัท</TableHead>
               <TableHead>ประเภทลูกค้า</TableHead>
               <TableHead>ผู้ติดต่อ</TableHead>
               <TableHead>เบอร์โทร</TableHead>
