@@ -62,7 +62,7 @@ export function PrintQuotationView({
               Koonway Co.,Ltd. / บริษัท คูนเว จำกัด
             </p>
             <p>24/2-4 Sukhapiban 2 Prawet, Prawet, Bangkok 10250</p>
-            <p>เลขที่ผู้เสียภาษี: 0-1055-5981-97-3</p>
+            <p>เลขที่ผู้เสียภาษี: 0-1055-59182-97-3</p>
           </div>
           <div className="flex flex-col items-end gap-1">
             <Image src="/wallpod-logo.png" alt="WallPOD" width={70} height={32} className="h-8 w-auto" />
