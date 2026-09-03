@@ -125,6 +125,38 @@ function parseHeader(formData: FormData) {
   };
 }
 
+// Best-effort side effect, not part of the quotation's own transaction — a
+// failure here never blocks saving the quotation, same convention as this
+// app's other secondary writes (e.g. item image uploads). Only UPDATES an
+// existing customer matched by name; never creates one (this form has no
+// customer_type field to create a valid new customers row with, matching
+// the same tradeoff already made for Stock Requisition's customer field).
+// Only fields this quotation actually has a value for are written, so an
+// incomplete quotation can never blank out contact details already on file.
+async function syncCustomerContactInfo(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  header: ReturnType<typeof parseHeader>,
+) {
+  if (!header.customerName) return;
+
+  const updates: Record<string, string> = {};
+  if (header.attn) updates.contact_person = header.attn;
+  if (header.customerAddress) updates.address = header.customerAddress;
+  if (header.customerTel) updates.phone = header.customerTel;
+  if (header.customerTaxId) updates.tax_id = header.customerTaxId;
+  if (Object.keys(updates).length === 0) return;
+
+  const { data: existingCustomer } = await supabase
+    .from("customers")
+    .select("id")
+    .ilike("name", header.customerName)
+    .limit(1)
+    .maybeSingle();
+  if (!existingCustomer) return;
+
+  await supabase.from("customers").update(updates).eq("id", existingCustomer.id);
+}
+
 async function uploadItemImage(
   supabase: Awaited<ReturnType<typeof createClient>>,
   quotationId: string,
@@ -184,6 +216,8 @@ export async function createQuotation(formData: FormData) {
     .select("id")
     .single();
   if (insertErr) return { error: insertErr.message };
+
+  await syncCustomerContactInfo(supabase, header);
 
   for (let i = 0; i < items.length; i++) {
     const it = items[i];
@@ -257,6 +291,8 @@ export async function updateQuotation(id: string, formData: FormData) {
     })
     .eq("id", id);
   if (updateErr) return { error: updateErr.message };
+
+  await syncCustomerContactInfo(supabase, header);
 
   // Best-effort: remove Storage objects for images the user explicitly
   // cleared or replaced, before the old item rows are deleted below.

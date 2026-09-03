@@ -139,6 +139,10 @@ export interface Customer {
   id: string;
   name: string;
   customer_type: CustomerType;
+  contactPerson: string | null;
+  address: string | null;
+  phone: string | null;
+  taxId: string | null;
 }
 
 export interface Project {

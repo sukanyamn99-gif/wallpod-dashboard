@@ -9,6 +9,7 @@ export function CustomerAutocomplete({
   name,
   value,
   onChange,
+  onSelect,
   customers,
   placeholder,
   required,
@@ -17,6 +18,10 @@ export function CustomerAutocomplete({
   name: string;
   value: string;
   onChange: (value: string) => void;
+  // Fired only when a suggestion is explicitly picked from the list (not on
+  // every keystroke) — lets a caller auto-fill other fields (address, tel,
+  // tax ID, ...) from the matched customer record.
+  onSelect?: (customer: Customer) => void;
   customers: Customer[];
   placeholder?: string;
   required?: boolean;
@@ -55,6 +60,7 @@ export function CustomerAutocomplete({
                 onMouseDown={(e) => {
                   e.preventDefault();
                   onChange(c.name);
+                  onSelect?.(c);
                   setOpen(false);
                 }}
               >

@@ -127,6 +127,17 @@ export function QuotationForm({
   const [items, setItems] = useState<ItemRow[]>(() => itemsFromInitial(initialData));
   const [terms, setTerms] = useState<PaymentTermRow[]>(() => termsFromInitial(initialData));
 
+  // Picking an existing customer from the autocomplete fills in whatever
+  // contact details are already on file for them — only fields the customer
+  // record actually has a value for, so this never blanks out something the
+  // user already typed. Everything stays editable afterward.
+  function handleCustomerSelect(customer: Customer) {
+    if (customer.contactPerson) setAttn(customer.contactPerson);
+    if (customer.address) setCustomerAddress(customer.address);
+    if (customer.phone) setCustomerTel(customer.phone);
+    if (customer.taxId) setCustomerTaxId(customer.taxId);
+  }
+
   const salesRepItems = [
     { value: NONE_VALUE, label: "— ไม่ระบุ —" },
     ...salesReps.map((r) => ({ value: r.id, label: r.name })),
@@ -291,7 +302,14 @@ export function QuotationForm({
         </div>
         <div className="space-y-2 sm:col-span-2">
           <Label>ชื่อลูกค้า/บริษัท *</Label>
-          <CustomerAutocomplete name="_customer_name_display" value={customerName} onChange={setCustomerName} customers={customers} required />
+          <CustomerAutocomplete
+            name="_customer_name_display"
+            value={customerName}
+            onChange={setCustomerName}
+            onSelect={handleCustomerSelect}
+            customers={customers}
+            required
+          />
         </div>
 
         <div className="space-y-2 sm:col-span-2">

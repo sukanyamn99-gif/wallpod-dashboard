@@ -18,7 +18,11 @@ create table customers (
   name text not null,
   customer_type text not null check (customer_type in
     ('Owner','Designer','Turnkey','Contractor','Corporate','Dealer','School')),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  contact_person text,
+  address text,
+  phone text,
+  tax_id text
 );
 
 -- ============ Auth / roles ============

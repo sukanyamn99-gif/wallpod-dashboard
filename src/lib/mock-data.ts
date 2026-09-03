@@ -10,14 +10,16 @@ export const mockSalesReps: SalesRep[] = [
   { id: "rep-3", name: "สมชาย", active: true },
 ];
 
+const NO_CONTACT_FIELDS = { contactPerson: null, address: null, phone: null, taxId: null };
+
 export const mockCustomers: Customer[] = [
-  { id: "cus-1", name: "บจก. สยามดีไซน์", customer_type: "Designer" },
-  { id: "cus-2", name: "โรงเรียนวัดสุทธิ", customer_type: "School" },
-  { id: "cus-3", name: "บจก. เทิร์นคีย์ โปร", customer_type: "Turnkey" },
-  { id: "cus-4", name: "คุณวรรณา (เจ้าของบ้าน)", customer_type: "Owner" },
-  { id: "cus-5", name: "บจก. คอร์ปอเรท กรุ๊ป", customer_type: "Corporate" },
-  { id: "cus-6", name: "หจก. รับเหมาก่อสร้างไทย", customer_type: "Contractor" },
-  { id: "cus-7", name: "ดีลเลอร์ภาคเหนือ", customer_type: "Dealer" },
+  { id: "cus-1", name: "บจก. สยามดีไซน์", customer_type: "Designer", ...NO_CONTACT_FIELDS },
+  { id: "cus-2", name: "โรงเรียนวัดสุทธิ", customer_type: "School", ...NO_CONTACT_FIELDS },
+  { id: "cus-3", name: "บจก. เทิร์นคีย์ โปร", customer_type: "Turnkey", ...NO_CONTACT_FIELDS },
+  { id: "cus-4", name: "คุณวรรณา (เจ้าของบ้าน)", customer_type: "Owner", ...NO_CONTACT_FIELDS },
+  { id: "cus-5", name: "บจก. คอร์ปอเรท กรุ๊ป", customer_type: "Corporate", ...NO_CONTACT_FIELDS },
+  { id: "cus-6", name: "หจก. รับเหมาก่อสร้างไทย", customer_type: "Contractor", ...NO_CONTACT_FIELDS },
+  { id: "cus-7", name: "ดีลเลอร์ภาคเหนือ", customer_type: "Dealer", ...NO_CONTACT_FIELDS },
 ];
 
 const repById = Object.fromEntries(mockSalesReps.map((r) => [r.id, r.name]));

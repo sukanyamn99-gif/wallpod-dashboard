@@ -18,9 +18,19 @@ export async function getSalesReps({ requireLogin = false }: { requireLogin?: bo
 export async function getCustomers(): Promise<Customer[]> {
   if (!isSupabaseConfigured()) return mockCustomers;
   const supabase = await createClient();
-  const { data, error } = await supabase.from("customers").select("id, name, customer_type");
+  const { data, error } = await supabase
+    .from("customers")
+    .select("id, name, customer_type, contact_person, address, phone, tax_id");
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    customer_type: row.customer_type,
+    contactPerson: row.contact_person,
+    address: row.address,
+    phone: row.phone,
+    taxId: row.tax_id,
+  }));
 }
 
 export async function getProductCategories(): Promise<
