@@ -566,12 +566,31 @@ export interface UnbilledInvoice {
   amount: number;
 }
 
+// Descriptive product/service detail pulled from the quotation behind an
+// invoice — used only to itemize a ใบกำกับภาษี (tax invoice), not to
+// recompute any amount: the invoice's own `amount` above stays the figure
+// VAT/summary math is based on, since it may not equal the full quotation
+// total (e.g. a deposit installment).
+export interface QuotationItemDetail {
+  productCode: string | null;
+  description: string;
+  qty: number;
+  unit: string;
+  unitPrice: number;
+  totalPrice: number;
+}
+
 export interface BillingDocumentItem {
   id: string;
   paymentId: string | null;
   invoiceNo: string;
   invoiceDate: string | null;
   amount: number;
+  // Populated only for doc_type "tax_invoice", by matching the invoice's
+  // project JOB NO. against a quotation's own job_number. null = no
+  // matching quotation found; undefined = not attempted (other doc types).
+  quotationDocNo?: string | null;
+  quotationItems?: QuotationItemDetail[] | null;
 }
 
 export interface BillingDocument {

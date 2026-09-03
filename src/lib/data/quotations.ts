@@ -1,5 +1,6 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import type { Quotation, QuotationDetail, QuotationItem, QuotationPaymentTerm } from "@/lib/types";
+import { formatQuotationItemDescription } from "@/lib/format";
+import type { Quotation, QuotationDetail, QuotationItem, QuotationItemDetail, QuotationPaymentTerm } from "@/lib/types";
 
 const IMAGE_BUCKET = "quotation-item-images";
 
@@ -148,6 +149,76 @@ export async function getDistinctQuotationItemFields(): Promise<QuotationItemFie
     sizes: distinct((data ?? []).map((r) => r.size)),
     colors: distinct((data ?? []).map((r) => r.color)),
   };
+}
+
+// Looks up the itemized product/service detail behind a set of JOB
+// NO.s, for printing on a tax invoice (see QuotationItemDetail). A JOB
+// can have more than one quotation on file (revisions) — this picks the
+// accepted one ("ลูกค้าตอบตกลง") when there is one, else the most
+// recently created, matching how a real job would only have one
+// quotation that actually became the order.
+export async function getQuotationItemsByJobNumbers(
+  jobNumbers: string[],
+): Promise<Record<string, { quotationDocNo: string; items: QuotationItemDetail[] }>> {
+  const uniqueJobNumbers = Array.from(new Set(jobNumbers.filter((j): j is string => !!j)));
+  if (!isSupabaseConfigured() || uniqueJobNumbers.length === 0) return {};
+
+  const supabase = await createClient();
+  const { data: quotes, error } = await supabase
+    .from("quotations")
+    .select("id, doc_no, job_number, status, created_at")
+    .in("job_number", uniqueJobNumbers);
+  if (error) throw error;
+
+  const bestByJobNumber = new Map<string, { id: string; doc_no: string; status: string; created_at: string }>();
+  for (const q of quotes ?? []) {
+    if (!q.job_number) continue;
+    const existing = bestByJobNumber.get(q.job_number);
+    if (!existing) {
+      bestByJobNumber.set(q.job_number, q);
+      continue;
+    }
+    const existingAccepted = existing.status === "ลูกค้าตอบตกลง";
+    const candidateAccepted = q.status === "ลูกค้าตอบตกลง";
+    const candidateIsBetter =
+      (candidateAccepted && !existingAccepted) ||
+      (candidateAccepted === existingAccepted && q.created_at > existing.created_at);
+    if (candidateIsBetter) bestByJobNumber.set(q.job_number, q);
+  }
+  if (bestByJobNumber.size === 0) return {};
+
+  const quotationIds = Array.from(bestByJobNumber.values()).map((q) => q.id);
+  const { data: items, error: itemsErr } = await supabase
+    .from("quotation_items")
+    .select("quotation_id, sort_order, product_code, product_name, thickness, size, color, unit_price, qty, unit, total_price")
+    .in("quotation_id", quotationIds)
+    .order("sort_order", { ascending: true });
+  if (itemsErr) throw itemsErr;
+
+  const itemsByQuotationId = new Map<string, QuotationItemDetail[]>();
+  for (const row of items ?? []) {
+    const list = itemsByQuotationId.get(row.quotation_id) ?? [];
+    list.push({
+      productCode: row.product_code,
+      description: formatQuotationItemDescription({
+        productName: row.product_name,
+        thickness: row.thickness,
+        size: row.size,
+        color: row.color,
+      }),
+      qty: Number(row.qty),
+      unit: row.unit,
+      unitPrice: Number(row.unit_price),
+      totalPrice: Number(row.total_price),
+    });
+    itemsByQuotationId.set(row.quotation_id, list);
+  }
+
+  const result: Record<string, { quotationDocNo: string; items: QuotationItemDetail[] }> = {};
+  for (const [jobNo, q] of bestByJobNumber) {
+    result[jobNo] = { quotationDocNo: q.doc_no, items: itemsByQuotationId.get(q.id) ?? [] };
+  }
+  return result;
 }
 
 export async function getSignedQuotationImageUrls(paths: string[]): Promise<Record<string, string>> {

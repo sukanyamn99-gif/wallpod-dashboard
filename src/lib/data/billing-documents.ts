@@ -1,4 +1,5 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { getQuotationItemsByJobNumbers } from "@/lib/data/quotations";
 import type { BillingDocument, BillingDocumentDetail, BillingDocumentType, UnbilledInvoice } from "@/lib/types";
 
 // Payment installments already invoiced (invoice_no set) and not yet fully
@@ -101,21 +102,47 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
   if (headerErr) throw headerErr;
   if (!header) return null;
 
+  // For tax invoices only, also pull each line's JOB NO. (via its payment's
+  // project) so the itemized product/service detail from that job's
+  // quotation can be printed underneath — see getQuotationItemsByJobNumbers.
+  const isTaxInvoice = header.doc_type === "tax_invoice";
+  const itemsSelect = isTaxInvoice
+    ? "id, payment_id, invoice_no_snapshot, invoice_date_snapshot, amount, payments(projects(job_no))"
+    : "id, payment_id, invoice_no_snapshot, invoice_date_snapshot, amount";
   const { data: items, error: itemsErr } = await supabase
     .from("billing_note_items")
-    .select("id, payment_id, invoice_no_snapshot, invoice_date_snapshot, amount")
+    .select(itemsSelect)
     .eq("billing_note_id", id);
   if (itemsErr) throw itemsErr;
+
+  type ItemRow = {
+    id: string;
+    payment_id: string | null;
+    invoice_no_snapshot: string;
+    invoice_date_snapshot: string | null;
+    amount: number;
+    payments?: { projects: { job_no: string | null } | null } | null;
+  };
+  const itemRows = (items ?? []) as unknown as ItemRow[];
+
+  const quotationDetailByJobNo = isTaxInvoice
+    ? await getQuotationItemsByJobNumbers(itemRows.map((it) => it.payments?.projects?.job_no ?? null).filter((j): j is string => !!j))
+    : {};
 
   return {
     // @ts-expect-error -- Supabase types the joined relation loosely here
     ...mapHeader(header),
-    items: (items ?? []).map((it) => ({
-      id: it.id,
-      paymentId: it.payment_id,
-      invoiceNo: it.invoice_no_snapshot,
-      invoiceDate: it.invoice_date_snapshot,
-      amount: Number(it.amount),
-    })),
+    items: itemRows.map((it) => {
+      const jobNo = it.payments?.projects?.job_no ?? null;
+      const quotationDetail = jobNo ? quotationDetailByJobNo[jobNo] : undefined;
+      return {
+        id: it.id,
+        paymentId: it.payment_id,
+        invoiceNo: it.invoice_no_snapshot,
+        invoiceDate: it.invoice_date_snapshot,
+        amount: Number(it.amount),
+        ...(isTaxInvoice ? { quotationDocNo: quotationDetail?.quotationDocNo ?? null, quotationItems: quotationDetail?.items ?? null } : {}),
+      };
+    }),
   };
 }
