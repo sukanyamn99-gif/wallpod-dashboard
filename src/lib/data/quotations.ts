@@ -157,25 +157,40 @@ export async function getDistinctQuotationItemFields(): Promise<QuotationItemFie
 // accepted one ("ลูกค้าตอบตกลง") when there is one, else the most
 // recently created, matching how a real job would only have one
 // quotation that actually became the order.
+// Job numbers are free-typed in both `projects.job_no` and the quotation
+// form's own JOB Number field, so a trailing space or case difference
+// (confirmed present in this data — e.g. project_name spacing varies job
+// to job) would silently break an exact match. Normalize before comparing.
+function normalizeJobNo(jobNo: string): string {
+  return jobNo.trim().toUpperCase();
+}
+
 export async function getQuotationItemsByJobNumbers(
   jobNumbers: string[],
 ): Promise<Record<string, { quotationDocNo: string; items: QuotationItemDetail[] }>> {
   const uniqueJobNumbers = Array.from(new Set(jobNumbers.filter((j): j is string => !!j)));
   if (!isSupabaseConfigured() || uniqueJobNumbers.length === 0) return {};
+  const wantedJobNos = new Set(uniqueJobNumbers.map(normalizeJobNo));
 
   const supabase = await createClient();
   const { data: quotes, error } = await supabase
     .from("quotations")
     .select("id, doc_no, job_number, status, created_at")
-    .in("job_number", uniqueJobNumbers);
+    .not("job_number", "is", null);
   if (error) throw error;
 
+  // Map from the ORIGINAL (un-normalized) job number as passed in, so the
+  // result's keys still match what the caller looks up by.
+  const originalByNormalized = new Map(uniqueJobNumbers.map((j) => [normalizeJobNo(j), j]));
   const bestByJobNumber = new Map<string, { id: string; doc_no: string; status: string; created_at: string }>();
   for (const q of quotes ?? []) {
     if (!q.job_number) continue;
-    const existing = bestByJobNumber.get(q.job_number);
+    const normalized = normalizeJobNo(q.job_number);
+    if (!wantedJobNos.has(normalized)) continue;
+    const jobNoKey = originalByNormalized.get(normalized) ?? q.job_number;
+    const existing = bestByJobNumber.get(jobNoKey);
     if (!existing) {
-      bestByJobNumber.set(q.job_number, q);
+      bestByJobNumber.set(jobNoKey, q);
       continue;
     }
     const existingAccepted = existing.status === "ลูกค้าตอบตกลง";
@@ -183,7 +198,7 @@ export async function getQuotationItemsByJobNumbers(
     const candidateIsBetter =
       (candidateAccepted && !existingAccepted) ||
       (candidateAccepted === existingAccepted && q.created_at > existing.created_at);
-    if (candidateIsBetter) bestByJobNumber.set(q.job_number, q);
+    if (candidateIsBetter) bestByJobNumber.set(jobNoKey, q);
   }
   if (bestByJobNumber.size === 0) return {};
 
