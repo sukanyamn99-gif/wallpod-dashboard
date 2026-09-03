@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Check, Eye, Pencil, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,6 +78,7 @@ export function RequisitionsTable({
   requisitions: Omit<StockRequisition, "items">[];
   currentProfile: Profile;
 }) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -123,7 +125,11 @@ export function RequisitionsTable({
               </TableRow>
             )}
             {filtered.map((r) => (
-              <TableRow key={r.id}>
+              <TableRow
+                key={r.id}
+                className="cursor-pointer"
+                onClick={() => router.push(`/dashboard/stock-requisition/view/${r.id}`)}
+              >
                 <TableCell className="font-medium whitespace-nowrap">{r.docNo}</TableCell>
                 <TableCell className="whitespace-nowrap">{r.departmentName ?? "—"}</TableCell>
                 <TableCell className="whitespace-nowrap">{r.requestedByName}</TableCell>
@@ -140,7 +146,7 @@ export function RequisitionsTable({
                 <TableCell className="whitespace-nowrap">
                   {new Date(r.createdAt).toLocaleString("th-TH")}
                 </TableCell>
-                <TableCell>
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <div className="flex gap-1">
                     <Button
                       size="icon-sm"
