@@ -1,6 +1,6 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { getQuotationItemsByJobNumbers } from "@/lib/data/quotations";
-import type { BillingDocument, BillingDocumentDetail, BillingDocumentType, UnbilledInvoice } from "@/lib/types";
+import { getQuotationItemsByIds, getQuotationItemsByJobNumbers } from "@/lib/data/quotations";
+import type { BillingDocument, BillingDocumentDetail, BillingDocumentType, QuotationItemDetail, UnbilledInvoice } from "@/lib/types";
 
 // Payment installments already invoiced (invoice_no set) and not yet fully
 // received — the real-world "please pay these open invoices" set, shared
@@ -105,10 +105,13 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
   // For tax invoices only, also pull each line's JOB NO. (via its payment's
   // project) so the itemized product/service detail from that job's
   // quotation can be printed underneath — see getQuotationItemsByJobNumbers.
+  // quotation_id is always selected (cheap) since it also drives the
+  // "ใบเสนอราคา" vs "เลขที่เอกสาร" label on every doc type, not just tax
+  // invoices.
   const isTaxInvoice = header.doc_type === "tax_invoice";
   const itemsSelect = isTaxInvoice
-    ? "id, payment_id, invoice_no_snapshot, invoice_date_snapshot, amount, payments(projects(job_no))"
-    : "id, payment_id, invoice_no_snapshot, invoice_date_snapshot, amount";
+    ? "id, payment_id, quotation_id, invoice_no_snapshot, invoice_date_snapshot, amount, payments(projects(job_no))"
+    : "id, payment_id, quotation_id, invoice_no_snapshot, invoice_date_snapshot, amount";
   const { data: items, error: itemsErr } = await supabase
     .from("billing_note_items")
     .select(itemsSelect)
@@ -118,6 +121,7 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
   type ItemRow = {
     id: string;
     payment_id: string | null;
+    quotation_id: string | null;
     invoice_no_snapshot: string;
     invoice_date_snapshot: string | null;
     amount: number;
@@ -125,19 +129,31 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
   };
   const itemRows = (items ?? []) as unknown as ItemRow[];
 
-  const quotationDetailByJobNo = isTaxInvoice
-    ? await getQuotationItemsByJobNumbers(itemRows.map((it) => it.payments?.projects?.job_no ?? null).filter((j): j is string => !!j))
-    : {};
+  let quotationDetailByJobNo: Record<string, { quotationDocNo: string; items: QuotationItemDetail[] }> = {};
+  let quotationDetailById: Record<string, { quotationDocNo: string; items: QuotationItemDetail[] }> = {};
+  if (isTaxInvoice) {
+    const jobNos = itemRows.filter((it) => !it.quotation_id).map((it) => it.payments?.projects?.job_no ?? null);
+    const quotationIds = itemRows.filter((it) => it.quotation_id).map((it) => it.quotation_id as string);
+    [quotationDetailByJobNo, quotationDetailById] = await Promise.all([
+      getQuotationItemsByJobNumbers(jobNos.filter((j): j is string => !!j)),
+      getQuotationItemsByIds(quotationIds),
+    ]);
+  }
 
   return {
     // @ts-expect-error -- Supabase types the joined relation loosely here
     ...mapHeader(header),
     items: itemRows.map((it) => {
       const jobNo = it.payments?.projects?.job_no ?? null;
-      const quotationDetail = jobNo ? quotationDetailByJobNo[jobNo] : undefined;
+      const quotationDetail = it.quotation_id
+        ? quotationDetailById[it.quotation_id]
+        : jobNo
+          ? quotationDetailByJobNo[jobNo]
+          : undefined;
       return {
         id: it.id,
         paymentId: it.payment_id,
+        quotationId: it.quotation_id,
         invoiceNo: it.invoice_no_snapshot,
         invoiceDate: it.invoice_date_snapshot,
         amount: Number(it.amount),

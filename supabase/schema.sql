@@ -1328,7 +1328,13 @@ create table billing_note_items (
   payment_id uuid references payments(id) on delete set null,
   invoice_no_snapshot text not null,
   invoice_date_snapshot date,
-  amount numeric(14,2) not null
+  amount numeric(14,2) not null,
+  -- Set instead of payment_id when this line was billed directly from an
+  -- accepted quotation that hasn't been recorded as a WALLPOD Project Sales
+  -- job yet (see quotations.converted_project_id) — lets a document be
+  -- issued ahead of the formal invoice, with no auto-sync back onto a
+  -- payments row (none exists yet); staff fill that in manually later.
+  quotation_id uuid references quotations(id) on delete set null
 );
 
 alter table billing_notes enable row level security;

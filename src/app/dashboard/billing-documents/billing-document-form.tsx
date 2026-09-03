@@ -13,9 +13,9 @@ import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomple
 import { JobNoSelect } from "@/components/dashboard/job-no-select";
 import { formatTHB } from "@/lib/format";
 import { computeBillingDocumentSummary } from "@/lib/billing-document-summary";
-import { createBillingDocument, fetchUnbilledInvoices, updateBillingDocument } from "./actions";
+import { createBillingDocument, fetchBillableQuotations, fetchUnbilledInvoices, updateBillingDocument } from "./actions";
 import { BILLING_DOCUMENT_LABELS } from "@/lib/types";
-import type { BillingDocumentDetail, BillingDocumentType, Customer, SalesRep, UnbilledInvoice } from "@/lib/types";
+import type { BillableQuotation, BillingDocumentDetail, BillingDocumentType, Customer, SalesRep, UnbilledInvoice } from "@/lib/types";
 import type { JobLookupEntry } from "@/lib/data/reference";
 
 const NONE_VALUE = "__none__";
@@ -59,6 +59,10 @@ export function BillingDocumentForm({
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set((initialData?.items ?? []).map((it) => it.paymentId).filter((id): id is string => !!id)),
   );
+  const [quotations, setQuotations] = useState<BillableQuotation[]>([]);
+  const [selectedQuotations, setSelectedQuotations] = useState<Set<string>>(
+    () => new Set((initialData?.items ?? []).map((it) => it.quotationId).filter((id): id is string => !!id)),
+  );
   const [loadingInvoices, setLoadingInvoices] = useState(mode === "edit");
   const [docDate, setDocDate] = useState(initialData?.docDate ?? new Date().toISOString().slice(0, 10));
   const [creditDays, setCreditDays] = useState(String(initialData?.creditDays ?? 0));
@@ -90,10 +94,12 @@ export function BillingDocumentForm({
     setCustomerId(id);
     setCustomerName(name);
     setSelected(new Set());
+    setSelectedQuotations(new Set());
     setLoadingInvoices(true);
     try {
-      const rows = await fetchUnbilledInvoices(id);
+      const [rows, billableQuotations] = await Promise.all([fetchUnbilledInvoices(id), fetchBillableQuotations(name)]);
       setInvoices(rows);
+      setQuotations(billableQuotations);
       if (preselectJobNo) {
         setSelected(new Set(rows.filter((r) => r.jobNo === preselectJobNo).map((r) => r.paymentId)));
       }
@@ -122,9 +128,13 @@ export function BillingDocumentForm({
     if (mode !== "edit" || !initialData) return;
     let cancelled = false;
     (async () => {
-      const rows = await fetchUnbilledInvoices(initialData.customerId);
+      const [rows, billableQuotations] = await Promise.all([
+        fetchUnbilledInvoices(initialData.customerId),
+        fetchBillableQuotations(initialData.customerName),
+      ]);
       if (!cancelled) {
         setInvoices(rows);
+        setQuotations(billableQuotations);
         setLoadingInvoices(false);
       }
     })();
@@ -143,9 +153,21 @@ export function BillingDocumentForm({
     });
   }
 
+  function toggleQuotation(quotationId: string) {
+    setSelectedQuotations((prev) => {
+      const next = new Set(prev);
+      if (next.has(quotationId)) next.delete(quotationId);
+      else next.add(quotationId);
+      return next;
+    });
+  }
+
   const selectedAmounts = useMemo(
-    () => invoices.filter((inv) => selected.has(inv.paymentId)).map((inv) => inv.amount),
-    [invoices, selected],
+    () => [
+      ...invoices.filter((inv) => selected.has(inv.paymentId)).map((inv) => inv.amount),
+      ...quotations.filter((q) => selectedQuotations.has(q.id)).map((q) => q.total),
+    ],
+    [invoices, selected, quotations, selectedQuotations],
   );
   const summary = useMemo(
     () => computeBillingDocumentSummary(selectedAmounts, Number(discountAmount) || 0, Number(whtPercent) || 0, Number(retentionPercent) || 0),
@@ -167,6 +189,9 @@ export function BillingDocumentForm({
         const fd = new FormData(e.currentTarget);
         for (const paymentId of selected) {
           fd.append("item_payment_id", paymentId);
+        }
+        for (const quotationId of selectedQuotations) {
+          fd.append("item_quotation_id", quotationId);
         }
         startTransition(() => formAction(fd));
       }}
@@ -292,7 +317,10 @@ export function BillingDocumentForm({
           ) : invoices.length === 0 ? (
             <div className="rounded-lg border border-dashed p-8 text-center">
               <Package className="mx-auto h-8 w-8 text-muted-foreground" />
-              <p className="mt-2 text-sm text-muted-foreground">ลูกค้ารายนี้ไม่มีใบแจ้งหนี้ค้างชำระ</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                ลูกค้ารายนี้ไม่มีใบแจ้งหนี้ค้างชำระ
+                {quotations.length > 0 && " — เลือกจากใบเสนอราคาด้านล่างแทนได้"}
+              </p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -321,6 +349,34 @@ export function BillingDocumentForm({
             </div>
           )}
         </div>
+
+        {customerId && !loadingInvoices && quotations.length > 0 && (
+          <div className="space-y-2">
+            <Label>ใบเสนอราคาที่ลูกค้าตอบตกลง (ยังไม่บันทึกเป็นงานจริง)</Label>
+            <p className="text-xs text-muted-foreground">
+              ใช้เมื่อยังไม่มีใบแจ้งหนี้จาก WALLPOD Project Sales — เลือกแล้วจะดึงยอดและรายการสินค้าทั้งใบมาให้
+            </p>
+            <div className="space-y-2">
+              {quotations.map((q) => (
+                <label key={q.id} className="flex cursor-pointer items-center gap-3 rounded-lg border p-2 hover:bg-muted">
+                  <input
+                    type="checkbox"
+                    checked={selectedQuotations.has(q.id)}
+                    onChange={() => toggleQuotation(q.id)}
+                    className="h-4 w-4"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{q.docNo}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {q.projectName} • {new Date(q.quoteDate).toLocaleDateString("th-TH")}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-sm font-medium">{formatTHB(q.total)}</p>
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-1 rounded-lg border p-3 text-sm">
           <div className="flex justify-between">
@@ -379,7 +435,7 @@ export function BillingDocumentForm({
           >
             ยกเลิก
           </Button>
-          <Button type="submit" disabled={pending || selected.size === 0}>
+          <Button type="submit" disabled={pending || (selected.size === 0 && selectedQuotations.size === 0)}>
             {pending ? "กำลังบันทึก..." : mode === "edit" ? "บันทึกการแก้ไข" : `ออก${BILLING_DOCUMENT_LABELS[docType]}`}
           </Button>
         </div>

@@ -566,6 +566,17 @@ export interface UnbilledInvoice {
   amount: number;
 }
 
+// An accepted quotation not yet recorded as a WALLPOD Project Sales job
+// (converted_project_id is null) — eligible to be billed directly, ahead
+// of the formal invoice, when a customer has no open invoice on file yet.
+export interface BillableQuotation {
+  id: string;
+  docNo: string;
+  quoteDate: string;
+  projectName: string;
+  total: number;
+}
+
 // Descriptive product/service detail pulled from the quotation behind an
 // invoice — used only to itemize a ใบกำกับภาษี (tax invoice), not to
 // recompute any amount: the invoice's own `amount` above stays the figure
@@ -586,9 +597,15 @@ export interface BillingDocumentItem {
   invoiceNo: string;
   invoiceDate: string | null;
   amount: number;
-  // Populated only for doc_type "tax_invoice", by matching the invoice's
-  // project JOB NO. against a quotation's own job_number. null = no
-  // matching quotation found; undefined = not attempted (other doc types).
+  // Set instead of paymentId when this line was billed directly from an
+  // accepted-but-not-yet-converted quotation (see BillableQuotation) rather
+  // than an existing invoiced payment.
+  quotationId?: string | null;
+  // Populated only for doc_type "tax_invoice" — either the quotation this
+  // line was billed from directly (quotationId set), or one found by
+  // matching the invoice's project JOB NO. against a quotation's own
+  // job_number. null = no matching quotation found; undefined = not
+  // attempted (other doc types).
   quotationDocNo?: string | null;
   quotationItems?: QuotationItemDetail[] | null;
 }

@@ -1,6 +1,13 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { formatQuotationItemDescription } from "@/lib/format";
-import type { Quotation, QuotationDetail, QuotationItem, QuotationItemDetail, QuotationPaymentTerm } from "@/lib/types";
+import type {
+  BillableQuotation,
+  Quotation,
+  QuotationDetail,
+  QuotationItem,
+  QuotationItemDetail,
+  QuotationPaymentTerm,
+} from "@/lib/types";
 
 const IMAGE_BUCKET = "quotation-item-images";
 
@@ -203,12 +210,29 @@ export async function getQuotationItemsByJobNumbers(
   if (bestByJobNumber.size === 0) return {};
 
   const quotationIds = Array.from(bestByJobNumber.values()).map((q) => q.id);
-  const { data: items, error: itemsErr } = await supabase
+  const itemsByQuotationId = await fetchQuotationItemDetailsByIds(supabase, quotationIds);
+
+  const result: Record<string, { quotationDocNo: string; items: QuotationItemDetail[] }> = {};
+  for (const [jobNo, q] of bestByJobNumber) {
+    result[jobNo] = { quotationDocNo: q.doc_no, items: itemsByQuotationId.get(q.id) ?? [] };
+  }
+  return result;
+}
+
+// Shared by getQuotationItemsByJobNumbers (matches via JOB NO.) and
+// getQuotationItemsByIds (matches via a direct quotation_id reference,
+// used when a billing document line was billed straight from a quotation).
+async function fetchQuotationItemDetailsByIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  quotationIds: string[],
+): Promise<Map<string, QuotationItemDetail[]>> {
+  if (quotationIds.length === 0) return new Map();
+  const { data: items, error } = await supabase
     .from("quotation_items")
     .select("quotation_id, sort_order, product_code, product_name, thickness, size, color, unit_price, qty, unit, total_price")
     .in("quotation_id", quotationIds)
     .order("sort_order", { ascending: true });
-  if (itemsErr) throw itemsErr;
+  if (error) throw error;
 
   const itemsByQuotationId = new Map<string, QuotationItemDetail[]>();
   for (const row of items ?? []) {
@@ -228,12 +252,55 @@ export async function getQuotationItemsByJobNumbers(
     });
     itemsByQuotationId.set(row.quotation_id, list);
   }
+  return itemsByQuotationId;
+}
 
+// Used when a billing document line was billed directly from a quotation
+// (billing_note_items.quotation_id set) — no JOB-matching ambiguity since
+// the exact quotation is already known.
+export async function getQuotationItemsByIds(
+  quotationIds: string[],
+): Promise<Record<string, { quotationDocNo: string; items: QuotationItemDetail[] }>> {
+  const uniqueIds = Array.from(new Set(quotationIds));
+  if (!isSupabaseConfigured() || uniqueIds.length === 0) return {};
+
+  const supabase = await createClient();
+  const { data: quotes, error } = await supabase.from("quotations").select("id, doc_no").in("id", uniqueIds);
+  if (error) throw error;
+  if (!quotes || quotes.length === 0) return {};
+
+  const itemsByQuotationId = await fetchQuotationItemDetailsByIds(supabase, uniqueIds);
   const result: Record<string, { quotationDocNo: string; items: QuotationItemDetail[] }> = {};
-  for (const [jobNo, q] of bestByJobNumber) {
-    result[jobNo] = { quotationDocNo: q.doc_no, items: itemsByQuotationId.get(q.id) ?? [] };
+  for (const q of quotes) {
+    result[q.id] = { quotationDocNo: q.doc_no, items: itemsByQuotationId.get(q.id) ?? [] };
   }
   return result;
+}
+
+// Accepted quotations for a customer that haven't been recorded as a real
+// WALLPOD Project Sales job yet (converted_project_id is null) — eligible
+// to be billed directly, ahead of the formal invoice. Matched by customer
+// name (quotations has no customer_id FK), same convention already used
+// by syncCustomerContactInfo/getCustomerByName.
+export async function getAcceptedUnconvertedQuotationsForCustomer(customerName: string): Promise<BillableQuotation[]> {
+  if (!customerName || !isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("quotations")
+    .select("id, doc_no, quote_date, project_name, total")
+    .ilike("customer_name", customerName)
+    .eq("status", "ลูกค้าตอบตกลง")
+    .is("converted_project_id", null)
+    .order("quote_date", { ascending: false });
+  if (error) throw error;
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    docNo: row.doc_no,
+    quoteDate: row.quote_date,
+    projectName: row.project_name,
+    total: Number(row.total),
+  }));
 }
 
 export async function getSignedQuotationImageUrls(paths: string[]): Promise<Record<string, string>> {

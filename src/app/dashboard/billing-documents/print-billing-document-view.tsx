@@ -100,6 +100,9 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
           <tbody>
             {document.items.map((it, i) => {
               const detail = it.quotationItems;
+              // Items billed directly from a quotation (no invoice behind
+              // them yet) are labeled "ใบเสนอราคา", not "เลขที่เอกสาร".
+              const refLabel = it.quotationId ? "ใบเสนอราคา" : "เลขที่เอกสาร";
               if (!detail || detail.length === 0) {
                 // No matching quotation found for this invoice's JOB —
                 // fall back to a single summary row so nothing is lost.
@@ -107,7 +110,7 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
                   <tr key={it.id}>
                     <td className="border-r border-t border-black p-1.5">{i + 1}</td>
                     <td className="border-r border-t border-black p-1.5 text-left whitespace-pre-line">
-                      เลขที่เอกสาร {it.invoiceNo} ลงวันที่ {fmtDate(it.invoiceDate)}
+                      {refLabel} {it.invoiceNo} ลงวันที่ {fmtDate(it.invoiceDate)}
                     </td>
                     <td className="border-r border-t border-black p-1.5">—</td>
                     <td className="border-r border-t border-black p-1.5 text-right">—</td>
@@ -120,8 +123,8 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
                   <tr className="bg-neutral-50">
                     <td className="border-r border-t border-black p-1.5"></td>
                     <td colSpan={4} className="border-t border-black p-1.5 text-left text-neutral-600">
-                      เลขที่เอกสาร {it.invoiceNo} ลงวันที่ {fmtDate(it.invoiceDate)}
-                      {it.quotationDocNo && <> (อ้างอิงใบเสนอราคา {it.quotationDocNo})</>}
+                      {refLabel} {it.invoiceNo} ลงวันที่ {fmtDate(it.invoiceDate)}
+                      {!it.quotationId && it.quotationDocNo && <> (อ้างอิงใบเสนอราคา {it.quotationDocNo})</>}
                     </td>
                   </tr>
                   {detail.map((qi, qidx) => (
@@ -164,7 +167,10 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
             {document.items.map((it, i) => (
               <tr key={it.id}>
                 <td className="border-r border-t border-black p-1.5">{i + 1}</td>
-                <td className="border-r border-t border-black p-1.5">{it.invoiceNo}</td>
+                <td className="border-r border-t border-black p-1.5">
+                  {it.invoiceNo}
+                  {it.quotationId && <div className="text-xs text-neutral-500">(ใบเสนอราคา)</div>}
+                </td>
                 <td className="border-r border-t border-black p-1.5">{fmtDate(it.invoiceDate)}</td>
                 <td className="border-t border-black p-1.5 text-right">{formatTHB(it.amount)}</td>
               </tr>

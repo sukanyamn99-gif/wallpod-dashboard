@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activity-log";
 import { getBillingDocumentById, getUnbilledInvoicesForCustomer } from "@/lib/data/billing-documents";
+import { getAcceptedUnconvertedQuotationsForCustomer } from "@/lib/data/quotations";
 import { BILLING_DOCUMENT_LABELS, BILLING_DOCUMENT_LIST_PATH } from "@/lib/types";
-import type { BillingDocumentType, UnbilledInvoice } from "@/lib/types";
+import type { BillableQuotation, BillingDocumentType, UnbilledInvoice } from "@/lib/types";
 
 // Thin server-action wrapper so the create form (client component) can
 // re-fetch a customer's open invoices the moment one is picked, without a
@@ -13,6 +14,15 @@ import type { BillingDocumentType, UnbilledInvoice } from "@/lib/types";
 export async function fetchUnbilledInvoices(customerId: string): Promise<UnbilledInvoice[]> {
   if (!customerId) return [];
   return getUnbilledInvoicesForCustomer(customerId);
+}
+
+// Same idea, for the alternative "bill straight from an accepted quotation"
+// path used when a job hasn't been recorded (and invoiced) in WALLPOD
+// Project Sales yet. Matched by name, not id — see
+// getAcceptedUnconvertedQuotationsForCustomer.
+export async function fetchBillableQuotations(customerName: string): Promise<BillableQuotation[]> {
+  if (!customerName) return [];
+  return getAcceptedUnconvertedQuotationsForCustomer(customerName);
 }
 
 const DOC_PREFIX: Record<BillingDocumentType, string> = {
@@ -70,6 +80,7 @@ interface ParsedBillingDocument {
   retentionPercent: number;
   note: string | null;
   itemPaymentIds: string[];
+  itemQuotationIds: string[];
 }
 
 // Shared by create and update — both need the exact same fields validated
@@ -90,8 +101,9 @@ function parseBillingDocumentForm(formData: FormData): { error: string } | ({ er
   const note = str(formData.get("note"));
 
   const itemPaymentIds = formData.getAll("item_payment_id").map((v) => String(v));
-  if (itemPaymentIds.length === 0) {
-    return { error: "กรุณาเลือกรายการใบแจ้งหนี้อย่างน้อย 1 รายการ" };
+  const itemQuotationIds = formData.getAll("item_quotation_id").map((v) => String(v));
+  if (itemPaymentIds.length === 0 && itemQuotationIds.length === 0) {
+    return { error: "กรุณาเลือกรายการใบแจ้งหนี้หรือใบเสนอราคาอย่างน้อย 1 รายการ" };
   }
 
   return {
@@ -106,6 +118,7 @@ function parseBillingDocumentForm(formData: FormData): { error: string } | ({ er
     retentionPercent,
     note,
     itemPaymentIds,
+    itemQuotationIds,
   };
 }
 
@@ -116,23 +129,47 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
 
   const parsed = parseBillingDocumentForm(formData);
   if (parsed.error !== null) return { error: parsed.error, id: null };
-  const { customerId, docDate, creditDays, dueDate, salesRepId, discountAmount, whtPercent, retentionPercent, note, itemPaymentIds } =
-    parsed;
+  const {
+    customerId,
+    docDate,
+    creditDays,
+    dueDate,
+    salesRepId,
+    discountAmount,
+    whtPercent,
+    retentionPercent,
+    note,
+    itemPaymentIds,
+    itemQuotationIds,
+  } = parsed;
 
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Fresh read of the live payments rows — never trust client-submitted
-  // amounts — used both to snapshot the item and to sync fields back after.
-  const { data: livePayments, error: paymentsErr } = await supabase
-    .from("payments")
-    .select("id, invoice_no, paid_date, amount")
-    .in("id", itemPaymentIds);
-  if (paymentsErr) return { error: paymentsErr.message, id: null };
-  if (!livePayments || livePayments.length !== itemPaymentIds.length) {
+  // Fresh read of the live rows — never trust client-submitted amounts —
+  // used both to snapshot each item and (for payments) to sync fields
+  // back after. Quotation-sourced items have no payment to sync back onto
+  // yet (the job hasn't been recorded in WALLPOD Project Sales) — staff
+  // fill that in manually once it has been.
+  const [livePaymentsResult, liveQuotationsResult] = await Promise.all([
+    itemPaymentIds.length > 0
+      ? supabase.from("payments").select("id, invoice_no, paid_date, amount").in("id", itemPaymentIds)
+      : Promise.resolve({ data: [], error: null }),
+    itemQuotationIds.length > 0
+      ? supabase.from("quotations").select("id, doc_no, quote_date, total").in("id", itemQuotationIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (livePaymentsResult.error) return { error: livePaymentsResult.error.message, id: null };
+  if (liveQuotationsResult.error) return { error: liveQuotationsResult.error.message, id: null };
+  const livePayments = livePaymentsResult.data ?? [];
+  const liveQuotations = liveQuotationsResult.data ?? [];
+  if (livePayments.length !== itemPaymentIds.length) {
     return { error: "ไม่พบรายการใบแจ้งหนี้บางรายการ กรุณาลองใหม่", id: null };
+  }
+  if (liveQuotations.length !== itemQuotationIds.length) {
+    return { error: "ไม่พบรายการใบเสนอราคาบางรายการ กรุณาลองใหม่", id: null };
   }
 
   const docNo = await generateBillingDocNo(supabase, docType);
@@ -157,20 +194,29 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
     .single();
   if (insertErr) return { error: insertErr.message, id: null };
 
-  const { error: itemsErr } = await supabase.from("billing_note_items").insert(
-    livePayments.map((p) => ({
+  const { error: itemsErr } = await supabase.from("billing_note_items").insert([
+    ...livePayments.map((p) => ({
       billing_note_id: doc.id,
       payment_id: p.id,
       invoice_no_snapshot: p.invoice_no,
       invoice_date_snapshot: p.paid_date,
       amount: p.amount,
     })),
-  );
+    ...liveQuotations.map((q) => ({
+      billing_note_id: doc.id,
+      quotation_id: q.id,
+      invoice_no_snapshot: q.doc_no,
+      invoice_date_snapshot: q.quote_date,
+      amount: q.total,
+    })),
+  ]);
   if (itemsErr) return { error: `บันทึกเอกสารสำเร็จ แต่บันทึกรายการไม่สำเร็จ: ${itemsErr.message}`, id: doc.id };
 
   // Sync the doc number back onto WALLPOD Project Sales, closing the loop —
-  // which field depends on which document type was just issued.
-  if (docType === "billing_note") {
+  // which field depends on which document type was just issued. Only
+  // applies to payment-sourced items — quotation-sourced ones have no
+  // payments row yet to sync onto (see the fresh-read comment above).
+  if (docType === "billing_note" && itemPaymentIds.length > 0) {
     const { error: syncErr } = await supabase
       .from("payments")
       .update({ billing_note_no: docNo, billing_note_date: docDate })
@@ -178,7 +224,7 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
     if (syncErr) {
       return { error: `บันทึกเอกสารสำเร็จ แต่อัปเดตเลขที่ใบวางบิลใน Project Sales ไม่สำเร็จ: ${syncErr.message}`, id: doc.id };
     }
-  } else if (docType === "receipt") {
+  } else if (docType === "receipt" && itemPaymentIds.length > 0) {
     const { error: syncErr } = await supabase
       .from("payments")
       .update({ receipt_no: docNo, received_date: docDate })
@@ -209,18 +255,39 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
 
   const parsed = parseBillingDocumentForm(formData);
   if (parsed.error !== null) return { error: parsed.error };
-  const { customerId, docDate, creditDays, dueDate, salesRepId, discountAmount, whtPercent, retentionPercent, note, itemPaymentIds } =
-    parsed;
+  const {
+    customerId,
+    docDate,
+    creditDays,
+    dueDate,
+    salesRepId,
+    discountAmount,
+    whtPercent,
+    retentionPercent,
+    note,
+    itemPaymentIds,
+    itemQuotationIds,
+  } = parsed;
 
   const supabase = await createClient();
 
-  const { data: livePayments, error: paymentsErr } = await supabase
-    .from("payments")
-    .select("id, invoice_no, paid_date, amount")
-    .in("id", itemPaymentIds);
-  if (paymentsErr) return { error: paymentsErr.message };
-  if (!livePayments || livePayments.length !== itemPaymentIds.length) {
+  const [livePaymentsResult, liveQuotationsResult] = await Promise.all([
+    itemPaymentIds.length > 0
+      ? supabase.from("payments").select("id, invoice_no, paid_date, amount").in("id", itemPaymentIds)
+      : Promise.resolve({ data: [], error: null }),
+    itemQuotationIds.length > 0
+      ? supabase.from("quotations").select("id, doc_no, quote_date, total").in("id", itemQuotationIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (livePaymentsResult.error) return { error: livePaymentsResult.error.message };
+  if (liveQuotationsResult.error) return { error: liveQuotationsResult.error.message };
+  const livePayments = livePaymentsResult.data ?? [];
+  const liveQuotations = liveQuotationsResult.data ?? [];
+  if (livePayments.length !== itemPaymentIds.length) {
     return { error: "ไม่พบรายการใบแจ้งหนี้บางรายการ กรุณาลองใหม่" };
+  }
+  if (liveQuotations.length !== itemQuotationIds.length) {
+    return { error: "ไม่พบรายการใบเสนอราคาบางรายการ กรุณาลองใหม่" };
   }
 
   const { error: updateErr } = await supabase
@@ -244,15 +311,22 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
     return { error: `แก้ไขข้อมูลทั่วไปสำเร็จ แต่แก้ไขรายการไม่สำเร็จ: ${deleteItemsErr.message}` };
   }
 
-  const { error: itemsErr } = await supabase.from("billing_note_items").insert(
-    livePayments.map((p) => ({
+  const { error: itemsErr } = await supabase.from("billing_note_items").insert([
+    ...livePayments.map((p) => ({
       billing_note_id: id,
       payment_id: p.id,
       invoice_no_snapshot: p.invoice_no,
       invoice_date_snapshot: p.paid_date,
       amount: p.amount,
     })),
-  );
+    ...liveQuotations.map((q) => ({
+      billing_note_id: id,
+      quotation_id: q.id,
+      invoice_no_snapshot: q.doc_no,
+      invoice_date_snapshot: q.quote_date,
+      amount: q.total,
+    })),
+  ]);
   if (itemsErr) return { error: `แก้ไขรายการไม่สำเร็จ: ${itemsErr.message}` };
 
   // Reconcile the sync-back: clear the field on any invoice that was
@@ -273,10 +347,12 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
         return { error: `แก้ไขเอกสารสำเร็จ แต่ล้างเลขที่ใบวางบิลของรายการที่ถูกเอาออกไม่สำเร็จ: ${clearErr.message}` };
       }
     }
-    const { error: syncErr } = await supabase
-      .from("payments")
-      .update({ billing_note_no: existing.docNo, billing_note_date: docDate })
-      .in("id", itemPaymentIds);
+    const { error: syncErr } = itemPaymentIds.length === 0
+      ? { error: null }
+      : await supabase
+          .from("payments")
+          .update({ billing_note_no: existing.docNo, billing_note_date: docDate })
+          .in("id", itemPaymentIds);
     if (syncErr) {
       return { error: `แก้ไขเอกสารสำเร็จ แต่อัปเดตเลขที่ใบวางบิลใน Project Sales ไม่สำเร็จ: ${syncErr.message}` };
     }
@@ -290,7 +366,9 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
         return { error: `แก้ไขเอกสารสำเร็จ แต่ล้างเลขที่ใบเสร็จของรายการที่ถูกเอาออกไม่สำเร็จ: ${clearErr.message}` };
       }
     }
-    const { error: syncErr } = await supabase
+    const { error: syncErr } = itemPaymentIds.length === 0
+      ? { error: null }
+      : await supabase
       .from("payments")
       .update({ receipt_no: existing.docNo, received_date: docDate })
       .in("id", itemPaymentIds);
