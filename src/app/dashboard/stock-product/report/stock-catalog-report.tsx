@@ -35,8 +35,23 @@ function Letterhead() {
   );
 }
 
-function SwatchCard({ product, imageUrl }: { product: StockProduct; imageUrl: string | null }) {
+// Product names encode a leading catalog code (e.g. "017-HAY") — not every
+// name has one (Acubox, กาว Wallpod, ...), so only strip it when present.
+function nameWithoutCode(name: string): string {
+  return name.replace(/^\d+-\s*/, "");
+}
+
+function SwatchCard({
+  product,
+  imageUrl,
+  showCode,
+}: {
+  product: StockProduct;
+  imageUrl: string | null;
+  showCode: boolean;
+}) {
   const lowStock = product.quantityOnHand <= product.reorderPoint;
+  const displayName = showCode ? product.name : nameWithoutCode(product.name);
   return (
     <div className="rounded-lg border bg-white p-2 shadow-sm print:break-inside-avoid print:shadow-none">
       <div className="relative aspect-square overflow-hidden rounded-md bg-neutral-100">
@@ -59,8 +74,8 @@ function SwatchCard({ product, imageUrl }: { product: StockProduct; imageUrl: st
         </span>
       </div>
       <div className="mt-1.5 text-center">
-        <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-neutral-800" title={product.name}>
-          {product.name}
+        <p className="truncate text-[11px] font-semibold uppercase tracking-wide text-neutral-800" title={displayName}>
+          {displayName}
         </p>
         {(product.size || product.thickness) && (
           <p className="truncate text-[9px] text-neutral-500">
@@ -77,16 +92,23 @@ function SwatchCard({ product, imageUrl }: { product: StockProduct; imageUrl: st
 function CatalogGrid({
   products,
   imageUrls,
+  showCode,
   className,
 }: {
   products: StockProduct[];
   imageUrls: Record<string, string>;
+  showCode: boolean;
   className: string;
 }) {
   return (
     <div className={className}>
       {products.map((p) => (
-        <SwatchCard key={p.id} product={p} imageUrl={p.imagePath ? (imageUrls[p.imagePath] ?? null) : null} />
+        <SwatchCard
+          key={p.id}
+          product={p}
+          imageUrl={p.imagePath ? (imageUrls[p.imagePath] ?? null) : null}
+          showCode={showCode}
+        />
       ))}
     </div>
   );
@@ -104,6 +126,7 @@ export function StockCatalogReport({
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [showCode, setShowCode] = useState(true);
 
   const categoryOptions = [{ value: "all", label: "ทุกหมวดหมู่" }, ...categories.map((c) => ({ value: c, label: c }))];
 
@@ -171,6 +194,7 @@ export function StockCatalogReport({
         <CatalogGrid
           products={filtered}
           imageUrls={imageUrls}
+          showCode={showCode}
           className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 print:grid-cols-6 print:gap-2"
         />
       )}
@@ -182,22 +206,38 @@ export function StockCatalogReport({
       {previewOpen && (
         <div className="fixed inset-0 z-50 overflow-auto bg-black/60 p-4 print:hidden">
           <div className="mx-auto max-w-5xl rounded-lg bg-white p-6 text-black shadow-xl">
-            <div className="mb-4 flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setPreviewOpen(false)}>
-                <X className="h-4 w-4" />
-                ปิดตัวอย่าง
-              </Button>
-              <Button onClick={() => window.print()}>
-                <Printer className="h-4 w-4" />
-                พิมพ์
-              </Button>
+            <div className="mb-4 flex items-center justify-end gap-4">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={showCode}
+                  onChange={(e) => setShowCode(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                แสดงรหัส
+              </label>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setPreviewOpen(false)}>
+                  <X className="h-4 w-4" />
+                  ปิดตัวอย่าง
+                </Button>
+                <Button onClick={() => window.print()}>
+                  <Printer className="h-4 w-4" />
+                  พิมพ์
+                </Button>
+              </div>
             </div>
             <Letterhead />
             <div className="mt-4">
               {filtered.length === 0 ? (
                 <p className="py-12 text-center text-sm text-neutral-500">ไม่พบสินค้า</p>
               ) : (
-                <CatalogGrid products={filtered} imageUrls={imageUrls} className="grid grid-cols-6 gap-2" />
+                <CatalogGrid
+                  products={filtered}
+                  imageUrls={imageUrls}
+                  showCode={showCode}
+                  className="grid grid-cols-6 gap-2"
+                />
               )}
             </div>
           </div>
