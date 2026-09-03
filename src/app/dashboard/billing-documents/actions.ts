@@ -26,9 +26,12 @@ export async function fetchBillableQuotations(customerName: string): Promise<Bil
 }
 
 const DOC_PREFIX: Record<BillingDocumentType, string> = {
+  // ใบแจ้งหนี้ and ใบกำกับภาษี deliberately share the "IV" prefix — they
+  // share one running number series (a common Thai billing convention),
+  // so generateBillingDocNo's same-day count naturally covers both types.
   invoice: "IV",
   billing_note: "BL",
-  tax_invoice: "TX",
+  tax_invoice: "IV",
   // Deliberately reuses the "RE" prefix payments.receipt_no values already
   // use elsewhere in this app (e.g. RE202608280003).
   receipt: "RE",
