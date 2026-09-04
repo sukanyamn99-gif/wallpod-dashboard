@@ -246,6 +246,38 @@ export interface StockProductLot {
   note: string | null;
 }
 
+// A fully separate system from StockProduct (raw materials) — finished
+// goods produced from a JOB, received in freely (quantity + cost typed
+// directly, not derived from raw-material requisitions), and withdrawn
+// automatically when a ใบกำกับภาษี (tax invoice) is issued.
+export interface FinishedGood {
+  id: string;
+  // Auto-generated on create (KW0001, KW0002, ...) — never user-typed,
+  // unlike StockProduct.sku which stays manual.
+  sku: string;
+  jobNo: string | null;
+  name: string;
+  thickness: string | null;
+  size: string | null;
+  color: string | null;
+  quantityOnHand: number;
+  unitCost: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FinishedGoodMovement {
+  id: string;
+  finishedGoodId: string;
+  movementType: "in" | "out";
+  quantity: number;
+  balanceBefore: number | null;
+  balanceAfter: number | null;
+  referenceNo: string | null;
+  note: string | null;
+  createdAt: string;
+}
+
 export interface DeadStockItem extends StockProduct {
   lastActivityAt: string;
   neverMoved: boolean;

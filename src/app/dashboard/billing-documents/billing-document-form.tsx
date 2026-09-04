@@ -16,7 +16,15 @@ import { formatTHB } from "@/lib/format";
 import { computeBillingDocumentSummary } from "@/lib/billing-document-summary";
 import { createBillingDocument, fetchBillableQuotations, fetchUnbilledInvoices, updateBillingDocument } from "./actions";
 import { BILLING_DOCUMENT_LABELS } from "@/lib/types";
-import type { BillableQuotation, BillingDocumentDetail, BillingDocumentType, Customer, SalesRep, UnbilledInvoice } from "@/lib/types";
+import type {
+  BillableQuotation,
+  BillingDocumentDetail,
+  BillingDocumentType,
+  Customer,
+  FinishedGood,
+  SalesRep,
+  UnbilledInvoice,
+} from "@/lib/types";
 import type { JobLookupEntry } from "@/lib/data/reference";
 
 const NONE_VALUE = "__none__";
@@ -52,6 +60,7 @@ export function BillingDocumentForm({
   salesReps,
   jobNoSuggestions = [],
   jobNoLookup = {},
+  finishedGoods = [],
   listPath,
   mode = "create",
   docId,
@@ -65,6 +74,11 @@ export function BillingDocumentForm({
   // to fetch data its form usage never reads.
   jobNoSuggestions?: string[];
   jobNoLookup?: Record<string, JobLookupEntry>;
+  // Only meaningful (and only rendered) when docType === "tax_invoice" —
+  // ออกใบกำกับภาษี is the one document type that automatically deducts
+  // finished-goods stock, per the user's explicit "ตัดกับบิลขาย...ตอนออก
+  // ใบกำกับภาษี...ตัดอัตโนมัติ" requirement.
+  finishedGoods?: FinishedGood[];
   listPath: string;
   mode?: "create" | "edit";
   docId?: string;
@@ -93,6 +107,9 @@ export function BillingDocumentForm({
         unitPrice: String(it.manualUnitPrice ?? 0),
       })),
   );
+  // productId -> quantity to deduct, only ever populated/submitted when
+  // docType === "tax_invoice" (see the section below).
+  const [finishedGoodQty, setFinishedGoodQty] = useState<Record<string, string>>({});
   const [loadingInvoices, setLoadingInvoices] = useState(mode === "edit");
   const [docDate, setDocDate] = useState(initialData?.docDate ?? new Date().toISOString().slice(0, 10));
   const [creditDays, setCreditDays] = useState(String(initialData?.creditDays ?? 0));
@@ -261,6 +278,13 @@ export function BillingDocumentForm({
           fd.append("item_manual_qty", row.qty);
           fd.append("item_manual_unit", row.unit);
           fd.append("item_manual_unit_price", row.unitPrice);
+        }
+        if (docType === "tax_invoice") {
+          for (const [productId, qty] of Object.entries(finishedGoodQty)) {
+            if ((Number(qty) || 0) <= 0) continue;
+            fd.append("item_finished_good_id", productId);
+            fd.append("item_finished_good_qty", qty);
+          }
         }
         startTransition(() => formAction(fd));
       }}
@@ -517,6 +541,37 @@ export function BillingDocumentForm({
             </div>
           )}
         </div>
+
+        {docType === "tax_invoice" && finishedGoods.length > 0 && (
+          <div className="space-y-2">
+            <Label>หักสต๊อกสินค้าสำเร็จรูป</Label>
+            <p className="text-xs text-muted-foreground">
+              เมื่อออกใบกำกับภาษีนี้ ระบบจะตัดสต๊อกสินค้าสำเร็จรูปที่เลือกไว้ให้อัตโนมัติ (ไม่บังคับ — เว้นว่างได้ถ้าไม่ต้องการตัดสต๊อก)
+            </p>
+            <div className="max-h-64 space-y-2 overflow-y-auto">
+              {finishedGoods.map((fg) => (
+                <div key={fg.id} className="flex items-center gap-3 rounded-lg border p-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {fg.name} {fg.jobNo && <span className="text-muted-foreground">— {fg.jobNo}</span>}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      คงเหลือ {fg.quantityOnHand} {[fg.thickness, fg.size, fg.color].filter(Boolean).join(" / ")}
+                    </p>
+                  </div>
+                  <NumberInput
+                    className="w-24 shrink-0"
+                    placeholder="0"
+                    min={0}
+                    step={0.01}
+                    value={finishedGoodQty[fg.id] ?? ""}
+                    onChange={(v) => setFinishedGoodQty((prev) => ({ ...prev, [fg.id]: v }))}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-1 rounded-lg border p-3 text-sm">
           <div className="flex justify-between">

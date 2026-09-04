@@ -168,7 +168,7 @@ export async function getDistinctQuotationItemFields(): Promise<QuotationItemFie
 // form's own JOB Number field, so a trailing space or case difference
 // (confirmed present in this data — e.g. project_name spacing varies job
 // to job) would silently break an exact match. Normalize before comparing.
-function normalizeJobNo(jobNo: string): string {
+export function normalizeJobNo(jobNo: string): string {
   return jobNo.trim().toUpperCase();
 }
 
@@ -301,6 +301,71 @@ export async function getAcceptedUnconvertedQuotationsForCustomer(customerName: 
     projectName: row.project_name,
     total: Number(row.total),
   }));
+}
+
+// One quotation item's descriptive/pricing fields, kept as raw separate
+// columns (unlike QuotationItemDetail's combined `description` string) —
+// used by Finished Goods to prefill its own thickness/size/color columns
+// straight from the accepted quotation, rather than needing to re-parse a
+// formatted string.
+export interface QuotationItemRaw {
+  productName: string;
+  thickness: string | null;
+  size: string | null;
+  color: string | null;
+  qty: number;
+  unit: string;
+  unitPrice: number;
+}
+
+// Finds the accepted quotation for a JOB NO. (falling back to the most
+// recently created one if none is accepted yet, same rule as
+// getQuotationItemsByJobNumbers) and returns its raw item fields — used to
+// prefill the "เพิ่มสินค้าสำเร็จรูป" form when producing a job's ordered
+// goods. Returns null when no quotation matches the JOB at all.
+export async function getAcceptedQuotationItemsByJobNo(
+  jobNo: string,
+): Promise<{ quotationDocNo: string; items: QuotationItemRaw[] } | null> {
+  if (!jobNo || !isSupabaseConfigured()) return null;
+  const supabase = await createClient();
+  const normalized = normalizeJobNo(jobNo);
+
+  const { data: quotes, error } = await supabase
+    .from("quotations")
+    .select("id, doc_no, job_number, status, created_at")
+    .not("job_number", "is", null);
+  if (error) throw error;
+
+  const matches = (quotes ?? []).filter((q) => q.job_number && normalizeJobNo(q.job_number) === normalized);
+  if (matches.length === 0) return null;
+
+  matches.sort((a, b) => {
+    const aAccepted = a.status === "ลูกค้าตอบตกลง";
+    const bAccepted = b.status === "ลูกค้าตอบตกลง";
+    if (aAccepted !== bAccepted) return aAccepted ? -1 : 1;
+    return b.created_at.localeCompare(a.created_at);
+  });
+  const best = matches[0];
+
+  const { data: items, error: itemsErr } = await supabase
+    .from("quotation_items")
+    .select("product_name, thickness, size, color, qty, unit, unit_price")
+    .eq("quotation_id", best.id)
+    .order("sort_order", { ascending: true });
+  if (itemsErr) throw itemsErr;
+
+  return {
+    quotationDocNo: best.doc_no,
+    items: (items ?? []).map((row) => ({
+      productName: row.product_name,
+      thickness: row.thickness,
+      size: row.size,
+      color: row.color,
+      qty: Number(row.qty),
+      unit: row.unit,
+      unitPrice: Number(row.unit_price),
+    })),
+  };
 }
 
 export async function getSignedQuotationImageUrls(paths: string[]): Promise<Record<string, string>> {

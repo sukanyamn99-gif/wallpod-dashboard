@@ -28,6 +28,7 @@ const PAGE_ACCESS: Record<string, Role[]> = {
   "/dashboard/inventory": STOCK_STAFF,
   "/dashboard/stock-product": STOCK_STAFF,
   "/dashboard/stock-product/report": [...STOCK_STAFF, "sales", "design"],
+  "/dashboard/finished-goods": STOCK_STAFF,
   "/dashboard/product-categories": STOCK_STAFF,
   "/dashboard/goods-receipt": STOCK_STAFF,
   "/dashboard/goods-receipt/report": STOCK_STAFF,

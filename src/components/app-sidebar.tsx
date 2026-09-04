@@ -30,6 +30,7 @@ import {
   TriangleAlert,
   LineChart,
   Package,
+  PackageCheck,
   PackagePlus,
   Palette,
   Percent,
@@ -90,6 +91,7 @@ const inventoryGroup = {
   icon: Warehouse,
   items: [
     { title: "สินค้า", url: "/dashboard/stock-product", icon: Package },
+    { title: "สินค้าสำเร็จรูป", url: "/dashboard/finished-goods", icon: PackageCheck },
     { title: "หมวดหมู่สินค้า", url: "/dashboard/product-categories", icon: Tags },
     { title: "รับเข้าสินค้า", url: "/dashboard/goods-receipt", icon: PackagePlus },
     { title: "ใบเบิกสินค้า", url: "/dashboard/stock-requisition", icon: ClipboardMinus },

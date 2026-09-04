@@ -185,6 +185,13 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
     manualItems,
   } = parsed;
 
+  // Finished-goods stock deduction — only meaningful for tax_invoice, per
+  // the user's explicit "ตัดกับบิลขาย...ตอนออกใบกำกับภาษี...ตัดอัตโนมัติ"
+  // requirement. Silently ignored for every other doc type even if somehow
+  // present in the submitted form.
+  const finishedGoodIds = formData.getAll("item_finished_good_id").map((v) => String(v));
+  const finishedGoodQtys = formData.getAll("item_finished_good_qty").map((v) => num(v));
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -262,6 +269,34 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
     })),
   ]);
   if (itemsErr) return { error: `บันทึกเอกสารสำเร็จ แต่บันทึกรายการไม่สำเร็จ: ${itemsErr.message}`, id: doc.id };
+
+  // Deduct finished-goods stock, automatically, only when issuing a
+  // ใบกำกับภาษี — matches the user's explicit requirement that this
+  // deduction happen at tax-invoice time with no separate confirmation
+  // step. Best-effort per line: a failed deduction is surfaced but doesn't
+  // roll back the already-created document, consistent with this app's
+  // existing convention for secondary writes after the primary record
+  // lands (e.g. image uploads in Sale Report/Stock Product).
+  if (docType === "tax_invoice" && finishedGoodIds.length > 0) {
+    for (let i = 0; i < finishedGoodIds.length; i++) {
+      const qty = finishedGoodQtys[i];
+      if (!(qty > 0)) continue;
+      const { error: deductErr } = await supabase.rpc("record_finished_goods_movement", {
+        p_id: finishedGoodIds[i],
+        p_type: "out",
+        p_qty: qty,
+        p_note: `ตัดสต๊อกตามใบกำกับภาษี ${docNo}`,
+        p_reference: docNo,
+      });
+      if (deductErr) {
+        return {
+          error: `บันทึกใบกำกับภาษีสำเร็จ (${docNo}) แต่ตัดสต๊อกสินค้าสำเร็จรูปบางรายการไม่สำเร็จ: ${deductErr.message}`,
+          id: doc.id,
+        };
+      }
+    }
+    revalidatePath("/dashboard/finished-goods");
+  }
 
   // Sync the doc number back onto WALLPOD Project Sales, closing the loop —
   // which field depends on which document type was just issued. Only

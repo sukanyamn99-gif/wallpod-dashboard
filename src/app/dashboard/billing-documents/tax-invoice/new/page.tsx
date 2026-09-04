@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getCustomers, getDistinctProjectJobNos, getJobNoLookup, getSalesReps } from "@/lib/data/reference";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
+import { getFinishedGoods } from "@/lib/data/finished-goods";
 import { BillingDocumentForm } from "../../billing-document-form";
 
 export default async function NewTaxInvoicePage() {
@@ -10,11 +11,12 @@ export default async function NewTaxInvoicePage() {
   if (!profile) redirect("/login");
   if (!canAccessPage(profile.role, "/dashboard/billing-documents/tax-invoice")) redirect("/dashboard/sales");
 
-  const [customers, salesReps, jobNoSuggestions, jobNoLookup] = await Promise.all([
+  const [customers, salesReps, jobNoSuggestions, jobNoLookup, finishedGoods] = await Promise.all([
     getCustomers(),
     getSalesReps(),
     getDistinctProjectJobNos(),
     getJobNoLookup(),
+    getFinishedGoods(),
   ]);
 
   return (
@@ -33,6 +35,7 @@ export default async function NewTaxInvoicePage() {
         salesReps={salesReps}
         jobNoSuggestions={jobNoSuggestions}
         jobNoLookup={jobNoLookup}
+        finishedGoods={finishedGoods}
         listPath="/dashboard/billing-documents/tax-invoice"
       />
     </div>
