@@ -66,7 +66,7 @@ export function PrintCommissionView({
   return (
     <div className="mx-auto max-w-6xl bg-white p-6 text-black print:p-0">
       <div className="text-[11px] leading-tight">
-        <Image src="/koonwaylogo.png" alt="KOONWAY" width={228} height={36} className="h-9 w-auto" priority />
+        <Image src="/koonwaylogo.png" alt="KOONWAY" width={152} height={24} className="h-6 w-auto" priority />
         <p className="mt-2 font-medium">บริษัท คูนเว จำกัด</p>
         <p className="font-medium">{broker}</p>
         <p className="font-medium">ประจำเดือน {periodLabel(windowStart, windowEnd)}</p>

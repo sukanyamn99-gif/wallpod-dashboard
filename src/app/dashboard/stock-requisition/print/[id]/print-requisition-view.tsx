@@ -67,7 +67,7 @@ export function PrintRequisitionView({
         {/* Header */}
         <div className="flex items-start justify-between border-b border-black p-3">
           <div>
-            <Image src="/koonwaylogo.png" alt="KOONWAY" width={228} height={36} className="h-9 w-auto" priority />
+            <Image src="/koonwaylogo.png" alt="KOONWAY" width={152} height={24} className="h-6 w-auto" priority />
             <p className="mt-1">บริษัท คูนเว จำกัด</p>
             <p>เลขที่ 24/2-4 ถนนสุขาภิบาล 2</p>
             <p>แขวงประเวศ เขตประเวศ กรุงเทพฯ 10250</p>

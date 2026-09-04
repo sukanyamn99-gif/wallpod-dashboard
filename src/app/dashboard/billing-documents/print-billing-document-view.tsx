@@ -39,7 +39,7 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
       {/* Header */}
       <div className="flex items-start justify-between border-b-2 border-black pb-3">
         <div>
-          <Image src="/koonwaylogo.png" alt="KOONWAY" width={228} height={36} className="h-9 w-auto" priority />
+          <Image src="/koonwaylogo.png" alt="KOONWAY" width={152} height={24} className="h-6 w-auto" priority />
           <p className="mt-1 font-semibold">บริษัท คูนเว จำกัด (สำนักงานใหญ่)</p>
           <p>24/2-4 สุขาภิบาล 2 แขวงประเวศ เขตประเวศ กรุงเทพฯ 10250</p>
           <p>เลขประจำตัวผู้เสียภาษี 0-1055-59182-97-3</p>
@@ -309,7 +309,7 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
             </div>
           </div>
           <div className="px-4">
-            <Image src="/koonwaylogo.png" alt="KOONWAY" width={177} height={28} className="mx-auto h-7 w-auto" />
+            <Image src="/koonwaylogo.png" alt="KOONWAY" width={127} height={20} className="mx-auto h-5 w-auto" />
             <p className="text-xs text-neutral-500">KoonWay Company Limited</p>
           </div>
           <div>
