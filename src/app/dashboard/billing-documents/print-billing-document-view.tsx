@@ -293,17 +293,43 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
         </p>
       )}
 
-      {/* Signatures */}
-      <div className="mt-10 grid grid-cols-2 gap-8 text-center">
-        <div className="space-y-8">
-          <p>ผู้รับวางบิล</p>
-          <p className="border-t border-black pt-1">วันที่ :</p>
+      {/* Signatures — ใบแจ้งหนี้/ใบวางบิล get the "ในนาม" + KOONWAY-logo
+          layout; other doc types keep the plain two-signature footer. */}
+      {document.docType === "invoice" || document.docType === "billing_note" ? (
+        <div className="mt-10 grid grid-cols-[1fr_auto_1fr] items-start gap-4 text-center text-sm">
+          <div>
+            <p>ในนาม {document.customerName}</p>
+            <div className="mt-8 grid grid-cols-2 gap-4">
+              <p className="border-t border-black pt-1">ผู้รับวางบิล</p>
+              <p className="border-t border-black pt-1">วันที่</p>
+            </div>
+          </div>
+          <div className="px-4">
+            <p className="text-xl font-bold tracking-tight">
+              KOO<span style={{ color: "#2793a2" }}>N</span>WAY
+            </p>
+            <p className="text-xs text-neutral-500">KoonWay Company Limited</p>
+          </div>
+          <div>
+            <p>ในนาม บริษัท คูนเว จำกัด</p>
+            <div className="mt-8 grid grid-cols-2 gap-4">
+              <p className="border-t border-black pt-1">ผู้วางบิล</p>
+              <p className="border-t border-black pt-1">วันที่</p>
+            </div>
+          </div>
         </div>
-        <div className="space-y-8">
-          <p>ผู้วางบิล</p>
-          <p className="border-t border-black pt-1">วันที่ :</p>
+      ) : (
+        <div className="mt-10 grid grid-cols-2 gap-8 text-center">
+          <div className="space-y-8">
+            <p>ผู้รับวางบิล</p>
+            <p className="border-t border-black pt-1">วันที่ :</p>
+          </div>
+          <div className="space-y-8">
+            <p>ผู้วางบิล</p>
+            <p className="border-t border-black pt-1">วันที่ :</p>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
