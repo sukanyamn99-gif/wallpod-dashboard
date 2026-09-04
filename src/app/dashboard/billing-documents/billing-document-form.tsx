@@ -171,6 +171,21 @@ export function BillingDocumentForm({
       // reps), so this is the one path that auto-fills ผู้ขาย too.
       setSalesRepId(match.salesRepId ?? "");
     }
+    // Picking a JOB is a strong signal this invoice is selling everything
+    // that JOB produced — pre-fill the deduction quantity for that JOB's
+    // finished goods with their full quantity on hand, same "no need to
+    // add manually" pattern already used when creating a finished good.
+    // Still just a starting number in an editable field, not a commitment.
+    if (docType === "tax_invoice" && value) {
+      const jobFinishedGoods = finishedGoods.filter((fg) => fg.jobNo === value);
+      if (jobFinishedGoods.length > 0) {
+        setFinishedGoodQty((prev) => {
+          const next = { ...prev };
+          for (const fg of jobFinishedGoods) next[fg.id] = String(fg.quantityOnHand);
+          return next;
+        });
+      }
+    }
   }
 
   // Edit mode: customer is fixed (changing it would invalidate the whole
@@ -234,6 +249,16 @@ export function BillingDocumentForm({
   // same as the customer name itself already does, so staff can confirm
   // the contact details that will print on the document before issuing it.
   const selectedCustomer = useMemo(() => customers.find((c) => c.id === customerId), [customers, customerId]);
+
+  // Once a JOB is picked, narrow the deduction picker to only that JOB's
+  // own finished goods — otherwise every finished good in the system would
+  // clutter the list, most of them irrelevant to this invoice. Falls back
+  // to showing everything when no JOB is picked (e.g. customer chosen
+  // directly), so staff can still deduct manually in that case.
+  const relevantFinishedGoods = useMemo(
+    () => (jobNo ? finishedGoods.filter((fg) => fg.jobNo === jobNo) : finishedGoods),
+    [finishedGoods, jobNo],
+  );
 
   const selectedAmounts = useMemo(
     () => [
@@ -542,18 +567,19 @@ export function BillingDocumentForm({
           )}
         </div>
 
-        {docType === "tax_invoice" && finishedGoods.length > 0 && (
+        {docType === "tax_invoice" && relevantFinishedGoods.length > 0 && (
           <div className="space-y-2">
             <Label>หักสต๊อกสินค้าสำเร็จรูป</Label>
             <p className="text-xs text-muted-foreground">
               เมื่อออกใบกำกับภาษีนี้ ระบบจะตัดสต๊อกสินค้าสำเร็จรูปที่เลือกไว้ให้อัตโนมัติ (ไม่บังคับ — เว้นว่างได้ถ้าไม่ต้องการตัดสต๊อก)
             </p>
             <div className="max-h-64 space-y-2 overflow-y-auto">
-              {finishedGoods.map((fg) => (
+              {relevantFinishedGoods.map((fg) => (
                 <div key={fg.id} className="flex items-center gap-3 rounded-lg border p-2">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">
-                      {fg.name} {fg.jobNo && <span className="text-muted-foreground">— {fg.jobNo}</span>}
+                      <span className="text-muted-foreground">{fg.sku}</span> {fg.name}{" "}
+                      {fg.jobNo && <span className="text-muted-foreground">— {fg.jobNo}</span>}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
                       คงเหลือ {fg.quantityOnHand} {[fg.thickness, fg.size, fg.color].filter(Boolean).join(" / ")}
