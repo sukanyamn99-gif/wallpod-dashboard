@@ -277,15 +277,20 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
                 <td className="py-0.5 text-right text-red-600">{formatTHB(summary.retentionAmount)}</td>
               </tr>
             )}
-            <tr className="bg-neutral-100">
-              <td className="px-1 py-1.5 font-bold">จำนวนเงินรวมทั้งสิ้น</td>
-              <td className="px-1 py-1.5 text-right font-bold">{formatTHB(summary.netPayable)}</td>
-            </tr>
           </tbody>
         </table>
       </div>
 
-      <p className="mt-1 text-sm">({thaiBahtText(summary.netPayable)})</p>
+      {/* Baht-text and the final total share one line with one underline,
+          instead of the total row sitting inside the table above and the
+          baht-text as a separate line below it. */}
+      <div className="flex items-center justify-between gap-4 border-b border-black pb-1.5">
+        <p className="text-sm">({thaiBahtText(summary.netPayable)})</p>
+        <div className="flex w-72 shrink-0 justify-between bg-neutral-100 px-1 py-1.5 font-bold">
+          <span>จำนวนเงินรวมทั้งสิ้น</span>
+          <span>{formatTHB(summary.netPayable)}</span>
+        </div>
+      </div>
 
       {document.note && (
         <p className="mt-2 text-sm">
