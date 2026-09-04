@@ -238,7 +238,7 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
       )}
 
       {/* Summary */}
-      <div className="flex justify-end py-2">
+      <div className="flex justify-end pt-2">
         <table className="w-72">
           <tbody>
             <tr>
@@ -285,7 +285,7 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
         </table>
       </div>
 
-      <p className="border-t border-black pt-2 text-sm">({thaiBahtText(summary.netPayable)})</p>
+      <p className="mt-1 text-sm">({thaiBahtText(summary.netPayable)})</p>
 
       {document.note && (
         <p className="mt-2 text-sm">
