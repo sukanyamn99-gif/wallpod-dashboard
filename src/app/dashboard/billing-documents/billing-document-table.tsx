@@ -136,9 +136,10 @@ export function BillingDocumentTable({
                     >
                       <Eye className="h-3.5 w-3.5" />
                     </Button>
-                    {/* Only ใบวางบิล has an edit route so far — the other
-                        2 types can be extended the same way later. */}
-                    {docType === "billing_note" && canDelete(currentProfile, doc) && (
+                    {/* Only ใบวางบิล/ใบแจ้งหนี้ have an edit route so far —
+                        ใบกำกับภาษี/ใบเสร็จรับเงิน can be extended the same
+                        way later if asked. */}
+                    {(docType === "billing_note" || docType === "invoice") && canDelete(currentProfile, doc) && (
                       <Button
                         size="icon-sm"
                         variant="outline"
