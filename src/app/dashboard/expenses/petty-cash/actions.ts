@@ -20,13 +20,19 @@ async function generateDocNo(supabase: Awaited<ReturnType<typeof createClient>>)
   const mm = String(now.getMonth() + 1).padStart(2, "0");
   const prefix = `PC${yy}${mm}`;
 
-  const { count, error } = await supabase
-    .from("petty_cash_transactions")
-    .select("id", { count: "exact", head: true })
-    .like("doc_no", `${prefix}%`);
+  // Based on the highest existing sequence number, not a plain row count —
+  // a deleted transaction leaves a gap, and count+1 would then collide
+  // with a still-surviving higher-numbered row (hit in production for
+  // billing documents' doc-no generator, which used the same pattern).
+  const { data, error } = await supabase.from("petty_cash_transactions").select("doc_no").like("doc_no", `${prefix}%`);
   if (error) throw error;
 
-  const seq = String((count ?? 0) + 1).padStart(3, "0");
+  let max = 0;
+  for (const row of data ?? []) {
+    const n = parseInt(row.doc_no.slice(prefix.length), 10);
+    if (Number.isFinite(n)) max = Math.max(max, n);
+  }
+  const seq = String(max + 1).padStart(3, "0");
   return `${prefix}${seq}`;
 }
 

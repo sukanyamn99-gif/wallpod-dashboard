@@ -58,13 +58,21 @@ async function generateBillingDocNo(
     String(now.getFullYear()) + String(now.getMonth() + 1).padStart(2, "0") + String(now.getDate()).padStart(2, "0");
   const prefix = `${DOC_PREFIX[docType]}${yyyymmdd}`;
 
-  const { count, error } = await supabase
-    .from("billing_notes")
-    .select("id", { count: "exact", head: true })
-    .like("doc_no", `${prefix}%`);
+  // Based on the highest existing sequence number for today, not a plain
+  // row count — a deleted document (e.g. a test row cleaned up earlier)
+  // leaves a gap, and count+1 would then collide with a still-surviving
+  // higher-numbered row every time, since nothing about that count changes
+  // between retries. Same fix already applied to Finished Goods' SKU
+  // generator for the same reason.
+  const { data, error } = await supabase.from("billing_notes").select("doc_no").like("doc_no", `${prefix}%`);
   if (error) throw error;
 
-  const seq = String((count ?? 0) + 1).padStart(4, "0");
+  let max = 0;
+  for (const row of data ?? []) {
+    const n = parseInt(row.doc_no.slice(prefix.length), 10);
+    if (Number.isFinite(n)) max = Math.max(max, n);
+  }
+  const seq = String(max + 1).padStart(4, "0");
   return `${prefix}${seq}`;
 }
 
