@@ -107,6 +107,7 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
           <thead>
             <tr className="bg-neutral-100">
               <th className="w-10 border-r border-black p-1.5 font-medium">ลำดับ</th>
+              <th className="w-20 border-r border-black p-1.5 font-medium">รหัสสินค้า</th>
               <th className="border-r border-black p-1.5 font-medium text-left">รายละเอียด</th>
               <th className="w-16 border-r border-black p-1.5 font-medium">จำนวน</th>
               <th className="w-24 border-r border-black p-1.5 font-medium">ราคาต่อหน่วย</th>
@@ -127,6 +128,7 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
                   return (
                     <tr key={it.id}>
                       <td className="border-r border-t border-black p-1.5">{seq}</td>
+                      <td className="border-r border-t border-black p-1.5">—</td>
                       <td className="border-r border-t border-black p-1.5 text-left whitespace-pre-line">
                         {it.manualDescription}
                       </td>
@@ -151,6 +153,7 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
                   return (
                     <tr key={it.id}>
                       <td className="border-r border-t border-black p-1.5">{seq}</td>
+                      <td className="border-r border-t border-black p-1.5">—</td>
                       <td className="border-r border-t border-black p-1.5 text-left whitespace-pre-line">
                         {refLabel} {it.invoiceNo} ลงวันที่ {fmtDate(it.invoiceDate)}
                       </td>
@@ -177,8 +180,8 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
                       return (
                         <tr key={qidx}>
                           <td className="border-r border-t border-black p-1.5">{seq}</td>
+                          <td className="border-r border-t border-black p-1.5">{qi.productCode ?? "—"}</td>
                           <td className="border-r border-t border-black p-1.5 text-left">
-                            {qi.productCode && <p className="text-neutral-500">[{qi.productCode}]</p>}
                             {specRows
                               .filter((row) => row.value)
                               .map((row) => (
@@ -198,7 +201,7 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
                     })}
                     <tr>
                       <td className="border-r border-t border-black p-1.5"></td>
-                      <td colSpan={3} className="border-r border-t border-black p-1.5 text-right text-neutral-600">
+                      <td colSpan={4} className="border-r border-t border-black p-1.5 text-right text-neutral-600">
                         ยอดรวมตามเอกสาร {it.invoiceNo}
                       </td>
                       <td className="border-t border-black p-1.5 text-right font-medium">{formatTHB(it.amount)}</td>
