@@ -70,14 +70,22 @@ function AddFinishedGoodForm({ jobNoSuggestions }: { jobNoSuggestions: string[] 
 
   // Only fires once a real JOB NO. is committed (JobNoSelect reverts
   // anything that doesn't match an existing job) — looks up that job's
-  // accepted quotation so its items can be offered as one-click prefills.
+  // accepted quotation. A single-item quotation (the common case) fills
+  // the form immediately with no extra click; a multi-item quotation still
+  // shows the picker below since guessing which line was actually produced
+  // would risk silently filling in the wrong one. A JOB with no quotation
+  // on file at all (expected for anything before quotations were adopted,
+  // per the user — no fallback needed) just leaves the form blank as before.
   function handleJobNoChange(value: string) {
     setJobNo(value);
     setQuotationMatch(null);
     if (!value) return;
     setQuotationLoading(true);
     fetchAcceptedQuotationItemsForJob(value)
-      .then(setQuotationMatch)
+      .then((result) => {
+        setQuotationMatch(result);
+        if (result?.items.length === 1) applyQuotationItem(result.items[0]);
+      })
       .finally(() => setQuotationLoading(false));
   }
 
