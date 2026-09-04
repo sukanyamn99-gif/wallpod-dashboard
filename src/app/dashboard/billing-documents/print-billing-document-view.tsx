@@ -186,8 +186,8 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
                               .filter((row) => row.value)
                               .map((row) => (
                                 <div key={row.label} className="flex gap-1">
-                                  <span className="w-28 shrink-0 text-neutral-500">{row.label} :</span>
-                                  <span className="font-medium">{row.value}</span>
+                                  <span className="w-28 shrink-0 font-bold">{row.label} :</span>
+                                  <span>{row.value}</span>
                                 </div>
                               ))}
                           </td>
@@ -311,29 +311,37 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
         </p>
       )}
 
-      {/* Signatures — ใบแจ้งหนี้/ใบวางบิล get the "ในนาม" + KOONWAY-logo
-          layout; other doc types keep the plain two-signature footer. */}
-      {document.docType === "invoice" || document.docType === "billing_note" ? (
-        <div className="mt-10 grid grid-cols-[1fr_auto_1fr] items-start gap-4 text-center text-sm">
-          <div>
-            <p>ในนาม {document.customerName}</p>
-            <div className="mt-8 grid grid-cols-2 gap-4">
-              <p className="border-t border-black pt-1">ผู้รับวางบิล</p>
-              <p className="border-t border-black pt-1">วันที่</p>
+      {/* Signatures — ใบแจ้งหนี้/ใบวางบิล/ใบกำกับภาษี get the "ในนาม" +
+          KOONWAY-logo layout (left/right role labels differ per type since
+          a tax invoice's sign-off roles aren't the same as a billing
+          note's); ใบเสร็จรับเงิน keeps the plain two-signature footer. */}
+      {document.docType === "invoice" || document.docType === "billing_note" || document.docType === "tax_invoice" ? (
+        (() => {
+          const [leftLabel, rightLabel] =
+            document.docType === "tax_invoice" ? ["ผู้รับสินค้า / บริการ", "ผู้อนุมัติ"] : ["ผู้รับวางบิล", "ผู้วางบิล"];
+          return (
+            <div className="mt-10 grid grid-cols-[1fr_auto_1fr] items-start gap-4 text-center text-sm">
+              <div>
+                <p>ในนาม {document.customerName}</p>
+                <div className="mt-8 grid grid-cols-2 gap-4">
+                  <p className="border-t border-black pt-1">{leftLabel}</p>
+                  <p className="border-t border-black pt-1">วันที่</p>
+                </div>
+              </div>
+              <div className="px-4">
+                <Image src="/koonwaylogo.png" alt="KOONWAY" width={127} height={20} className="mx-auto h-5 w-auto" />
+                <p className="text-xs text-neutral-500">KoonWay Company Limited</p>
+              </div>
+              <div>
+                <p>ในนาม บริษัท คูนเว จำกัด</p>
+                <div className="mt-8 grid grid-cols-2 gap-4">
+                  <p className="border-t border-black pt-1">{rightLabel}</p>
+                  <p className="border-t border-black pt-1">วันที่</p>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="px-4">
-            <Image src="/koonwaylogo.png" alt="KOONWAY" width={127} height={20} className="mx-auto h-5 w-auto" />
-            <p className="text-xs text-neutral-500">KoonWay Company Limited</p>
-          </div>
-          <div>
-            <p>ในนาม บริษัท คูนเว จำกัด</p>
-            <div className="mt-8 grid grid-cols-2 gap-4">
-              <p className="border-t border-black pt-1">ผู้วางบิล</p>
-              <p className="border-t border-black pt-1">วันที่</p>
-            </div>
-          </div>
-        </div>
+          );
+        })()
       ) : (
         <div className="mt-10 grid grid-cols-2 gap-8 text-center">
           <div className="space-y-8">

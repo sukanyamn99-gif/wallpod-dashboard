@@ -611,6 +611,21 @@ export interface BillableQuotation {
   total: number;
 }
 
+// A ใบกำกับภาษี, quotation-sourced, not yet referenced by any ใบวางบิล —
+// eligible to be billed directly. ใบวางบิล is created from this instead of
+// from the quotation itself once a tax invoice exists for it (see
+// getBillableTaxInvoicesForCustomer) — the item still records
+// `quotationId` under the hood (same insert path as billing straight from
+// a quotation), which is what lets the print view's existing
+// tax-invoice-reference lookup resolve it correctly.
+export interface BillableTaxInvoice {
+  id: string;
+  docNo: string;
+  docDate: string;
+  quotationId: string;
+  netPayable: number;
+}
+
 // Descriptive product/service detail pulled from the quotation behind an
 // invoice — used only to itemize a ใบกำกับภาษี (tax invoice), not to
 // recompute any amount: the invoice's own `amount` above stays the figure

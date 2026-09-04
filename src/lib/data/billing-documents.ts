@@ -1,6 +1,14 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { getQuotationItemsByIds, getQuotationItemsByJobNumbers } from "@/lib/data/quotations";
-import type { BillingDocument, BillingDocumentDetail, BillingDocumentType, QuotationItemDetail, UnbilledInvoice } from "@/lib/types";
+import { computeBillingDocumentSummary } from "@/lib/billing-document-summary";
+import type {
+  BillableTaxInvoice,
+  BillingDocument,
+  BillingDocumentDetail,
+  BillingDocumentType,
+  QuotationItemDetail,
+  UnbilledInvoice,
+} from "@/lib/types";
 
 // Payment installments already invoiced (invoice_no set) and not yet fully
 // received — the real-world "please pay these open invoices" set, shared
@@ -30,6 +38,59 @@ export async function getUnbilledInvoicesForCustomer(customerId: string): Promis
       amount: Number(row.amount),
     };
   });
+}
+
+// ใบกำกับภาษี documents for a customer, quotation-sourced (payment-sourced
+// ones already have a real WALLPOD invoice on file and go through
+// getUnbilledInvoicesForCustomer instead), excluding any whose quotation
+// is already referenced by an existing ใบวางบิล — already billed, so not
+// offered again. This is what the ใบวางบิล create form now picks from
+// directly, per the user's explicit "ไม่ต้องผ่านใบเสนอราคา" request —
+// staff browse issued tax invoices, not the quotations behind them.
+export async function getBillableTaxInvoicesForCustomer(
+  customerId: string,
+  // When editing an existing ใบวางบิล, exclude its own items from the
+  // "already billed" check — otherwise the document being edited would
+  // hide the very tax invoice it was created from.
+  excludeBillingNoteId?: string,
+): Promise<BillableTaxInvoice[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+
+  const { data: invoices, error } = await supabase
+    .from("billing_notes")
+    .select(
+      "id, doc_no, doc_date, discount_amount, wht_percent, retention_percent, billing_note_items(quotation_id, amount)",
+    )
+    .eq("doc_type", "tax_invoice")
+    .eq("customer_id", customerId);
+  if (error) throw error;
+
+  let billedQuery = supabase
+    .from("billing_note_items")
+    .select("quotation_id, billing_note_id, billing_notes!inner(doc_type)")
+    .eq("billing_notes.doc_type", "billing_note")
+    .not("quotation_id", "is", null);
+  if (excludeBillingNoteId) billedQuery = billedQuery.neq("billing_note_id", excludeBillingNoteId);
+  const { data: billed, error: billedErr } = await billedQuery;
+  if (billedErr) throw billedErr;
+  const billedQuotationIds = new Set((billed ?? []).map((row) => row.quotation_id as string));
+
+  const result: BillableTaxInvoice[] = [];
+  for (const inv of invoices ?? []) {
+    const items = (inv.billing_note_items ?? []) as unknown as { quotation_id: string | null; amount: number }[];
+    const quotationId = items.find((it) => it.quotation_id)?.quotation_id;
+    if (!quotationId || billedQuotationIds.has(quotationId)) continue;
+
+    const summary = computeBillingDocumentSummary(
+      items.map((it) => Number(it.amount)),
+      Number(inv.discount_amount),
+      Number(inv.wht_percent),
+      Number(inv.retention_percent),
+    );
+    result.push({ id: inv.id, docNo: inv.doc_no, docDate: inv.doc_date, quotationId, netPayable: summary.netPayable });
+  }
+  return result;
 }
 
 // A ใบวางบิล line sourced straight from a quotation (no formal invoice

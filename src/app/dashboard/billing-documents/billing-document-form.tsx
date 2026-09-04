@@ -14,10 +14,17 @@ import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomple
 import { JobNoSelect } from "@/components/dashboard/job-no-select";
 import { formatTHB } from "@/lib/format";
 import { computeBillingDocumentSummary } from "@/lib/billing-document-summary";
-import { createBillingDocument, fetchBillableQuotations, fetchUnbilledInvoices, updateBillingDocument } from "./actions";
+import {
+  createBillingDocument,
+  fetchBillableQuotations,
+  fetchBillableTaxInvoices,
+  fetchUnbilledInvoices,
+  updateBillingDocument,
+} from "./actions";
 import { BILLING_DOCUMENT_LABELS } from "@/lib/types";
 import type {
   BillableQuotation,
+  BillableTaxInvoice,
   BillingDocumentDetail,
   BillingDocumentType,
   Customer,
@@ -96,6 +103,11 @@ export function BillingDocumentForm({
   const [selectedQuotations, setSelectedQuotations] = useState<Set<string>>(
     () => new Set((initialData?.items ?? []).map((it) => it.quotationId).filter((id): id is string => !!id)),
   );
+  // ใบวางบิล only — browsed/selected by tax-invoice id, but each one maps
+  // to the same underlying quotationId that createBillingDocument already
+  // knows how to bill from (see fetchBillableTaxInvoices).
+  const [taxInvoices, setTaxInvoices] = useState<BillableTaxInvoice[]>([]);
+  const [selectedTaxInvoices, setSelectedTaxInvoices] = useState<Set<string>>(new Set());
   const [manualItems, setManualItems] = useState<ManualItemRow[]>(() =>
     (initialData?.items ?? [])
       .filter((it) => it.manualDescription)
@@ -143,11 +155,21 @@ export function BillingDocumentForm({
     setCustomerName(name);
     setSelected(new Set());
     setSelectedQuotations(new Set());
+    setSelectedTaxInvoices(new Set());
     setLoadingInvoices(true);
     try {
-      const [rows, billableQuotations] = await Promise.all([fetchUnbilledInvoices(id), fetchBillableQuotations(name)]);
+      // ใบวางบิล browses issued tax invoices instead of the quotations
+      // behind them (per the user's explicit "ไม่ต้องผ่านใบเสนอราคา"
+      // request) — every other doc type keeps billing from quotations
+      // directly, since a tax invoice may not exist yet for those.
+      const [rows, billableQuotations, billableTaxInvoices] = await Promise.all([
+        fetchUnbilledInvoices(id),
+        docType === "billing_note" ? Promise.resolve([]) : fetchBillableQuotations(name),
+        docType === "billing_note" ? fetchBillableTaxInvoices(id) : Promise.resolve([]),
+      ]);
       setInvoices(rows);
       setQuotations(billableQuotations);
+      setTaxInvoices(billableTaxInvoices);
       if (preselectJobNo) {
         setSelected(new Set(rows.filter((r) => r.jobNo === preselectJobNo).map((r) => r.paymentId)));
       }
@@ -195,13 +217,29 @@ export function BillingDocumentForm({
     if (mode !== "edit" || !initialData) return;
     let cancelled = false;
     (async () => {
-      const [rows, billableQuotations] = await Promise.all([
+      // Edit mode always keeps the quotation picker available too (unlike
+      // create mode, where it's hidden for ใบวางบิล) — a pre-existing item
+      // may reference a quotation with no tax invoice issued yet, and that
+      // needs somewhere to still show up as selected so saving the form
+      // doesn't silently drop it.
+      const [rows, billableQuotations, billableTaxInvoices] = await Promise.all([
         fetchUnbilledInvoices(initialData.customerId),
         fetchBillableQuotations(initialData.customerName),
+        docType === "billing_note" ? fetchBillableTaxInvoices(initialData.customerId, docId) : Promise.resolve([]),
       ]);
       if (!cancelled) {
         setInvoices(rows);
         setQuotations(billableQuotations);
+        setTaxInvoices(billableTaxInvoices);
+        // The item only stores quotationId — match it back to whichever
+        // tax invoice shares that same quotation so its checkbox starts
+        // checked, since a tax invoice isn't itself what's persisted.
+        const existingQuotationIds = new Set(
+          (initialData.items ?? []).map((it) => it.quotationId).filter((id): id is string => !!id),
+        );
+        setSelectedTaxInvoices(
+          new Set(billableTaxInvoices.filter((ti) => existingQuotationIds.has(ti.quotationId)).map((ti) => ti.id)),
+        );
         setLoadingInvoices(false);
       }
     })();
@@ -225,6 +263,15 @@ export function BillingDocumentForm({
       const next = new Set(prev);
       if (next.has(quotationId)) next.delete(quotationId);
       else next.add(quotationId);
+      return next;
+    });
+  }
+
+  function toggleTaxInvoice(taxInvoiceId: string) {
+    setSelectedTaxInvoices((prev) => {
+      const next = new Set(prev);
+      if (next.has(taxInvoiceId)) next.delete(taxInvoiceId);
+      else next.add(taxInvoiceId);
       return next;
     });
   }
@@ -264,9 +311,14 @@ export function BillingDocumentForm({
     () => [
       ...invoices.filter((inv) => selected.has(inv.paymentId)).map((inv) => inv.amount),
       ...quotations.filter((q) => selectedQuotations.has(q.id)).map((q) => q.total),
+      // Estimate for the preview — the actual saved amount is always the
+      // underlying quotation's live total (createBillingDocument re-fetches
+      // it fresh), which matches netPayable exactly unless the tax invoice
+      // itself carried its own discount/WHT/retention.
+      ...taxInvoices.filter((ti) => selectedTaxInvoices.has(ti.id)).map((ti) => ti.netPayable),
       ...manualItems.filter((row) => row.description.trim()).map(manualItemAmount),
     ],
-    [invoices, selected, quotations, selectedQuotations, manualItems],
+    [invoices, selected, quotations, selectedQuotations, taxInvoices, selectedTaxInvoices, manualItems],
   );
   const summary = useMemo(
     () => computeBillingDocumentSummary(selectedAmounts, Number(discountAmount) || 0, Number(whtPercent) || 0, Number(retentionPercent) || 0),
@@ -296,6 +348,12 @@ export function BillingDocumentForm({
         }
         for (const quotationId of selectedQuotations) {
           fd.append("item_quotation_id", quotationId);
+        }
+        // Each selected tax invoice submits as its underlying quotationId —
+        // createBillingDocument already knows how to bill from that.
+        for (const taxInvoiceId of selectedTaxInvoices) {
+          const quotationId = taxInvoices.find((ti) => ti.id === taxInvoiceId)?.quotationId;
+          if (quotationId) fd.append("item_quotation_id", quotationId);
         }
         for (const row of manualItems) {
           if (!row.description.trim()) continue;
@@ -452,6 +510,7 @@ export function BillingDocumentForm({
               <p className="mt-2 text-sm text-muted-foreground">
                 ลูกค้ารายนี้ไม่มีใบแจ้งหนี้ค้างชำระ
                 {quotations.length > 0 && " — เลือกจากใบเสนอราคาด้านล่างแทนได้"}
+                {docType === "billing_note" && taxInvoices.length > 0 && " — เลือกจากใบกำกับภาษีด้านล่างแทนได้"}
               </p>
             </div>
           ) : (
@@ -507,6 +566,37 @@ export function BillingDocumentForm({
                 </label>
               ))}
             </div>
+          </div>
+        )}
+
+        {docType === "billing_note" && customerId && !loadingInvoices && (
+          <div className="space-y-2">
+            <Label>ใบกำกับภาษีที่ยังไม่ได้วางบิล</Label>
+            <p className="text-xs text-muted-foreground">เลือกใบกำกับภาษีที่ต้องการวางบิลโดยตรง</p>
+            {taxInvoices.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-8 text-center">
+                <Package className="mx-auto h-8 w-8 text-muted-foreground" />
+                <p className="mt-2 text-sm text-muted-foreground">ลูกค้ารายนี้ไม่มีใบกำกับภาษีที่ยังไม่ได้วางบิล</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {taxInvoices.map((ti) => (
+                  <label key={ti.id} className="flex cursor-pointer items-center gap-3 rounded-lg border p-2 hover:bg-muted">
+                    <input
+                      type="checkbox"
+                      checked={selectedTaxInvoices.has(ti.id)}
+                      onChange={() => toggleTaxInvoice(ti.id)}
+                      className="h-4 w-4"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{ti.docNo}</p>
+                      <p className="truncate text-xs text-muted-foreground">{new Date(ti.docDate).toLocaleDateString("th-TH")}</p>
+                    </div>
+                    <p className="shrink-0 text-sm font-medium">{formatTHB(ti.netPayable)}</p>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -660,7 +750,10 @@ export function BillingDocumentForm({
             type="submit"
             disabled={
               pending ||
-              (selected.size === 0 && selectedQuotations.size === 0 && !manualItems.some((row) => row.description.trim()))
+              (selected.size === 0 &&
+                selectedQuotations.size === 0 &&
+                selectedTaxInvoices.size === 0 &&
+                !manualItems.some((row) => row.description.trim()))
             }
           >
             {pending ? "กำลังบันทึก..." : mode === "edit" ? "บันทึกการแก้ไข" : `ออก${BILLING_DOCUMENT_LABELS[docType]}`}

@@ -3,10 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activity-log";
-import { getBillingDocumentById, getUnbilledInvoicesForCustomer } from "@/lib/data/billing-documents";
+import {
+  getBillableTaxInvoicesForCustomer,
+  getBillingDocumentById,
+  getUnbilledInvoicesForCustomer,
+} from "@/lib/data/billing-documents";
 import { getAcceptedUnconvertedQuotationsForCustomer } from "@/lib/data/quotations";
 import { BILLING_DOCUMENT_LABELS, BILLING_DOCUMENT_LIST_PATH } from "@/lib/types";
-import type { BillableQuotation, BillingDocumentType, UnbilledInvoice } from "@/lib/types";
+import type { BillableQuotation, BillableTaxInvoice, BillingDocumentType, UnbilledInvoice } from "@/lib/types";
 
 // Thin server-action wrapper so the create form (client component) can
 // re-fetch a customer's open invoices the moment one is picked, without a
@@ -23,6 +27,13 @@ export async function fetchUnbilledInvoices(customerId: string): Promise<Unbille
 export async function fetchBillableQuotations(customerName: string): Promise<BillableQuotation[]> {
   if (!customerName) return [];
   return getAcceptedUnconvertedQuotationsForCustomer(customerName);
+}
+
+// ใบวางบิล-only: browse issued tax invoices directly instead of the
+// quotations behind them, per the user's explicit request.
+export async function fetchBillableTaxInvoices(customerId: string, excludeBillingNoteId?: string): Promise<BillableTaxInvoice[]> {
+  if (!customerId) return [];
+  return getBillableTaxInvoicesForCustomer(customerId, excludeBillingNoteId);
 }
 
 const DOC_PREFIX: Record<BillingDocumentType, string> = {
