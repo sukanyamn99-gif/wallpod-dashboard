@@ -1,5 +1,5 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import type { DeadStockItem, ProductCategory, StockDashboardData, StockMovement, StockProduct, StockProductLot, StockType } from "@/lib/types";
+import type { DeadStockItem, ProductCategory, StockDashboardData, StockMovement, StockProduct, StockProductLot } from "@/lib/types";
 
 // A product counts as Dead Stock once it's sat with no in/out movement for
 // this many months — matches the definition the user gave directly, not an
@@ -7,7 +7,7 @@ import type { DeadStockItem, ProductCategory, StockDashboardData, StockMovement,
 const DEAD_STOCK_MONTHS = 6;
 
 const STOCK_PRODUCT_COLUMNS =
-  "id, sku, name, category, color, size, thickness, location, note, unit, quantity_on_hand, reorder_point, unit_cost, selling_price, image_path, stock_type, created_at, updated_at";
+  "id, sku, name, category, color, size, thickness, location, note, unit, quantity_on_hand, reorder_point, unit_cost, selling_price, image_path, created_at, updated_at";
 
 const IMAGE_BUCKET = "stock-product-images";
 
@@ -27,7 +27,6 @@ function mapRow(row: {
   unit_cost: string | number;
   selling_price: string | number | null;
   image_path: string | null;
-  stock_type: string;
   created_at: string;
   updated_at: string;
 }): StockProduct {
@@ -47,7 +46,6 @@ function mapRow(row: {
     unitCost: Number(row.unit_cost),
     sellingPrice: row.selling_price === null ? null : Number(row.selling_price),
     imagePath: row.image_path,
-    stockType: row.stock_type as StockType,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

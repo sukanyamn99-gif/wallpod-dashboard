@@ -265,12 +265,6 @@ create table stock_products (
   unit_cost numeric(14,2) not null default 0,
   selling_price numeric(14,2),
   image_path text,
-  -- Distinguishes raw materials from finished goods so a JOB's linked
-  -- requisition cost (see getJobLinkedCostSummary) can count raw-material
-  -- withdrawals only — a finished good's own unit_cost already embeds the
-  -- raw materials that went into producing it, so counting both would
-  -- double the raw-material cost.
-  stock_type text not null default 'finished_good' check (stock_type in ('raw_material', 'finished_good')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

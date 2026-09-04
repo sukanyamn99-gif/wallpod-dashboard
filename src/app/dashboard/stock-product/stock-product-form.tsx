@@ -46,7 +46,6 @@ export interface StockProductInitialData {
   reorderPoint: string;
   unitCost: string;
   sellingPrice: string;
-  stockType: string;
   quantityOnHand: number;
   imageUrl: string | null;
 }
@@ -166,30 +165,6 @@ export function StockProductForm({
                       </SelectContent>
                     </Select>
                   </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="stock_type">ประเภทสต๊อก</Label>
-                  <Select
-                    name="stock_type"
-                    required
-                    defaultValue={initialData?.stockType ?? "finished_good"}
-                    items={[
-                      { value: "raw_material", label: "วัตถุดิบ" },
-                      { value: "finished_good", label: "สินค้าสำเร็จรูป" },
-                    ]}
-                  >
-                    <SelectTrigger id="stock_type" className="w-full">
-                      <SelectValue placeholder="เลือก" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="raw_material">วัตถุดิบ</SelectItem>
-                      <SelectItem value="finished_good">สินค้าสำเร็จรูป</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    ใช้แยกว่าใบเบิกของสินค้านี้ควรนับเป็นต้นทุนของ Job หรือไม่ (วัตถุดิบนับ, สินค้าสำเร็จรูปไม่นับซ้ำ)
-                  </p>
                 </div>
 
                 <div className="space-y-2">
