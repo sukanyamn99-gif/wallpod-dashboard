@@ -618,7 +618,12 @@ export interface BillableQuotation {
 // total (e.g. a deposit installment).
 export interface QuotationItemDetail {
   productCode: string | null;
-  description: string;
+  // Kept as separate fields (not a pre-joined description string) so the
+  // itemized print table can give each one its own column.
+  productName: string;
+  thickness: string | null;
+  size: string | null;
+  color: string | null;
   qty: number;
   unit: string;
   unitPrice: number;

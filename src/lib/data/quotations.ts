@@ -1,5 +1,4 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { formatQuotationItemDescription } from "@/lib/format";
 import type {
   BillableQuotation,
   Quotation,
@@ -239,12 +238,10 @@ async function fetchQuotationItemDetailsByIds(
     const list = itemsByQuotationId.get(row.quotation_id) ?? [];
     list.push({
       productCode: row.product_code,
-      description: formatQuotationItemDescription({
-        productName: row.product_name,
-        thickness: row.thickness,
-        size: row.size,
-        color: row.color,
-      }),
+      productName: row.product_name,
+      thickness: row.thickness,
+      size: row.size,
+      color: row.color,
       qty: Number(row.qty),
       unit: row.unit,
       unitPrice: Number(row.unit_price),

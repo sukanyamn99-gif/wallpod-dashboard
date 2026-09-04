@@ -95,11 +95,15 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
         <table className="w-full border-collapse border border-black text-center">
           <thead>
             <tr className="bg-neutral-100">
-              <th className="w-10 border-r border-black p-1.5 font-medium">ลำดับ</th>
-              <th className="border-r border-black p-1.5 font-medium text-left">รายละเอียด</th>
-              <th className="w-16 border-r border-black p-1.5 font-medium">จำนวน</th>
-              <th className="w-24 border-r border-black p-1.5 font-medium">ราคาต่อหน่วย</th>
-              <th className="w-28 p-1.5 font-medium">จำนวนเงิน</th>
+              <th className="w-8 border-r border-black p-1.5 font-medium">ลำดับ</th>
+              <th className="w-16 border-r border-black p-1.5 font-medium">รหัสสินค้า</th>
+              <th className="border-r border-black p-1.5 font-medium text-left">ชื่อสินค้า</th>
+              <th className="w-14 border-r border-black p-1.5 font-medium">ความหนา</th>
+              <th className="w-20 border-r border-black p-1.5 font-medium">ขนาด</th>
+              <th className="w-14 border-r border-black p-1.5 font-medium">สี</th>
+              <th className="w-14 border-r border-black p-1.5 font-medium">จำนวน</th>
+              <th className="w-20 border-r border-black p-1.5 font-medium">ราคาต่อหน่วย</th>
+              <th className="w-24 p-1.5 font-medium">จำนวนเงิน</th>
             </tr>
           </thead>
           <tbody>
@@ -111,12 +115,14 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
               return document.items.map((it) => {
                 // Typed directly into the document — no underlying invoice
                 // or quotation to group under, so it's just one plain row.
+                // No natural code/thickness/size/color breakdown for a
+                // free-typed line, so its text spans those 5 columns.
                 if (it.manualDescription) {
                   seq += 1;
                   return (
                     <tr key={it.id}>
                       <td className="border-r border-t border-black p-1.5">{seq}</td>
-                      <td className="border-r border-t border-black p-1.5 text-left whitespace-pre-line">
+                      <td colSpan={5} className="border-r border-t border-black p-1.5 text-left whitespace-pre-line">
                         {it.manualDescription}
                       </td>
                       <td className="border-r border-t border-black p-1.5">
@@ -140,7 +146,7 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
                   return (
                     <tr key={it.id}>
                       <td className="border-r border-t border-black p-1.5">{seq}</td>
-                      <td className="border-r border-t border-black p-1.5 text-left whitespace-pre-line">
+                      <td colSpan={5} className="border-r border-t border-black p-1.5 text-left whitespace-pre-line">
                         {refLabel} {it.invoiceNo} ลงวันที่ {fmtDate(it.invoiceDate)}
                       </td>
                       <td className="border-r border-t border-black p-1.5">—</td>
@@ -153,7 +159,7 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
                   <Fragment key={it.id}>
                     <tr className="bg-neutral-50">
                       <td className="border-r border-t border-black p-1.5"></td>
-                      <td colSpan={4} className="border-t border-black p-1.5 text-left text-neutral-600">
+                      <td colSpan={8} className="border-t border-black p-1.5 text-left text-neutral-600">
                         {refLabel} {it.invoiceNo} ลงวันที่ {fmtDate(it.invoiceDate)}
                         {!it.quotationId && it.quotationDocNo && <> (อ้างอิงใบเสนอราคา {it.quotationDocNo})</>}
                       </td>
@@ -163,10 +169,11 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
                       return (
                         <tr key={qidx}>
                           <td className="border-r border-t border-black p-1.5">{seq}</td>
-                          <td className="border-r border-t border-black p-1.5 text-left whitespace-pre-line">
-                            {qi.productCode ? `[${qi.productCode}] ` : ""}
-                            {qi.description}
-                          </td>
+                          <td className="border-r border-t border-black p-1.5">{qi.productCode ?? "—"}</td>
+                          <td className="border-r border-t border-black p-1.5 text-left">{qi.productName}</td>
+                          <td className="border-r border-t border-black p-1.5">{qi.thickness ?? "—"}</td>
+                          <td className="border-r border-t border-black p-1.5">{qi.size ?? "—"}</td>
+                          <td className="border-r border-t border-black p-1.5">{qi.color ?? "—"}</td>
                           <td className="border-r border-t border-black p-1.5">
                             {qi.qty} {qi.unit}
                           </td>
@@ -177,7 +184,7 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
                     })}
                     <tr>
                       <td className="border-r border-t border-black p-1.5"></td>
-                      <td colSpan={3} className="border-r border-t border-black p-1.5 text-right text-neutral-600">
+                      <td colSpan={7} className="border-r border-t border-black p-1.5 text-right text-neutral-600">
                         ยอดรวมตามเอกสาร {it.invoiceNo}
                       </td>
                       <td className="border-t border-black p-1.5 text-right font-medium">{formatTHB(it.amount)}</td>
