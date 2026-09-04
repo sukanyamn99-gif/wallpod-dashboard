@@ -87,7 +87,9 @@ async function getJobLinkedCosts(
     // under-counted, same convention as elsewhere in this app.
     supabase
       .from("stock_requisition_items")
-      .select("quantity, unit_cost, stock_product_id, stock_products(unit_cost), stock_requisitions(job_no)"),
+      .select(
+        "quantity, unit_cost, stock_product_id, stock_products(unit_cost, stock_type), stock_requisitions(job_no)",
+      ),
     supabase.from("payment_vouchers").select("job_no, amount").not("job_no", "is", null),
     supabase
       .from("petty_cash_transactions")
@@ -108,6 +110,14 @@ async function getJobLinkedCosts(
 
   for (const row of requisitionItems.data ?? []) {
     const jobNo = (row.stock_requisitions as unknown as { job_no: string | null } | null)?.job_no;
+    // A finished good's own unit_cost already embeds the raw materials
+    // that went into producing it (weighted-average, updated by Goods
+    // Receipt) — counting its requisition here on top of the raw-material
+    // requisitions used to make it would double the raw-material cost.
+    // Only raw-material withdrawals count toward a JOB's linked cost.
+    // @ts-expect-error -- Supabase types the joined relation loosely here
+    const stockType = row.stock_products?.stock_type;
+    if (stockType && stockType !== "raw_material") continue;
     const snapshotCost = Number(row.unit_cost);
     // @ts-expect-error -- Supabase types the joined relation loosely here
     const liveCost = row.stock_products?.unit_cost;
@@ -296,7 +306,9 @@ export async function getJobLinkedCostSummary(jobNo: string): Promise<JobLinkedC
   const [requisitionsRes, vouchersRes, pettyCashRes] = await Promise.all([
     supabase
       .from("stock_requisitions")
-      .select("doc_no, stock_requisition_items(quantity, unit_cost, stock_product_id, stock_products(unit_cost))")
+      .select(
+        "doc_no, stock_requisition_items(quantity, unit_cost, stock_product_id, stock_products(unit_cost, stock_type))",
+      )
       .eq("job_no", trimmed),
     supabase.from("payment_vouchers").select("doc_no, amount").eq("job_no", trimmed),
     supabase
@@ -314,6 +326,14 @@ export async function getJobLinkedCostSummary(jobNo: string): Promise<JobLinkedC
   const requisitions: JobLinkedCostDocument[] = (requisitionsRes.data ?? []).map((req) => {
     let amount = 0;
     for (const item of req.stock_requisition_items ?? []) {
+      // Same raw-material-only rule as getJobLinkedCosts() — a finished
+      // good's unit_cost already embeds its raw materials, so its own
+      // requisition lines don't count toward this JOB's linked cost (a
+      // requisition doc can mix both kinds of item; only the raw-material
+      // lines contribute to the amount shown for that doc here).
+      // @ts-expect-error -- Supabase types the joined relation loosely here
+      const stockType = item.stock_products?.stock_type;
+      if (stockType && stockType !== "raw_material") continue;
       const snapshotCost = Number(item.unit_cost);
       // @ts-expect-error -- Supabase types the joined relation loosely here
       const liveCost = item.stock_products?.unit_cost;

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activity-log";
-import type { ProductCategory } from "@/lib/types";
+import type { ProductCategory, StockType } from "@/lib/types";
 
 const IMAGE_BUCKET = "stock-product-images";
 
@@ -21,6 +21,7 @@ type ParsedStockProduct = {
   reorderPoint: number;
   unitCost: number;
   sellingPrice: number | null;
+  stockType: StockType;
 };
 
 function parseStockProductForm(formData: FormData): { ok: false; error: string } | ParsedStockProduct {
@@ -37,6 +38,8 @@ function parseStockProductForm(formData: FormData): { ok: false; error: string }
   const unitCost = Number(formData.get("unit_cost") ?? 0);
   const sellingPriceRaw = String(formData.get("selling_price") ?? "").trim();
   const sellingPrice = sellingPriceRaw === "" ? null : Number(sellingPriceRaw);
+  const stockTypeRaw = String(formData.get("stock_type") ?? "");
+  const stockType: StockType = stockTypeRaw === "raw_material" ? "raw_material" : "finished_good";
 
   if (!name) return { ok: false, error: "กรุณากรอกชื่อสินค้า" };
 
@@ -54,6 +57,7 @@ function parseStockProductForm(formData: FormData): { ok: false; error: string }
     reorderPoint: Number.isFinite(reorderPoint) ? reorderPoint : 0,
     unitCost: Number.isFinite(unitCost) ? unitCost : 0,
     sellingPrice: sellingPrice !== null && Number.isFinite(sellingPrice) ? sellingPrice : null,
+    stockType,
   };
 }
 
@@ -95,6 +99,7 @@ export async function createStockProduct(formData: FormData) {
       reorder_point: parsed.reorderPoint,
       unit_cost: parsed.unitCost,
       selling_price: parsed.sellingPrice,
+      stock_type: parsed.stockType,
     })
     .select("id")
     .single();
@@ -154,6 +159,7 @@ export async function updateStockProduct(id: string, formData: FormData) {
       reorder_point: parsed.reorderPoint,
       unit_cost: parsed.unitCost,
       selling_price: parsed.sellingPrice,
+      stock_type: parsed.stockType,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);

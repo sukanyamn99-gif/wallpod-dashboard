@@ -49,6 +49,7 @@ export default async function EditStockProductPage({
         reorderPoint: String(product.reorderPoint),
         unitCost: String(product.unitCost),
         sellingPrice: product.sellingPrice !== null ? String(product.sellingPrice) : "",
+        stockType: product.stockType,
         quantityOnHand: product.quantityOnHand,
         imageUrl,
       }}

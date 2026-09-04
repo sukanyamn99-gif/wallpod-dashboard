@@ -199,6 +199,13 @@ export interface SaleReportChangeLog {
   createdAt: string;
 }
 
+export type StockType = "raw_material" | "finished_good";
+
+export const STOCK_TYPE_LABELS: Record<StockType, string> = {
+  raw_material: "วัตถุดิบ",
+  finished_good: "สินค้าสำเร็จรูป",
+};
+
 export interface StockProduct {
   id: string;
   sku: string | null;
@@ -215,6 +222,7 @@ export interface StockProduct {
   unitCost: number;
   sellingPrice: number | null;
   imagePath: string | null;
+  stockType: StockType;
   createdAt: string;
   updatedAt: string;
 }
