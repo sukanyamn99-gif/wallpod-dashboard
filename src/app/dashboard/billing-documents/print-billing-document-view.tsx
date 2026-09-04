@@ -108,7 +108,7 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
             <tr className="bg-neutral-100">
               <th className="w-10 border-r border-black p-1.5 font-medium">ลำดับ</th>
               <th className="w-20 border-r border-black p-1.5 font-medium">รหัสสินค้า</th>
-              <th className="border-r border-black p-1.5 font-medium text-left">รายละเอียด</th>
+              <th className="border-r border-black p-1.5 font-medium">รายละเอียด</th>
               <th className="w-16 border-r border-black p-1.5 font-medium">จำนวน</th>
               <th className="w-24 border-r border-black p-1.5 font-medium">ราคาต่อหน่วย</th>
               <th className="w-28 p-1.5 font-medium">จำนวนเงิน</th>
@@ -186,7 +186,7 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
                               .filter((row) => row.value)
                               .map((row) => (
                                 <div key={row.label} className="flex gap-1">
-                                  <span className="w-28 shrink-0 font-bold">{row.label} :</span>
+                                  <span className="w-28 shrink-0">{row.label} :</span>
                                   <span>{row.value}</span>
                                 </div>
                               ))}
