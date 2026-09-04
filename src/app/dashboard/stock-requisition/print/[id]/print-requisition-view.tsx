@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { formatTHB } from "@/lib/format";
 import { REQUISITION_PURPOSE_LABELS } from "@/lib/types";
@@ -66,9 +67,7 @@ export function PrintRequisitionView({
         {/* Header */}
         <div className="flex items-start justify-between border-b border-black p-3">
           <div>
-            <p className="text-3xl font-bold tracking-tight">
-              KOO<span style={{ color: "#2793a2" }}>N</span>WAY
-            </p>
+            <Image src="/koonwaylogo.png" alt="KOONWAY" width={228} height={36} className="h-9 w-auto" priority />
             <p className="mt-1">บริษัท คูนเว จำกัด</p>
             <p>เลขที่ 24/2-4 ถนนสุขาภิบาล 2</p>
             <p>แขวงประเวศ เขตประเวศ กรุงเทพฯ 10250</p>

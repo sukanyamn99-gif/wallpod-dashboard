@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { formatTHB } from "@/lib/format";
 import type { CommissionableProject } from "@/lib/types";
 
@@ -65,9 +66,7 @@ export function PrintCommissionView({
   return (
     <div className="mx-auto max-w-6xl bg-white p-6 text-black print:p-0">
       <div className="text-[11px] leading-tight">
-        <p className="text-3xl font-bold tracking-tight">
-          KOO<span style={{ color: "#2793a2" }}>N</span>WAY
-        </p>
+        <Image src="/koonwaylogo.png" alt="KOONWAY" width={228} height={36} className="h-9 w-auto" priority />
         <p className="mt-2 font-medium">บริษัท คูนเว จำกัด</p>
         <p className="font-medium">{broker}</p>
         <p className="font-medium">ประจำเดือน {periodLabel(windowStart, windowEnd)}</p>
