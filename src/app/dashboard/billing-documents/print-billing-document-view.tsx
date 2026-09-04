@@ -26,6 +26,12 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
     document.retentionPercent,
   );
   const title = BILLING_DOCUMENT_LABELS[document.docType];
+  // Shown once in the header instead of repeated per group inside the
+  // items table — manual lines have no real underlying document, so
+  // they're excluded. Just the reference number(s), no date.
+  const referenceNos = Array.from(
+    new Set(document.items.filter((it) => !it.manualDescription).map((it) => it.invoiceNo)),
+  ).join(", ");
 
   return (
     <div className="text-[13px] leading-tight">
@@ -84,6 +90,12 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
               <td className="pr-2 text-left text-neutral-500">ผู้ขาย</td>
               <td>{document.salesRepName ?? "—"}</td>
             </tr>
+            {(document.docType === "invoice" || document.docType === "tax_invoice") && referenceNos && (
+              <tr>
+                <td className="pr-2 text-left text-neutral-500">เลขที่อ้างอิง</td>
+                <td>{referenceNos}</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -157,13 +169,6 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
                 }
                 return (
                   <Fragment key={it.id}>
-                    <tr className="bg-neutral-50">
-                      <td className="border-r border-t border-black p-1.5"></td>
-                      <td colSpan={8} className="border-t border-black p-1.5 text-left text-neutral-600">
-                        {refLabel} {it.invoiceNo} ลงวันที่ {fmtDate(it.invoiceDate)}
-                        {!it.quotationId && it.quotationDocNo && <> (อ้างอิงใบเสนอราคา {it.quotationDocNo})</>}
-                      </td>
-                    </tr>
                     {detail.map((qi, qidx) => {
                       seq += 1;
                       return (
