@@ -654,6 +654,12 @@ export interface BillingDocumentItem {
   manualQty?: number | null;
   manualUnit?: string | null;
   manualUnitPrice?: number | null;
+  // ใบวางบิล only: when this line was billed from a quotation and a
+  // ใบกำกับภาษี has since been issued for that same quotation, its doc
+  // no./date — printed instead of the quotation's own, since the tax
+  // invoice is the document actually being collected on.
+  taxInvoiceDocNo?: string | null;
+  taxInvoiceDocDate?: string | null;
 }
 
 export interface BillingDocument {

@@ -32,6 +32,35 @@ export async function getUnbilledInvoicesForCustomer(customerId: string): Promis
   });
 }
 
+// A ใบวางบิล line sourced straight from a quotation (no formal invoice
+// recorded yet) should reference the ใบกำกับภาษี for that same quotation
+// once one exists, not the quotation itself — the tax invoice is the real
+// document being collected on. Batched (one query for every quotation-
+// sourced item on the document) rather than per-item.
+async function getTaxInvoiceRefsForQuotationIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  quotationIds: string[],
+): Promise<Record<string, { docNo: string; docDate: string }>> {
+  if (quotationIds.length === 0) return {};
+  const { data, error } = await supabase
+    .from("billing_note_items")
+    .select("quotation_id, billing_notes!inner(doc_no, doc_date, doc_type, created_at)")
+    .in("quotation_id", quotationIds)
+    .eq("billing_notes.doc_type", "tax_invoice")
+    .order("created_at", { ascending: false, referencedTable: "billing_notes" });
+  if (error) throw error;
+
+  const result: Record<string, { docNo: string; docDate: string }> = {};
+  for (const row of data ?? []) {
+    const quotationId = row.quotation_id as string | null;
+    // @ts-expect-error -- Supabase types the joined relation loosely here
+    const note = row.billing_notes as { doc_no: string; doc_date: string } | null;
+    if (!quotationId || !note || result[quotationId]) continue; // keep the most recent only
+    result[quotationId] = { docNo: note.doc_no, docDate: note.doc_date };
+  }
+  return result;
+}
+
 const HEADER_COLUMNS =
   "id, doc_no, doc_type, customer_id, doc_date, credit_days, due_date, sales_rep_id, discount_amount, wht_percent, retention_percent, note, created_by, created_at, customers(name, address, phone, tax_id), sales_reps(name)";
 
@@ -145,6 +174,12 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     ]);
   }
 
+  let taxInvoiceRefsByQuotationId: Record<string, { docNo: string; docDate: string }> = {};
+  if (header.doc_type === "billing_note") {
+    const quotationIds = itemRows.filter((it) => it.quotation_id).map((it) => it.quotation_id as string);
+    taxInvoiceRefsByQuotationId = await getTaxInvoiceRefsForQuotationIds(supabase, quotationIds);
+  }
+
   return {
     // @ts-expect-error -- Supabase types the joined relation loosely here
     ...mapHeader(header),
@@ -155,6 +190,7 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
         : jobNo
           ? quotationDetailByJobNo[jobNo]
           : undefined;
+      const taxInvoiceRef = it.quotation_id ? taxInvoiceRefsByQuotationId[it.quotation_id] : undefined;
       return {
         id: it.id,
         paymentId: it.payment_id,
@@ -166,6 +202,8 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
         manualQty: it.manual_qty !== null ? Number(it.manual_qty) : null,
         manualUnit: it.manual_unit,
         manualUnitPrice: it.manual_unit_price !== null ? Number(it.manual_unit_price) : null,
+        taxInvoiceDocNo: taxInvoiceRef?.docNo ?? null,
+        taxInvoiceDocDate: taxInvoiceRef?.docDate ?? null,
         ...(showsItemizedDetail
           ? { quotationDocNo: quotationDetail?.quotationDocNo ?? null, quotationItems: quotationDetail?.items ?? null }
           : {}),

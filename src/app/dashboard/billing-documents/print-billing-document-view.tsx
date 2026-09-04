@@ -223,18 +223,29 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
             </tr>
           </thead>
           <tbody>
-            {document.items.map((it, i) => (
-              <tr key={it.id}>
-                <td className="border-r border-t border-black p-1.5">{i + 1}</td>
-                <td className="border-r border-t border-black p-1.5">
-                  {it.invoiceNo}
-                  {it.quotationId && <div className="text-xs text-neutral-500">(ใบเสนอราคา)</div>}
-                  {it.manualDescription && <div className="text-xs text-neutral-500">(รายการที่พิมพ์เอง)</div>}
-                </td>
-                <td className="border-r border-t border-black p-1.5">{fmtDate(it.invoiceDate)}</td>
-                <td className="border-t border-black p-1.5 text-right">{formatTHB(it.amount)}</td>
-              </tr>
-            ))}
+            {document.items.map((it, i) => {
+              // ใบวางบิล billed from a quotation: once a ใบกำกับภาษี has
+              // been issued for that same quotation, reference it instead —
+              // it's the document actually being collected on.
+              const docNo = it.taxInvoiceDocNo ?? it.invoiceNo;
+              const docDate = it.taxInvoiceDocNo ? (it.taxInvoiceDocDate ?? null) : it.invoiceDate;
+              return (
+                <tr key={it.id}>
+                  <td className="border-r border-t border-black p-1.5">{i + 1}</td>
+                  <td className="border-r border-t border-black p-1.5">
+                    {docNo}
+                    {it.taxInvoiceDocNo ? (
+                      <div className="text-xs text-neutral-500">(ใบกำกับภาษี)</div>
+                    ) : (
+                      it.quotationId && <div className="text-xs text-neutral-500">(ใบเสนอราคา)</div>
+                    )}
+                    {it.manualDescription && <div className="text-xs text-neutral-500">(รายการที่พิมพ์เอง)</div>}
+                  </td>
+                  <td className="border-r border-t border-black p-1.5">{fmtDate(docDate)}</td>
+                  <td className="border-t border-black p-1.5 text-right">{formatTHB(it.amount)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       )}
