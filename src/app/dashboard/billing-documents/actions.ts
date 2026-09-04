@@ -68,6 +68,56 @@ async function generateBillingDocNo(
   return `${prefix}${seq}`;
 }
 
+// generateBillingDocNo's "count existing rows, use count+1" isn't atomic —
+// two submissions close together can both read the same count and both
+// try to insert the same doc_no. The unique constraint on doc_no is what
+// actually prevents the duplicate; this retries with a freshly recomputed
+// number instead of surfacing the raw Postgres "duplicate key" error to
+// the user, since a re-read a moment later resolves the race on its own.
+const DOC_NO_MAX_ATTEMPTS = 5;
+
+async function insertBillingNoteHeader(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  docType: BillingDocumentType,
+  fields: {
+    customerId: string;
+    docDate: string;
+    creditDays: number;
+    dueDate: string;
+    salesRepId: string | null;
+    discountAmount: number;
+    whtPercent: number;
+    retentionPercent: number;
+    note: string | null;
+    createdBy: string | null;
+  },
+): Promise<{ docNo: string; id: string; error: null } | { docNo: null; id: null; error: string }> {
+  for (let attempt = 0; attempt < DOC_NO_MAX_ATTEMPTS; attempt++) {
+    const docNo = await generateBillingDocNo(supabase, docType);
+    const { data, error } = await supabase
+      .from("billing_notes")
+      .insert({
+        doc_no: docNo,
+        customer_id: fields.customerId,
+        doc_date: fields.docDate,
+        credit_days: fields.creditDays,
+        due_date: fields.dueDate,
+        sales_rep_id: fields.salesRepId,
+        doc_type: docType,
+        discount_amount: fields.discountAmount,
+        wht_percent: fields.whtPercent,
+        retention_percent: fields.retentionPercent,
+        note: fields.note,
+        created_by: fields.createdBy,
+      })
+      .select("id")
+      .single();
+    if (!error) return { docNo, id: data.id as string, error: null };
+    if (error.code !== "23505") return { docNo: null, id: null, error: error.message };
+  }
+  return { docNo: null, id: null, error: "ไม่สามารถออกเลขที่เอกสารได้ กรุณาลองใหม่อีกครั้ง" };
+}
+
 function revalidateBillingDocumentConsumers(docType: BillingDocumentType) {
   revalidatePath(LIST_PATH[docType]);
   revalidatePath("/dashboard/project-sales");
@@ -221,27 +271,24 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
     return { error: "ไม่พบรายการใบเสนอราคาบางรายการ กรุณาลองใหม่", id: null };
   }
 
-  const docNo = await generateBillingDocNo(supabase, docType);
-
-  const { data: doc, error: insertErr } = await supabase
-    .from("billing_notes")
-    .insert({
-      doc_no: docNo,
-      customer_id: customerId,
-      doc_date: docDate,
-      credit_days: creditDays,
-      due_date: dueDate,
-      sales_rep_id: salesRepId,
-      doc_type: docType,
-      discount_amount: discountAmount,
-      wht_percent: whtPercent,
-      retention_percent: retentionPercent,
-      note,
-      created_by: user?.id ?? null,
-    })
-    .select("id")
-    .single();
-  if (insertErr) return { error: insertErr.message, id: null };
+  const {
+    docNo,
+    id: docId,
+    error: headerErr,
+  } = await insertBillingNoteHeader(supabase, docType, {
+    customerId,
+    docDate,
+    creditDays,
+    dueDate,
+    salesRepId,
+    discountAmount,
+    whtPercent,
+    retentionPercent,
+    note,
+    createdBy: user?.id ?? null,
+  });
+  if (headerErr) return { error: headerErr, id: null };
+  const doc = { id: docId };
 
   const { error: itemsErr } = await supabase.from("billing_note_items").insert([
     ...livePayments.map((p) => ({
