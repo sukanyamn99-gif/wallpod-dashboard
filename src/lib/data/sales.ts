@@ -1,7 +1,8 @@
 import { isSupabaseConfigured, createClient } from "@/lib/supabase/server";
 import { mockProjects } from "@/lib/mock-data";
 import { getAllSaleReports } from "@/lib/data/sale-reports";
-import type { CustomerType, Project, SaleReport, StagePercent } from "@/lib/types";
+import { getQuotations } from "@/lib/data/quotations";
+import type { CustomerType, Project, Quotation, SaleReport, StagePercent } from "@/lib/types";
 import { computeSalesAggregates, computePipelineByStage, type FilteredSalesData } from "@/lib/dashboard/sales-aggregate";
 
 async function fetchLiveProjects(): Promise<Project[]> {
@@ -83,6 +84,7 @@ export interface SalesDashboardRawData {
   projects: Project[];
   saleReports: SaleReport[];
   cancelledProjects: CancelledProjectSummary[];
+  quotations: Quotation[];
 }
 
 // Raw, unaggregated data for the Sales Dashboard — fetched once server-side
@@ -90,12 +92,13 @@ export interface SalesDashboardRawData {
 // computeSalesAggregates/computePipelineByStage) whenever the month/sales-rep
 // filter changes, instead of round-tripping to the server per filter click.
 export async function getSalesDashboardRawData(): Promise<SalesDashboardRawData> {
-  const [projects, saleReports, cancelledProjects] = await Promise.all([
+  const [projects, saleReports, cancelledProjects, quotations] = await Promise.all([
     getProjects(),
     getAllSaleReports(),
     fetchCancelledProjects(),
+    getQuotations(),
   ]);
-  return { projects, saleReports, cancelledProjects };
+  return { projects, saleReports, cancelledProjects, quotations };
 }
 
 export type { FilteredSalesData };

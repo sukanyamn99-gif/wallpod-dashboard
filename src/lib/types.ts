@@ -520,6 +520,39 @@ export interface CommissionableProject {
 
 export type QuotationStatus = "รอตอบรับ" | "ลูกค้าตอบตกลง" | "ปฏิเสธ";
 
+export type QuotationType = "ค่าของ" | "ค่าติดตั้ง";
+
+// Editable boilerplate for the quotation print view (see
+// quotation_print_templates) — one of these per QuotationType, letting
+// staff edit the standard remark notes and installation prep-conditions
+// checklist without a code change.
+export type QuotationNoteTone = "normal" | "red" | "amber";
+
+export interface QuotationPrintNote {
+  text: string;
+  tone: QuotationNoteTone;
+}
+
+export type QuotationConditionIcon = "check" | "person";
+
+export interface QuotationConditionItem {
+  icon: QuotationConditionIcon;
+  text: string;
+}
+
+export interface QuotationConditionSection {
+  heading: string;
+  underline: boolean;
+  items: QuotationConditionItem[];
+}
+
+export interface QuotationPrintTemplate {
+  quotationType: QuotationType;
+  notes: QuotationPrintNote[];
+  showWhtNote: boolean;
+  conditions: QuotationConditionSection[];
+}
+
 export interface QuotationPaymentTerm {
   label: string;
   percent: number;
@@ -565,6 +598,7 @@ export interface Quotation {
   salesRepId: string | null;
   salesRepName: string | null;
   status: QuotationStatus;
+  quotationType: QuotationType;
   convertedProjectId: string | null;
   createdAt: string;
 }

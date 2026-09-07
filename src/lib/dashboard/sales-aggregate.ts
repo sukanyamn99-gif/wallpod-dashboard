@@ -5,7 +5,7 @@
 import { endOfMonth, format, isWithinInterval, startOfMonth, subMonths } from "date-fns";
 import { th } from "date-fns/locale";
 import { mockCustomerTypes } from "@/lib/mock-data";
-import type { CustomerType, Project, SaleReport, StagePercent } from "@/lib/types";
+import type { CustomerType, Project, Quotation, SaleReport, StagePercent } from "@/lib/types";
 import { STAGE_LABELS } from "@/lib/types";
 
 const MONTHS_TO_SHOW = 8;
@@ -157,6 +157,34 @@ export function computeSalesAggregates(projects: Project[]): FilteredSalesData {
     salesRepPerformance,
     monthlySales: getMonthlySales(projects, months),
     repMonthlyPerformance: getRepMonthlyPerformance(projects, months),
+  };
+}
+
+// ยอดรวมใบเสนอราคา (pre-VAT, matching how "มูลค่ารวม (Pipeline)" already
+// counts pre-VAT), split by whether the customer has accepted it yet —
+// "ได้งาน" (won) is status ลูกค้าตอบตกลง; everything else (still awaiting a
+// reply, or rejected) counts as "ยังไม่ได้งาน" since neither has become a
+// real job. Deliberately a single won/not-won split, not a third
+// "rejected" bucket — the user asked for exactly two categories.
+export interface QuotationSummary {
+  totalValue: number;
+  wonValue: number;
+  notWonValue: number;
+  wonCount: number;
+  notWonCount: number;
+}
+
+export function computeQuotationSummary(quotations: Quotation[]): QuotationSummary {
+  const won = quotations.filter((q) => q.status === "ลูกค้าตอบตกลง");
+  const notWon = quotations.filter((q) => q.status !== "ลูกค้าตอบตกลง");
+  const wonValue = won.reduce((sum, q) => sum + q.preVat, 0);
+  const notWonValue = notWon.reduce((sum, q) => sum + q.preVat, 0);
+  return {
+    totalValue: wonValue + notWonValue,
+    wonValue,
+    notWonValue,
+    wonCount: won.length,
+    notWonCount: notWon.length,
   };
 }
 

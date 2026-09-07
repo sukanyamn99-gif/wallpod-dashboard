@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { formatQuotationItemDescription, formatTHB } from "@/lib/format";
-import type { QuotationDetail } from "@/lib/types";
+import type { QuotationDetail, QuotationNoteTone, QuotationPrintTemplate } from "@/lib/types";
 
 function shortDate(dateStr: string | null): string {
   if (!dateStr) return "—";
@@ -27,21 +27,30 @@ function num(value: number): string {
 const td = "border-r border-b border-black p-1";
 const th = td + " p-1.5 font-bold bg-[#c8d7d6] text-center";
 
-// Standard fixed print terms — same on every quotation, not a per-quote
-// field (confirmed: these are boilerplate, not something staff re-type).
-const STANDARD_NOTES = [
-  "*** ราคาอาจมีการปรับเปลี่ยนตามหน้างานจริง อาจมีการเพิ่มสินค้าให้ครบตามใบสั่งซื้อ **ไม่สามารถหัก ณ ที่จ่ายได้**",
-  "*** สินค้าแผ่นเปล่าในเบอร์สีตรงตามผลผลิต อาจมีความคลาดเคลื่อนสีในแต่ละล็อตการผลิต กรุณายืนยันสีในสต็อกปัจจุบันก่อนสั่งซื้อ ***",
-  "1-2 สัปดาห์ ทำการหลังจากได้รับการยืนยันการสั่งซื้อและชำระเงินค่ามัดจำ (กรณีมีสีในสต็อก)",
-  "4-5 สัปดาห์ ทำการหลังจากได้รับการยืนยันการสั่งซื้อและชำระเงินค่ามัดจำ (กรณีไม่มีสีในสต็อก)",
-];
+// The Remark notes and installation prep-conditions checklist used to be
+// hardcoded here; they're now stored per QuotationType in
+// quotation_print_templates (editable at /dashboard/settings/documents)
+// and arrive as the `template` prop instead — see NOTE_TONE_CLASS/
+// CONDITION_ICON below for how the stored shape maps to print styling.
+const NOTE_TONE_CLASS: Record<QuotationNoteTone, string> = {
+  normal: "",
+  red: "font-bold text-red-600",
+  amber: "font-bold text-amber-600",
+};
+
+const CONDITION_ICON: Record<"check" | "person", string> = {
+  check: "✔",
+  person: "👤",
+};
 
 export function PrintQuotationView({
   quotation,
   imageUrlsByPath,
+  template,
 }: {
   quotation: QuotationDetail;
   imageUrlsByPath: Record<string, string>;
+  template: QuotationPrintTemplate;
 }) {
   const router = useRouter();
   return (
@@ -126,8 +135,8 @@ export function PrintQuotationView({
           <colgroup>
             <col className="w-[4%]" />
             <col className="w-[8%]" />
-            <col className="w-[10%]" />
-            <col className="w-[30%]" />
+            <col className="w-[14%]" />
+            <col className="w-[26%]" />
             <col className="w-[10%]" />
             <col className="w-[8%]" />
             <col className="w-[10%]" />
@@ -194,7 +203,7 @@ export function PrintQuotationView({
                   <td className={rowTd + " text-center"}>
                     {it.imagePath && imageUrlsByPath[it.imagePath] ? (
                       // eslint-disable-next-line @next/next/no-img-element -- private signed URL preview, not an optimizable remote asset
-                      <img src={imageUrlsByPath[it.imagePath]} alt="" className="mx-auto h-16 w-16 object-cover" />
+                      <img src={imageUrlsByPath[it.imagePath]} alt="" className="mx-auto h-24 w-24 object-cover" />
                     ) : (
                       "—"
                     )}
@@ -221,13 +230,16 @@ export function PrintQuotationView({
         <div className="mt-2 grid grid-cols-[1fr_auto] gap-4 border border-black p-2">
           <div className="space-y-0.5">
             <p className="font-medium">Remake : หมายเหตุ :</p>
-            {STANDARD_NOTES.map((line, i) => (
-              <p key={i} className="font-bold text-red-600">
-                {line}
+            {template.notes.map((line, i) => (
+              <p key={i} className={NOTE_TONE_CLASS[line.tone]}>
+                {line.text}
               </p>
             ))}
             {quotation.priceValidity && (
-              <p className="mt-1">Price Validity Period (กำหนดยืนราคา) : {quotation.priceValidity}</p>
+              <p className="mt-1 flex items-baseline justify-between gap-4">
+                <span>Price Validity Period (กำหนดยืนราคา) : {quotation.priceValidity}</span>
+                {template.showWhtNote && <span className="font-bold text-red-600">**สามารถหัก ณ ที่จ่ายได้**</span>}
+              </p>
             )}
           </div>
           <table className="w-56 self-start border-collapse border border-black">
@@ -247,6 +259,33 @@ export function PrintQuotationView({
             </tbody>
           </table>
         </div>
+
+        {/* Installation-only prep checklist — content is fully editable at
+            /dashboard/settings/documents (quotation_print_templates), so an
+            empty conditions array (e.g. for ค่าของ) simply prints nothing. */}
+        {template.conditions.length > 0 && (
+          <div className="mt-2 border border-black p-2 text-[12px] leading-relaxed">
+            <p className="font-bold">เงื่อนไข การเตรียมพื้นที่ก่อนติดตั้งแผ่นซับเสียง</p>
+
+            {template.conditions.map((section, i) => (
+              <div key={i}>
+                {section.heading && (
+                  <p className={"mt-1 font-bold" + (section.underline ? " underline" : "")}>{section.heading}</p>
+                )}
+                <ul>
+                  {section.items.map((item, j) => (
+                    <li key={j} className="flex gap-1.5">
+                      <span className={"shrink-0" + (item.icon === "check" ? " text-green-600" : "")}>
+                        {CONDITION_ICON[item.icon]}
+                      </span>
+                      <span>{item.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Payment terms + prepared by */}
         <div className="mt-2 grid grid-cols-[1fr_auto] gap-4 border border-black p-2">

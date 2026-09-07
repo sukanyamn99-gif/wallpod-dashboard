@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { isWithinInterval } from "date-fns";
-import { Briefcase, CheckCircle2, CircleDollarSign, TrendingUp } from "lucide-react";
+import { Briefcase, CheckCircle2, CircleDollarSign, FileText, TrendingUp } from "lucide-react";
 import { KpiCard } from "@/components/dashboard/kpi-card";
 import { MultiSelectFilter } from "@/components/dashboard/multi-select-filter";
 import {
@@ -14,10 +14,16 @@ import {
   SalesRepPerformanceChart,
 } from "@/components/dashboard/sales-charts";
 import { DrillDownDialog, type DrillDown } from "./drill-down-dialog";
-import { computeSalesAggregates, computePipelineByStage, monthKeyOf, getMonthRange } from "@/lib/dashboard/sales-aggregate";
+import {
+  computeSalesAggregates,
+  computeQuotationSummary,
+  computePipelineByStage,
+  monthKeyOf,
+  getMonthRange,
+} from "@/lib/dashboard/sales-aggregate";
 import type { CancelledProjectSummary } from "@/lib/data/sales";
 import { formatTHB } from "@/lib/format";
-import { STAGE_LABELS, type Project, type SaleReport } from "@/lib/types";
+import { STAGE_LABELS, type Project, type Quotation, type SaleReport } from "@/lib/types";
 
 function monthLabelOf(key: string) {
   const [year, month] = key.split("-").map(Number);
@@ -29,11 +35,13 @@ export function SalesDashboardView({
   projects,
   saleReports,
   cancelledProjects,
+  quotations,
   canDrillDown,
 }: {
   projects: Project[];
   saleReports: SaleReport[];
   cancelledProjects: CancelledProjectSummary[];
+  quotations: Quotation[];
   canDrillDown: boolean;
 }) {
   const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set());
@@ -55,11 +63,12 @@ export function SalesDashboardView({
     const names = new Set([
       ...projects.map((p) => p.sales_rep_name).filter(Boolean),
       ...saleReports.map((r) => r.sales_rep_name).filter(Boolean),
+      ...quotations.map((q) => q.salesRepName).filter((n): n is string => !!n),
     ]);
     return Array.from(names)
       .sort((a, b) => a.localeCompare(b, "th"))
       .map((name) => ({ value: name, label: name }));
-  }, [projects, saleReports]);
+  }, [projects, saleReports, quotations]);
 
   const filteredProjects = useMemo(() => {
     return projects.filter((p) => {
@@ -85,7 +94,16 @@ export function SalesDashboardView({
     });
   }, [saleReports, selectedMonths, selectedSalesReps]);
 
+  const filteredQuotations = useMemo(() => {
+    return quotations.filter((q) => {
+      if (selectedMonths.size > 0 && !selectedMonths.has(monthKeyOf(q.quoteDate))) return false;
+      if (selectedSalesReps.size > 0 && !selectedSalesReps.has(q.salesRepName ?? "")) return false;
+      return true;
+    });
+  }, [quotations, selectedMonths, selectedSalesReps]);
+
   const agg = useMemo(() => computeSalesAggregates(filteredProjects), [filteredProjects]);
+  const quotationSummary = useMemo(() => computeQuotationSummary(filteredQuotations), [filteredQuotations]);
   const pipelineByStage = useMemo(() => computePipelineByStage(filteredSaleReports), [filteredSaleReports]);
   const trendMonths = useMemo(() => getMonthRange(filteredProjects), [filteredProjects]);
 
@@ -216,6 +234,29 @@ export function SalesDashboardView({
           icon={TrendingUp}
           tone="violet"
           onClick={canDrillDown ? showClosedThisMonth : undefined}
+        />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <KpiCard
+          label="ยอดรวมใบเสนอราคา"
+          value={formatTHB(quotationSummary.totalValue)}
+          icon={FileText}
+          tone="blue"
+        />
+        <KpiCard
+          label={`ได้งาน (${quotationSummary.wonCount} ใบ)`}
+          value={formatTHB(quotationSummary.wonValue)}
+          icon={CheckCircle2}
+          tone="green"
+          colorValue
+        />
+        <KpiCard
+          label={`ยังไม่ได้งาน (${quotationSummary.notWonCount} ใบ)`}
+          value={formatTHB(quotationSummary.notWonValue)}
+          icon={Briefcase}
+          tone="rose"
+          colorValue
         />
       </div>
 

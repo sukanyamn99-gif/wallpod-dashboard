@@ -4,7 +4,7 @@ import { canDrillDownSalesDashboard } from "@/lib/permissions";
 import { SalesDashboardView } from "./sales-dashboard-view";
 
 export default async function SalesDashboardPage() {
-  const [{ projects, saleReports, cancelledProjects }, profile] = await Promise.all([
+  const [{ projects, saleReports, cancelledProjects, quotations }, profile] = await Promise.all([
     getSalesDashboardRawData(),
     getCurrentProfile(),
   ]);
@@ -14,6 +14,7 @@ export default async function SalesDashboardPage() {
       projects={projects}
       saleReports={saleReports}
       cancelledProjects={cancelledProjects}
+      quotations={quotations}
       canDrillDown={profile ? canDrillDownSalesDashboard(profile.role) : false}
     />
   );

@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { getQuotationById } from "@/lib/data/quotations";
 import { logActivity } from "@/lib/activity-log";
-import type { QuotationPaymentTerm } from "@/lib/types";
+import type { QuotationPaymentTerm, QuotationType } from "@/lib/types";
+
+const QUOTATION_TYPES: QuotationType[] = ["ค่าของ", "ค่าติดตั้ง"];
 
 const IMAGE_BUCKET = "quotation-item-images";
 
@@ -128,6 +130,9 @@ function parseHeader(formData: FormData) {
     priceValidity: str(formData.get("price_validity")),
     remark: str(formData.get("remark")),
     salesRepId: str(formData.get("sales_rep_id")),
+    quotationType: (QUOTATION_TYPES as string[]).includes(String(formData.get("quotation_type")))
+      ? (formData.get("quotation_type") as QuotationType)
+      : "ค่าของ",
   };
 }
 
@@ -217,6 +222,7 @@ export async function createQuotation(formData: FormData) {
       pre_vat: Math.round(preVat * 100) / 100,
       vat,
       sales_rep_id: header.salesRepId,
+      quotation_type: header.quotationType,
       created_by: user?.id ?? null,
     })
     .select("id")
@@ -294,6 +300,7 @@ export async function updateQuotation(id: string, formData: FormData) {
       pre_vat: Math.round(preVat * 100) / 100,
       vat,
       sales_rep_id: header.salesRepId,
+      quotation_type: header.quotationType,
     })
     .eq("id", id);
   if (updateErr) return { error: updateErr.message };

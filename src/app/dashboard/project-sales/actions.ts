@@ -58,18 +58,24 @@ type ParsedForm = {
   billingNoteDate1: string | null;
   invoiceNo1: string | null;
   paidDate1: string | null;
+  taxInvoiceNo1: string | null;
+  taxInvoiceDate1: string | null;
   receiptNo1: string | null;
   receivedDate1: string | null;
   billingNoteNo2: string | null;
   billingNoteDate2: string | null;
   invoiceNo2: string | null;
   paidDate2: string | null;
+  taxInvoiceNo2: string | null;
+  taxInvoiceDate2: string | null;
   receiptNo2: string | null;
   receivedDate2: string | null;
   billingNoteNo3: string | null;
   billingNoteDate3: string | null;
   invoiceNo3: string | null;
   paidDate3: string | null;
+  taxInvoiceNo3: string | null;
+  taxInvoiceDate3: string | null;
   receiptNo3: string | null;
   receivedDate3: string | null;
 };
@@ -178,18 +184,24 @@ function parseForm(formData: FormData): { ok: false; error: string } | ParsedFor
     billingNoteDate1: str(formData.get("billing_note_date_1")),
     invoiceNo1: str(formData.get("invoice_no_1")),
     paidDate1: str(formData.get("paid_date_1")),
+    taxInvoiceNo1: str(formData.get("tax_invoice_no_1")),
+    taxInvoiceDate1: str(formData.get("tax_invoice_date_1")),
     receiptNo1,
     receivedDate1: str(formData.get("received_date_1")),
     billingNoteNo2: str(formData.get("billing_note_no_2")),
     billingNoteDate2: str(formData.get("billing_note_date_2")),
     invoiceNo2: str(formData.get("invoice_no_2")),
     paidDate2: str(formData.get("paid_date_2")),
+    taxInvoiceNo2: str(formData.get("tax_invoice_no_2")),
+    taxInvoiceDate2: str(formData.get("tax_invoice_date_2")),
     receiptNo2,
     receivedDate2: str(formData.get("received_date_2")),
     billingNoteNo3: str(formData.get("billing_note_no_3")),
     billingNoteDate3: str(formData.get("billing_note_date_3")),
     invoiceNo3: str(formData.get("invoice_no_3")),
     paidDate3: str(formData.get("paid_date_3")),
+    taxInvoiceNo3: str(formData.get("tax_invoice_no_3")),
+    taxInvoiceDate3: str(formData.get("tax_invoice_date_3")),
     receiptNo3,
     receivedDate3: str(formData.get("received_date_3")),
   };
@@ -232,6 +244,8 @@ function buildPayments(projectId: string, parsed: ParsedForm) {
       installment_no: 1,
       amount: parsed.installment1Amount,
       paid_date: parsed.paidDate1,
+      tax_invoice_no: parsed.taxInvoiceNo1,
+      tax_invoice_date: parsed.taxInvoiceDate1,
       receipt_no: parsed.receiptNo1,
       received_date: parsed.receivedDate1,
       status: parsed.status,
@@ -247,6 +261,8 @@ function buildPayments(projectId: string, parsed: ParsedForm) {
       installment_no: 2,
       amount: parsed.installment2Amount,
       paid_date: parsed.paidDate2,
+      tax_invoice_no: parsed.taxInvoiceNo2,
+      tax_invoice_date: parsed.taxInvoiceDate2,
       receipt_no: parsed.receiptNo2,
       received_date: parsed.receivedDate2,
       status: parsed.status,
@@ -262,6 +278,8 @@ function buildPayments(projectId: string, parsed: ParsedForm) {
       installment_no: 3,
       amount: parsed.installment3Amount,
       paid_date: parsed.paidDate3,
+      tax_invoice_no: parsed.taxInvoiceNo3,
+      tax_invoice_date: parsed.taxInvoiceDate3,
       receipt_no: parsed.receiptNo3,
       received_date: parsed.receivedDate3,
       status: parsed.status,

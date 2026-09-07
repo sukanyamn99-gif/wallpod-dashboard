@@ -77,6 +77,8 @@ export interface ProjectSaleInitialData {
   invoiceNo1: string;
   amount1: string;
   paidDate1: string;
+  taxInvoiceNo1: string;
+  taxInvoiceDate1: string;
   receiptNo1: string;
   receivedDate1: string;
   billingNoteNo2: string;
@@ -84,6 +86,8 @@ export interface ProjectSaleInitialData {
   invoiceNo2: string;
   amount2: string;
   paidDate2: string;
+  taxInvoiceNo2: string;
+  taxInvoiceDate2: string;
   receiptNo2: string;
   receivedDate2: string;
   billingNoteNo3: string;
@@ -91,6 +95,8 @@ export interface ProjectSaleInitialData {
   invoiceNo3: string;
   amount3: string;
   paidDate3: string;
+  taxInvoiceNo3: string;
+  taxInvoiceDate3: string;
   receiptNo3: string;
   receivedDate3: string;
 }
@@ -517,8 +523,21 @@ export function ProjectSaleForm({
                 </p>
               </div>
             )}
+            {/* ค่าตัด is always shown/editable — every other cost field only
+                shows when a JOB already has a nonzero value saved for it
+                (older jobs entered before this field was trimmed down), so
+                past data stays visible instead of silently hiding real
+                numbers. A newly-created JOB has no initialData at all, so
+                every one of these starts at 0 and stays hidden — only
+                ค่าตัด shows, per the user's explicit request. Hidden fields
+                stay in the form (not deleted) so their existing values keep
+                submitting unchanged on save. */}
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
+                <Label htmlFor="cutting_cost">ค่าตัด</Label>
+                <NumberInput id="cutting_cost" name="cutting_cost" min={0} step={0.01} defaultValue={initialData?.costs.cutting_cost} placeholder="0" />
+              </div>
+              <div className="space-y-2" hidden={!(Number(initialData?.costs.material_cost) > 0)}>
                 <Label htmlFor="material_cost">ค่าวัสดุ</Label>
                 <NumberInput
                   id="material_cost"
@@ -530,23 +549,19 @@ export function ProjectSaleForm({
                   placeholder="0"
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" hidden={!(Number(initialData?.costs.glue_cost) > 0)}>
                 <Label htmlFor="glue_cost">ค่ากาว</Label>
                 <NumberInput id="glue_cost" name="glue_cost" min={0} step={0.01} defaultValue={initialData?.costs.glue_cost} placeholder="0" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="cutting_cost">ค่าตัด</Label>
-                <NumberInput id="cutting_cost" name="cutting_cost" min={0} step={0.01} defaultValue={initialData?.costs.cutting_cost} placeholder="0" />
-              </div>
-              <div className="space-y-2">
+              <div className="space-y-2" hidden={!(Number(initialData?.costs.install_cost) > 0)}>
                 <Label htmlFor="install_cost">ค่าติดตั้งผู้รับเหมา</Label>
                 <NumberInput id="install_cost" name="install_cost" min={0} step={0.01} defaultValue={initialData?.costs.install_cost} placeholder="0" />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" hidden={!(Number(initialData?.costs.parking_cost) > 0)}>
                 <Label htmlFor="parking_cost">ค่าเดินทาง+ค่าที่จอดรถ</Label>
                 <NumberInput id="parking_cost" name="parking_cost" min={0} step={0.01} defaultValue={initialData?.costs.parking_cost} placeholder="0" />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" hidden={!(Number(initialData?.costs.shipping_cost) > 0)}>
                 <Label htmlFor="shipping_cost">ค่าขนส่ง</Label>
                 <NumberInput id="shipping_cost" name="shipping_cost" min={0} step={0.01} defaultValue={initialData?.costs.shipping_cost} placeholder="0" />
               </div>
@@ -568,7 +583,7 @@ export function ProjectSaleForm({
 
         <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">งวดที่ 1</p>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 xl:grid-cols-7">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 xl:grid-cols-9">
             <div className="space-y-2">
               <Label htmlFor="billing_note_no_1">เลขที่ใบวางบิล</Label>
               <Input
@@ -603,6 +618,19 @@ export function ProjectSaleForm({
               <DateInput id="paid_date_1" name="paid_date_1" defaultValue={initialData?.paidDate1} />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="tax_invoice_no_1">เลขที่ใบกำกับภาษี</Label>
+              <Input
+                id="tax_invoice_no_1"
+                name="tax_invoice_no_1"
+                defaultValue={initialData?.taxInvoiceNo1}
+                placeholder="INV..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tax_invoice_date_1">วันที่ออกใบกำกับภาษี</Label>
+              <DateInput id="tax_invoice_date_1" name="tax_invoice_date_1" defaultValue={initialData?.taxInvoiceDate1} />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="receipt_no_1">เลขที่ใบเสร็จ</Label>
               <Input
                 id="receipt_no_1"
@@ -622,7 +650,7 @@ export function ProjectSaleForm({
         {installment2 ? (
           <div className="space-y-2">
             <p className="text-sm font-medium text-muted-foreground">งวดที่ 2</p>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 xl:grid-cols-7">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 xl:grid-cols-9">
               <div className="space-y-2">
                 <Label htmlFor="billing_note_no_2">เลขที่ใบวางบิล</Label>
                 <Input
@@ -657,6 +685,19 @@ export function ProjectSaleForm({
                 <DateInput id="paid_date_2" name="paid_date_2" defaultValue={initialData?.paidDate2} />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="tax_invoice_no_2">เลขที่ใบกำกับภาษี</Label>
+                <Input
+                  id="tax_invoice_no_2"
+                  name="tax_invoice_no_2"
+                  defaultValue={initialData?.taxInvoiceNo2}
+                  placeholder="INV..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tax_invoice_date_2">วันที่ออกใบกำกับภาษี</Label>
+                <DateInput id="tax_invoice_date_2" name="tax_invoice_date_2" defaultValue={initialData?.taxInvoiceDate2} />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="receipt_no_2">เลขที่ใบเสร็จ</Label>
                 <Input
                   id="receipt_no_2"
@@ -683,7 +724,7 @@ export function ProjectSaleForm({
           (installment3 ? (
             <div className="space-y-2">
               <p className="text-sm font-medium text-muted-foreground">งวดที่ 3</p>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 xl:grid-cols-7">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 xl:grid-cols-9">
                 <div className="space-y-2">
                   <Label htmlFor="billing_note_no_3">เลขที่ใบวางบิล</Label>
                   <Input
@@ -716,6 +757,19 @@ export function ProjectSaleForm({
                 <div className="space-y-2">
                   <Label htmlFor="paid_date_3">วันที่ออกเอกสาร</Label>
                   <DateInput id="paid_date_3" name="paid_date_3" defaultValue={initialData?.paidDate3} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tax_invoice_no_3">เลขที่ใบกำกับภาษี</Label>
+                  <Input
+                    id="tax_invoice_no_3"
+                    name="tax_invoice_no_3"
+                    defaultValue={initialData?.taxInvoiceNo3}
+                    placeholder="INV..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tax_invoice_date_3">วันที่ออกใบกำกับภาษี</Label>
+                  <DateInput id="tax_invoice_date_3" name="tax_invoice_date_3" defaultValue={initialData?.taxInvoiceDate3} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="receipt_no_3">เลขที่ใบเสร็จ</Label>

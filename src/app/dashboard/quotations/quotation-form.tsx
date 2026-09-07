@@ -22,10 +22,15 @@ import { SizeAutocomplete } from "@/components/dashboard/size-autocomplete";
 import { formatTHB } from "@/lib/format";
 import { resizeImageToBlob } from "@/lib/image-resize";
 import { createQuotation, updateQuotation } from "./actions";
-import type { Customer, QuotationDetail, SalesRep } from "@/lib/types";
+import type { Customer, QuotationDetail, QuotationType, SalesRep } from "@/lib/types";
 import type { QuotationItemFieldSuggestions } from "@/lib/data/quotations";
 
 const NONE_VALUE = "__none__";
+
+const QUOTATION_TYPE_ITEMS: { value: QuotationType; label: string }[] = [
+  { value: "ค่าของ", label: "ค่าของ" },
+  { value: "ค่าติดตั้ง", label: "ค่าติดตั้ง" },
+];
 
 type ItemImage = { kind: "existing"; path: string; previewUrl: string } | { kind: "new"; blob: Blob; previewUrl: string };
 
@@ -123,6 +128,7 @@ export function QuotationForm({
   const [priceValidity, setPriceValidity] = useState(initialData?.priceValidity ?? "");
   const [remark, setRemark] = useState(initialData?.remark ?? "");
   const [salesRepId, setSalesRepId] = useState(initialData?.salesRepId ?? "");
+  const [quotationType, setQuotationType] = useState<QuotationType>(initialData?.quotationType ?? "ค่าของ");
 
   const [items, setItems] = useState<ItemRow[]>(() => itemsFromInitial(initialData));
   const [terms, setTerms] = useState<PaymentTermRow[]>(() => termsFromInitial(initialData));
@@ -241,6 +247,7 @@ export function QuotationForm({
     fd.set("price_validity", priceValidity);
     fd.set("remark", remark);
     fd.set("sales_rep_id", salesRepId === NONE_VALUE ? "" : salesRepId);
+    fd.set("quotation_type", quotationType);
 
     for (const it of computedItems) {
       if (!it.productName.trim()) continue;
@@ -356,6 +363,21 @@ export function QuotationForm({
         <div className="space-y-2">
           <Label>กำหนดยืนราคา</Label>
           <Input value={priceValidity} onChange={(e) => setPriceValidity(e.target.value)} placeholder="เช่น 30 วัน" />
+        </div>
+        <div className="space-y-2">
+          <Label>ประเภทใบเสนอราคา</Label>
+          <Select value={quotationType} onValueChange={(v) => setQuotationType(v as QuotationType)} items={QUOTATION_TYPE_ITEMS}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {QUOTATION_TYPE_ITEMS.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
