@@ -204,9 +204,9 @@ create policy project_items_write on project_items for all
   using (exists (select 1 from projects p where p.id = project_id and my_role() not in ('sales','design')));
 
 create policy project_costs_select on project_costs for select
-  using (my_role() in ('owner','manager'));
+  using (my_role() in ('owner','manager','account'));
 create policy project_costs_write on project_costs for all
-  using (my_role() in ('owner','manager'));
+  using (my_role() in ('owner','manager','account'));
 
 create policy payments_select on payments for select using (auth.uid() is not null);
 create policy payments_write on payments for all using (my_role() not in ('sales','design'));

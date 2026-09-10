@@ -16,7 +16,9 @@ const PAGE_ACCESS: Record<string, Role[]> = {
   "/dashboard/owner": ADMIN_ROLES,
   "/dashboard/sales": ["owner", "manager", "sales", "design", "support_sale", "account", "foreman", "production"],
   "/dashboard/sale-report": ["owner", "manager", "sales"],
-  "/dashboard/gp": ADMIN_ROLES,
+  // account (ธุรการบัญชี) needs profit figures to compute ค่า Incentive —
+  // opened alongside canSeeCosts below (same reasoning, same role).
+  "/dashboard/gp": [...ADMIN_ROLES, "account"],
   "/dashboard/ar": [...ADMIN_ROLES, "account"],
   "/dashboard/project-sales": STOCK_STAFF,
   "/dashboard/quotations": STOCK_STAFF,
@@ -62,29 +64,29 @@ export function canAccessPage(role: Role, path: string): boolean {
   return PAGE_ACCESS[path]?.includes(role) ?? true;
 }
 
-// Cost/profit figures (unit cost, stock value, GP margins) are admin-only
+// Cost/profit figures (unit cost, stock value, GP margins) are admin-tier
 // UI-level redaction — the underlying columns stay readable at the RLS
-// layer, a deliberate simplification over a database-level view.
+// layer, a deliberate simplification over a database-level view. Also
+// opened to account (ธุรการบัญชี), who need cost/profit figures across the
+// board for accounting work, including computing ค่า Incentive.
 export function canSeeCosts(role: Role): boolean {
-  return ADMIN_ROLES.includes(role);
+  return ADMIN_ROLES.includes(role) || role === "account";
 }
 
 // Stock Requisition (ใบเบิกสินค้า) specifically also opens cost visibility to
 // support_sale — they process requisitions day-to-day and need to see the
 // line cost/total value, unlike Stock Product's cost columns or the GP/AR
-// dashboards which stay admin-only via canSeeCosts above.
+// dashboards which otherwise stay admin/account-only via canSeeCosts above.
 export function canSeeRequisitionCosts(role: Role): boolean {
   return canSeeCosts(role) || role === "support_sale";
 }
 
 // WALLPOD Project Sales (Koonway Project Sales) also opens its cost/profit
 // breakdown (material/glue/cutting/install/transport/shipping, total cost,
-// profit, %profit) to support_sale and account, same reasoning as the
-// requisition case above — Stock Product's cost columns and the GP/AR
-// dashboards stay admin-only via canSeeCosts. Account needs this because
-// they enter/reconcile job costs directly on this form.
+// profit, %profit) to support_sale, same reasoning as the requisition case
+// above — account is already covered by canSeeCosts.
 export function canSeeProjectCosts(role: Role): boolean {
-  return canSeeCosts(role) || role === "support_sale" || role === "account";
+  return canSeeCosts(role) || role === "support_sale";
 }
 
 // "Can add" rights, split per feature since they don't all start from the
