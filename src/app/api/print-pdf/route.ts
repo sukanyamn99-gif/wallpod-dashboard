@@ -94,15 +94,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("PDF generation failed:", error);
-    // Temporarily surfacing the real error text (not just the generic
-    // Thai message) to the client — this has already failed twice in
-    // production against two different hypotheses (function timeout/memory,
-    // then a missing Chromium binary in the trace), so guessing a third
-    // fix blind isn't productive; seeing the actual thrown error is what
-    // will actually pin this down. Safe to expose: this is a Puppeteer/
-    // Node error message, never anything user-supplied or secret.
-    const detail = error instanceof Error ? error.message : String(error);
-    return NextResponse.json({ error: `สร้าง PDF ไม่สำเร็จ: ${detail}` }, { status: 500 });
+    return NextResponse.json({ error: "สร้าง PDF ไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" }, { status: 500 });
   } finally {
     await browser?.close();
   }
