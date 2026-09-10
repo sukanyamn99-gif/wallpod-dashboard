@@ -48,6 +48,12 @@ const PAYMENT_METHODS: PaymentMethod[] = ["เงินสด", "เช็ค", 
 
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr);
+  // DateInput reports every keystroke while the user is still typing a
+  // date (e.g. an incomplete day/month), which briefly produces a string
+  // Date can't parse — this is computed on every render, so returning the
+  // original text instead of throwing keeps the form usable mid-typing
+  // rather than crashing the whole page.
+  if (Number.isNaN(d.getTime())) return dateStr;
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
 }
