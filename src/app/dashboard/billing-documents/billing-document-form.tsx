@@ -876,7 +876,7 @@ export function BillingDocumentForm({
                 ? "เลือกใบกำกับภาษีหรือใบวางบิลที่ต้องการออกใบเสร็จโดยตรง"
                 : "เลือกใบกำกับภาษีที่ต้องการวางบิลโดยตรง"}
             </p>
-            {taxInvoices.length === 0 ? (
+            {taxInvoices.length === 0 && billingNoteItems.length === 0 ? (
               <div className="rounded-lg border border-dashed p-8 text-center">
                 <Package className="mx-auto h-8 w-8 text-muted-foreground" />
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -916,38 +916,27 @@ export function BillingDocumentForm({
                     <p className="shrink-0 text-sm font-medium">{formatTHB(ti.netPayable)}</p>
                   </label>
                 ))}
+                {billingNoteItems.map((item) => (
+                  <label key={item.id} className="flex cursor-pointer items-center gap-3 rounded-lg border p-2 hover:bg-muted">
+                    <input
+                      type="checkbox"
+                      checked={selectedBillingNoteItems.has(item.id)}
+                      onChange={() => toggleBillingNoteItem(item)}
+                      className="h-4 w-4"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        {item.billingNoteDocNo} <span className="text-muted-foreground">— {item.description}</span>
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {new Date(item.billingNoteDate).toLocaleDateString("th-TH")}
+                      </p>
+                    </div>
+                    <p className="shrink-0 text-sm font-medium">{formatTHB(item.amount)}</p>
+                  </label>
+                ))}
               </div>
             )}
-          </div>
-        )}
-
-        {docType === "receipt" && customerId && !loadingInvoices && billingNoteItems.length > 0 && (
-          <div className="space-y-2">
-            <Label>รายการจากใบวางบิลที่ยังไม่ได้ออกใบเสร็จ</Label>
-            <p className="text-xs text-muted-foreground">
-              รายการที่พิมพ์เองในใบวางบิล ยังไม่มีใบแจ้งหนี้หรือใบกำกับภาษีให้ดึง — เลือกเพื่อคัดลอกมาออกใบเสร็จ
-            </p>
-            <div className="space-y-2">
-              {billingNoteItems.map((item) => (
-                <label key={item.id} className="flex cursor-pointer items-center gap-3 rounded-lg border p-2 hover:bg-muted">
-                  <input
-                    type="checkbox"
-                    checked={selectedBillingNoteItems.has(item.id)}
-                    onChange={() => toggleBillingNoteItem(item)}
-                    className="h-4 w-4"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {item.billingNoteDocNo} <span className="text-muted-foreground">— {item.description}</span>
-                    </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {new Date(item.billingNoteDate).toLocaleDateString("th-TH")}
-                    </p>
-                  </div>
-                  <p className="shrink-0 text-sm font-medium">{formatTHB(item.amount)}</p>
-                </label>
-              ))}
-            </div>
           </div>
         )}
 

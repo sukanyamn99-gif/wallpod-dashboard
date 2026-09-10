@@ -280,7 +280,6 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
                     {!it.taxInvoiceDocNo && it.quotationId && (
                       <div className="text-xs text-neutral-500">(ใบเสนอราคา)</div>
                     )}
-                    {it.manualDescription && <div className="text-xs text-neutral-500">(รายการที่พิมพ์เอง)</div>}
                   </td>
                   <td className="border-r border-t border-black p-1.5">{fmtDate(docDate)}</td>
                   <td className="border-r border-t border-black p-1.5">{fmtDate(document.dueDate)}</td>
