@@ -77,19 +77,19 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
               <col className="w-[2%]" />
               <col className="w-[4%]" />
               <col className="w-[5%]" />
-              <col className="w-[10%]" />
               <col className="w-[8%]" />
               <col className="w-[6%]" />
               <col className="w-[5%]" />
+              <col className="w-[7%]" />
+              <col className="w-[7%]" />
+              <col className="w-[7%]" />
+              <col className="w-[4%]" />
               <col className="w-[5%]" />
+              <col className="w-[8%]" />
               <col className="w-[5%]" />
               <col className="w-[4%]" />
-              <col className="w-[6%]" />
-              <col className="w-[6%]" />
-              <col className="w-[6%]" />
               <col className="w-[5%]" />
-              <col className="w-[6%]" />
-              <col className="w-[6%]" />
+              <col className="w-[7%]" />
               <col className="w-[6%]" />
               <col className="w-[5%]" />
             </colgroup>
