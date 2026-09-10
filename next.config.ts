@@ -20,6 +20,18 @@ const nextConfig: NextConfig = {
   // them, per Next.js's own guidance for using headless Chrome in a Route
   // Handler (see src/app/api/print-pdf/route.ts).
   serverExternalPackages: ["puppeteer-core", "@sparticuz/chromium", "puppeteer"],
+  // serverExternalPackages alone stops webpack from touching these packages
+  // but doesn't guarantee Vercel's build-time file tracer (@vercel/nft)
+  // actually detects @sparticuz/chromium's compressed Chromium binary as a
+  // runtime dependency — it's loaded via computed paths the static tracer
+  // can miss, which silently drops the binary from the deployed function
+  // and makes chromium.executablePath() fail in production only. This
+  // forces it into the trace explicitly (per node_modules/next/dist/docs's
+  // own output.md — this key lives top-level, not under experimental, in
+  // this Next.js version).
+  outputFileTracingIncludes: {
+    "/api/print-pdf": ["./node_modules/@sparticuz/chromium/**/*"],
+  },
   async headers() {
     return [
       {
