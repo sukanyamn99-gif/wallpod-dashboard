@@ -178,8 +178,16 @@ export function PrintVoucherView({ voucher }: { voucher: PaymentVoucher }) {
           </tbody>
         </table>
 
-        {/* Signatures */}
-        <table className="w-full border-collapse text-center">
+        {/* Signatures — same 5-column grid as the bank/ledger tables above,
+            so the vertical borders run continuously all the way down. */}
+        <table className="w-full table-fixed border-collapse text-center">
+          <colgroup>
+            <col className="w-[15%]" />
+            <col className="w-[20%]" />
+            <col className="w-[20%]" />
+            <col className="w-[20%]" />
+            <col className="w-[25%]" />
+          </colgroup>
           <tbody>
             <tr>
               {SIGNATURE_BLOCKS.map((label) => (
