@@ -120,37 +120,42 @@ export async function getBillableTaxInvoicesForCustomer(
   return result;
 }
 
-// Manually-typed ใบวางบิล line items for a customer (no quotation_id/
-// payment_id at all — e.g. a deposit typed straight into the document
-// before any formal quotation/invoice existed for it), offered as a source
-// for ใบเสร็จรับเงิน. A quotation-sourced line already surfaces through
-// getBillableTaxInvoicesForCustomer once its parent ใบวางบิล is scanned
+// Manually-typed line items for a customer (no quotation_id/payment_id at
+// all — e.g. a deposit typed straight into the document before any formal
+// quotation/invoice existed for it), offered as a source for ใบวางบิล/
+// ใบเสร็จรับเงิน. A quotation-sourced line already surfaces through
+// getBillableTaxInvoicesForCustomer once its parent document is scanned
 // there too; a payment-sourced line already surfaces through
 // getUnbilledInvoicesForCustomer regardless of billing-note status — this
 // fills the one remaining gap, since a manual line has no id to browse by
-// through either of those. Excludes lines already copied onto an existing
-// ใบเสร็จรับเงิน (billing_note_items.source_item_id), so the same line
-// isn't offered twice.
+// through either of those. Same source-doc-type rule as
+// getBillableTaxInvoicesForCustomer (ใบวางบิล only browses ใบกำกับภาษี;
+// ใบเสร็จรับเงิน browses both, since it can also close out an issued
+// ใบวางบิล directly). Excludes lines already copied onto an existing
+// document of the target type (billing_note_items.source_item_id), so the
+// same line isn't offered twice.
 export async function getBillableBillingNoteItemsForCustomer(
   customerId: string,
+  targetDocType: "billing_note" | "receipt",
   excludeDocId?: string,
 ): Promise<BillableBillingNoteItem[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
 
+  const sourceDocTypes = targetDocType === "receipt" ? ["tax_invoice", "billing_note"] : ["tax_invoice"];
   const { data: notes, error } = await supabase
     .from("billing_notes")
     .select(
       "id, doc_no, doc_date, billing_note_items(id, quotation_id, payment_id, manual_description, manual_qty, manual_unit, manual_unit_price, amount, apply_wht)",
     )
-    .eq("doc_type", "billing_note")
+    .in("doc_type", sourceDocTypes)
     .eq("customer_id", customerId);
   if (error) throw error;
 
   let claimedQuery = supabase
     .from("billing_note_items")
     .select("billing_note_id, source_item_id, billing_notes!inner(doc_type)")
-    .eq("billing_notes.doc_type", "receipt")
+    .eq("billing_notes.doc_type", targetDocType)
     .not("source_item_id", "is", null);
   if (excludeDocId) claimedQuery = claimedQuery.neq("billing_note_id", excludeDocId);
   const { data: claimed, error: claimedErr } = await claimedQuery;

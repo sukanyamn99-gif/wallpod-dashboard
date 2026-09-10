@@ -241,7 +241,7 @@ export function BillingDocumentForm({
         fetchUnbilledInvoices(id),
         usesTaxInvoiceSource ? Promise.resolve([]) : fetchBillableQuotations(name),
         usesTaxInvoiceSource ? fetchBillableTaxInvoices(id, docType as "billing_note" | "receipt") : Promise.resolve([]),
-        docType === "receipt" ? fetchBillableBillingNoteItems(id) : Promise.resolve([]),
+        usesTaxInvoiceSource ? fetchBillableBillingNoteItems(id, docType as "billing_note" | "receipt") : Promise.resolve([]),
       ]);
       setInvoices(rows);
       setQuotations(billableQuotations);
@@ -305,7 +305,9 @@ export function BillingDocumentForm({
         usesTaxInvoiceSource
           ? fetchBillableTaxInvoices(initialData.customerId, docType as "billing_note" | "receipt", docId)
           : Promise.resolve([]),
-        docType === "receipt" ? fetchBillableBillingNoteItems(initialData.customerId, docId) : Promise.resolve([]),
+        usesTaxInvoiceSource
+          ? fetchBillableBillingNoteItems(initialData.customerId, docType as "billing_note" | "receipt", docId)
+          : Promise.resolve([]),
       ]);
       if (!cancelled) {
         setInvoices(rows);

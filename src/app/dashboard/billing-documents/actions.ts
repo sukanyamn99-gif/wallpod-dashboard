@@ -52,14 +52,16 @@ export async function fetchBillableTaxInvoices(
   return getBillableTaxInvoicesForCustomer(customerId, targetDocType, excludeDocId);
 }
 
-// ใบเสร็จรับเงิน only — issued ใบวางบิล lines with no quotation/payment to
-// browse by (see getBillableBillingNoteItemsForCustomer).
+// ใบวางบิล/ใบเสร็จรับเงิน — issued documents' manually-typed lines with no
+// quotation/payment to browse by otherwise (see
+// getBillableBillingNoteItemsForCustomer).
 export async function fetchBillableBillingNoteItems(
   customerId: string,
+  targetDocType: "billing_note" | "receipt",
   excludeDocId?: string,
 ): Promise<BillableBillingNoteItem[]> {
   if (!customerId) return [];
-  return getBillableBillingNoteItemsForCustomer(customerId, excludeDocId);
+  return getBillableBillingNoteItemsForCustomer(customerId, targetDocType, excludeDocId);
 }
 
 const DOC_PREFIX: Record<BillingDocumentType, string> = {
