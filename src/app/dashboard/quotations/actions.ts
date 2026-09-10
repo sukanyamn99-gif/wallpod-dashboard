@@ -139,12 +139,16 @@ function parseHeader(formData: FormData) {
 
 // Best-effort side effect, not part of the quotation's own transaction — a
 // failure here never blocks saving the quotation, same convention as this
-// app's other secondary writes (e.g. item image uploads). Only UPDATES an
-// existing customer matched by name; never creates one (this form has no
-// customer_type field to create a valid new customers row with, matching
-// the same tradeoff already made for Stock Requisition's customer field).
-// Only fields this quotation actually has a value for are written, so an
-// incomplete quotation can never blank out contact details already on file.
+// app's other secondary writes (e.g. item image uploads). Updates an
+// existing customer matched by name (only the fields this quotation
+// actually has a value for, so an incomplete quotation can never blank out
+// contact details already on file), or creates one if no match exists —
+// per the user's explicit "ข้อมูลลูกค้าที่เราทำใบเสนอราคาสามารถบันทึก
+// จัดเก็บให้เลยได้มั้ยคะ" request, so every quotation's customer ends up in
+// the Customers directory, not just ones that happen to already be there.
+// Quotations don't collect a customer type (unlike Project Sales' own
+// resolveCustomerId, which does), so a newly-created row defaults to
+// "Owner" — staff can correct it later from the Customers page.
 async function syncCustomerContactInfo(
   supabase: Awaited<ReturnType<typeof createClient>>,
   header: ReturnType<typeof parseHeader>,
@@ -156,7 +160,6 @@ async function syncCustomerContactInfo(
   if (header.customerAddress) updates.address = header.customerAddress;
   if (header.customerTel) updates.phone = header.customerTel;
   if (header.customerTaxId) updates.tax_id = header.customerTaxId;
-  if (Object.keys(updates).length === 0) return;
 
   const { data: existingCustomer } = await supabase
     .from("customers")
@@ -164,9 +167,15 @@ async function syncCustomerContactInfo(
     .ilike("name", header.customerName)
     .limit(1)
     .maybeSingle();
-  if (!existingCustomer) return;
 
-  await supabase.from("customers").update(updates).eq("id", existingCustomer.id);
+  if (existingCustomer) {
+    if (Object.keys(updates).length > 0) {
+      await supabase.from("customers").update(updates).eq("id", existingCustomer.id);
+    }
+    return;
+  }
+
+  await supabase.from("customers").insert({ name: header.customerName, customer_type: "Owner", ...updates });
 }
 
 async function uploadItemImage(

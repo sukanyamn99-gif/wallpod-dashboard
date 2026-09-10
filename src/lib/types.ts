@@ -146,6 +146,13 @@ export interface Customer {
   customerCode: string | null;
 }
 
+// Customer, joined against quotations by name (quotations has no
+// customer_id FK — see syncCustomerContactInfo) — used only by the
+// Customers page's accepted/not-accepted filter.
+export interface CustomerWithQuotationStatus extends Customer {
+  hasAcceptedQuotation: boolean;
+}
+
 export interface Project {
   id: string;
   job_no: string | null;

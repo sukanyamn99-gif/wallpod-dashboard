@@ -2,6 +2,7 @@
 
 import { useActionState, useMemo, useState, useTransition } from "react";
 import { Check, Pencil, Plus, Search, Trash2, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,8 +14,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { Customer, CustomerType } from "@/lib/types";
+import type { CustomerType, CustomerWithQuotationStatus } from "@/lib/types";
 import { createCustomer, deleteCustomer, updateCustomer } from "./actions";
+
+const STATUS_FILTER_ITEMS = [
+  { value: "all", label: "ทั้งหมด" },
+  { value: "accepted", label: "ลูกค้าตอบตกลง" },
+  { value: "not_accepted", label: "ลูกค้าไม่ตอบตกลง" },
+];
 
 const CUSTOMER_TYPES: CustomerType[] = ["Owner", "Designer", "Turnkey", "Contractor", "Corporate", "Dealer", "School"];
 const CUSTOMER_TYPE_ITEMS = CUSTOMER_TYPES.map((t) => ({ value: t, label: t }));
@@ -67,7 +74,7 @@ function AddCustomerForm() {
   );
 }
 
-function CustomerRow({ customer, canManage }: { customer: Customer; canManage: boolean }) {
+function CustomerRow({ customer, canManage }: { customer: CustomerWithQuotationStatus; canManage: boolean }) {
   const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [name, setName] = useState(customer.name);
@@ -188,6 +195,13 @@ function CustomerRow({ customer, canManage }: { customer: Customer; canManage: b
         )}
       </TableCell>
       <TableCell className="whitespace-nowrap">
+        {customer.hasAcceptedQuotation ? (
+          <Badge variant="secondary">ลูกค้าตอบตกลง</Badge>
+        ) : (
+          <Badge variant="outline">ยังไม่ตอบตกลง</Badge>
+        )}
+      </TableCell>
+      <TableCell className="whitespace-nowrap">
         <div className="flex flex-col gap-1">
           {canManage && (
             <div className="flex gap-1">
@@ -242,29 +256,58 @@ function CustomerRow({ customer, canManage }: { customer: Customer; canManage: b
   );
 }
 
-export function CustomersTable({ customers, canManage }: { customers: Customer[]; canManage: boolean }) {
+export function CustomersTable({
+  customers,
+  canManage,
+}: {
+  customers: CustomerWithQuotationStatus[];
+  canManage: boolean;
+}) {
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "accepted" | "not_accepted">("all");
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return customers;
-    return customers.filter((c) =>
-      [c.name, c.customerCode, c.contactPerson, c.phone, c.taxId, c.address].some((v) => v?.toLowerCase().includes(q)),
-    );
-  }, [customers, search]);
+    return customers.filter((c) => {
+      if (statusFilter === "accepted" && !c.hasAcceptedQuotation) return false;
+      if (statusFilter === "not_accepted" && c.hasAcceptedQuotation) return false;
+      if (!q) return true;
+      return [c.name, c.customerCode, c.contactPerson, c.phone, c.taxId, c.address].some((v) =>
+        v?.toLowerCase().includes(q),
+      );
+    });
+  }, [customers, search, statusFilter]);
 
   return (
     <div className="space-y-4">
       {canManage && <AddCustomerForm />}
 
-      <div className="relative max-w-sm">
-        <Search className="pointer-events-none absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="ค้นหาชื่อ, รหัสลูกค้า, ผู้ติดต่อ, เบอร์โทร, เลขผู้เสียภาษี..."
-          className="pl-8"
-        />
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative max-w-sm flex-1">
+          <Search className="pointer-events-none absolute top-2.5 left-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="ค้นหาชื่อ, รหัสลูกค้า, ผู้ติดต่อ, เบอร์โทร, เลขผู้เสียภาษี..."
+            className="pl-8"
+          />
+        </div>
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter((v as typeof statusFilter) ?? "all")}
+          items={STATUS_FILTER_ITEMS}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_FILTER_ITEMS.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="overflow-x-auto rounded-md border">
@@ -278,13 +321,14 @@ export function CustomersTable({ customers, canManage }: { customers: Customer[]
               <TableHead>เบอร์โทร</TableHead>
               <TableHead>เลขผู้เสียภาษี</TableHead>
               <TableHead>ที่อยู่</TableHead>
+              <TableHead>สถานะใบเสนอราคา</TableHead>
               <TableHead>จัดการ</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground">
+                <TableCell colSpan={9} className="text-center text-muted-foreground">
                   {customers.length === 0 ? "ยังไม่มีลูกค้าในระบบ" : "ไม่พบลูกค้าที่ค้นหา"}
                 </TableCell>
               </TableRow>

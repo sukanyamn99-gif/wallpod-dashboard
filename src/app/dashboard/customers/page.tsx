@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getCustomers } from "@/lib/data/reference";
+import { getCustomersWithQuotationStatus } from "@/lib/data/reference";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
 import { CustomersTable } from "./customers-table";
@@ -9,7 +9,7 @@ export default async function CustomersPage() {
   if (!profile) redirect("/login");
   if (!canAccessPage(profile.role, "/dashboard/customers")) redirect("/dashboard/sales");
 
-  const customers = await getCustomers();
+  const customers = await getCustomersWithQuotationStatus();
   const canManage = profile.role === "owner" || profile.role === "manager" || profile.role === "support_sale";
 
   return (

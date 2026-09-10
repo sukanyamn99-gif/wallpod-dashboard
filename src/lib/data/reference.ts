@@ -1,6 +1,6 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { mockCustomers, mockSalesReps } from "@/lib/mock-data";
-import type { Customer, Department, SalesRep } from "@/lib/types";
+import type { Customer, CustomerWithQuotationStatus, Department, SalesRep } from "@/lib/types";
 
 export async function getSalesReps({ requireLogin = false }: { requireLogin?: boolean } = {}): Promise<SalesRep[]> {
   if (!isSupabaseConfigured()) return mockSalesReps;
@@ -31,6 +31,41 @@ export async function getCustomers(): Promise<Customer[]> {
     phone: row.phone,
     taxId: row.tax_id,
     customerCode: row.customer_code,
+  }));
+}
+
+// Customers page's own listing — same rows as getCustomers, plus whether
+// each customer has at least one ใบเสนอราคา with status ลูกค้าตอบตกลง, for
+// its accepted/not-accepted filter. Matched by name (case-insensitive,
+// trimmed) since quotations has no customer_id FK — same matching rule
+// syncCustomerContactInfo already uses to sync a quotation's customer back
+// onto this table.
+export async function getCustomersWithQuotationStatus(): Promise<CustomerWithQuotationStatus[]> {
+  if (!isSupabaseConfigured()) return mockCustomers.map((c) => ({ ...c, hasAcceptedQuotation: false }));
+  const supabase = await createClient();
+  const [{ data: customerRows, error: customerErr }, { data: quotationRows, error: quotationErr }] = await Promise.all([
+    supabase.from("customers").select("id, name, customer_type, contact_person, address, phone, tax_id, customer_code"),
+    supabase.from("quotations").select("customer_name, status"),
+  ]);
+  if (customerErr) throw customerErr;
+  if (quotationErr) throw quotationErr;
+
+  const acceptedNames = new Set(
+    (quotationRows ?? [])
+      .filter((q) => q.status === "ลูกค้าตอบตกลง")
+      .map((q) => q.customer_name.trim().toLowerCase()),
+  );
+
+  return (customerRows ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    customer_type: row.customer_type,
+    contactPerson: row.contact_person,
+    address: row.address,
+    phone: row.phone,
+    taxId: row.tax_id,
+    customerCode: row.customer_code,
+    hasAcceptedQuotation: acceptedNames.has(row.name.trim().toLowerCase()),
   }));
 }
 
