@@ -68,7 +68,15 @@ export async function getCommissionableProjects(): Promise<CommissionableProject
       projectDate: row.projectDate,
       preVat: row.preVat,
       total: row.total,
-      invoiceNo: row.invoiceNo1 ?? row.invoiceNo2 ?? row.invoiceNo3,
+      // Prefer the ใบกำกับภาษี number over the plain ใบแจ้งหนี้ one per
+      // installment slot, same fallback rule already used by the Incentive
+      // report's buildInstallments — a job billed via source_tax_invoice_id
+      // sync only ever gets tax_invoice_no set, never invoice_no, so
+      // checking invoice_no alone left it blank even once fully collected.
+      invoiceNo:
+        (row.taxInvoiceNo1 ?? row.invoiceNo1) ??
+        (row.taxInvoiceNo2 ?? row.invoiceNo2) ??
+        (row.taxInvoiceNo3 ?? row.invoiceNo3),
       receiptNo: row.receiptNo1 ?? row.receiptNo2 ?? row.receiptNo3,
       receivedDate: latestReceivedDate,
       discountPercent: existing ? Number(existing.discount_percent) : 0,
