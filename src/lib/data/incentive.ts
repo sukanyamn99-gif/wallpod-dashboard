@@ -89,6 +89,8 @@ export async function getIncentiveReport(month: number, year: number): Promise<I
     };
   });
 
+  rows.sort((a, b) => (a.jobNo ?? "").localeCompare(b.jobNo ?? "", undefined, { numeric: true }));
+
   const totals = rows.reduce(
     (acc, r) => ({
       preVat: acc.preVat + r.preVat,
