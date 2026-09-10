@@ -108,8 +108,19 @@ export function PrintVoucherView({ voucher }: { voucher: PaymentVoucher }) {
 
         <div className="border-b border-black p-2">ลงชื่อผู้รับเงิน : ___________________________</div>
 
-        {/* Bank row */}
-        <table className="w-full border-collapse border-b border-black text-center">
+        {/* Bank row and Ledger below share this exact column grid (same
+            <colgroup> widths on both table-fixed tables) so their vertical
+            borders line up as one continuous grid down the form, matching
+            a real paper voucher — รายการ/DESCRIPTIONS spans the same two
+            grid columns เลขที่บัญชี/ลงวันที่ occupy above it. */}
+        <table className="w-full table-fixed border-collapse border-b border-black text-center">
+          <colgroup>
+            <col className="w-[15%]" />
+            <col className="w-[20%]" />
+            <col className="w-[20%]" />
+            <col className="w-[20%]" />
+            <col className="w-[25%]" />
+          </colgroup>
           <thead>
             <tr>
               <th className="border-r border-black p-1 font-medium">ธนาคาร/สาขา</th>
@@ -135,20 +146,29 @@ export function PrintVoucherView({ voucher }: { voucher: PaymentVoucher }) {
         </table>
 
         {/* Ledger */}
-        <table className="w-full border-collapse border-b border-black text-center">
+        <table className="w-full table-fixed border-collapse border-b border-black text-center">
+          <colgroup>
+            <col className="w-[15%]" />
+            <col className="w-[20%]" />
+            <col className="w-[20%]" />
+            <col className="w-[20%]" />
+            <col className="w-[25%]" />
+          </colgroup>
           <thead>
             <tr>
-              <th className="w-1/6 border-r border-black p-1 font-medium">รหัสบัญชี/CODE</th>
-              <th className="w-1/2 border-r border-black p-1 font-medium">รายการ/DESCRIPTIONS</th>
-              <th className="w-1/6 border-r border-black p-1 font-medium">DEBIT</th>
-              <th className="w-1/6 p-1 font-medium">CREDIT</th>
+              <th className="border-r border-black p-1 font-medium">รหัสบัญชี/CODE</th>
+              <th className="border-r border-black p-1 font-medium" colSpan={2}>รายการ/DESCRIPTIONS</th>
+              <th className="border-r border-black p-1 font-medium">DEBIT</th>
+              <th className="p-1 font-medium">CREDIT</th>
             </tr>
           </thead>
           <tbody>
             {ledgerRows.map((line) => (
               <tr key={line.id} className="h-7">
                 <td className="border-r border-t border-black p-1">{line.accountCode ?? ""}</td>
-                <td className="border-r border-t border-black p-1 text-left">{line.description ?? ""}</td>
+                <td className="border-r border-t border-black p-1 text-left" colSpan={2}>
+                  {line.description ?? ""}
+                </td>
                 <td className="border-r border-t border-black p-1 text-right">
                   {line.debit ? formatTHB(line.debit) : ""}
                 </td>
