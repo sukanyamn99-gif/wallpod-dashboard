@@ -78,11 +78,12 @@ export function canSeeRequisitionCosts(role: Role): boolean {
 
 // WALLPOD Project Sales (Koonway Project Sales) also opens its cost/profit
 // breakdown (material/glue/cutting/install/transport/shipping, total cost,
-// profit, %profit) to support_sale, same reasoning as the requisition case
-// above — Stock Product's cost columns and the GP/AR dashboards stay
-// admin-only via canSeeCosts.
+// profit, %profit) to support_sale and account, same reasoning as the
+// requisition case above — Stock Product's cost columns and the GP/AR
+// dashboards stay admin-only via canSeeCosts. Account needs this because
+// they enter/reconcile job costs directly on this form.
 export function canSeeProjectCosts(role: Role): boolean {
-  return canSeeCosts(role) || role === "support_sale";
+  return canSeeCosts(role) || role === "support_sale" || role === "account";
 }
 
 // "Can add" rights, split per feature since they don't all start from the
