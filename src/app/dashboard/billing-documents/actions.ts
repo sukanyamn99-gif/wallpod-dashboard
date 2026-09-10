@@ -133,6 +133,7 @@ async function insertBillingNoteHeader(
     whtPercent: number;
     retentionPercent: number;
     note: string | null;
+    jobNo: string | null;
     paymentMethod: PaymentMethod | null;
     bankName: string | null;
     paymentReferenceNo: string | null;
@@ -156,6 +157,7 @@ async function insertBillingNoteHeader(
         wht_percent: fields.whtPercent,
         retention_percent: fields.retentionPercent,
         note: fields.note,
+        job_no: fields.jobNo,
         payment_method: fields.paymentMethod,
         bank_name: fields.bankName,
         payment_reference_no: fields.paymentReferenceNo,
@@ -399,6 +401,11 @@ interface ParsedBillingDocument {
   whtPercent: number;
   retentionPercent: number;
   note: string | null;
+  // Set only in create mode, from whatever JOB the JobNoSelect picker had
+  // selected — printed as "เลขที่ Job" on the document. Never present on
+  // edit (that form doesn't render the picker), so an edit save leaves
+  // whatever was already stored untouched (see updateBillingDocument).
+  jobNoRef: string | null;
   // ใบเสร็จรับเงิน-only — always parsed (harmless when absent) since only
   // that document type's form ever submits these fields.
   paymentMethod: PaymentMethod | null;
@@ -441,6 +448,7 @@ function parseBillingDocumentForm(formData: FormData): { error: string } | ({ er
   const whtPercent = Math.max(0, num(formData.get("wht_percent")));
   const retentionPercent = Math.max(0, num(formData.get("retention_percent")));
   const note = str(formData.get("note"));
+  const jobNoRef = str(formData.get("job_no_ref"));
 
   const paymentMethodRaw = str(formData.get("payment_method"));
   const paymentMethod = PAYMENT_METHODS.includes(paymentMethodRaw as PaymentMethod) ? (paymentMethodRaw as PaymentMethod) : null;
@@ -476,6 +484,7 @@ function parseBillingDocumentForm(formData: FormData): { error: string } | ({ er
     whtPercent,
     retentionPercent,
     note,
+    jobNoRef,
     paymentMethod,
     bankName,
     paymentReferenceNo,
@@ -507,6 +516,7 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
     whtPercent,
     retentionPercent,
     note,
+    jobNoRef,
     paymentMethod,
     bankName,
     paymentReferenceNo,
@@ -580,6 +590,7 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
     whtPercent,
     retentionPercent,
     note,
+    jobNo: jobNoRef,
     paymentMethod,
     bankName,
     paymentReferenceNo,

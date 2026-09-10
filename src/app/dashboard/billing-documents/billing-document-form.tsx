@@ -540,6 +540,9 @@ export function BillingDocumentForm({
         // sentinel literally — overwrite with the real state, which is
         // already "" when no sales rep is picked.
         fd.set("sales_rep_id", salesRepId);
+        // Only meaningful in create mode (edit mode doesn't render the JOB
+        // NO. picker at all) — printed as "เลขที่ Job" on the document.
+        if (jobNo) fd.set("job_no_ref", jobNo);
         for (const paymentId of selected) {
           fd.append("item_payment_id", paymentId);
           fd.append("item_payment_apply_wht", String(!whtExcluded.has(paymentId)));

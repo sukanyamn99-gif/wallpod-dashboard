@@ -282,7 +282,7 @@ async function getTaxInvoiceRefsForQuotationIds(
 }
 
 const HEADER_COLUMNS =
-  "id, doc_no, doc_type, customer_id, doc_date, credit_days, due_date, sales_rep_id, discount_amount, wht_percent, retention_percent, note, created_by, created_at, payment_method, bank_name, payment_reference_no, payment_date, customers(name, address, phone, tax_id), sales_reps(name), profiles(full_name)";
+  "id, doc_no, doc_type, customer_id, doc_date, credit_days, due_date, sales_rep_id, discount_amount, wht_percent, retention_percent, note, job_no, created_by, created_at, payment_method, bank_name, payment_reference_no, payment_date, customers(name, address, phone, tax_id), sales_reps(name), profiles(full_name)";
 
 type HeaderRow = {
   id: string;
@@ -297,6 +297,7 @@ type HeaderRow = {
   wht_percent: number;
   retention_percent: number;
   note: string | null;
+  job_no: string | null;
   created_by: string | null;
   created_at: string;
   payment_method: PaymentMethod | null;
@@ -329,6 +330,7 @@ function mapHeader(row: HeaderRow): BillingDocument {
     whtPercent: Number(row.wht_percent),
     retentionPercent: Number(row.retention_percent),
     note: row.note,
+    jobNo: row.job_no,
     createdById: row.created_by,
     createdByName: row.profiles?.full_name ?? null,
     createdAt: row.created_at,
@@ -430,9 +432,17 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     );
   }
 
+  // Fallback for documents created before job_no was stored on the header
+  // itself — derive it from the first item's own payment-sourced JOB (only
+  // available when showsItemizedDetail selected payments(projects(job_no))).
+  // A quotation-sourced or manual-only document with no stored job_no
+  // simply prints blank rather than guessing among a customer's other JOBs.
+  const jobNoFallback = header.job_no ?? itemRows.find((it) => it.payments?.projects?.job_no)?.payments?.projects?.job_no ?? null;
+
   return {
     // @ts-expect-error -- Supabase types the joined relation loosely here
     ...mapHeader(header),
+    jobNo: jobNoFallback,
     items: itemRows.map((it) => {
       const jobNo = it.payments?.projects?.job_no ?? null;
       const quotationDetail = it.quotation_id

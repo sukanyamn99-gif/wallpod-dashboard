@@ -107,6 +107,12 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
               <td className="pr-2 text-left text-neutral-500">เลขที่</td>
               <td className="font-medium">{document.docNo}</td>
             </tr>
+            {document.jobNo && (
+              <tr>
+                <td className="pr-2 text-left text-neutral-500">เลขที่ Job</td>
+                <td>{document.jobNo}</td>
+              </tr>
+            )}
             <tr>
               <td className="pr-2 text-left text-neutral-500">วันที่</td>
               <td>{fmtDate(document.docDate)}</td>

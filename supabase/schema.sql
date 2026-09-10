@@ -1422,7 +1422,11 @@ create table billing_notes (
   payment_method text check (payment_method in ('เงินสด', 'เช็ค', 'โอนเงิน', 'บัตรเครดิต')),
   bank_name text,
   payment_reference_no text,
-  payment_date date
+  payment_date date,
+  -- Which JOB this document was created for, set once from the JobNoSelect
+  -- picker at creation time — needed to print "เลขที่ Job", since a
+  -- manually-typed line item has no other way to derive it.
+  job_no text
 );
 
 create table billing_note_items (

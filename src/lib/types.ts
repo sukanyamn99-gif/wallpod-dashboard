@@ -855,6 +855,11 @@ export interface BillingDocument {
   whtPercent: number;
   retentionPercent: number;
   note: string | null;
+  // Which JOB this document was created for — set from the JobNoSelect
+  // picker at creation time, printed as "เลขที่ Job". Null for documents
+  // created before this field existed, or created via a plain customer
+  // search rather than the JOB picker.
+  jobNo: string | null;
   createdById: string | null;
   createdByName: string | null;
   createdAt: string;
