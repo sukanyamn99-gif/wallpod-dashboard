@@ -77,11 +77,19 @@ export async function GET(request: NextRequest) {
     // Page titles here are always plain Thai/English doc numbers set by
     // each print view — strip anything a filename can't hold, just in case.
     const filename = `${title.replace(/[\\/:*?"<>|]/g, "").trim() || "document"}.pdf`;
+    // An HTTP header value is a ByteString (Latin1 only) — a Thai filename
+    // (every doc title in this app) throws "Cannot convert argument to a
+    // ByteString" if passed directly, which is what was actually breaking
+    // every PDF download in production, unrelated to the Chromium-binary
+    // fix. RFC 5987's filename* carries the real UTF-8 name for browsers
+    // that support it (all current ones); the plain filename stays a safe
+    // ASCII fallback for anything that doesn't.
+    const asciiFallback = filename.replace(/[^\x20-\x7e]/g, "_");
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Disposition": `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
       },
     });
   } catch (error) {
