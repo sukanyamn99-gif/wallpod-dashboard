@@ -44,6 +44,14 @@ const CREDIT_DAYS_ITEMS = [
   { value: "15", label: "15 วัน" },
   { value: "30", label: "30 วัน" },
 ];
+// The company's own receiving account — printed identically on quotations
+// (see print-quotation-view.tsx's "ชื่อบัญชี : บริษัท คูนเว จำกัด
+// ธนาคารกรุงศรี : 403-0-00726-8"). Auto-filled when โอนเงิน is picked so
+// staff don't have to retype the same account every time; only fills
+// currently-empty fields, so a deliberately different account isn't
+// overwritten.
+const DEFAULT_BANK_NAME = "กรุงศรีอยุธยา";
+const DEFAULT_BANK_ACCOUNT_NO = "403-0-00726-8";
 const PAYMENT_METHODS: PaymentMethod[] = ["เงินสด", "เช็ค", "โอนเงิน", "บัตรเครดิต"];
 
 function addDays(dateStr: string, days: number): string {
@@ -74,6 +82,10 @@ interface ManualItemRow {
   // checkbox that added it be un-toggled cleanly, and tells the server
   // which source line to mark as already receipted.
   sourceItemId?: string;
+  // The source document's own doc_date, carried over so "เอกสารวันที่"
+  // on the printed document isn't blank for a copied line — a plain typed
+  // manual row has no natural date of its own, so this stays unset there.
+  sourceDate?: string;
 }
 
 // The row's own pre-VAT line total (qty × ราคาต่อหน่วย) — shown next to the
@@ -411,6 +423,7 @@ export function BillingDocumentForm({
             unitPrice: String(item.unitPrice),
             applyWht: item.applyWht,
             sourceItemId: item.id,
+            sourceDate: item.billingNoteDate,
           },
         ]);
       }
@@ -554,6 +567,7 @@ export function BillingDocumentForm({
           fd.append("item_manual_unit_price", row.unitPrice);
           fd.append("item_manual_apply_wht", String(row.applyWht));
           fd.append("item_manual_source_id", row.sourceItemId ?? "");
+          fd.append("item_manual_date", row.sourceDate ?? "");
         }
         if (docType === "tax_invoice") {
           for (const [productId, qty] of Object.entries(finishedGoodQty)) {
@@ -707,7 +721,13 @@ export function BillingDocumentForm({
                   <button
                     key={m}
                     type="button"
-                    onClick={() => setPaymentMethod(m)}
+                    onClick={() => {
+                      setPaymentMethod(m);
+                      if (m === "โอนเงิน") {
+                        setBankName((prev) => prev || DEFAULT_BANK_NAME);
+                        setPaymentReferenceNo((prev) => prev || DEFAULT_BANK_ACCOUNT_NO);
+                      }
+                    }}
                     className={
                       paymentMethod === m
                         ? "rounded-md border border-primary bg-primary px-3 py-1.5 text-sm text-primary-foreground"
