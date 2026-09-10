@@ -61,6 +61,12 @@ export async function getUnbilledInvoicesForCustomer(customerId: string): Promis
 // without this it would be stuck with no way to be receipted except typing
 // it in again as a manual line. ใบวางบิล isn't offered as a source for
 // ANOTHER ใบวางบิล, only for receipts.
+//
+// Both also browse issued ใบแจ้งหนี้ (doc_type "invoice") — a job billed
+// straight from a quotation before any tax invoice existed yet often only
+// has this document type on file (see getBillableBillingNoteItemsForCustomer
+// for the same gap on manually-typed lines) — without it, a quotation-sourced
+// invoice line had no way to be billed further at all.
 export async function getBillableTaxInvoicesForCustomer(
   customerId: string,
   targetDocType: "billing_note" | "receipt",
@@ -72,7 +78,8 @@ export async function getBillableTaxInvoicesForCustomer(
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
 
-  const sourceDocTypes = targetDocType === "receipt" ? ["tax_invoice", "billing_note"] : ["tax_invoice"];
+  const sourceDocTypes =
+    targetDocType === "receipt" ? ["tax_invoice", "billing_note", "invoice"] : ["tax_invoice", "invoice"];
   const { data: invoices, error } = await supabase
     .from("billing_notes")
     .select(
@@ -129,11 +136,11 @@ export async function getBillableTaxInvoicesForCustomer(
 // getUnbilledInvoicesForCustomer regardless of billing-note status — this
 // fills the one remaining gap, since a manual line has no id to browse by
 // through either of those. Same source-doc-type rule as
-// getBillableTaxInvoicesForCustomer (ใบวางบิล only browses ใบกำกับภาษี;
-// ใบเสร็จรับเงิน browses both, since it can also close out an issued
-// ใบวางบิล directly). Excludes lines already copied onto an existing
-// document of the target type (billing_note_items.source_item_id), so the
-// same line isn't offered twice.
+// getBillableTaxInvoicesForCustomer (ใบวางบิล browses ใบกำกับภาษี and
+// ใบแจ้งหนี้; ใบเสร็จรับเงิน browses all three, since it can also close out
+// an issued ใบวางบิล directly). Excludes lines already copied onto an
+// existing document of the target type (billing_note_items.source_item_id),
+// so the same line isn't offered twice.
 export async function getBillableBillingNoteItemsForCustomer(
   customerId: string,
   targetDocType: "billing_note" | "receipt",
@@ -142,7 +149,8 @@ export async function getBillableBillingNoteItemsForCustomer(
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
 
-  const sourceDocTypes = targetDocType === "receipt" ? ["tax_invoice", "billing_note"] : ["tax_invoice"];
+  const sourceDocTypes =
+    targetDocType === "receipt" ? ["tax_invoice", "billing_note", "invoice"] : ["tax_invoice", "invoice"];
   const { data: notes, error } = await supabase
     .from("billing_notes")
     .select(
@@ -214,7 +222,7 @@ export async function getNetPayableForQuotationIds(
     .select(
       "discount_amount, wht_percent, retention_percent, created_at, billing_note_items!inner(quotation_id, amount, apply_wht)",
     )
-    .in("doc_type", ["tax_invoice", "billing_note"])
+    .in("doc_type", ["tax_invoice", "billing_note", "invoice"])
     .in("billing_note_items.quotation_id", quotationIds)
     .order("created_at", { ascending: false });
   if (error) throw error;
