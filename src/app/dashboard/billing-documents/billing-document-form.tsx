@@ -86,6 +86,10 @@ interface ManualItemRow {
   // on the printed document isn't blank for a copied line — a plain typed
   // manual row has no natural date of its own, so this stays unset there.
   sourceDate?: string;
+  // The source document's own doc_no (e.g. its ใบกำกับภาษี number), shown
+  // in "เลขที่เอกสาร" instead of the raw typed description for a copied
+  // line — staff want the real document number there, not the free text.
+  sourceDocNo?: string;
 }
 
 // The row's own pre-VAT line total (qty × ราคาต่อหน่วย) — shown next to the
@@ -424,6 +428,7 @@ export function BillingDocumentForm({
             applyWht: item.applyWht,
             sourceItemId: item.id,
             sourceDate: item.billingNoteDate,
+            sourceDocNo: item.billingNoteDocNo,
           },
         ]);
       }
@@ -568,6 +573,7 @@ export function BillingDocumentForm({
           fd.append("item_manual_apply_wht", String(row.applyWht));
           fd.append("item_manual_source_id", row.sourceItemId ?? "");
           fd.append("item_manual_date", row.sourceDate ?? "");
+          fd.append("item_manual_doc_no", row.sourceDocNo ?? "");
         }
         if (docType === "tax_invoice") {
           for (const [productId, qty] of Object.entries(finishedGoodQty)) {

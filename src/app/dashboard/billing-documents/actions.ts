@@ -343,6 +343,10 @@ interface ParsedManualItem {
   // — stored as invoice_date_snapshot so the printed "เอกสารวันที่" column
   // isn't blank for a copied line. A plain typed row has no date of its own.
   sourceDate: string | null;
+  // The source document's own doc_no, when copied — stored as
+  // invoice_no_snapshot (overriding the description there) so "เลขที่เอกสาร"
+  // shows the real document number instead of the free-typed text.
+  sourceDocNo: string | null;
 }
 
 // A third source of line items, alongside existing invoices and
@@ -361,6 +365,7 @@ function parseManualItems(formData: FormData): ParsedManualItem[] {
   const applyWhts = formData.getAll("item_manual_apply_wht").map((v) => String(v));
   const sourceItemIds = formData.getAll("item_manual_source_id").map((v) => String(v));
   const sourceDates = formData.getAll("item_manual_date").map((v) => String(v));
+  const sourceDocNos = formData.getAll("item_manual_doc_no").map((v) => String(v));
 
   return descriptions
     .map((description, i) => {
@@ -378,6 +383,7 @@ function parseManualItems(formData: FormData): ParsedManualItem[] {
         applyWht: applyWhts[i] !== "false",
         sourceItemId: sourceItemIds[i] || null,
         sourceDate: sourceDates[i] || null,
+        sourceDocNo: sourceDocNos[i] || null,
       };
     })
     .filter((it) => it.description);
@@ -652,7 +658,7 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
     })),
     ...manualItems.map((m) => ({
       billing_note_id: doc.id,
-      invoice_no_snapshot: m.description,
+      invoice_no_snapshot: m.sourceDocNo ?? m.description,
       invoice_date_snapshot: m.sourceDate,
       amount: m.amount,
       manual_description: m.description,
@@ -877,7 +883,7 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
     })),
     ...manualItems.map((m) => ({
       billing_note_id: id,
-      invoice_no_snapshot: m.description,
+      invoice_no_snapshot: m.sourceDocNo ?? m.description,
       invoice_date_snapshot: m.sourceDate,
       amount: m.amount,
       manual_description: m.description,
