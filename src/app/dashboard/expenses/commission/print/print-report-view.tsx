@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { DownloadPdfButton } from "@/components/dashboard/download-pdf-button";
 import { PrintCommissionView } from "./print-commission-view";
 import type { CommissionableProject } from "@/lib/types";
 
@@ -28,6 +29,7 @@ export function PrintReportView({
           ปิด
         </Button>
         <Button onClick={() => window.print()}>พิมพ์</Button>
+        <DownloadPdfButton />
       </div>
       {brokers.map((broker, i) => (
         <div key={broker} className={i < brokers.length - 1 ? "break-after-page" : ""}>

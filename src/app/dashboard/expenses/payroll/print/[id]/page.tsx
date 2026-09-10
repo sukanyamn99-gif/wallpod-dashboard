@@ -1,8 +1,17 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
 import { getPayrollEntryById, getPayrollYtdSummary } from "@/lib/data/payroll";
 import { PrintPayrollView } from "./print-payroll-view";
+
+// See quotations/print/[id]/page.tsx's generateMetadata for why this is
+// server-side, not a client-side document.title assignment.
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const entry = await getPayrollEntryById(id);
+  return { title: entry ? `เงินเดือน ${entry.employeeName} ${entry.payPeriod}` : "สลิปเงินเดือน" };
+}
 
 export default async function PrintPayrollEntryPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

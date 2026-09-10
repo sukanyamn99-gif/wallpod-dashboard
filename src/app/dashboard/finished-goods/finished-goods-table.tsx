@@ -28,6 +28,7 @@ import type { FinishedGood } from "@/lib/types";
 import type { QuotationItemRaw } from "@/lib/data/quotations";
 import { JobNoSelect } from "@/components/dashboard/job-no-select";
 import {
+  adjustFinishedGoodQuantity,
   createFinishedGood,
   deleteFinishedGood,
   fetchAcceptedQuotationItemsForJob,
@@ -51,6 +52,12 @@ function AddFinishedGoodForm({ jobNoSuggestions }: { jobNoSuggestions: string[] 
   const [unitCost, setUnitCost] = useState("");
   const [quotationMatch, setQuotationMatch] = useState<{ quotationDocNo: string; items: QuotationItemRaw[] } | null>(null);
   const [quotationLoading, setQuotationLoading] = useState(false);
+  // Which quotation_items row (if any) the current form fields came from —
+  // set only when a suggestion is actually picked, so a hand-typed entry
+  // never links to the wrong item. Cleared whenever a field is hand-edited
+  // afterward, since the SKU-back-write only makes sense while the fields
+  // still describe that exact item.
+  const [quotationItemId, setQuotationItemId] = useState<string | null>(null);
 
   const [state, formAction, pending] = useActionState(async (_prev: typeof addInitialState, formData: FormData) => {
     const result = await createFinishedGood(formData);
@@ -64,6 +71,7 @@ function AddFinishedGoodForm({ jobNoSuggestions }: { jobNoSuggestions: string[] 
       setInitialQty("");
       setUnitCost("");
       setQuotationMatch(null);
+      setQuotationItemId(null);
     }
     return result;
   }, addInitialState);
@@ -79,6 +87,7 @@ function AddFinishedGoodForm({ jobNoSuggestions }: { jobNoSuggestions: string[] 
   function handleJobNoChange(value: string) {
     setJobNo(value);
     setQuotationMatch(null);
+    setQuotationItemId(null);
     if (!value) return;
     setQuotationLoading(true);
     fetchAcceptedQuotationItemsForJob(value)
@@ -99,6 +108,7 @@ function AddFinishedGoodForm({ jobNoSuggestions }: { jobNoSuggestions: string[] 
     setSize(item.size ?? "");
     setColor(item.color ?? "");
     setInitialQty(String(item.qty));
+    setQuotationItemId(item.id);
   }
 
   return (
@@ -108,16 +118,48 @@ function AddFinishedGoodForm({ jobNoSuggestions }: { jobNoSuggestions: string[] 
           <JobNoSelect value={jobNo} onChange={handleJobNoChange} jobNos={jobNoSuggestions} placeholder="JOB ที่ผลิต (ถ้ามี)" />
           <input type="hidden" name="job_no" value={jobNo} />
         </div>
-        <Input name="name" placeholder="ชื่อสินค้า" className="max-w-xs" value={name} onChange={(e) => setName(e.target.value)} required />
+        <input type="hidden" name="quotation_item_id" value={quotationItemId ?? ""} />
+        <Input
+          name="name"
+          placeholder="ชื่อสินค้า"
+          className="max-w-xs"
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+            setQuotationItemId(null);
+          }}
+          required
+        />
         <Input
           name="thickness"
           placeholder="ความหนา (ถ้ามี)"
           className="max-w-[120px]"
           value={thickness}
-          onChange={(e) => setThickness(e.target.value)}
+          onChange={(e) => {
+            setThickness(e.target.value);
+            setQuotationItemId(null);
+          }}
         />
-        <Input name="size" placeholder="ขนาด (ถ้ามี)" className="max-w-[120px]" value={size} onChange={(e) => setSize(e.target.value)} />
-        <Input name="color" placeholder="สี (ถ้ามี)" className="max-w-[100px]" value={color} onChange={(e) => setColor(e.target.value)} />
+        <Input
+          name="size"
+          placeholder="ขนาด (ถ้ามี)"
+          className="max-w-[120px]"
+          value={size}
+          onChange={(e) => {
+            setSize(e.target.value);
+            setQuotationItemId(null);
+          }}
+        />
+        <Input
+          name="color"
+          placeholder="สี (ถ้ามี)"
+          className="max-w-[100px]"
+          value={color}
+          onChange={(e) => {
+            setColor(e.target.value);
+            setQuotationItemId(null);
+          }}
+        />
         <NumberInput
           name="initial_quantity"
           placeholder="จำนวนเริ่มต้น"
@@ -249,6 +291,7 @@ function FinishedGoodRow({
   const [thickness, setThickness] = useState(product.thickness ?? "");
   const [size, setSize] = useState(product.size ?? "");
   const [color, setColor] = useState(product.color ?? "");
+  const [quantity, setQuantity] = useState(String(product.quantityOnHand));
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -258,6 +301,7 @@ function FinishedGoodRow({
     setThickness(product.thickness ?? "");
     setSize(product.size ?? "");
     setColor(product.color ?? "");
+    setQuantity(String(product.quantityOnHand));
   }
 
   function handleSave() {
@@ -279,7 +323,22 @@ function FinishedGoodRow({
       if (result.error) {
         setError(result.error);
         reset();
+        setEditing(false);
+        return;
       }
+
+      if (Number(quantity) !== product.quantityOnHand) {
+        const qtyFd = new FormData();
+        qtyFd.set("quantity", quantity);
+        const qtyResult = await adjustFinishedGoodQuantity(product.id, qtyFd);
+        if (qtyResult.error) {
+          setError(qtyResult.error);
+          reset();
+          setEditing(false);
+          return;
+        }
+      }
+
       setEditing(false);
     });
   }
@@ -331,7 +390,20 @@ function FinishedGoodRow({
           product.color || "—"
         )}
       </TableCell>
-      <TableCell className="text-right whitespace-nowrap">{product.quantityOnHand}</TableCell>
+      <TableCell className="text-right whitespace-nowrap">
+        {editing ? (
+          <NumberInput
+            value={quantity}
+            onChange={setQuantity}
+            min={0}
+            step={0.01}
+            className="ml-auto max-w-[100px] text-right"
+            disabled={pending}
+          />
+        ) : (
+          product.quantityOnHand
+        )}
+      </TableCell>
       <TableCell className="text-right whitespace-nowrap">{formatTHB(product.unitCost)}</TableCell>
       <TableCell className="text-right whitespace-nowrap">{formatTHB(product.quantityOnHand * product.unitCost)}</TableCell>
       <TableCell className="whitespace-nowrap">

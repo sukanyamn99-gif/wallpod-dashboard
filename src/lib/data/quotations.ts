@@ -1,6 +1,7 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type {
   BillableQuotation,
+  ProductionOrder,
   Quotation,
   QuotationDetail,
   QuotationItem,
@@ -83,6 +84,109 @@ export async function getQuotations(): Promise<Quotation[]> {
 
   // @ts-expect-error -- Supabase types the joined relation loosely here
   return (data ?? []).map(mapHeader);
+}
+
+type ProductionItemRow = {
+  id: string;
+  product_name: string;
+  thickness: string | null;
+  size: string | null;
+  color: string | null;
+  qty: number;
+  unit: string;
+  product_code: string | null;
+  sort_order: number;
+};
+
+type ProductionQuotationRow = {
+  id: string;
+  doc_no: string;
+  quote_date: string;
+  project_name: string;
+  customer_name: string;
+  job_number: string | null;
+  total: number;
+  sales_reps: { name: string } | null;
+  quotation_items: ProductionItemRow[] | null;
+};
+
+const PRODUCTION_ORDER_COLUMNS =
+  "id, doc_no, quote_date, project_name, customer_name, job_number, total, sales_reps(name), " +
+  "quotation_items(id, product_name, thickness, size, color, qty, unit, product_code, sort_order)";
+
+function mapProductionOrderRow(row: ProductionQuotationRow): ProductionOrder {
+  const salesRep = row.sales_reps;
+  const items = row.quotation_items ?? [];
+  return {
+    id: row.id,
+    docNo: row.doc_no,
+    quoteDate: row.quote_date,
+    projectName: row.project_name,
+    customerName: row.customer_name,
+    salesRepName: salesRep?.name ?? null,
+    jobNumber: row.job_number,
+    total: Number(row.total),
+    items: [...items]
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((it) => ({
+        id: it.id,
+        productName: it.product_name,
+        thickness: it.thickness,
+        size: it.size,
+        color: it.color,
+        qty: Number(it.qty),
+        unit: it.unit,
+        productCode: it.product_code,
+      })),
+  };
+}
+
+// ใบลงผลิต — every accepted (ลูกค้าตอบตกลง) quotation, for the production
+// page where staff fill in the JOB number and each item's product code
+// once the job is scheduled. Deliberately not filtered to only quotations
+// missing that data, since staff also come back here to correct it later.
+export async function getAcceptedQuotationsForProduction(): Promise<ProductionOrder[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("quotations")
+    .select(PRODUCTION_ORDER_COLUMNS)
+    .eq("status", "ลูกค้าตอบตกลง")
+    // Highest JOB NO. first — job_number's fixed-width JB+YYMM+seq shape
+    // (see src/lib/job-no.ts) sorts lexicographically the same as
+    // numerically, so this reads as "newest job first" without depending on
+    // accepted_at/quote_date timestamps at all. accepted_at is the
+    // tiebreaker for the rare case of two rows sharing one job_number (or
+    // neither having one yet).
+    .order("job_number", { ascending: false, nullsFirst: false })
+    .order("accepted_at", { ascending: false, nullsFirst: false });
+  if (error) throw error;
+
+  // Supabase's select-string type parser doesn't cleanly resolve two
+  // embedded relations (sales_reps + quotation_items) in one query, so the
+  // row type it infers here is unusable — cast once via unknown rather than
+  // scattering @ts-expect-error across every field access below.
+  const rows = (data ?? []) as unknown as ProductionQuotationRow[];
+  return rows.map(mapProductionOrderRow);
+}
+
+// Single-record counterpart of the above, for the ใบลงผลิต detail/edit page
+// reached from the list's "แก้ไข" action.
+export async function getProductionOrderById(id: string): Promise<ProductionOrder | null> {
+  if (!isSupabaseConfigured()) return null;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("quotations")
+    .select(PRODUCTION_ORDER_COLUMNS)
+    .eq("id", id)
+    .eq("status", "ลูกค้าตอบตกลง")
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+
+  return mapProductionOrderRow(data as unknown as ProductionQuotationRow);
 }
 
 export async function getQuotationById(id: string): Promise<QuotationDetail | null> {
@@ -308,6 +412,7 @@ export async function getAcceptedUnconvertedQuotationsForCustomer(customerName: 
 // straight from the accepted quotation, rather than needing to re-parse a
 // formatted string.
 export interface QuotationItemRaw {
+  id: string;
   productName: string;
   thickness: string | null;
   size: string | null;
@@ -348,7 +453,7 @@ export async function getAcceptedQuotationItemsByJobNo(
 
   const { data: items, error: itemsErr } = await supabase
     .from("quotation_items")
-    .select("product_name, thickness, size, color, qty, unit, unit_price")
+    .select("id, product_name, thickness, size, color, qty, unit, unit_price")
     .eq("quotation_id", best.id)
     .order("sort_order", { ascending: true });
   if (itemsErr) throw itemsErr;
@@ -356,6 +461,7 @@ export async function getAcceptedQuotationItemsByJobNo(
   return {
     quotationDocNo: best.doc_no,
     items: (items ?? []).map((row) => ({
+      id: row.id,
       productName: row.product_name,
       thickness: row.thickness,
       size: row.size,

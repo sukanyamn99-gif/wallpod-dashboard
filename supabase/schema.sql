@@ -110,7 +110,20 @@ create table payments (
   -- since a tax invoice formalizes an invoice already on file, distinct
   -- from ใบวางบิล/ใบเสร็จ above.
   tax_invoice_no text,
-  tax_invoice_date date
+  tax_invoice_date date,
+  -- Set only on an installment auto-created by syncQuotationSourcedInstallments
+  -- (billing-documents/actions.ts) — lets a later document that bundles the
+  -- same quotation-sourced item find and update this SAME installment
+  -- instead of creating a new one in the next empty slot.
+  source_quotation_id uuid references quotations(id) on delete set null,
+  -- The specific tax invoice that owns this installment — the real
+  -- correlator once a quotation can be billed via multiple partial tax
+  -- invoices (source_quotation_id alone can't tell them apart).
+  source_tax_invoice_id uuid references billing_notes(id) on delete set null,
+  -- WHT already withheld/settled via a WHT certificate — not still owed,
+  -- but not cash received either. See getFullProjectReport/getProjectByJobNo
+  -- for how this is treated as settled (not outstanding) once received.
+  wht_amount numeric(14,2) not null default 0
 );
 
 -- ============ Sale Report (live pipeline tracking, self-reported by sales reps) ============
@@ -1256,6 +1269,11 @@ create table quotations (
   total numeric(14,2) generated always as (pre_vat + vat) stored,
   sales_rep_id uuid references sales_reps(id),
   status text not null default 'รอตอบรับ' check (status in ('รอตอบรับ', 'ลูกค้าตอบตกลง', 'ปฏิเสธ')),
+  -- Set whenever status transitions to ลูกค้าตอบตกลง (see
+  -- updateQuotationStatus) — ใบลงผลิต sorts by this, not quote_date, so a
+  -- just-accepted quotation always surfaces first regardless of how old its
+  -- original quote date is.
+  accepted_at timestamptz,
   converted_project_id uuid references projects(id) on delete set null,
   created_by uuid references profiles(id),
   created_at timestamptz not null default now(),
@@ -1398,7 +1416,13 @@ create table billing_notes (
   retention_percent numeric(5,2) not null default 0,
   note text,
   created_by uuid references profiles(id),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- ใบเสร็จรับเงิน-only fields, printed in its payment-method + bank-details
+  -- footer — left null/unused by every other doc type.
+  payment_method text check (payment_method in ('เงินสด', 'เช็ค', 'โอนเงิน', 'บัตรเครดิต')),
+  bank_name text,
+  payment_reference_no text,
+  payment_date date
 );
 
 create table billing_note_items (
@@ -1422,7 +1446,11 @@ create table billing_note_items (
   manual_description text,
   manual_qty numeric(14,2),
   manual_unit text,
-  manual_unit_price numeric(14,2)
+  manual_unit_price numeric(14,2),
+  -- Whether this line counts toward the document-level หัก ณ ที่จ่าย (WHT)
+  -- deduction — lets several invoices/quotations be bundled into one
+  -- document while withholding tax on only some of them.
+  apply_wht boolean not null default true
 );
 
 alter table billing_notes enable row level security;

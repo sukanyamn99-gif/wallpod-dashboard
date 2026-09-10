@@ -264,13 +264,13 @@ function ProjectRow({
           <Percent value={marginPercent(p.profit, p.preVat)} className={COST_GROUP_CLASS} />
         </>
       )}
-      <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.invoiceNo1 ?? "—"}</TableCell>
+      <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.taxInvoiceNo1 ?? p.invoiceNo1 ?? "—"}</TableCell>
       <Money value={p.amount1} className={PAYMENT_GROUP_CLASS} />
       <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.paidDate1 ?? "—"}</TableCell>
-      <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.invoiceNo2 ?? "—"}</TableCell>
+      <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.taxInvoiceNo2 ?? p.invoiceNo2 ?? "—"}</TableCell>
       <Money value={p.amount2} className={PAYMENT_GROUP_CLASS} />
       <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.paidDate2 ?? "—"}</TableCell>
-      <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.invoiceNo3 ?? "—"}</TableCell>
+      <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.taxInvoiceNo3 ?? p.invoiceNo3 ?? "—"}</TableCell>
       <Money value={p.amount3} className={PAYMENT_GROUP_CLASS} />
       <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.paidDate3 ?? "—"}</TableCell>
       <TableCell className={cn("whitespace-nowrap", PAYMENT_GROUP_CLASS)}>{p.status ?? "—"}</TableCell>
@@ -550,13 +550,19 @@ export function ProjectsTable({
                   <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", COST_GROUP_HEADER_CLASS)}>%กำไร</TableHead>
                 </>
               )}
-              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>เลขที่เอกสาร (งวด 1)</TableHead>
+              {/* Shows the auto-filled ใบกำกับภาษี number once one has been
+                  issued for this installment, falling back to the manually-
+                  entered เลขที่เอกสาร otherwise — see p.taxInvoiceNoN ??
+                  p.invoiceNoN below. A job from before the auto-fill existed
+                  simply never has a tax invoice number, so it keeps showing
+                  its original manually-entered one unchanged. */}
+              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>ใบกำกับภาษี (งวด 1)</TableHead>
               <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>งวดที่ 1 จำนวนเงิน</TableHead>
               <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>วันที่ออกเอกสาร (งวด 1)</TableHead>
-              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>เลขที่เอกสาร (งวด 2)</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>ใบกำกับภาษี (งวด 2)</TableHead>
               <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>งวดที่ 2 จำนวนเงิน</TableHead>
               <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>วันที่ออกเอกสาร (งวด 2)</TableHead>
-              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>เลขที่เอกสาร (งวด 3)</TableHead>
+              <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>ใบกำกับภาษี (งวด 3)</TableHead>
               <TableHead className={cn("sticky top-0 z-10 text-right whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>งวดที่ 3 จำนวนเงิน</TableHead>
               <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>วันที่ออกเอกสาร (งวด 3)</TableHead>
               <TableHead className={cn("sticky top-0 z-10 whitespace-nowrap", PAYMENT_GROUP_HEADER_CLASS)}>สถานะ</TableHead>

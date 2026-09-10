@@ -92,6 +92,39 @@ export async function getDistinctProjectJobNos(): Promise<string[]> {
   return Array.from(jobNos).sort();
 }
 
+// Real job numbers (JB + 2-digit year + 2-digit month + 3-digit sequence,
+// see src/lib/job-no.ts) keep incrementing the same 3-digit sequence across
+// month boundaries rather than resetting each month (confirmed against live
+// data: .../JB2608186 was immediately followed by .../JB2609187, not a reset
+// to 001) — so "next" means the highest existing sequence digit group + 1,
+// read from both projects.job_no and quotations.job_number since either can
+// hold the most recently assigned one. Shared by WALLPOD Project Sales'
+// create form and quotation acceptance (updateQuotationStatus), the two
+// places that assign a brand-new JOB NO. automatically.
+export async function getNextJobNo(): Promise<string> {
+  const now = new Date();
+  const yy = String(now.getFullYear() % 100).padStart(2, "0");
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  if (!isSupabaseConfigured()) return `JB${yy}${mm}`;
+
+  const supabase = await createClient();
+  const [{ data: projects, error: pErr }, { data: quotes, error: qErr }] = await Promise.all([
+    supabase.from("projects").select("job_no").not("job_no", "is", null),
+    supabase.from("quotations").select("job_number").not("job_number", "is", null),
+  ]);
+  if (pErr) throw pErr;
+  if (qErr) throw qErr;
+
+  let max = 0;
+  const values = [...(projects ?? []).map((r) => r.job_no), ...(quotes ?? []).map((r) => r.job_number)];
+  for (const value of values) {
+    const match = /^JB\d{4}(\d{3})$/.exec(value ?? "");
+    if (match) max = Math.max(max, parseInt(match[1], 10));
+  }
+  const seq = String(max + 1).padStart(3, "0");
+  return `JB${yy}${mm}${seq}`;
+}
+
 export interface JobLookupEntry {
   projectName: string;
   customerId: string | null;

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Award,
   BarChart3,
   Banknote,
   BookUser,
@@ -18,6 +19,7 @@ import {
   FileCheck2,
   FileClock,
   FileDown,
+  Factory,
   Files,
   FileSignature,
   FileSpreadsheet,
@@ -78,6 +80,7 @@ const salesDocsGroup = {
   icon: Files,
   items: [
     { title: "ใบเสนอราคา", url: "/dashboard/quotations", icon: FileSignature },
+    { title: "ใบลงผลิต", url: "/dashboard/quotations/production-orders", icon: Factory },
     { title: "ใบแจ้งหนี้ (ไม่ใช่ใบกำกับภาษี)", url: "/dashboard/billing-documents/invoice", icon: FileClock },
     { title: "ใบวางบิล", url: "/dashboard/billing-documents/billing-note", icon: FileStack },
     { title: "ใบกำกับภาษี", url: "/dashboard/billing-documents/tax-invoice", icon: FileCheck2 },
@@ -119,6 +122,7 @@ const expensesGroup = {
     { title: "เจ้าหนี้คงค้าง", url: "/dashboard/expenses/payables", icon: HandCoins },
     { title: "เงินเดือน", url: "/dashboard/expenses/payroll", icon: CircleDollarSign },
     { title: "คำนวณค่าคอมมิชชั่น", url: "/dashboard/expenses/commission", icon: Percent },
+    { title: "คำนวณ Incentive", url: "/dashboard/expenses/incentive", icon: Award },
   ],
 };
 

@@ -14,6 +14,12 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "8mb",
     },
   },
+  // Keeps puppeteer-core/@sparticuz/chromium as plain Node requires instead
+  // of being pulled into the route handler's bundle — both ship native
+  // binaries/binary-loading logic that breaks if webpack tries to process
+  // them, per Next.js's own guidance for using headless Chrome in a Route
+  // Handler (see src/app/api/print-pdf/route.ts).
+  serverExternalPackages: ["puppeteer-core", "@sparticuz/chromium", "puppeteer"],
   async headers() {
     return [
       {

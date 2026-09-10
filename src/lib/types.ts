@@ -518,6 +518,73 @@ export interface CommissionableProject {
   hasCommissionEntry: boolean;
 }
 
+// One payment installment printed under its job's row on the Incentive
+// report — "+VAT" is that installment's own billed amount (already
+// VAT-inclusive, matching payments.amount everywhere else in this app),
+// percentOfTotal is how much of the job's total this slice represents
+// (purely a display figure, computed from the installment amounts
+// themselves — nothing stores a percent directly).
+export interface IncentiveInstallment {
+  label: string; // "งวดที่ 1", "งวดที่ 2", ...
+  percentOfTotal: number;
+  amountWithVat: number;
+  invoiceNo: string | null;
+  paidDate: string | null;
+  receiptNo: string | null;
+}
+
+// One job on the Incentive report for a given month — profit/cost mirror
+// getFullProjectReport() exactly; costs being null (no cost data entered
+// yet) means profit and the three percentage splits can't be computed,
+// shown as an honest gap rather than assuming a zero cost.
+export interface IncentiveReportRow {
+  projectId: string;
+  jobNo: string | null;
+  projectDate: string;
+  customerName: string;
+  projectName: string;
+  salesRepName: string;
+  preVat: number;
+  totalCost: number | null;
+  profit: number | null;
+  profitPercent: number | null;
+  installments: IncentiveInstallment[];
+  koonwayShare: number | null; // profit * 70%
+  companyCommission: number | null; // profit * 15%
+  incentiveAmount: number | null; // profit * 5%
+  // The job's payment status (เก็บเงินเรียบร้อย / ชำระมาแล้ว 50% / รอชำระเงิน) —
+  // every job in the month must be เก็บเงินเรียบร้อย for the Incentive pool
+  // to actually be payable that month (see IncentiveReport.allCollected).
+  status: string | null;
+}
+
+export interface IncentiveReportTotals {
+  preVat: number;
+  totalCost: number;
+  profit: number;
+  profitPercent: number;
+  amountWithVat: number;
+  koonwayShare: number;
+  companyCommission: number;
+  incentiveAmount: number;
+}
+
+// Payable only when BOTH hold for the month: total sales (preVat) reach the
+// ฿800,000 threshold, and every job that month has been fully collected —
+// per the user's explicit rule. Who the pool is split among isn't tied to
+// any role in this app ("ทีม Support" here is a freely-named list of
+// beneficiaries entered per report, not profiles.role = "support_sale") —
+// staff type in however many names the report should split across.
+export interface IncentiveReport {
+  month: number; // 1-12
+  year: number; // Gregorian
+  rows: IncentiveReportRow[];
+  totals: IncentiveReportTotals;
+  totalSales: number; // == totals.preVat, named for clarity at the eligibility check
+  allCollected: boolean;
+  eligible: boolean; // totalSales >= 800,000 && allCollected
+}
+
 export type QuotationStatus = "รอตอบรับ" | "ลูกค้าตอบตกลง" | "ปฏิเสธ";
 
 export type QuotationType = "ค่าของ" | "ค่าติดตั้ง";
@@ -607,6 +674,35 @@ export interface QuotationDetail extends Quotation {
   items: QuotationItem[];
 }
 
+// ใบลงผลิต — accepted quotations, shown so production staff can fill in
+// the JOB number and each item's product code once the job is actually
+// scheduled for production. Writes go straight onto the same
+// quotations.job_number / quotation_items.product_code columns the
+// original quotation form already has — this is a second, focused entry
+// point onto that data, not a separate copy of it.
+export interface ProductionOrderItem {
+  id: string;
+  productName: string;
+  thickness: string | null;
+  size: string | null;
+  color: string | null;
+  qty: number;
+  unit: string;
+  productCode: string | null;
+}
+
+export interface ProductionOrder {
+  id: string;
+  docNo: string;
+  quoteDate: string;
+  projectName: string;
+  customerName: string;
+  salesRepName: string | null;
+  jobNumber: string | null;
+  total: number;
+  items: ProductionOrderItem[];
+}
+
 export type BillingDocumentType = "invoice" | "billing_note" | "tax_invoice" | "receipt";
 
 export const BILLING_DOCUMENT_LABELS: Record<BillingDocumentType, string> = {
@@ -658,6 +754,10 @@ export interface BillableTaxInvoice {
   docDate: string;
   quotationId: string;
   netPayable: number;
+  // The tax invoice's own WHT rate — used to auto-suggest the bundling
+  // document's wht_percent when this invoice is picked, so staff don't have
+  // to remember and re-type a rate that's already on file.
+  whtPercent: number;
 }
 
 // Descriptive product/service detail pulled from the quotation behind an
@@ -685,6 +785,11 @@ export interface BillingDocumentItem {
   invoiceNo: string;
   invoiceDate: string | null;
   amount: number;
+  // The document's real face value before its own WHT/retention deduction
+  // (amount is already net-payable for a quotation-sourced line once a tax
+  // invoice exists — see getNetPayableForQuotationIds). Equal to amount for
+  // payment-sourced/manual lines, which were never netted this way.
+  grossAmount: number;
   // Set instead of paymentId when this line was billed directly from an
   // accepted-but-not-yet-converted quotation (see BillableQuotation) rather
   // than an existing invoiced payment.
@@ -709,6 +814,9 @@ export interface BillingDocumentItem {
   // invoice is the document actually being collected on.
   taxInvoiceDocNo?: string | null;
   taxInvoiceDocDate?: string | null;
+  // Whether this line counts toward the document's หัก ณ ที่จ่าย (WHT)
+  // deduction — see billing_note_items.apply_wht.
+  applyWht: boolean;
 }
 
 export interface BillingDocument {
@@ -730,8 +838,16 @@ export interface BillingDocument {
   retentionPercent: number;
   note: string | null;
   createdById: string | null;
+  createdByName: string | null;
   createdAt: string;
+  // ใบเสร็จรับเงิน-only — null on every other doc type.
+  paymentMethod: PaymentMethod | null;
+  bankName: string | null;
+  paymentReferenceNo: string | null;
+  paymentDate: string | null;
 }
+
+export type PaymentMethod = "เงินสด" | "เช็ค" | "โอนเงิน" | "บัตรเครดิต";
 
 export interface BillingDocumentDetail extends BillingDocument {
   items: BillingDocumentItem[];

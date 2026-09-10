@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { DownloadPdfButton } from "@/components/dashboard/download-pdf-button";
 import { formatTHB } from "@/lib/format";
 import { REQUISITION_PURPOSE_LABELS } from "@/lib/types";
 import type { StockRequisition } from "@/lib/types";
@@ -60,6 +61,7 @@ export function PrintRequisitionView({
             ปิด
           </Button>
           <Button onClick={() => window.print()}>พิมพ์</Button>
+          <DownloadPdfButton />
         </div>
       </div>
 

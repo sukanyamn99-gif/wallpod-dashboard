@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 // this just saves re-typing the common 3-step deposit/install/finish cycle.
 const STANDARD_LABELS = [
   "Deporsit / มัดจำก่อนผลิต",
+  "Before goods pickup / ก่อนเข้ารับสินค้า",
   "Start installation date / ก่อนเข้าติดตั้งสินค้า",
   "Finish installation date (7 Days) / หลังติดตั้งเสร็จ (ภายใน 7 วัน)",
 ];

@@ -42,6 +42,7 @@ export interface FullProjectRow {
   billingNoteNo1: string | null;
   billingNoteDate1: string | null;
   invoiceNo1: string | null;
+  taxInvoiceNo1: string | null;
   amount1: number | null;
   paidDate1: string | null;
   receiptNo1: string | null;
@@ -49,6 +50,7 @@ export interface FullProjectRow {
   billingNoteNo2: string | null;
   billingNoteDate2: string | null;
   invoiceNo2: string | null;
+  taxInvoiceNo2: string | null;
   amount2: number | null;
   paidDate2: string | null;
   receiptNo2: string | null;
@@ -56,6 +58,7 @@ export interface FullProjectRow {
   billingNoteNo3: string | null;
   billingNoteDate3: string | null;
   invoiceNo3: string | null;
+  taxInvoiceNo3: string | null;
   amount3: number | null;
   paidDate3: string | null;
   receiptNo3: string | null;
@@ -146,7 +149,7 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
     supabase
       .from("projects")
       .select(
-        "id, job_no, project_date, project_name, customer_type, pre_vat, vat, total, is_cancelled, production_status, customers(name), sales_reps(name), project_items(product_category, amount), project_costs(material_cost, glue_cost, cutting_cost, install_cost, parking_cost, shipping_cost, total_cost), payments(invoice_no, installment_no, amount, paid_date, status, outstanding_amount, receipt_no, received_date, billing_note_no, billing_note_date)",
+        "id, job_no, project_date, project_name, customer_type, pre_vat, vat, total, is_cancelled, production_status, customers(name), sales_reps(name), project_items(product_category, amount), project_costs(material_cost, glue_cost, cutting_cost, install_cost, parking_cost, shipping_cost, total_cost), payments(invoice_no, tax_invoice_no, installment_no, amount, paid_date, status, outstanding_amount, receipt_no, received_date, billing_note_no, billing_note_date)",
       )
       .order("project_date", { ascending: false })
       .order("installment_no", { foreignTable: "payments", ascending: true }),
@@ -167,6 +170,7 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
   };
   type EmbeddedPayment = {
     invoice_no: string | null;
+    tax_invoice_no: string | null;
     installment_no: number;
     amount: number;
     paid_date: string | null;
@@ -239,6 +243,7 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
       billingNoteNo1: payment1?.billing_note_no ?? null,
       billingNoteDate1: payment1?.billing_note_date ?? null,
       invoiceNo1: payment1?.invoice_no ?? null,
+      taxInvoiceNo1: payment1?.tax_invoice_no ?? null,
       amount1: payment1 ? Number(payment1.amount) : null,
       paidDate1: payment1?.paid_date ?? null,
       receiptNo1: payment1?.receipt_no ?? null,
@@ -246,6 +251,7 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
       billingNoteNo2: payment2?.billing_note_no ?? null,
       billingNoteDate2: payment2?.billing_note_date ?? null,
       invoiceNo2: payment2?.invoice_no ?? null,
+      taxInvoiceNo2: payment2?.tax_invoice_no ?? null,
       amount2: payment2 ? Number(payment2.amount) : null,
       paidDate2: payment2?.paid_date ?? null,
       receiptNo2: payment2?.receipt_no ?? null,
@@ -253,6 +259,7 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
       billingNoteNo3: payment3?.billing_note_no ?? null,
       billingNoteDate3: payment3?.billing_note_date ?? null,
       invoiceNo3: payment3?.invoice_no ?? null,
+      taxInvoiceNo3: payment3?.tax_invoice_no ?? null,
       amount3: payment3 ? Number(payment3.amount) : null,
       paidDate3: payment3?.paid_date ?? null,
       receiptNo3: payment3?.receipt_no ?? null,
@@ -350,7 +357,7 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
   const { data: project, error: projectErr } = await supabase
     .from("projects")
     .select(
-      "id, job_no, project_date, customer_id, project_name, sales_rep_id, customer_type, pre_vat, vat, is_cancelled, production_status, customers(name), project_items(product_category, amount), project_costs(material_cost, glue_cost, cutting_cost, install_cost, parking_cost, shipping_cost), payments(invoice_no, installment_no, amount, paid_date, status, receipt_no, received_date, billing_note_no, billing_note_date, tax_invoice_no, tax_invoice_date)",
+      "id, job_no, project_date, customer_id, project_name, sales_rep_id, customer_type, pre_vat, vat, is_cancelled, production_status, customers(name), project_items(product_category, amount), project_costs(material_cost, glue_cost, cutting_cost, install_cost, parking_cost, shipping_cost), payments(invoice_no, installment_no, amount, wht_amount, paid_date, status, receipt_no, received_date, billing_note_no, billing_note_date, tax_invoice_no, tax_invoice_date)",
     )
     .eq("job_no", jobNo)
     .order("installment_no", { foreignTable: "payments", ascending: true })
@@ -371,6 +378,7 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
     invoice_no: string | null;
     installment_no: number;
     amount: number;
+    wht_amount: number;
     paid_date: string | null;
     status: string | null;
     receipt_no: string | null;
@@ -419,6 +427,7 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
       taxInvoiceDate1: payment1?.tax_invoice_date ?? "",
       receiptNo1: payment1?.receipt_no ?? "",
       receivedDate1: payment1?.received_date ?? "",
+      whtAmount1: payment1?.wht_amount ? String(payment1.wht_amount) : "",
       billingNoteNo2: payment2?.billing_note_no ?? "",
       billingNoteDate2: payment2?.billing_note_date ?? "",
       invoiceNo2: payment2?.invoice_no ?? "",
@@ -428,6 +437,7 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
       taxInvoiceDate2: payment2?.tax_invoice_date ?? "",
       receiptNo2: payment2?.receipt_no ?? "",
       receivedDate2: payment2?.received_date ?? "",
+      whtAmount2: payment2?.wht_amount ? String(payment2.wht_amount) : "",
       billingNoteNo3: payment3?.billing_note_no ?? "",
       billingNoteDate3: payment3?.billing_note_date ?? "",
       invoiceNo3: payment3?.invoice_no ?? "",
@@ -437,6 +447,7 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
       taxInvoiceDate3: payment3?.tax_invoice_date ?? "",
       receiptNo3: payment3?.receipt_no ?? "",
       receivedDate3: payment3?.received_date ?? "",
+      whtAmount3: payment3?.wht_amount ? String(payment3.wht_amount) : "",
     },
   };
 }

@@ -6,6 +6,7 @@ import type {
   BillingDocument,
   BillingDocumentDetail,
   BillingDocumentType,
+  PaymentMethod,
   QuotationItemDetail,
   UnbilledInvoice,
 } from "@/lib/types";
@@ -42,17 +43,23 @@ export async function getUnbilledInvoicesForCustomer(customerId: string): Promis
 
 // ใบกำกับภาษี documents for a customer, quotation-sourced (payment-sourced
 // ones already have a real WALLPOD invoice on file and go through
-// getUnbilledInvoicesForCustomer instead), excluding any whose quotation
-// is already referenced by an existing ใบวางบิล — already billed, so not
-// offered again. This is what the ใบวางบิล create form now picks from
-// directly, per the user's explicit "ไม่ต้องผ่านใบเสนอราคา" request —
-// staff browse issued tax invoices, not the quotations behind them.
+// getUnbilledInvoicesForCustomer instead), excluding any whose quotation is
+// already referenced by an existing document of the SAME target type —
+// e.g. already billed (ใบวางบิล), so not offered again when creating
+// another ใบวางบิล. Originally built just for ใบวางบิล (per the user's
+// explicit "ไม่ต้องผ่านใบเสนอราคา" request — staff browse issued tax
+// invoices, not the quotations behind them) and now shared by ใบเสร็จรับเงิน
+// too, which needs the same source but checked against prior receipts
+// instead — a tax invoice already billed via ใบวางบิล is still perfectly
+// receiptable, so reusing the billing_note-only check for receipts would
+// have wrongly hidden the normal invoice → billing note → receipt flow.
 export async function getBillableTaxInvoicesForCustomer(
   customerId: string,
-  // When editing an existing ใบวางบิล, exclude its own items from the
-  // "already billed" check — otherwise the document being edited would
+  targetDocType: "billing_note" | "receipt",
+  // When editing an existing document, exclude its own items from the
+  // "already claimed" check — otherwise the document being edited would
   // hide the very tax invoice it was created from.
-  excludeBillingNoteId?: string,
+  excludeDocId?: string,
 ): Promise<BillableTaxInvoice[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
@@ -60,35 +67,93 @@ export async function getBillableTaxInvoicesForCustomer(
   const { data: invoices, error } = await supabase
     .from("billing_notes")
     .select(
-      "id, doc_no, doc_date, discount_amount, wht_percent, retention_percent, billing_note_items(quotation_id, amount)",
+      "id, doc_no, doc_date, discount_amount, wht_percent, retention_percent, billing_note_items(quotation_id, amount, apply_wht)",
     )
     .eq("doc_type", "tax_invoice")
     .eq("customer_id", customerId);
   if (error) throw error;
 
-  let billedQuery = supabase
+  let claimedQuery = supabase
     .from("billing_note_items")
     .select("quotation_id, billing_note_id, billing_notes!inner(doc_type)")
-    .eq("billing_notes.doc_type", "billing_note")
+    .eq("billing_notes.doc_type", targetDocType)
     .not("quotation_id", "is", null);
-  if (excludeBillingNoteId) billedQuery = billedQuery.neq("billing_note_id", excludeBillingNoteId);
-  const { data: billed, error: billedErr } = await billedQuery;
-  if (billedErr) throw billedErr;
-  const billedQuotationIds = new Set((billed ?? []).map((row) => row.quotation_id as string));
+  if (excludeDocId) claimedQuery = claimedQuery.neq("billing_note_id", excludeDocId);
+  const { data: claimed, error: claimedErr } = await claimedQuery;
+  if (claimedErr) throw claimedErr;
+  const billedQuotationIds = new Set((claimed ?? []).map((row) => row.quotation_id as string));
 
   const result: BillableTaxInvoice[] = [];
   for (const inv of invoices ?? []) {
-    const items = (inv.billing_note_items ?? []) as unknown as { quotation_id: string | null; amount: number }[];
+    const items = (inv.billing_note_items ?? []) as unknown as {
+      quotation_id: string | null;
+      amount: number;
+      apply_wht: boolean;
+    }[];
     const quotationId = items.find((it) => it.quotation_id)?.quotation_id;
     if (!quotationId || billedQuotationIds.has(quotationId)) continue;
 
     const summary = computeBillingDocumentSummary(
-      items.map((it) => Number(it.amount)),
+      items.map((it) => ({ amount: Number(it.amount), applyWht: it.apply_wht })),
       Number(inv.discount_amount),
       Number(inv.wht_percent),
       Number(inv.retention_percent),
     );
-    result.push({ id: inv.id, docNo: inv.doc_no, docDate: inv.doc_date, quotationId, netPayable: summary.netPayable });
+    result.push({
+      id: inv.id,
+      docNo: inv.doc_no,
+      docDate: inv.doc_date,
+      quotationId,
+      netPayable: summary.netPayable,
+      whtPercent: Number(inv.wht_percent),
+    });
+  }
+  return result;
+}
+
+// A quotation-sourced line being bundled into a ใบวางบิล/ใบเสร็จรับเงิน
+// should be billed at the ใบกำกับภาษี's own net-payable amount (after that
+// tax invoice's own discount/WHT/retention) once one exists for that
+// quotation — not the quotation's raw gross total, which would ignore a
+// withholding tax the tax invoice already accounted for and overstate what's
+// actually owed. Batched (one query covering every quotation-sourced item on
+// the document) rather than per-item.
+export async function getNetPayableForQuotationIds(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  quotationIds: string[],
+): Promise<Record<string, { netPayable: number; grossAmount: number }>> {
+  if (quotationIds.length === 0) return {};
+  const { data, error } = await supabase
+    .from("billing_notes")
+    .select(
+      "discount_amount, wht_percent, retention_percent, created_at, billing_note_items!inner(quotation_id, amount, apply_wht)",
+    )
+    .eq("doc_type", "tax_invoice")
+    .in("billing_note_items.quotation_id", quotationIds)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  const result: Record<string, { netPayable: number; grossAmount: number }> = {};
+  for (const inv of data ?? []) {
+    const items = (inv.billing_note_items ?? []) as unknown as {
+      quotation_id: string | null;
+      amount: number;
+      apply_wht: boolean;
+    }[];
+    const quotationId = items.find((it) => it.quotation_id && quotationIds.includes(it.quotation_id))?.quotation_id;
+    if (!quotationId || result[quotationId] !== undefined) continue; // keep the most recent only
+
+    const summary = computeBillingDocumentSummary(
+      items.map((it) => ({ amount: Number(it.amount), applyWht: it.apply_wht })),
+      Number(inv.discount_amount),
+      Number(inv.wht_percent),
+      Number(inv.retention_percent),
+    );
+    // grossAmount = the tax invoice's own total before its WHT/retention
+    // deduction — kept alongside netPayable so a later ใบวางบิล/ใบเสร็จรับเงิน
+    // can bill at (and collect toward) the net-payable amount while still
+    // printing the invoice's real face value in its "ยอดรวมตามเอกสาร" column.
+    result[quotationId] = { netPayable: summary.netPayable, grossAmount: summary.totalAfterVat };
   }
   return result;
 }
@@ -123,7 +188,7 @@ async function getTaxInvoiceRefsForQuotationIds(
 }
 
 const HEADER_COLUMNS =
-  "id, doc_no, doc_type, customer_id, doc_date, credit_days, due_date, sales_rep_id, discount_amount, wht_percent, retention_percent, note, created_by, created_at, customers(name, address, phone, tax_id), sales_reps(name)";
+  "id, doc_no, doc_type, customer_id, doc_date, credit_days, due_date, sales_rep_id, discount_amount, wht_percent, retention_percent, note, created_by, created_at, payment_method, bank_name, payment_reference_no, payment_date, customers(name, address, phone, tax_id), sales_reps(name), profiles(full_name)";
 
 type HeaderRow = {
   id: string;
@@ -140,8 +205,15 @@ type HeaderRow = {
   note: string | null;
   created_by: string | null;
   created_at: string;
+  payment_method: PaymentMethod | null;
+  bank_name: string | null;
+  payment_reference_no: string | null;
+  payment_date: string | null;
   customers: { name: string; address: string | null; phone: string | null; tax_id: string | null } | null;
   sales_reps: { name: string } | null;
+  // The staff member who issued the document — auto-fills the ผู้วางบิล/
+  // ผู้อนุมัติ signature line's name on print, alongside the doc date.
+  profiles: { full_name: string } | null;
 };
 
 function mapHeader(row: HeaderRow): BillingDocument {
@@ -164,7 +236,12 @@ function mapHeader(row: HeaderRow): BillingDocument {
     retentionPercent: Number(row.retention_percent),
     note: row.note,
     createdById: row.created_by,
+    createdByName: row.profiles?.full_name ?? null,
     createdAt: row.created_at,
+    paymentMethod: row.payment_method,
+    bankName: row.bank_name,
+    paymentReferenceNo: row.payment_reference_no,
+    paymentDate: row.payment_date,
   };
 }
 
@@ -201,8 +278,8 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
   const showsItemizedDetail = header.doc_type === "invoice" || header.doc_type === "tax_invoice";
   const MANUAL_COLUMNS = "manual_description, manual_qty, manual_unit, manual_unit_price";
   const itemsSelect = showsItemizedDetail
-    ? `id, payment_id, quotation_id, invoice_no_snapshot, invoice_date_snapshot, amount, ${MANUAL_COLUMNS}, payments(projects(job_no))`
-    : `id, payment_id, quotation_id, invoice_no_snapshot, invoice_date_snapshot, amount, ${MANUAL_COLUMNS}`;
+    ? `id, payment_id, quotation_id, invoice_no_snapshot, invoice_date_snapshot, amount, apply_wht, ${MANUAL_COLUMNS}, payments(projects(job_no))`
+    : `id, payment_id, quotation_id, invoice_no_snapshot, invoice_date_snapshot, amount, apply_wht, ${MANUAL_COLUMNS}`;
   const { data: items, error: itemsErr } = await supabase
     .from("billing_note_items")
     .select(itemsSelect)
@@ -216,6 +293,7 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     invoice_no_snapshot: string;
     invoice_date_snapshot: string | null;
     amount: number;
+    apply_wht: boolean;
     manual_description: string | null;
     manual_qty: number | null;
     manual_unit: string | null;
@@ -235,10 +313,27 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     ]);
   }
 
+  // ใบวางบิล and ใบเสร็จรับเงิน both bill straight from ใบกำกับภาษี now (see
+  // getBillableTaxInvoicesForCustomer) — a quotation-sourced line on either
+  // should print the tax invoice's doc no. once one exists, not the
+  // quotation's, the same rule already applied to ใบวางบิล alone before.
   let taxInvoiceRefsByQuotationId: Record<string, { docNo: string; docDate: string }> = {};
-  if (header.doc_type === "billing_note") {
+  // The line's stored amount is already the tax invoice's net-payable (after
+  // its own WHT/retention — see getNetPayableForQuotationIds), so the
+  // itemized table's "ยอดรวมตามเอกสาร" column needs this separately to show
+  // the invoice's real face value, with the WHT/retention shown as its own
+  // explicit deduction column instead of silently baked into a lower total.
+  let grossAmountByQuotationId: Record<string, number> = {};
+  if (header.doc_type === "billing_note" || header.doc_type === "receipt") {
     const quotationIds = itemRows.filter((it) => it.quotation_id).map((it) => it.quotation_id as string);
-    taxInvoiceRefsByQuotationId = await getTaxInvoiceRefsForQuotationIds(supabase, quotationIds);
+    const [refs, netPayable] = await Promise.all([
+      getTaxInvoiceRefsForQuotationIds(supabase, quotationIds),
+      getNetPayableForQuotationIds(supabase, quotationIds),
+    ]);
+    taxInvoiceRefsByQuotationId = refs;
+    grossAmountByQuotationId = Object.fromEntries(
+      Object.entries(netPayable).map(([qid, v]) => [qid, v.grossAmount]),
+    );
   }
 
   return {
@@ -252,13 +347,18 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
           ? quotationDetailByJobNo[jobNo]
           : undefined;
       const taxInvoiceRef = it.quotation_id ? taxInvoiceRefsByQuotationId[it.quotation_id] : undefined;
+      const amount = Number(it.amount);
       return {
         id: it.id,
         paymentId: it.payment_id,
         quotationId: it.quotation_id,
         invoiceNo: it.invoice_no_snapshot,
         invoiceDate: it.invoice_date_snapshot,
-        amount: Number(it.amount),
+        amount,
+        // Falls back to amount itself for payment-sourced/manual lines,
+        // which were never netted against a tax invoice's own WHT.
+        grossAmount: (it.quotation_id ? grossAmountByQuotationId[it.quotation_id] : undefined) ?? amount,
+        applyWht: it.apply_wht,
         manualDescription: it.manual_description,
         manualQty: it.manual_qty !== null ? Number(it.manual_qty) : null,
         manualUnit: it.manual_unit,

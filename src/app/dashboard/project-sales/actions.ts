@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activity-log";
 import { getJobLinkedCostSummary } from "@/lib/data/project-sales";
+import { getNextJobNo } from "@/lib/data/reference";
 import type { PaymentStatus, ProductionStatus } from "@/lib/types";
 import { PRODUCTION_STATUSES } from "@/lib/types";
 import { getJobNoError } from "@/lib/job-no";
@@ -53,6 +54,9 @@ type ParsedForm = {
   installment1Amount: number;
   installment2Amount: number;
   installment3Amount: number;
+  whtAmount1: number;
+  whtAmount2: number;
+  whtAmount3: number;
   outstanding: number;
   billingNoteNo1: string | null;
   billingNoteDate1: string | null;
@@ -137,6 +141,11 @@ function parseForm(formData: FormData): { ok: false; error: string } | ParsedFor
   const installment1Amount = num(formData.get("amount_1"));
   const installment2Amount = num(formData.get("amount_2"));
   const installment3Amount = num(formData.get("amount_3"));
+  // Already withheld/settled via a WHT certificate, not cash — but not
+  // still owed either (see project-sale-form.tsx's identical comment).
+  const whtAmount1 = num(formData.get("wht_amount_1"));
+  const whtAmount2 = num(formData.get("wht_amount_2"));
+  const whtAmount3 = num(formData.get("wht_amount_3"));
   const receiptNo1 = str(formData.get("receipt_no_1"));
   const receiptNo2 = str(formData.get("receipt_no_2"));
   const receiptNo3 = str(formData.get("receipt_no_3"));
@@ -146,12 +155,14 @@ function parseForm(formData: FormData): { ok: false; error: string } | ParsedFor
   // override for customers who require an advance receipt before their own
   // payment cycle actually pays it (receipt number alone isn't proof money
   // arrived for them); an invoice number/amount alone still never counts.
+  // A received installment's WHT amount counts too — it's settled via a
+  // WHT certificate, not cash, but it's not still outstanding either.
   const isAwaitingPayment = status === "รอชำระเงิน";
   const paidAmount = isAwaitingPayment
     ? 0
-    : (receiptNo1 ? installment1Amount : 0) +
-      (receiptNo2 ? installment2Amount : 0) +
-      (receiptNo3 ? installment3Amount : 0);
+    : (receiptNo1 ? installment1Amount + whtAmount1 : 0) +
+      (receiptNo2 ? installment2Amount + whtAmount2 : 0) +
+      (receiptNo3 ? installment3Amount + whtAmount3 : 0);
   // Not floored at 0 — a payment entered above the total is a real
   // overpayment the office needs to see and follow up on, not something to
   // silently hide behind a clean-looking ฿0. Snapped to exactly 0 when the
@@ -179,6 +190,9 @@ function parseForm(formData: FormData): { ok: false; error: string } | ParsedFor
     installment1Amount,
     installment2Amount,
     installment3Amount,
+    whtAmount1,
+    whtAmount2,
+    whtAmount3,
     outstanding,
     billingNoteNo1: str(formData.get("billing_note_no_1")),
     billingNoteDate1: str(formData.get("billing_note_date_1")),
@@ -243,6 +257,7 @@ function buildPayments(projectId: string, parsed: ParsedForm) {
       invoice_no: parsed.invoiceNo1,
       installment_no: 1,
       amount: parsed.installment1Amount,
+      wht_amount: parsed.whtAmount1,
       paid_date: parsed.paidDate1,
       tax_invoice_no: parsed.taxInvoiceNo1,
       tax_invoice_date: parsed.taxInvoiceDate1,
@@ -260,6 +275,7 @@ function buildPayments(projectId: string, parsed: ParsedForm) {
       invoice_no: parsed.invoiceNo2,
       installment_no: 2,
       amount: parsed.installment2Amount,
+      wht_amount: parsed.whtAmount2,
       paid_date: parsed.paidDate2,
       tax_invoice_no: parsed.taxInvoiceNo2,
       tax_invoice_date: parsed.taxInvoiceDate2,
@@ -277,6 +293,7 @@ function buildPayments(projectId: string, parsed: ParsedForm) {
       invoice_no: parsed.invoiceNo3,
       installment_no: 3,
       amount: parsed.installment3Amount,
+      wht_amount: parsed.whtAmount3,
       paid_date: parsed.paidDate3,
       tax_invoice_no: parsed.taxInvoiceNo3,
       tax_invoice_date: parsed.taxInvoiceDate3,
@@ -287,6 +304,13 @@ function buildPayments(projectId: string, parsed: ParsedForm) {
     });
   }
   return payments;
+}
+
+// Thin server-action wrapper so the create form (client component) can
+// re-fetch a fresh suggested JOB NO. right after a successful save — the
+// one computed server-side when the page first loaded is now taken.
+export async function getSuggestedJobNo(): Promise<string> {
+  return getNextJobNo();
 }
 
 export async function getJobLinkedCostSuggestion(jobNo: string) {

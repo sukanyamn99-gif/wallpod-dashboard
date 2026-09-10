@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getCustomers, getProductCategories, getSalesReps } from "@/lib/data/reference";
+import { getCustomers, getNextJobNo, getProductCategories, getSalesReps } from "@/lib/data/reference";
 import { getQuotationById } from "@/lib/data/quotations";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage, canSeeProjectCosts } from "@/lib/permissions";
@@ -18,12 +18,19 @@ export default async function NewProjectSalePage({
 
   const { fromQuotation } = await searchParams;
 
-  const [salesReps, customers, categories, quotation] = await Promise.all([
+  const [salesReps, customers, categories, quotation, nextJobNo] = await Promise.all([
     getSalesReps(),
     getCustomers(),
     getProductCategories(),
     fromQuotation ? getQuotationById(fromQuotation) : Promise.resolve(null),
+    getNextJobNo(),
   ]);
+
+  // A quotation accepted via ใบลงผลิต already had a JOB NO. auto-assigned
+  // (see quotations/actions.ts's updateQuotationStatus) — reuse that exact
+  // reserved number rather than generating a further "next" one, which
+  // would skip past it.
+  const suggestedJobNo = quotation?.jobNumber || nextJobNo;
 
   // Only customer/project/sales-rep/date and the pre-VAT total carry over —
   // quotation line items are free-text descriptions, not tied to the
@@ -60,6 +67,7 @@ export default async function NewProjectSalePage({
         taxInvoiceDate1: "",
         receiptNo1: "",
         receivedDate1: "",
+        whtAmount1: "",
         billingNoteNo2: "",
         billingNoteDate2: "",
         invoiceNo2: "",
@@ -69,6 +77,7 @@ export default async function NewProjectSalePage({
         taxInvoiceDate2: "",
         receiptNo2: "",
         receivedDate2: "",
+        whtAmount2: "",
         billingNoteNo3: "",
         billingNoteDate3: "",
         invoiceNo3: "",
@@ -78,6 +87,7 @@ export default async function NewProjectSalePage({
         taxInvoiceDate3: "",
         receiptNo3: "",
         receivedDate3: "",
+        whtAmount3: "",
       }
     : undefined;
 
@@ -108,6 +118,7 @@ export default async function NewProjectSalePage({
             categories={categories.map((c) => c.name)}
             canSeeCosts={canSeeProjectCosts(profile.role)}
             initialData={initialData}
+            suggestedJobNo={suggestedJobNo}
           />
         </CardContent>
       </Card>

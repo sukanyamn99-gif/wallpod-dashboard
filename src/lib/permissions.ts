@@ -20,6 +20,10 @@ const PAGE_ACCESS: Record<string, Role[]> = {
   "/dashboard/ar": [...ADMIN_ROLES, "account"],
   "/dashboard/project-sales": STOCK_STAFF,
   "/dashboard/quotations": STOCK_STAFF,
+  // Deliberately narrower than STOCK_STAFF — the user explicitly asked for
+  // ใบลงผลิต to be visible only to support staff, owner/manager, and
+  // accounting, not foreman/production.
+  "/dashboard/quotations/production-orders": [...ADMIN_ROLES, "support_sale", "account"],
   "/dashboard/customers": STOCK_STAFF,
   "/dashboard/billing-documents/invoice": STOCK_STAFF,
   "/dashboard/billing-documents/billing-note": STOCK_STAFF,
@@ -45,6 +49,10 @@ const PAGE_ACCESS: Record<string, Role[]> = {
   // kept admin-only rather than matching the account-role access above.
   "/dashboard/expenses/payroll": ADMIN_ROLES,
   "/dashboard/expenses/commission": [...ADMIN_ROLES, "account"],
+  // Shows individual ทีม Support staff names + payout amounts, same
+  // sensitivity as payroll (see its own comment above) — admin-only, not
+  // opened to "account" like the rest of Expenses.
+  "/dashboard/expenses/incentive": ADMIN_ROLES,
   "/dashboard/settings/documents": [...ADMIN_ROLES, "support_sale", "account"],
   "/dashboard/settings/activity-log": ADMIN_ROLES,
 };

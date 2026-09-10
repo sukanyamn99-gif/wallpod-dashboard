@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { DownloadPdfButton } from "@/components/dashboard/download-pdf-button";
 import { formatTHB } from "@/lib/format";
 import type { PayrollEntry, PayrollYtdSummary } from "@/lib/types";
 
@@ -39,6 +40,7 @@ export function PrintPayrollView({ entry, ytd }: { entry: PayrollEntry; ytd: Pay
     <div className="mx-auto max-w-3xl bg-white p-6 text-black print:p-0">
       <div className="mb-4 flex justify-end gap-2 print:hidden">
         <Button onClick={() => window.print()}>พิมพ์</Button>
+        <DownloadPdfButton />
       </div>
 
       <div className="border border-black text-[13px] leading-tight">

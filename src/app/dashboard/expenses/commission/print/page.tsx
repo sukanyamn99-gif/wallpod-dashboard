@@ -1,8 +1,20 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
 import { getCommissionForReport } from "@/lib/data/commission";
 import { PrintReportView } from "./print-report-view";
+
+// See quotations/print/[id]/page.tsx's generateMetadata for why this is
+// server-side, not a client-side document.title assignment.
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ brokers?: string; dateFrom?: string; dateTo?: string }>;
+}): Promise<Metadata> {
+  const { dateFrom, dateTo } = await searchParams;
+  return { title: dateFrom && dateTo ? `ค่าคอมมิชชั่น ${dateFrom}-${dateTo}` : "ค่าคอมมิชชั่น" };
+}
 
 export default async function PrintCommissionPage({
   searchParams,

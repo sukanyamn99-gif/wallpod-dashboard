@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { getQuotationById } from "@/lib/data/quotations";
+import { getNextJobNo } from "@/lib/data/reference";
 import { logActivity } from "@/lib/activity-log";
 import type { QuotationPaymentTerm, QuotationType } from "@/lib/types";
 
@@ -358,11 +359,31 @@ export async function updateQuotationStatus(id: string, status: "รอตอบ
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("quotations").update({ status }).eq("id", id);
+
+  const updates: { status: typeof status; job_number?: string; accepted_at?: string } = { status };
+
+  // Accepting a quotation is the moment it becomes a real production job —
+  // auto-assign the next running JOB NO. so ใบลงผลิต never needs one typed
+  // in by hand, unless this quotation already has one (entered on the
+  // quotation form itself, or assigned here on a previous accept). Also
+  // stamp accepted_at so ใบลงผลิต can sort by "just accepted" instead of
+  // quote_date, which reflects when the quotation was written, not when it
+  // was won — a job accepted today with an older quote_date was otherwise
+  // getting buried under unrelated same-day quotations.
+  if (status === "ลูกค้าตอบตกลง") {
+    updates.accepted_at = new Date().toISOString();
+    const { data: existing } = await supabase.from("quotations").select("job_number").eq("id", id).maybeSingle();
+    if (!existing?.job_number) {
+      updates.job_number = await getNextJobNo();
+    }
+  }
+
+  const { error } = await supabase.from("quotations").update(updates).eq("id", id);
   if (error) return { error: error.message };
 
   revalidatePath("/dashboard/quotations");
   revalidatePath(`/dashboard/quotations/view/${id}`);
+  revalidatePath("/dashboard/quotations/production-orders");
   return { error: null };
 }
 

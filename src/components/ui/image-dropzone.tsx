@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type DragEvent, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent } from "react";
 import { ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -29,7 +29,7 @@ export function ImageDropzone({
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function handleFiles(fileList: FileList | null) {
+  function handleFiles(fileList: FileList | File[] | null) {
     const files = Array.from(fileList ?? []);
     if (files.length === 0) return;
     const oversized = files.find((f) => f.size > maxSizeMB * 1024 * 1024);
@@ -40,6 +40,15 @@ export function ImageDropzone({
     setError(null);
     onFilesSelected(multiple ? files : files.slice(0, 1));
   }
+
+  // Always the latest handleFiles (closing over the current maxSizeMB/
+  // multiple/onFilesSelected props) without re-subscribing the document
+  // listener below on every render. Synced in an effect, not during render
+  // (mutating a ref while rendering is unsafe).
+  const handleFilesRef = useRef(handleFiles);
+  useEffect(() => {
+    handleFilesRef.current = handleFiles;
+  });
 
   function openPicker() {
     if (!disabled) inputRef.current?.click();
@@ -58,6 +67,32 @@ export function ImageDropzone({
     if (!disabled) handleFiles(e.dataTransfer.files);
   }
 
+  // Lets a screenshot go straight from the clipboard onto the form with a
+  // plain Ctrl+V — no click-to-focus step first. A listener scoped to the
+  // dropzone div itself doesn't work here: clicking the div to focus it
+  // also fires openPicker(), which opens the native file dialog and steals
+  // focus, so by the time the user pastes, the div was never the thing
+  // holding focus. Listening on the document instead sidesteps that
+  // entirely. Safe today since every page using this component renders at
+  // most one instance; if a page ever needs two, whichever mounted last
+  // would win an ambiguous paste — not a real constraint yet.
+  useEffect(() => {
+    if (disabled) return;
+    function onPaste(e: ClipboardEvent) {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const files = Array.from(items)
+        .filter((item) => item.type.startsWith("image/"))
+        .map((item) => item.getAsFile())
+        .filter((file): file is File => !!file);
+      if (files.length === 0) return;
+      e.preventDefault();
+      handleFilesRef.current(files);
+    }
+    document.addEventListener("paste", onPaste);
+    return () => document.removeEventListener("paste", onPaste);
+  }, [disabled]);
+
   return (
     <div className="space-y-1">
       <div
@@ -72,8 +107,9 @@ export function ImageDropzone({
         }}
         onDragLeave={() => setDragActive(false)}
         onDrop={handleDrop}
+        title="คลิกเพื่อเลือกไฟล์ หรือวางรูป (Ctrl+V) เช่น รูปที่แคปหน้าจอมา"
         className={cn(
-          "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-8 text-center transition-colors",
+          "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-8 text-center outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
           dragActive ? "border-primary bg-primary/5" : "border-border hover:bg-muted/40",
           disabled && "pointer-events-none cursor-not-allowed opacity-50",
           className,
@@ -84,7 +120,7 @@ export function ImageDropzone({
         </div>
         <p className="text-sm font-medium">คลิกเพื่อเลือกรูปภาพ</p>
         <p className="text-xs text-muted-foreground">
-          หรือลาก &amp; วางไฟล์ที่นี่ · JPG, PNG, WEBP ไม่เกิน {maxSizeMB}MB
+          หรือลาก &amp; วางไฟล์ที่นี่ หรือวาง (Ctrl+V) · JPG, PNG, WEBP ไม่เกิน {maxSizeMB}MB
         </p>
       </div>
       {error && <p className="text-xs text-destructive">{error}</p>}

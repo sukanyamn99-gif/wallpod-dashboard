@@ -6,11 +6,13 @@ import { logActivity } from "@/lib/activity-log";
 import {
   getBillableTaxInvoicesForCustomer,
   getBillingDocumentById,
+  getNetPayableForQuotationIds,
   getUnbilledInvoicesForCustomer,
 } from "@/lib/data/billing-documents";
 import { getAcceptedUnconvertedQuotationsForCustomer, normalizeJobNo } from "@/lib/data/quotations";
+import { computeBillingDocumentSummary } from "@/lib/billing-document-summary";
 import { BILLING_DOCUMENT_LABELS, BILLING_DOCUMENT_LIST_PATH } from "@/lib/types";
-import type { BillableQuotation, BillableTaxInvoice, BillingDocumentType, UnbilledInvoice } from "@/lib/types";
+import type { BillableQuotation, BillableTaxInvoice, BillingDocumentType, PaymentMethod, UnbilledInvoice } from "@/lib/types";
 
 // Thin server-action wrapper so the create form (client component) can
 // re-fetch a customer's open invoices the moment one is picked, without a
@@ -29,18 +31,21 @@ export async function fetchBillableQuotations(customerName: string): Promise<Bil
   return getAcceptedUnconvertedQuotationsForCustomer(customerName);
 }
 
-// ใบวางบิล-only: browse issued tax invoices directly instead of the
-// quotations behind them, per the user's explicit request.
-export async function fetchBillableTaxInvoices(customerId: string, excludeBillingNoteId?: string): Promise<BillableTaxInvoice[]> {
+// ใบวางบิล and ใบเสร็จรับเงิน: browse issued tax invoices directly instead
+// of the quotations behind them, per the user's explicit request — each
+// checked against its own prior documents (a tax invoice already billed is
+// still receiptable, and vice versa).
+export async function fetchBillableTaxInvoices(
+  customerId: string,
+  targetDocType: "billing_note" | "receipt",
+  excludeDocId?: string,
+): Promise<BillableTaxInvoice[]> {
   if (!customerId) return [];
-  return getBillableTaxInvoicesForCustomer(customerId, excludeBillingNoteId);
+  return getBillableTaxInvoicesForCustomer(customerId, targetDocType, excludeDocId);
 }
 
 const DOC_PREFIX: Record<BillingDocumentType, string> = {
-  // ใบแจ้งหนี้ and ใบกำกับภาษี deliberately share the "INV" prefix — they
-  // share one running number series (a common Thai billing convention),
-  // so generateBillingDocNo's same-day count naturally covers both types.
-  invoice: "INV",
+  invoice: "IV",
   billing_note: "BL",
   tax_invoice: "INV",
   // Deliberately reuses the "RE" prefix payments.receipt_no values already
@@ -108,6 +113,10 @@ async function insertBillingNoteHeader(
     whtPercent: number;
     retentionPercent: number;
     note: string | null;
+    paymentMethod: PaymentMethod | null;
+    bankName: string | null;
+    paymentReferenceNo: string | null;
+    paymentDate: string | null;
     createdBy: string | null;
   },
 ): Promise<{ ok: true; docNo: string; id: string } | { ok: false; error: string }> {
@@ -127,6 +136,10 @@ async function insertBillingNoteHeader(
         wht_percent: fields.whtPercent,
         retention_percent: fields.retentionPercent,
         note: fields.note,
+        payment_method: fields.paymentMethod,
+        bank_name: fields.bankName,
+        payment_reference_no: fields.paymentReferenceNo,
+        payment_date: fields.paymentDate,
         created_by: fields.createdBy,
       })
       .select("id")
@@ -163,15 +176,33 @@ const SYNC_FIELDS: Record<BillingDocumentType, { no: string; date: string } | nu
 // the new doc number to land. Per the user's explicit choice ("สร้างงวดการ
 // ชำระใหม่ให้อัตโนมัติ"), auto-create the next available installment slot
 // (1-3, matching the form's 3 fixed slots) on the matching project and
-// write the doc number straight onto it. Best-effort throughout — a job
-// with no matching project yet, or with all 3 slots already used, is
-// skipped silently rather than failing the whole document.
+// write the doc number straight onto it — but only the FIRST time.
+//
+// Correlated by payments.source_tax_invoice_id — the SPECIFIC tax invoice
+// that "owns" an installment, not just its quotation. For a tax_invoice/
+// invoice document billing directly from a quotation, that's the document's
+// own id (it creates/owns whichever installment it lands on, and finds that
+// SAME one again on a later edit). For a ใบวางบิล/ใบเสร็จรับเงิน — which
+// never bill a quotation directly, only a specific already-issued tax
+// invoice (see billing-document-form.tsx) — it's that referenced tax
+// invoice's id, passed through as ownerTaxInvoiceId per quotation entry.
+// This is what lets a quotation be billed via multiple PARTIAL tax invoices
+// (each getting its own installment) without one later document colliding
+// with another's slot — matching on quotation id alone couldn't tell two
+// partial tax invoices for the same quotation apart. Best-effort throughout
+// — a job with no matching project yet, or with all 3 slots already used
+// and no existing match, is skipped silently rather than failing the whole
+// document.
 async function syncQuotationSourcedInstallments(
   supabase: Awaited<ReturnType<typeof createClient>>,
   docType: BillingDocumentType,
   docNo: string,
   docDate: string,
   liveQuotations: { id: string; job_number: string | null; total: number }[],
+  netPayableByQuotationId: Record<string, { netPayable: number; grossAmount: number }>,
+  ownerTaxInvoiceIdByQuotationId: Record<string, string>,
+  installmentAmountByQuotationId: Record<string, number> = {},
+  whtAmountByQuotationId: Record<string, number> = {},
 ): Promise<string[]> {
   const syncFields = SYNC_FIELDS[docType];
   const withJobNo = liveQuotations.filter(
@@ -194,14 +225,45 @@ async function syncQuotationSourcedInstallments(
 
   const affectedJobNos: string[] = [];
   for (const q of withJobNo) {
+    const ownerTaxInvoiceId = ownerTaxInvoiceIdByQuotationId[q.id];
+    if (!ownerTaxInvoiceId) continue; // shouldn't happen — every caller supplies one
+
     const project = projectByJobNo.get(normalizeJobNo(q.job_number));
     if (!project) continue;
 
     const { data: existing, error: existingErr } = await supabase
       .from("payments")
-      .select("installment_no")
+      .select("id, installment_no, source_tax_invoice_id, receipt_no")
       .eq("project_id", project.id);
     if (existingErr) continue;
+
+    const netAmount = installmentAmountByQuotationId[q.id] ?? netPayableByQuotationId[q.id]?.netPayable ?? q.total;
+    const whtAmount = whtAmountByQuotationId[q.id] ?? 0;
+    const priorRow = (existing ?? []).find((p) => p.source_tax_invoice_id === ownerTaxInvoiceId);
+
+    if (priorRow) {
+      // Already-received installments keep their status — a later edit to
+      // the tax invoice/billing note that produced this installment
+      // shouldn't silently un-receive money that already came in.
+      const patch: Record<string, unknown> = {
+        amount: netAmount,
+        wht_amount: whtAmount,
+        [syncFields.no]: docNo,
+        [syncFields.date]: docDate,
+      };
+      if (received) {
+        patch.status = "เก็บเงินเรียบร้อย";
+        patch.outstanding_amount = 0;
+      } else if (!priorRow.receipt_no) {
+        patch.status = "รอชำระเงิน";
+        patch.outstanding_amount = netAmount;
+      }
+      const { error: updateErr } = await supabase.from("payments").update(patch).eq("id", priorRow.id);
+      if (updateErr) continue;
+      affectedJobNos.push(project.job_no);
+      continue;
+    }
+
     const usedSlots = new Set((existing ?? []).map((p) => p.installment_no));
     const nextSlot = [1, 2, 3].find((n) => !usedSlots.has(n));
     if (!nextSlot) continue;
@@ -209,9 +271,12 @@ async function syncQuotationSourcedInstallments(
     const { error: insertErr } = await supabase.from("payments").insert({
       project_id: project.id,
       installment_no: nextSlot,
-      amount: q.total,
+      amount: netAmount,
+      wht_amount: whtAmount,
       status: received ? "เก็บเงินเรียบร้อย" : "รอชำระเงิน",
-      outstanding_amount: received ? 0 : q.total,
+      outstanding_amount: received ? 0 : netAmount,
+      source_quotation_id: q.id,
+      source_tax_invoice_id: ownerTaxInvoiceId,
       [syncFields.no]: docNo,
       [syncFields.date]: docDate,
     });
@@ -221,12 +286,35 @@ async function syncQuotationSourcedInstallments(
   return affectedJobNos;
 }
 
+// Clears this document's own sync fields off whatever installment(s) it
+// previously wrote them to, before syncQuotationSourcedInstallments
+// re-applies them for whatever's still selected on this edit — simpler and
+// more robust than tracking which quotation ids were removed, since it's
+// scoped by source_tax_invoice_id (never set on a manually-linked,
+// payment-sourced row) rather than by quotation id, which can no longer
+// uniquely identify one installment now that a quotation may be split
+// across several partial tax invoices.
+async function clearQuotationSourcedSyncFields(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  docType: BillingDocumentType,
+  docNo: string,
+): Promise<void> {
+  const syncFields = SYNC_FIELDS[docType];
+  if (!syncFields) return;
+  await supabase
+    .from("payments")
+    .update({ [syncFields.no]: null, [syncFields.date]: null })
+    .eq(syncFields.no, docNo)
+    .not("source_tax_invoice_id", "is", null);
+}
+
 interface ParsedManualItem {
   description: string;
   qty: number;
   unit: string;
   unitPrice: number;
   amount: number;
+  applyWht: boolean;
 }
 
 // A third source of line items, alongside existing invoices and
@@ -239,6 +327,7 @@ function parseManualItems(formData: FormData): ParsedManualItem[] {
   const qtys = formData.getAll("item_manual_qty").map((v) => String(v));
   const units = formData.getAll("item_manual_unit").map((v) => String(v));
   const unitPrices = formData.getAll("item_manual_unit_price").map((v) => String(v));
+  const applyWhts = formData.getAll("item_manual_apply_wht").map((v) => String(v));
 
   return descriptions
     .map((description, i) => {
@@ -249,7 +338,11 @@ function parseManualItems(formData: FormData): ParsedManualItem[] {
         qty,
         unit: str(units[i]) ?? "หน่วย",
         unitPrice,
-        amount: Math.round(qty * unitPrice * 100) / 100,
+        // ราคาต่อหน่วย is entered pre-VAT — stored amount is VAT-inclusive,
+        // matching every other item source and computeBillingDocumentSummary
+        // (mirrors manualItemAmount in billing-document-form.tsx).
+        amount: Math.round(qty * unitPrice * 1.07 * 100) / 100,
+        applyWht: applyWhts[i] !== "false",
       };
     })
     .filter((it) => it.description);
@@ -265,10 +358,31 @@ interface ParsedBillingDocument {
   whtPercent: number;
   retentionPercent: number;
   note: string | null;
+  // ใบเสร็จรับเงิน-only — always parsed (harmless when absent) since only
+  // that document type's form ever submits these fields.
+  paymentMethod: PaymentMethod | null;
+  bankName: string | null;
+  paymentReferenceNo: string | null;
+  paymentDate: string | null;
   itemPaymentIds: string[];
+  itemPaymentApplyWht: boolean[];
   itemQuotationIds: string[];
+  itemQuotationApplyWht: boolean[];
+  // ใบกำกับภาษี/ใบแจ้งหนี้ only — a partial-billing override (staff editing
+  // the amount down from the quotation's full total), parallel to
+  // itemQuotationIds. Empty/non-positive entries mean "no override" (bill
+  // the full amount, today's existing behavior).
+  itemQuotationAmountOverrides: (number | null)[];
+  // ใบวางบิล/ใบเสร็จรับเงิน only — the SPECIFIC tax invoice id each
+  // quotation-sourced entry was selected from (parallel to
+  // itemQuotationIds), needed once a quotation can be billed via multiple
+  // partial tax invoices — quotation id alone can no longer say which
+  // installment this document's referenced tax invoice actually owns.
+  itemQuotationTaxInvoiceRefIds: (string | null)[];
   manualItems: ParsedManualItem[];
 }
+
+const PAYMENT_METHODS: PaymentMethod[] = ["เงินสด", "เช็ค", "โอนเงิน", "บัตรเครดิต"];
 
 // Shared by create and update — both need the exact same fields validated
 // and parsed identically.
@@ -287,8 +401,24 @@ function parseBillingDocumentForm(formData: FormData): { error: string } | ({ er
   const retentionPercent = Math.max(0, num(formData.get("retention_percent")));
   const note = str(formData.get("note"));
 
+  const paymentMethodRaw = str(formData.get("payment_method"));
+  const paymentMethod = PAYMENT_METHODS.includes(paymentMethodRaw as PaymentMethod) ? (paymentMethodRaw as PaymentMethod) : null;
+  const bankName = str(formData.get("bank_name"));
+  const paymentReferenceNo = str(formData.get("payment_reference_no"));
+  const paymentDate = str(formData.get("payment_date"));
+
   const itemPaymentIds = formData.getAll("item_payment_id").map((v) => String(v));
+  const itemPaymentApplyWht = formData.getAll("item_payment_apply_wht").map((v) => String(v) !== "false");
   const itemQuotationIds = formData.getAll("item_quotation_id").map((v) => String(v));
+  const itemQuotationApplyWht = formData.getAll("item_quotation_apply_wht").map((v) => String(v) !== "false");
+  const itemQuotationAmountOverrides = formData.getAll("item_quotation_amount").map((v) => {
+    const n = num(v);
+    return n > 0 ? n : null;
+  });
+  const itemQuotationTaxInvoiceRefIds = formData.getAll("item_quotation_tax_invoice_ref_id").map((v) => {
+    const s = String(v);
+    return s === "" ? null : s;
+  });
   const manualItems = parseManualItems(formData);
   if (itemPaymentIds.length === 0 && itemQuotationIds.length === 0 && manualItems.length === 0) {
     return { error: "กรุณาเลือกหรือกรอกรายการอย่างน้อย 1 รายการ" };
@@ -305,8 +435,16 @@ function parseBillingDocumentForm(formData: FormData): { error: string } | ({ er
     whtPercent,
     retentionPercent,
     note,
+    paymentMethod,
+    bankName,
+    paymentReferenceNo,
+    paymentDate,
     itemPaymentIds,
+    itemPaymentApplyWht,
     itemQuotationIds,
+    itemQuotationApplyWht,
+    itemQuotationAmountOverrides,
+    itemQuotationTaxInvoiceRefIds,
     manualItems,
   };
 }
@@ -328,10 +466,31 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
     whtPercent,
     retentionPercent,
     note,
+    paymentMethod,
+    bankName,
+    paymentReferenceNo,
+    paymentDate,
     itemPaymentIds,
+    itemPaymentApplyWht,
     itemQuotationIds,
+    itemQuotationApplyWht,
+    itemQuotationAmountOverrides,
+    itemQuotationTaxInvoiceRefIds,
     manualItems,
   } = parsed;
+  // Keyed lookups, not positional zipping — Supabase's .in(...) result
+  // order isn't guaranteed to match itemPaymentIds/itemQuotationIds, but
+  // these maps were built from the exact same parallel arrays the form
+  // submitted, so they're correct regardless of DB row order.
+  const paymentApplyWhtMap = new Map(itemPaymentIds.map((id, i) => [id, itemPaymentApplyWht[i] ?? true]));
+  const quotationApplyWhtMap = new Map(itemQuotationIds.map((id, i) => [id, itemQuotationApplyWht[i] ?? true]));
+  const quotationAmountOverrideMap = new Map(itemQuotationIds.map((id, i) => [id, itemQuotationAmountOverrides[i]]));
+  const quotationTaxInvoiceRefMap = new Map(itemQuotationIds.map((id, i) => [id, itemQuotationTaxInvoiceRefIds[i]]));
+  // ใบกำกับภาษี/ใบแจ้งหนี้ bill a quotation directly and own whichever
+  // installment they create; ใบวางบิล/ใบเสร็จรับเงิน only ever reference an
+  // already-issued tax invoice, so the installment they update is that
+  // referenced invoice's own — see syncQuotationSourcedInstallments.
+  const billsQuotationDirectly = docType === "tax_invoice" || docType === "invoice";
 
   // Finished-goods stock deduction — only meaningful for tax_invoice, per
   // the user's explicit "ตัดกับบิลขาย...ตอนออกใบกำกับภาษี...ตัดอัตโนมัติ"
@@ -350,13 +509,14 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
   // back after. Quotation-sourced items have no payment to sync back onto
   // yet (the job hasn't been recorded in WALLPOD Project Sales) — staff
   // fill that in manually once it has been.
-  const [livePaymentsResult, liveQuotationsResult] = await Promise.all([
+  const [livePaymentsResult, liveQuotationsResult, netPayableByQuotationId] = await Promise.all([
     itemPaymentIds.length > 0
       ? supabase.from("payments").select("id, invoice_no, paid_date, amount, projects(job_no)").in("id", itemPaymentIds)
       : Promise.resolve({ data: [], error: null }),
     itemQuotationIds.length > 0
       ? supabase.from("quotations").select("id, doc_no, quote_date, total, job_number").in("id", itemQuotationIds)
       : Promise.resolve({ data: [], error: null }),
+    getNetPayableForQuotationIds(supabase, itemQuotationIds),
   ]);
   if (livePaymentsResult.error) return { error: livePaymentsResult.error.message, id: null };
   if (liveQuotationsResult.error) return { error: liveQuotationsResult.error.message, id: null };
@@ -379,11 +539,64 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
     whtPercent,
     retentionPercent,
     note,
+    paymentMethod,
+    bankName,
+    paymentReferenceNo,
+    paymentDate,
     createdBy: user?.id ?? null,
   });
   if (!headerResult.ok) return { error: headerResult.error, id: null };
   const { docNo, id: docId } = headerResult;
   const doc = { id: docId };
+
+  // A ใบกำกับภาษี/ใบแจ้งหนี้ billing a quotation directly owns whichever
+  // installment it creates (its own doc id is the correlator); a ใบวางบิล/
+  // ใบเสร็จรับเงิน updates the installment already owned by the specific tax
+  // invoice it selected. Also resolves each quotation-sourced line's real
+  // billed amount — a staff-entered partial override when billing directly
+  // (billsQuotationDirectly), else the referenced tax invoice's own
+  // net-payable (after its own discount/WHT/retention), else the
+  // quotation's raw total.
+  const ownerTaxInvoiceIdByQuotationId: Record<string, string> = {};
+  // What THIS document's own billing_note_items row stores — gross when
+  // billing a quotation directly (matches the tax invoice's real face
+  // value, per the itemized print view), already-net when referencing an
+  // existing tax invoice.
+  const quotationBilledAmountById: Record<string, number> = {};
+  // What actually lands on the Project Sales installment — always the net,
+  // cash-equivalent amount (gross minus this line's own WHT/retention),
+  // distinct from quotationBilledAmountById when billing a quotation
+  // directly (which stores gross).
+  const installmentAmountByQuotationId: Record<string, number> = {};
+  const whtAmountByQuotationId: Record<string, number> = {};
+  for (const q of liveQuotations) {
+    const owner = billsQuotationDirectly ? doc.id : quotationTaxInvoiceRefMap.get(q.id);
+    if (owner) ownerTaxInvoiceIdByQuotationId[q.id] = owner;
+    const override = billsQuotationDirectly ? quotationAmountOverrideMap.get(q.id) : null;
+    quotationBilledAmountById[q.id] = override ?? netPayableByQuotationId[q.id]?.netPayable ?? q.total;
+    // How much of this installment is already settled via a WHT
+    // certificate rather than cash — synced onto the installment so
+    // Project Sales can tell "still owed" apart from "settled, just not in
+    // cash" (see getFullProjectReport/getProjectByJobNo). Billing a
+    // quotation directly: this document's own WHT%/retention% applies to
+    // its own gross billed amount — computed via the same summary function
+    // the print view uses, so the installment nets out exactly like the
+    // document itself does. Referencing an existing tax invoice instead:
+    // the gap between that invoice's gross and its already-net amount IS
+    // its WHT (and retention, if any) — already settled at that invoice's
+    // own issuance, not recomputed from this document's (typically 0) WHT%.
+    if (billsQuotationDirectly) {
+      const applyWht = quotationApplyWhtMap.get(q.id) ?? true;
+      const grossAmount = quotationBilledAmountById[q.id];
+      const lineSummary = computeBillingDocumentSummary([{ amount: grossAmount, applyWht }], 0, whtPercent, retentionPercent);
+      installmentAmountByQuotationId[q.id] = lineSummary.netPayable;
+      whtAmountByQuotationId[q.id] = Math.round((lineSummary.whtAmount + lineSummary.retentionAmount) * 100) / 100;
+    } else {
+      const gross = netPayableByQuotationId[q.id]?.grossAmount ?? q.total;
+      installmentAmountByQuotationId[q.id] = quotationBilledAmountById[q.id];
+      whtAmountByQuotationId[q.id] = Math.round((gross - quotationBilledAmountById[q.id]) * 100) / 100;
+    }
+  }
 
   const { error: itemsErr } = await supabase.from("billing_note_items").insert([
     ...livePayments.map((p) => ({
@@ -392,13 +605,15 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
       invoice_no_snapshot: p.invoice_no,
       invoice_date_snapshot: p.paid_date,
       amount: p.amount,
+      apply_wht: paymentApplyWhtMap.get(p.id) ?? true,
     })),
     ...liveQuotations.map((q) => ({
       billing_note_id: doc.id,
       quotation_id: q.id,
       invoice_no_snapshot: q.doc_no,
       invoice_date_snapshot: q.quote_date,
-      amount: q.total,
+      amount: quotationBilledAmountById[q.id],
+      apply_wht: quotationApplyWhtMap.get(q.id) ?? true,
     })),
     ...manualItems.map((m) => ({
       billing_note_id: doc.id,
@@ -408,6 +623,7 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
       manual_qty: m.qty,
       manual_unit: m.unit,
       manual_unit_price: m.unitPrice,
+      apply_wht: m.applyWht,
     })),
   ]);
   if (itemsErr) return { error: `บันทึกเอกสารสำเร็จ แต่บันทึกรายการไม่สำเร็จ: ${itemsErr.message}`, id: doc.id };
@@ -445,14 +661,19 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
   const syncFields = SYNC_FIELDS[docType];
   const paymentJobNos: string[] = [];
   if (syncFields && itemPaymentIds.length > 0) {
-    const { error: syncErr } = await supabase
-      .from("payments")
-      .update({ [syncFields.no]: docNo, [syncFields.date]: docDate })
-      .in("id", itemPaymentIds);
-    if (syncErr) {
-      return { error: `บันทึกเอกสารสำเร็จ แต่อัปเดตเลขที่เอกสารใน Project Sales ไม่สำเร็จ: ${syncErr.message}`, id: doc.id };
-    }
+    // Per-row, not a bulk .update().in() — each payment's own WHT
+    // deduction (this document's WHT% against its own amount) can differ
+    // per line depending on its applyWht flag.
     for (const p of livePayments) {
+      const applyWht = paymentApplyWhtMap.get(p.id) ?? true;
+      const whtAmount = applyWht ? Math.round(((p.amount / 1.07) * (whtPercent / 100)) * 100) / 100 : 0;
+      const { error: syncErr } = await supabase
+        .from("payments")
+        .update({ [syncFields.no]: docNo, [syncFields.date]: docDate, wht_amount: whtAmount })
+        .eq("id", p.id);
+      if (syncErr) {
+        return { error: `บันทึกเอกสารสำเร็จ แต่อัปเดตเลขที่เอกสารใน Project Sales ไม่สำเร็จ: ${syncErr.message}`, id: doc.id };
+      }
       // @ts-expect-error -- Supabase types the joined relation loosely here
       const jobNo = (p.projects as { job_no: string | null } | null)?.job_no;
       if (jobNo) paymentJobNos.push(jobNo);
@@ -465,7 +686,17 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
   // quotation, no payment installment recorded yet) get a brand-new
   // installment auto-created on the matching JOB instead — see
   // syncQuotationSourcedInstallments.
-  const quotationJobNos = await syncQuotationSourcedInstallments(supabase, docType, docNo, docDate, liveQuotations);
+  const quotationJobNos = await syncQuotationSourcedInstallments(
+    supabase,
+    docType,
+    docNo,
+    docDate,
+    liveQuotations,
+    netPayableByQuotationId,
+    ownerTaxInvoiceIdByQuotationId,
+    installmentAmountByQuotationId,
+    whtAmountByQuotationId,
+  );
 
   await logActivity(`สร้าง${BILLING_DOCUMENT_LABELS[docType]}`, docNo);
   revalidateBillingDocumentConsumers(docType, [...paymentJobNos, ...quotationJobNos]);
@@ -484,6 +715,8 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
   const existing = await getBillingDocumentById(id);
   if (!existing) return { error: "ไม่พบเอกสารนี้ในระบบ" };
 
+  const newDocNo = str(formData.get("doc_no")) ?? existing.docNo;
+
   const parsed = parseBillingDocumentForm(formData);
   if (parsed.error !== null) return { error: parsed.error };
   const {
@@ -496,20 +729,35 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
     whtPercent,
     retentionPercent,
     note,
+    paymentMethod,
+    bankName,
+    paymentReferenceNo,
+    paymentDate,
     itemPaymentIds,
+    itemPaymentApplyWht,
     itemQuotationIds,
+    itemQuotationApplyWht,
+    itemQuotationAmountOverrides,
+    itemQuotationTaxInvoiceRefIds,
     manualItems,
   } = parsed;
+  const paymentApplyWhtMap = new Map(itemPaymentIds.map((id, i) => [id, itemPaymentApplyWht[i] ?? true]));
+  const quotationApplyWhtMap = new Map(itemQuotationIds.map((id, i) => [id, itemQuotationApplyWht[i] ?? true]));
+  const quotationAmountOverrideMap = new Map(itemQuotationIds.map((id, i) => [id, itemQuotationAmountOverrides[i]]));
+  const quotationTaxInvoiceRefMap = new Map(itemQuotationIds.map((id, i) => [id, itemQuotationTaxInvoiceRefIds[i]]));
+  // See createBillingDocument's identical logic.
+  const billsQuotationDirectly = docType === "tax_invoice" || docType === "invoice";
 
   const supabase = await createClient();
 
-  const [livePaymentsResult, liveQuotationsResult] = await Promise.all([
+  const [livePaymentsResult, liveQuotationsResult, netPayableByQuotationId] = await Promise.all([
     itemPaymentIds.length > 0
       ? supabase.from("payments").select("id, invoice_no, paid_date, amount, projects(job_no)").in("id", itemPaymentIds)
       : Promise.resolve({ data: [], error: null }),
     itemQuotationIds.length > 0
       ? supabase.from("quotations").select("id, doc_no, quote_date, total, job_number").in("id", itemQuotationIds)
       : Promise.resolve({ data: [], error: null }),
+    getNetPayableForQuotationIds(supabase, itemQuotationIds),
   ]);
   if (livePaymentsResult.error) return { error: livePaymentsResult.error.message };
   if (liveQuotationsResult.error) return { error: liveQuotationsResult.error.message };
@@ -525,6 +773,7 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
   const { error: updateErr } = await supabase
     .from("billing_notes")
     .update({
+      doc_no: newDocNo,
       customer_id: customerId,
       doc_date: docDate,
       credit_days: creditDays,
@@ -534,13 +783,42 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
       wht_percent: whtPercent,
       retention_percent: retentionPercent,
       note,
+      payment_method: paymentMethod,
+      bank_name: bankName,
+      payment_reference_no: paymentReferenceNo,
+      payment_date: paymentDate,
     })
     .eq("id", id);
+  if (updateErr?.code === "23505") return { error: "แก้ไขไม่สำเร็จ — เลขที่เอกสารนี้มีอยู่ในระบบแล้ว กรุณาใช้เลขที่อื่น" };
   if (updateErr) return { error: updateErr.message };
 
   const { error: deleteItemsErr } = await supabase.from("billing_note_items").delete().eq("billing_note_id", id);
   if (deleteItemsErr) {
     return { error: `แก้ไขข้อมูลทั่วไปสำเร็จ แต่แก้ไขรายการไม่สำเร็จ: ${deleteItemsErr.message}` };
+  }
+
+  // See createBillingDocument's identical logic — resolves each
+  // quotation-sourced line's owning tax invoice and real billed amount.
+  const ownerTaxInvoiceIdByQuotationId: Record<string, string> = {};
+  const quotationBilledAmountById: Record<string, number> = {};
+  const installmentAmountByQuotationId: Record<string, number> = {};
+  const whtAmountByQuotationId: Record<string, number> = {};
+  for (const q of liveQuotations) {
+    const owner = billsQuotationDirectly ? id : quotationTaxInvoiceRefMap.get(q.id);
+    if (owner) ownerTaxInvoiceIdByQuotationId[q.id] = owner;
+    const override = billsQuotationDirectly ? quotationAmountOverrideMap.get(q.id) : null;
+    quotationBilledAmountById[q.id] = override ?? netPayableByQuotationId[q.id]?.netPayable ?? q.total;
+    if (billsQuotationDirectly) {
+      const applyWht = quotationApplyWhtMap.get(q.id) ?? true;
+      const grossAmount = quotationBilledAmountById[q.id];
+      const lineSummary = computeBillingDocumentSummary([{ amount: grossAmount, applyWht }], 0, whtPercent, retentionPercent);
+      installmentAmountByQuotationId[q.id] = lineSummary.netPayable;
+      whtAmountByQuotationId[q.id] = Math.round((lineSummary.whtAmount + lineSummary.retentionAmount) * 100) / 100;
+    } else {
+      const gross = netPayableByQuotationId[q.id]?.grossAmount ?? q.total;
+      installmentAmountByQuotationId[q.id] = quotationBilledAmountById[q.id];
+      whtAmountByQuotationId[q.id] = Math.round((gross - quotationBilledAmountById[q.id]) * 100) / 100;
+    }
   }
 
   const { error: itemsErr } = await supabase.from("billing_note_items").insert([
@@ -550,13 +828,15 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
       invoice_no_snapshot: p.invoice_no,
       invoice_date_snapshot: p.paid_date,
       amount: p.amount,
+      apply_wht: paymentApplyWhtMap.get(p.id) ?? true,
     })),
     ...liveQuotations.map((q) => ({
       billing_note_id: id,
       quotation_id: q.id,
       invoice_no_snapshot: q.doc_no,
       invoice_date_snapshot: q.quote_date,
-      amount: q.total,
+      amount: quotationBilledAmountById[q.id],
+      apply_wht: quotationApplyWhtMap.get(q.id) ?? true,
     })),
     ...manualItems.map((m) => ({
       billing_note_id: id,
@@ -566,6 +846,7 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
       manual_qty: m.qty,
       manual_unit: m.unit,
       manual_unit_price: m.unitPrice,
+      apply_wht: m.applyWht,
     })),
   ]);
   if (itemsErr) return { error: `แก้ไขรายการไม่สำเร็จ: ${itemsErr.message}` };
@@ -590,26 +871,52 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
         return { error: `แก้ไขเอกสารสำเร็จ แต่ล้างเลขที่เอกสารของรายการที่ถูกเอาออกไม่สำเร็จ: ${clearErr.message}` };
       }
     }
-    const { error: syncErr } =
-      itemPaymentIds.length === 0
-        ? { error: null }
-        : await supabase
-            .from("payments")
-            .update({ [syncFields.no]: existing.docNo, [syncFields.date]: docDate })
-            .in("id", itemPaymentIds);
-    if (syncErr) {
-      return { error: `แก้ไขเอกสารสำเร็จ แต่อัปเดตเลขที่เอกสารใน Project Sales ไม่สำเร็จ: ${syncErr.message}` };
-    }
+    // Per-row, not a bulk .update().in() — each payment's own WHT
+    // deduction can differ per line depending on its applyWht flag.
     for (const p of livePayments) {
+      const applyWht = paymentApplyWhtMap.get(p.id) ?? true;
+      const whtAmount = applyWht ? Math.round(((p.amount / 1.07) * (whtPercent / 100)) * 100) / 100 : 0;
+      const { error: syncErr } = await supabase
+        .from("payments")
+        .update({ [syncFields.no]: newDocNo, [syncFields.date]: docDate, wht_amount: whtAmount })
+        .eq("id", p.id);
+      if (syncErr) {
+        return { error: `แก้ไขเอกสารสำเร็จ แต่อัปเดตเลขที่เอกสารใน Project Sales ไม่สำเร็จ: ${syncErr.message}` };
+      }
       // @ts-expect-error -- Supabase types the joined relation loosely here
       const jobNo = (p.projects as { job_no: string | null } | null)?.job_no;
       if (jobNo) paymentJobNos.push(jobNo);
     }
   }
 
-  await logActivity(`แก้ไข${BILLING_DOCUMENT_LABELS[docType]}`, existing.docNo);
+  // Same reconciliation, for quotation-sourced items — previously only done
+  // on create, which is exactly why editing a document never propagated
+  // changes back to WALLPOD Project Sales at all for this source. Clear
+  // first (scoped to whatever this document itself previously synced),
+  // then resync so only the still-selected lines get their fields set
+  // again — see clearQuotationSourcedSyncFields.
+  // Clear scoped to the OLD doc_no (whatever was previously synced under
+  // it), then resync using the NEW one — so a renamed doc_no propagates to
+  // every installment it's already linked to, not just future syncs.
+  await clearQuotationSourcedSyncFields(supabase, docType, existing.docNo);
+  const quotationJobNos = await syncQuotationSourcedInstallments(
+    supabase,
+    docType,
+    newDocNo,
+    docDate,
+    liveQuotations,
+    netPayableByQuotationId,
+    ownerTaxInvoiceIdByQuotationId,
+    installmentAmountByQuotationId,
+    whtAmountByQuotationId,
+  );
+
+  await logActivity(
+    `แก้ไข${BILLING_DOCUMENT_LABELS[docType]}`,
+    newDocNo !== existing.docNo ? `${newDocNo} (เปลี่ยนจาก ${existing.docNo})` : newDocNo,
+  );
   const routeSegment = docType.replace("_", "-");
-  revalidateBillingDocumentConsumers(docType, paymentJobNos);
+  revalidateBillingDocumentConsumers(docType, [...paymentJobNos, ...quotationJobNos]);
   revalidatePath(`/dashboard/billing-documents/${routeSegment}/edit/${id}`);
   revalidatePath(`/dashboard/billing-documents/${routeSegment}/view/${id}`);
   return { error: null };
@@ -625,7 +932,30 @@ export async function deleteBillingDocument(docType: BillingDocumentType, id: st
   const { error } = await supabase.from("billing_notes").delete().eq("id", id);
   if (error) return { error: error.message };
 
+  // A deleted ใบวางบิล/ใบกำกับภาษี/ใบเสร็จรับเงิน shouldn't keep showing its
+  // doc no./date on a WALLPOD Project Sales installment as if it still
+  // existed — clear whichever pair this doc type syncs (matched by doc_no,
+  // since that's the stable link regardless of whether the item was
+  // payment-sourced or a quotation-sourced auto-created installment). Only
+  // the two synced columns are cleared — the installment's amount/status
+  // and any other doc number on it are left untouched.
+  const syncFields = SYNC_FIELDS[docType];
+  let affectedJobNos: string[] = [];
+  if (syncFields && doc?.doc_no) {
+    const { data: affectedPayments } = await supabase
+      .from("payments")
+      .select("id, projects(job_no)")
+      .eq(syncFields.no, doc.doc_no);
+    if (affectedPayments && affectedPayments.length > 0) {
+      affectedJobNos = affectedPayments
+        // @ts-expect-error -- Supabase types the joined relation loosely here
+        .map((p) => (p.projects as { job_no: string | null } | null)?.job_no)
+        .filter((j): j is string => !!j);
+      await supabase.from("payments").update({ [syncFields.no]: null, [syncFields.date]: null }).eq(syncFields.no, doc.doc_no);
+    }
+  }
+
   await logActivity(`ลบ${BILLING_DOCUMENT_LABELS[docType]}`, doc?.doc_no ?? null);
-  revalidateBillingDocumentConsumers(docType);
+  revalidateBillingDocumentConsumers(docType, affectedJobNos);
   return { error: null };
 }

@@ -59,6 +59,7 @@ export async function createFinishedGood(formData: FormData) {
   const color = str(formData.get("color"));
   const initialQty = Math.max(0, num(formData.get("initial_quantity")));
   const unitCost = Math.max(0, num(formData.get("unit_cost")));
+  const quotationItemId = str(formData.get("quotation_item_id"));
 
   const supabase = await createClient();
   const sku = await generateFinishedGoodSku(supabase);
@@ -68,6 +69,15 @@ export async function createFinishedGood(formData: FormData) {
     .select("id")
     .single();
   if (error) return { error: error.message };
+
+  // Best-effort: when this finished good was created from an accepted
+  // quotation's item (picked via the JOB NO. lookup below), link the new
+  // SKU straight back into that item's product_code — the same field
+  // ใบลงผลิต lets you fill in by hand — so producing the goods doesn't
+  // also mean re-typing the code a second time.
+  if (quotationItemId) {
+    await supabase.from("quotation_items").update({ product_code: sku }).eq("id", quotationItemId);
+  }
 
   if (initialQty > 0) {
     const { error: movementErr } = await supabase.rpc("record_finished_goods_movement", {
@@ -84,6 +94,10 @@ export async function createFinishedGood(formData: FormData) {
 
   await logActivity("เพิ่มสินค้าสำเร็จรูป", name);
   revalidatePath("/dashboard/finished-goods");
+  if (quotationItemId) {
+    revalidatePath("/dashboard/quotations");
+    revalidatePath("/dashboard/quotations/production-orders");
+  }
   return { error: null };
 }
 
@@ -132,6 +146,45 @@ export async function receiveFinishedGood(id: string, formData: FormData) {
     p_qty: qty,
     p_note: note,
     p_unit_cost: unitCost,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/finished-goods");
+  return { error: null };
+}
+
+// Lets the inline "คงเหลือ" edit correct a wrong count without bypassing
+// the movement ledger — computes the delta against the live row (never
+// trusts a client-submitted "before" value) and records it as an ordinary
+// in/out movement through the same weighted-average RPC as every other
+// quantity change, so the audit trail stays complete. Passing the
+// product's own current unit_cost back into the RPC keeps the weighted
+// average unchanged for an 'in' adjustment (the math cancels out).
+export async function adjustFinishedGoodQuantity(id: string, formData: FormData) {
+  if (!isSupabaseConfigured()) {
+    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
+  }
+
+  const newQty = num(formData.get("quantity"));
+  if (newQty < 0) return { error: "จำนวนคงเหลือต้องไม่ติดลบ" };
+
+  const supabase = await createClient();
+  const { data: product, error: fetchError } = await supabase
+    .from("finished_goods")
+    .select("quantity_on_hand, unit_cost")
+    .eq("id", id)
+    .single();
+  if (fetchError) return { error: fetchError.message };
+
+  const delta = newQty - Number(product.quantity_on_hand);
+  if (delta === 0) return { error: null };
+
+  const { error } = await supabase.rpc("record_finished_goods_movement", {
+    p_id: id,
+    p_type: delta > 0 ? "in" : "out",
+    p_qty: Math.abs(delta),
+    p_note: "ปรับปรุงยอดคงเหลือ",
+    p_unit_cost: product.unit_cost,
   });
   if (error) return { error: error.message };
 

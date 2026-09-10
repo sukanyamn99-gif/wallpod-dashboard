@@ -7,9 +7,9 @@ import { canAccessPage } from "@/lib/permissions";
 import { BillingDocumentForm } from "../../../billing-document-form";
 
 // Mirrors billing-document-table.tsx's canDelete rule — owner/manager can
-// edit any document, anyone else only their own.
+// edit any document — a plain "account" (ธุรการบัญชี) role gets the same blanket rights, anyone else only their own.
 function canEdit(role: string, createdById: string | null, profileId: string) {
-  if (role === "owner" || role === "manager") return true;
+  if (role === "owner" || role === "manager" || role === "account") return true;
   return createdById === profileId;
 }
 

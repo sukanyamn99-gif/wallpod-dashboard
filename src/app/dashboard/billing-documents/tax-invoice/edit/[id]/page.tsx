@@ -1,0 +1,64 @@
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { getBillingDocumentById } from "@/lib/data/billing-documents";
+import { getCustomers, getSalesReps } from "@/lib/data/reference";
+import { getCurrentProfile } from "@/lib/data/profile";
+import { canAccessPage } from "@/lib/permissions";
+import { BillingDocumentForm } from "../../../billing-document-form";
+
+// Mirrors billing-document-table.tsx's canDelete rule — owner/manager can
+// edit any document — a plain "account" (ธุรการบัญชี) role gets the same blanket rights, anyone else only their own.
+function canEdit(role: string, createdById: string | null, profileId: string) {
+  if (role === "owner" || role === "manager" || role === "account") return true;
+  return createdById === profileId;
+}
+
+export default async function EditTaxInvoicePage({ params }: { params: Promise<{ id: string }> }) {
+  const profile = await getCurrentProfile();
+  if (!profile) redirect("/login");
+  if (!canAccessPage(profile.role, "/dashboard/billing-documents/tax-invoice")) redirect("/dashboard/sales");
+
+  const { id } = await params;
+  const document = await getBillingDocumentById(id);
+  const allowed = document ? canEdit(profile.role, document.createdById, profile.id) : false;
+
+  if (!document || document.docType !== "tax_invoice" || !allowed) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold">ไม่พบข้อมูล</h1>
+          <p className="text-sm text-muted-foreground">
+            <Link href="/dashboard/billing-documents/tax-invoice" className="underline underline-offset-2">
+              ← กลับไปหน้าใบกำกับภาษี
+            </Link>
+          </p>
+        </div>
+        <p className="text-sm text-muted-foreground">ไม่พบใบกำกับภาษีนี้ในระบบ หรือคุณไม่มีสิทธิ์แก้ไข</p>
+      </div>
+    );
+  }
+
+  const [customers, salesReps] = await Promise.all([getCustomers(), getSalesReps()]);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold">แก้ไขใบกำกับภาษี {document.docNo}</h1>
+        <p className="text-sm text-muted-foreground">
+          <Link href={`/dashboard/billing-documents/tax-invoice/view/${id}`} className="underline underline-offset-2">
+            ← กลับไปหน้าใบกำกับภาษี
+          </Link>
+        </p>
+      </div>
+      <BillingDocumentForm
+        docType="tax_invoice"
+        customers={customers}
+        salesReps={salesReps}
+        listPath="/dashboard/billing-documents/tax-invoice"
+        mode="edit"
+        docId={id}
+        initialData={document}
+      />
+    </div>
+  );
+}

@@ -24,12 +24,24 @@ function statusVariant(status: string): "secondary" | "destructive" | "outline" 
   return "outline";
 }
 
-export default async function QuotationDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function QuotationDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
+}) {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
   if (!canAccessPage(profile.role, "/dashboard/quotations")) redirect("/dashboard/sales");
 
   const { id } = await params;
+  const { from } = await searchParams;
+  // Reached from ใบลงผลิต (the Eye icon on production-orders-table.tsx) —
+  // that list is keyed by JOB NO., not the quotation number, so the header
+  // and back-link here should read the same way, not switch context to the
+  // quotation list the user never went through.
+  const fromProduction = from === "production-orders";
   const quotation = await getQuotationById(id);
 
   if (!quotation) {
@@ -52,16 +64,34 @@ export default async function QuotationDetailPage({ params }: { params: Promise<
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">ใบเสนอราคา {quotation.docNo}</h1>
+          <h1 className="text-2xl font-semibold">
+            {fromProduction ? `ใบลงผลิต ${quotation.jobNumber ?? quotation.docNo}` : `ใบเสนอราคา ${quotation.docNo}`}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            <Link href="/dashboard/quotations" className="underline underline-offset-2">
-              ← กลับไปหน้ารายการใบเสนอราคา
-            </Link>
+            {fromProduction ? (
+              <Link href="/dashboard/quotations/production-orders" className="underline underline-offset-2">
+                ← กลับไปหน้าใบลงผลิต
+              </Link>
+            ) : (
+              <Link href="/dashboard/quotations" className="underline underline-offset-2">
+                ← กลับไปหน้ารายการใบเสนอราคา
+              </Link>
+            )}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={statusVariant(quotation.status)}>{quotation.status}</Badge>
-          <Button size="sm" variant="outline" nativeButton={false} render={<Link href={`/dashboard/quotations/print/${id}`} target="_blank" />}>
+          <Button
+            size="sm"
+            variant="outline"
+            nativeButton={false}
+            render={
+              <Link
+                href={fromProduction ? `/dashboard/quotations/print/${id}?from=production-orders` : `/dashboard/quotations/print/${id}`}
+                target="_blank"
+              />
+            }
+          >
             พิมพ์
           </Button>
           <Button size="sm" variant="outline" nativeButton={false} render={<Link href={`/dashboard/quotations/edit/${id}`} />}>

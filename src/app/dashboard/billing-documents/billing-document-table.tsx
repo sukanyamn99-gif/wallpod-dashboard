@@ -20,8 +20,11 @@ import { deleteBillingDocument } from "./actions";
 
 const TOTAL_COLUMNS = 6;
 
+// Same blanket rule as each doc type's own canEdit (view/edit pages) —
+// owner/manager/account can edit or delete any document, anyone else only
+// their own.
 function canDelete(profile: Profile, doc: BillingDocument) {
-  return profile.role === "owner" || profile.role === "manager" || doc.createdById === profile.id;
+  return profile.role === "owner" || profile.role === "manager" || profile.role === "account" || doc.createdById === profile.id;
 }
 
 function DeleteButton({ docType, doc }: { docType: BillingDocumentType; doc: BillingDocument }) {
@@ -136,10 +139,7 @@ export function BillingDocumentTable({
                     >
                       <Eye className="h-3.5 w-3.5" />
                     </Button>
-                    {/* Only ใบวางบิล/ใบแจ้งหนี้ have an edit route so far —
-                        ใบกำกับภาษี/ใบเสร็จรับเงิน can be extended the same
-                        way later if asked. */}
-                    {(docType === "billing_note" || docType === "invoice") && canDelete(currentProfile, doc) && (
+                    {canDelete(currentProfile, doc) && (
                       <Button
                         size="icon-sm"
                         variant="outline"

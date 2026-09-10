@@ -3,11 +3,12 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { DownloadPdfButton } from "@/components/dashboard/download-pdf-button";
 import { formatQuotationItemDescription, formatTHB } from "@/lib/format";
 import type { QuotationDetail, QuotationNoteTone, QuotationPrintTemplate } from "@/lib/types";
 
 function shortDate(dateStr: string | null): string {
-  if (!dateStr) return "—";
+  if (!dateStr) return "";
   const d = new Date(dateStr);
   const dd = String(d.getDate()).padStart(2, "0");
   const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -47,10 +48,12 @@ export function PrintQuotationView({
   quotation,
   imageUrlsByPath,
   template,
+  fromProduction = false,
 }: {
   quotation: QuotationDetail;
   imageUrlsByPath: Record<string, string>;
   template: QuotationPrintTemplate;
+  fromProduction?: boolean;
 }) {
   const router = useRouter();
   return (
@@ -71,6 +74,7 @@ export function PrintQuotationView({
           ปิด
         </Button>
         <Button onClick={() => window.print()}>พิมพ์</Button>
+        <DownloadPdfButton />
       </div>
 
       <div className="text-[10.5px] leading-tight">
@@ -103,31 +107,33 @@ export function PrintQuotationView({
         <table className="w-full border-collapse border border-black">
           <tbody>
             <tr>
-              <td className="w-[70%] p-1">Attn / ผู้ติดต่อ : {quotation.attn ?? "—"}</td>
+              <td className="w-[70%] p-1">Attn / ผู้ติดต่อ : {quotation.attn ?? ""}</td>
               <td className="p-1">Quotation No. : {quotation.docNo}</td>
             </tr>
             <tr>
               <td className="p-1">Company Name / ชื่อบริษัทลูกค้า : {quotation.customerName}</td>
-              <td className="p-1">JOB Number : {quotation.jobNumber ?? "—"}</td>
+              <td className="p-1">JOB Number : {quotation.jobNumber ?? ""}</td>
             </tr>
             <tr>
-              <td className="p-1">Customer Address / ที่อยู่ผู้ซื้อ : {quotation.customerAddress ?? "—"}</td>
-              <td className="p-1">PO. Number : {quotation.poNumber ?? "—"}</td>
+              <td className="p-1">Customer Address / ที่อยู่ผู้ซื้อ : {quotation.customerAddress ?? ""}</td>
+              <td className="p-1">PO. Number : {quotation.poNumber ?? ""}</td>
             </tr>
             <tr>
-              <td className="p-1">Tel. / เบอร์โทร : {quotation.customerTel ?? "—"}</td>
+              <td className="p-1">Tel. / เบอร์โทร : {quotation.customerTel ?? ""}</td>
               <td className="p-1">Delivery Date / วันที่ส่งของ : {shortDate(quotation.deliveryDate)}</td>
             </tr>
             <tr>
-              <td className="p-1">Tax ID/เลขที่ผู้เสียภาษี : {quotation.customerTaxId ?? "—"}</td>
-              <td className="p-1">Remark /หมายเหตุ : {quotation.remark ?? "—"}</td>
+              <td className="p-1">Tax ID/เลขที่ผู้เสียภาษี : {quotation.customerTaxId ?? ""}</td>
+              {/* หมายเหตุ prints below with "Remake : หมายเหตุ :" instead —
+                  no need to also show it cramped in this header grid. */}
+              <td className="p-1"></td>
             </tr>
           </tbody>
         </table>
 
         {/* Banner */}
         <div className="mt-2 border border-black bg-gray-400 py-1 text-center text-sm font-bold">
-          QUOTATION / ใบแจ้งการผลิต / ใบแจ้งการจัดส่ง
+          {fromProduction ? "ใบลงผลิต / ใบแจ้งการจัดส่ง" : "QUOTATION / ใบแจ้งการผลิต / ใบแจ้งการจัดส่ง"}
         </div>
 
         {/* Items table */}
@@ -197,21 +203,19 @@ export function PrintQuotationView({
               const last = i === arr.length - 1;
               const rowTd = last ? td + " border-b-0" : td;
               return (
-                <tr key={it.id}>
+                <tr key={it.id} className="print:break-inside-avoid">
                   <td className={rowTd + " text-center"}>{i + 1}</td>
-                  <td className={rowTd + " text-center whitespace-nowrap"}>{it.productCode ?? "—"}</td>
+                  <td className={rowTd + " text-center whitespace-nowrap"}>{it.productCode ?? ""}</td>
                   <td className={rowTd + " text-center"}>
-                    {it.imagePath && imageUrlsByPath[it.imagePath] ? (
+                    {it.imagePath && imageUrlsByPath[it.imagePath] && (
                       // eslint-disable-next-line @next/next/no-img-element -- private signed URL preview, not an optimizable remote asset
                       <img src={imageUrlsByPath[it.imagePath]} alt="" className="mx-auto h-24 w-24 object-cover" />
-                    ) : (
-                      "—"
                     )}
                   </td>
                   <td className={rowTd + " whitespace-pre-line text-left"}>{formatQuotationItemDescription(it)}</td>
                   <td className={rowTd + " text-right whitespace-nowrap"}>{num(it.unitPrice)}</td>
                   <td className={rowTd + " text-right whitespace-nowrap"}>
-                    {it.discountPercent ? `${it.discountPercent}%` : "-"}
+                    {it.discountPercent ? `${it.discountPercent}%` : ""}
                   </td>
                   <td className={rowTd + " text-right whitespace-nowrap"}>{num(it.netPrice)}</td>
                   <td className={rowTd + " text-right whitespace-nowrap"}>
@@ -227,9 +231,10 @@ export function PrintQuotationView({
         </table>
 
         {/* Remark/disclaimers + totals */}
-        <div className="mt-2 grid grid-cols-[1fr_auto] gap-4 border border-black p-2">
+        <div className="mt-2 grid grid-cols-[1fr_auto] gap-4 border border-black p-2 print:break-inside-avoid">
           <div className="space-y-0.5">
             <p className="font-medium">Remake : หมายเหตุ :</p>
+            {quotation.remark && <p className="whitespace-pre-line font-bold">{quotation.remark}</p>}
             {template.notes.map((line, i) => (
               <p key={i} className={NOTE_TONE_CLASS[line.tone]}>
                 {line.text}
@@ -264,7 +269,7 @@ export function PrintQuotationView({
             /dashboard/settings/documents (quotation_print_templates), so an
             empty conditions array (e.g. for ค่าของ) simply prints nothing. */}
         {template.conditions.length > 0 && (
-          <div className="mt-2 border border-black p-2 text-[12px] leading-relaxed">
+          <div className="mt-2 border border-black p-2 text-[12px] leading-relaxed print:break-inside-avoid">
             <p className="font-bold">เงื่อนไข การเตรียมพื้นที่ก่อนติดตั้งแผ่นซับเสียง</p>
 
             {template.conditions.map((section, i) => (
@@ -288,7 +293,7 @@ export function PrintQuotationView({
         )}
 
         {/* Payment terms + prepared by */}
-        <div className="mt-2 grid grid-cols-[1fr_auto] gap-4 border border-black p-2">
+        <div className="mt-2 grid grid-cols-[1fr_auto] gap-4 border border-black p-2 print:break-inside-avoid">
           <div>
             {quotation.paymentTerms.length > 0 && (
               <>
@@ -311,11 +316,11 @@ export function PrintQuotationView({
           </div>
           <div className="w-48 self-start text-right">
             <p className="font-medium">Prepared by/เสนอราคาโดย</p>
-            <p>{quotation.salesRepName ?? "—"}</p>
+            <p>{quotation.salesRepName ?? ""}</p>
           </div>
         </div>
 
-        <p className="mt-2 border border-black bg-[#e3ebeb] p-2 text-[15px] font-bold">
+        <p className="mt-2 border border-black bg-[#e3ebeb] p-2 text-[15px] font-bold print:break-inside-avoid">
           ชื่อบัญชี : บริษัท คูนเว จำกัด ธนาคารกรุงศรี : 403-0-00726-8
         </p>
 
@@ -323,7 +328,7 @@ export function PrintQuotationView({
             per-column stacks) so CSS Grid sizes each row to its tallest
             cell, keeping all 3 signature lines aligned even when a label
             wraps to 2 lines. */}
-        <div className="mt-8 grid grid-cols-3 gap-x-4 gap-y-8 text-center">
+        <div className="mt-8 grid grid-cols-3 gap-x-4 gap-y-8 text-center print:break-inside-avoid">
           <p className="self-end">Checked by /ตรวจสอบโดย</p>
           <p className="self-end">Pre-production rechecked and approved/ผู้อนุมัติผลิต</p>
           <p className="self-end">Customer Approved ยืนยันคำสั่งซื้อ</p>

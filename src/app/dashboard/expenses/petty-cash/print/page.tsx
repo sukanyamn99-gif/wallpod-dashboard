@@ -1,8 +1,22 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getPettyCashTransactions } from "@/lib/data/petty-cash";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
 import { PrintPettyCashView } from "./print-petty-cash-view";
+
+// See quotations/print/[id]/page.tsx's generateMetadata for why this is
+// server-side, not a client-side document.title assignment.
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}): Promise<Metadata> {
+  const { from, to } = await searchParams;
+  const fromLabel = from ? new Date(from).toLocaleDateString("th-TH") : "เริ่มต้น";
+  const toLabel = to ? new Date(to).toLocaleDateString("th-TH") : "ปัจจุบัน";
+  return { title: `เงินสดย่อย ${fromLabel}-${toLabel}` };
+}
 
 export default async function PrintPettyCashPage({
   searchParams,
