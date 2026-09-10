@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getBrowser } from "@/lib/pdf/get-browser";
 
+// Vercel's default function timeout (10s on Hobby, 15s on Pro) is shorter
+// than a cold Chromium launch + page.goto's own 30s budget can take —
+// without this, the platform kills the function before Puppeteer ever gets
+// a chance to fail with a useful error, and the client just sees the
+// generic "สร้าง PDF ไม่สำเร็จ" catch-all. Paired with the memory bump in
+// vercel.json (Chromium routinely needs 700MB-1GB+).
+export const maxDuration = 60;
+
 // Matches the root layout's static <title> (src/app/layout.tsx) — the
 // value every dashboard page starts with before a print view's own
 // useEffect overwrites it with the real doc number.

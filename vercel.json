@@ -1,3 +1,8 @@
 {
-  "regions": ["syd1"]
+  "regions": ["syd1"],
+  "functions": {
+    "src/app/api/print-pdf/route.ts": {
+      "memory": 1536
+    }
+  }
 }
