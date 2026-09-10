@@ -16,6 +16,7 @@ import { formatTHB } from "@/lib/format";
 import { computeBillingDocumentSummary } from "@/lib/billing-document-summary";
 import {
   createBillingDocument,
+  fetchBillableBillingNoteItems,
   fetchBillableQuotations,
   fetchBillableTaxInvoices,
   fetchUnbilledInvoices,
@@ -23,6 +24,7 @@ import {
 } from "./actions";
 import { BILLING_DOCUMENT_LABELS } from "@/lib/types";
 import type {
+  BillableBillingNoteItem,
   BillableQuotation,
   BillableTaxInvoice,
   BillingDocumentDetail,
@@ -61,6 +63,11 @@ interface ManualItemRow {
   unit: string;
   unitPrice: string;
   applyWht: boolean;
+  // Set when this row was copied from an issued ใบวางบิล's own manual line
+  // (see BillableBillingNoteItem/toggleBillingNoteItem below) — lets the
+  // checkbox that added it be un-toggled cleanly, and tells the server
+  // which source line to mark as already receipted.
+  sourceItemId?: string;
 }
 
 // The row's own pre-VAT line total (qty × ราคาต่อหน่วย) — shown next to the
@@ -145,6 +152,11 @@ export function BillingDocumentForm({
   // knows how to bill from (see fetchBillableTaxInvoices).
   const [taxInvoices, setTaxInvoices] = useState<BillableTaxInvoice[]>([]);
   const [selectedTaxInvoices, setSelectedTaxInvoices] = useState<Set<string>>(new Set());
+  // ใบเสร็จรับเงิน only — manually-typed ใบวางบิล lines with no
+  // quotation/payment to browse by otherwise (see fetchBillableBillingNoteItems).
+  // Selecting one copies it into manualItems below, tagged by sourceItemId.
+  const [billingNoteItems, setBillingNoteItems] = useState<BillableBillingNoteItem[]>([]);
+  const [selectedBillingNoteItems, setSelectedBillingNoteItems] = useState<Set<string>>(new Set());
   const [manualItems, setManualItems] = useState<ManualItemRow[]>(() =>
     (initialData?.items ?? [])
       .filter((it) => it.manualDescription)
@@ -222,16 +234,19 @@ export function BillingDocumentForm({
     setSelected(new Set());
     setSelectedQuotations(new Set());
     setSelectedTaxInvoices(new Set());
+    setSelectedBillingNoteItems(new Set());
     setLoadingInvoices(true);
     try {
-      const [rows, billableQuotations, billableTaxInvoices] = await Promise.all([
+      const [rows, billableQuotations, billableTaxInvoices, billableBillingNoteItems] = await Promise.all([
         fetchUnbilledInvoices(id),
         usesTaxInvoiceSource ? Promise.resolve([]) : fetchBillableQuotations(name),
         usesTaxInvoiceSource ? fetchBillableTaxInvoices(id, docType as "billing_note" | "receipt") : Promise.resolve([]),
+        docType === "receipt" ? fetchBillableBillingNoteItems(id) : Promise.resolve([]),
       ]);
       setInvoices(rows);
       setQuotations(billableQuotations);
       setTaxInvoices(billableTaxInvoices);
+      setBillingNoteItems(billableBillingNoteItems);
       if (preselectJobNo) {
         setSelected(new Set(rows.filter((r) => r.jobNo === preselectJobNo).map((r) => r.paymentId)));
       }
@@ -284,17 +299,19 @@ export function BillingDocumentForm({
       // pre-existing item may reference a quotation with no tax invoice
       // issued yet, and that needs somewhere to still show up as selected
       // so saving the form doesn't silently drop it.
-      const [rows, billableQuotations, billableTaxInvoices] = await Promise.all([
+      const [rows, billableQuotations, billableTaxInvoices, billableBillingNoteItems] = await Promise.all([
         fetchUnbilledInvoices(initialData.customerId),
         fetchBillableQuotations(initialData.customerName),
         usesTaxInvoiceSource
           ? fetchBillableTaxInvoices(initialData.customerId, docType as "billing_note" | "receipt", docId)
           : Promise.resolve([]),
+        docType === "receipt" ? fetchBillableBillingNoteItems(initialData.customerId, docId) : Promise.resolve([]),
       ]);
       if (!cancelled) {
         setInvoices(rows);
         setQuotations(billableQuotations);
         setTaxInvoices(billableTaxInvoices);
+        setBillingNoteItems(billableBillingNoteItems);
         // The item only stores quotationId — match it back to whichever
         // tax invoice shares that same quotation so its checkbox starts
         // checked, since a tax invoice isn't itself what's persisted.
@@ -365,6 +382,34 @@ export function BillingDocumentForm({
     }
   }
 
+  // Copies a ใบวางบิล's manual line onto this document as its own editable
+  // manual item, tagged by sourceItemId — un-toggling removes that same
+  // tagged row again rather than any manual item the user typed themselves.
+  function toggleBillingNoteItem(item: BillableBillingNoteItem) {
+    setSelectedBillingNoteItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(item.id)) {
+        next.delete(item.id);
+        setManualItems((rows) => rows.filter((r) => r.sourceItemId !== item.id));
+      } else {
+        next.add(item.id);
+        setManualItems((rows) => [
+          ...rows,
+          {
+            key: `bn-item-${item.id}`,
+            description: item.description,
+            qty: String(item.qty),
+            unit: item.unit,
+            unitPrice: String(item.unitPrice),
+            applyWht: item.applyWht,
+            sourceItemId: item.id,
+          },
+        ]);
+      }
+      return next;
+    });
+  }
+
   function addManualItem() {
     setManualItems((prev) => [
       ...prev,
@@ -381,7 +426,19 @@ export function BillingDocumentForm({
   }
 
   function removeManualItem(key: string) {
-    setManualItems((prev) => prev.filter((row) => row.key !== key));
+    setManualItems((prev) => {
+      // If this row came from the ใบวางบิล picker, un-check it there too —
+      // otherwise the checkbox stays checked for a row that no longer exists.
+      const row = prev.find((r) => r.key === key);
+      if (row?.sourceItemId) {
+        setSelectedBillingNoteItems((ids) => {
+          const next = new Set(ids);
+          next.delete(row.sourceItemId!);
+          return next;
+        });
+      }
+      return prev.filter((r) => r.key !== key);
+    });
   }
 
   // Shows automatically whenever a customer is picked — whether via the
@@ -488,6 +545,7 @@ export function BillingDocumentForm({
           fd.append("item_manual_unit", row.unit);
           fd.append("item_manual_unit_price", row.unitPrice);
           fd.append("item_manual_apply_wht", String(row.applyWht));
+          fd.append("item_manual_source_id", row.sourceItemId ?? "");
         }
         if (docType === "tax_invoice") {
           for (const [productId, qty] of Object.entries(finishedGoodQty)) {
@@ -704,7 +762,7 @@ export function BillingDocumentForm({
               <p className="mt-2 text-sm text-muted-foreground">
                 ลูกค้ารายนี้ไม่มีใบแจ้งหนี้ค้างชำระ
                 {quotations.length > 0 && " — เลือกจากใบเสนอราคาด้านล่างแทนได้"}
-                {usesTaxInvoiceSource && taxInvoices.length > 0 && " — เลือกจากใบกำกับภาษีด้านล่างแทนได้"}
+                {usesTaxInvoiceSource && taxInvoices.length > 0 && (docType === "receipt" ? " — เลือกจากใบกำกับภาษี/ใบวางบิลด้านล่างแทนได้" : " — เลือกจากใบกำกับภาษีด้านล่างแทนได้")}
               </p>
             </div>
           ) : (
@@ -810,15 +868,21 @@ export function BillingDocumentForm({
 
         {usesTaxInvoiceSource && customerId && !loadingInvoices && (
           <div className="space-y-2">
-            <Label>{docType === "receipt" ? "ใบกำกับภาษีที่ยังไม่ได้ออกใบเสร็จ" : "ใบกำกับภาษีที่ยังไม่ได้วางบิล"}</Label>
+            <Label>
+              {docType === "receipt" ? "ใบกำกับภาษี/ใบวางบิลที่ยังไม่ได้ออกใบเสร็จ" : "ใบกำกับภาษีที่ยังไม่ได้วางบิล"}
+            </Label>
             <p className="text-xs text-muted-foreground">
-              {docType === "receipt" ? "เลือกใบกำกับภาษีที่ต้องการออกใบเสร็จโดยตรง" : "เลือกใบกำกับภาษีที่ต้องการวางบิลโดยตรง"}
+              {docType === "receipt"
+                ? "เลือกใบกำกับภาษีหรือใบวางบิลที่ต้องการออกใบเสร็จโดยตรง"
+                : "เลือกใบกำกับภาษีที่ต้องการวางบิลโดยตรง"}
             </p>
             {taxInvoices.length === 0 ? (
               <div className="rounded-lg border border-dashed p-8 text-center">
                 <Package className="mx-auto h-8 w-8 text-muted-foreground" />
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {docType === "receipt" ? "ลูกค้ารายนี้ไม่มีใบกำกับภาษีที่ยังไม่ได้ออกใบเสร็จ" : "ลูกค้ารายนี้ไม่มีใบกำกับภาษีที่ยังไม่ได้วางบิล"}
+                  {docType === "receipt"
+                    ? "ลูกค้ารายนี้ไม่มีใบกำกับภาษีหรือใบวางบิลที่ยังไม่ได้ออกใบเสร็จ"
+                    : "ลูกค้ารายนี้ไม่มีใบกำกับภาษีที่ยังไม่ได้วางบิล"}
                 </p>
               </div>
             ) : (
@@ -854,6 +918,36 @@ export function BillingDocumentForm({
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {docType === "receipt" && customerId && !loadingInvoices && billingNoteItems.length > 0 && (
+          <div className="space-y-2">
+            <Label>รายการจากใบวางบิลที่ยังไม่ได้ออกใบเสร็จ</Label>
+            <p className="text-xs text-muted-foreground">
+              รายการที่พิมพ์เองในใบวางบิล ยังไม่มีใบแจ้งหนี้หรือใบกำกับภาษีให้ดึง — เลือกเพื่อคัดลอกมาออกใบเสร็จ
+            </p>
+            <div className="space-y-2">
+              {billingNoteItems.map((item) => (
+                <label key={item.id} className="flex cursor-pointer items-center gap-3 rounded-lg border p-2 hover:bg-muted">
+                  <input
+                    type="checkbox"
+                    checked={selectedBillingNoteItems.has(item.id)}
+                    onChange={() => toggleBillingNoteItem(item)}
+                    className="h-4 w-4"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">
+                      {item.billingNoteDocNo} <span className="text-muted-foreground">— {item.description}</span>
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {new Date(item.billingNoteDate).toLocaleDateString("th-TH")}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-sm font-medium">{formatTHB(item.amount)}</p>
+                </label>
+              ))}
+            </div>
           </div>
         )}
 

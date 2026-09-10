@@ -1450,7 +1450,12 @@ create table billing_note_items (
   -- Whether this line counts toward the document-level หัก ณ ที่จ่าย (WHT)
   -- deduction — lets several invoices/quotations be bundled into one
   -- document while withholding tax on only some of them.
-  apply_wht boolean not null default true
+  apply_wht boolean not null default true,
+  -- Set when this line was copied onto a ใบเสร็จรับเงิน from another
+  -- document's manual line (e.g. an issued ใบวางบิล with no quotation_id/
+  -- payment_id to browse by) — marks that source line as already receipted
+  -- so it isn't offered again (see getBillableBillingNoteItemsForCustomer).
+  source_item_id uuid references billing_note_items(id) on delete set null
 );
 
 alter table billing_notes enable row level security;

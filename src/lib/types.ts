@@ -760,6 +760,24 @@ export interface BillableTaxInvoice {
   whtPercent: number;
 }
 
+// A single manually-typed line item on an issued ใบวางบิล, offered as a
+// source for ใบเสร็จรับเงิน — the one case BillableTaxInvoice above can't
+// reach, since a manual line has no quotation_id/payment_id to browse by.
+// Copied onto the new receipt as its own manual item (see billing_note_items
+// .source_item_id), not a live reference — editable/removable like any
+// other manual row once added.
+export interface BillableBillingNoteItem {
+  id: string;
+  billingNoteDocNo: string;
+  billingNoteDate: string;
+  description: string;
+  qty: number;
+  unit: string;
+  unitPrice: number;
+  amount: number;
+  applyWht: boolean;
+}
+
 // Descriptive product/service detail pulled from the quotation behind an
 // invoice — used only to itemize a ใบกำกับภาษี (tax invoice), not to
 // recompute any amount: the invoice's own `amount` above stays the figure

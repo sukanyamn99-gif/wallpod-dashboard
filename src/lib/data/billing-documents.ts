@@ -2,6 +2,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { getQuotationItemsByIds, getQuotationItemsByJobNumbers } from "@/lib/data/quotations";
 import { computeBillingDocumentSummary } from "@/lib/billing-document-summary";
 import type {
+  BillableBillingNoteItem,
   BillableTaxInvoice,
   BillingDocument,
   BillingDocumentDetail,
@@ -53,6 +54,13 @@ export async function getUnbilledInvoicesForCustomer(customerId: string): Promis
 // instead — a tax invoice already billed via ใบวางบิล is still perfectly
 // receiptable, so reusing the billing_note-only check for receipts would
 // have wrongly hidden the normal invoice → billing note → receipt flow.
+//
+// ใบเสร็จรับเงิน additionally browses issued ใบวางบิล documents directly (per
+// the user's "ดึงข้อมูลจากใบวางบิลมาให้หน่อย" request) — a quotation-sourced
+// line billed via ใบวางบิล has no tax_invoice-type document at all, so
+// without this it would be stuck with no way to be receipted except typing
+// it in again as a manual line. ใบวางบิล isn't offered as a source for
+// ANOTHER ใบวางบิล, only for receipts.
 export async function getBillableTaxInvoicesForCustomer(
   customerId: string,
   targetDocType: "billing_note" | "receipt",
@@ -64,12 +72,13 @@ export async function getBillableTaxInvoicesForCustomer(
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
 
+  const sourceDocTypes = targetDocType === "receipt" ? ["tax_invoice", "billing_note"] : ["tax_invoice"];
   const { data: invoices, error } = await supabase
     .from("billing_notes")
     .select(
       "id, doc_no, doc_date, discount_amount, wht_percent, retention_percent, billing_note_items(quotation_id, amount, apply_wht)",
     )
-    .eq("doc_type", "tax_invoice")
+    .in("doc_type", sourceDocTypes)
     .eq("customer_id", customerId);
   if (error) throw error;
 
@@ -111,13 +120,85 @@ export async function getBillableTaxInvoicesForCustomer(
   return result;
 }
 
+// Manually-typed ใบวางบิล line items for a customer (no quotation_id/
+// payment_id at all — e.g. a deposit typed straight into the document
+// before any formal quotation/invoice existed for it), offered as a source
+// for ใบเสร็จรับเงิน. A quotation-sourced line already surfaces through
+// getBillableTaxInvoicesForCustomer once its parent ใบวางบิล is scanned
+// there too; a payment-sourced line already surfaces through
+// getUnbilledInvoicesForCustomer regardless of billing-note status — this
+// fills the one remaining gap, since a manual line has no id to browse by
+// through either of those. Excludes lines already copied onto an existing
+// ใบเสร็จรับเงิน (billing_note_items.source_item_id), so the same line
+// isn't offered twice.
+export async function getBillableBillingNoteItemsForCustomer(
+  customerId: string,
+  excludeDocId?: string,
+): Promise<BillableBillingNoteItem[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+
+  const { data: notes, error } = await supabase
+    .from("billing_notes")
+    .select(
+      "id, doc_no, doc_date, billing_note_items(id, quotation_id, payment_id, manual_description, manual_qty, manual_unit, manual_unit_price, amount, apply_wht)",
+    )
+    .eq("doc_type", "billing_note")
+    .eq("customer_id", customerId);
+  if (error) throw error;
+
+  let claimedQuery = supabase
+    .from("billing_note_items")
+    .select("billing_note_id, source_item_id, billing_notes!inner(doc_type)")
+    .eq("billing_notes.doc_type", "receipt")
+    .not("source_item_id", "is", null);
+  if (excludeDocId) claimedQuery = claimedQuery.neq("billing_note_id", excludeDocId);
+  const { data: claimed, error: claimedErr } = await claimedQuery;
+  if (claimedErr) throw claimedErr;
+  const claimedItemIds = new Set((claimed ?? []).map((row) => row.source_item_id as string));
+
+  const result: BillableBillingNoteItem[] = [];
+  for (const note of notes ?? []) {
+    const items = (note.billing_note_items ?? []) as unknown as {
+      id: string;
+      quotation_id: string | null;
+      payment_id: string | null;
+      manual_description: string | null;
+      manual_qty: number | null;
+      manual_unit: string | null;
+      manual_unit_price: number | null;
+      amount: number;
+      apply_wht: boolean;
+    }[];
+    for (const it of items) {
+      if (it.quotation_id || it.payment_id || claimedItemIds.has(it.id)) continue;
+      result.push({
+        id: it.id,
+        billingNoteDocNo: note.doc_no,
+        billingNoteDate: note.doc_date,
+        description: it.manual_description ?? "",
+        qty: Number(it.manual_qty) || 1,
+        unit: it.manual_unit ?? "หน่วย",
+        unitPrice: Number(it.manual_unit_price) || 0,
+        amount: Number(it.amount),
+        applyWht: it.apply_wht,
+      });
+    }
+  }
+  return result;
+}
+
 // A quotation-sourced line being bundled into a ใบวางบิล/ใบเสร็จรับเงิน
 // should be billed at the ใบกำกับภาษี's own net-payable amount (after that
 // tax invoice's own discount/WHT/retention) once one exists for that
 // quotation — not the quotation's raw gross total, which would ignore a
 // withholding tax the tax invoice already accounted for and overstate what's
 // actually owed. Batched (one query covering every quotation-sourced item on
-// the document) rather than per-item.
+// the document) rather than per-item. Also scans ใบวางบิล documents (not
+// just ใบกำกับภาษี) — a receipt can now reference an issued ใบวางบิล
+// directly (see getBillableTaxInvoicesForCustomer), and its net payable
+// needs the same treatment so the receipt bills the right amount rather
+// than falling back to the quotation's raw total.
 export async function getNetPayableForQuotationIds(
   supabase: Awaited<ReturnType<typeof createClient>>,
   quotationIds: string[],
@@ -128,7 +209,7 @@ export async function getNetPayableForQuotationIds(
     .select(
       "discount_amount, wht_percent, retention_percent, created_at, billing_note_items!inner(quotation_id, amount, apply_wht)",
     )
-    .eq("doc_type", "tax_invoice")
+    .in("doc_type", ["tax_invoice", "billing_note"])
     .in("billing_note_items.quotation_id", quotationIds)
     .order("created_at", { ascending: false });
   if (error) throw error;

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activity-log";
 import {
+  getBillableBillingNoteItemsForCustomer,
   getBillableTaxInvoicesForCustomer,
   getBillingDocumentById,
   getNetPayableForQuotationIds,
@@ -12,7 +13,14 @@ import {
 import { getAcceptedUnconvertedQuotationsForCustomer, normalizeJobNo } from "@/lib/data/quotations";
 import { computeBillingDocumentSummary } from "@/lib/billing-document-summary";
 import { BILLING_DOCUMENT_LABELS, BILLING_DOCUMENT_LIST_PATH } from "@/lib/types";
-import type { BillableQuotation, BillableTaxInvoice, BillingDocumentType, PaymentMethod, UnbilledInvoice } from "@/lib/types";
+import type {
+  BillableBillingNoteItem,
+  BillableQuotation,
+  BillableTaxInvoice,
+  BillingDocumentType,
+  PaymentMethod,
+  UnbilledInvoice,
+} from "@/lib/types";
 
 // Thin server-action wrapper so the create form (client component) can
 // re-fetch a customer's open invoices the moment one is picked, without a
@@ -42,6 +50,16 @@ export async function fetchBillableTaxInvoices(
 ): Promise<BillableTaxInvoice[]> {
   if (!customerId) return [];
   return getBillableTaxInvoicesForCustomer(customerId, targetDocType, excludeDocId);
+}
+
+// ใบเสร็จรับเงิน only — issued ใบวางบิล lines with no quotation/payment to
+// browse by (see getBillableBillingNoteItemsForCustomer).
+export async function fetchBillableBillingNoteItems(
+  customerId: string,
+  excludeDocId?: string,
+): Promise<BillableBillingNoteItem[]> {
+  if (!customerId) return [];
+  return getBillableBillingNoteItemsForCustomer(customerId, excludeDocId);
 }
 
 const DOC_PREFIX: Record<BillingDocumentType, string> = {
@@ -315,19 +333,27 @@ interface ParsedManualItem {
   unitPrice: number;
   amount: number;
   applyWht: boolean;
+  // Set when this row was copied from an issued ใบวางบิล's own manual line
+  // (see BillableBillingNoteItem) — stored so that source line isn't
+  // offered again once this receipt actually saves.
+  sourceItemId: string | null;
 }
 
 // A third source of line items, alongside existing invoices and
 // quotations: typed straight into the document (e.g. a one-off charge
-// with nothing tracked elsewhere). Parallel repeated fields, one entry
-// per row; rows with an empty description are dropped rather than
-// rejected, since the client always submits every row it's rendering.
+// with nothing tracked elsewhere) — or copied from an issued ใบวางบิล's own
+// manual line, which is submitted through these exact same fields (see
+// billing-document-form.tsx's toggleBillingNoteItem). Parallel repeated
+// fields, one entry per row; rows with an empty description are dropped
+// rather than rejected, since the client always submits every row it's
+// rendering.
 function parseManualItems(formData: FormData): ParsedManualItem[] {
   const descriptions = formData.getAll("item_manual_description").map((v) => String(v));
   const qtys = formData.getAll("item_manual_qty").map((v) => String(v));
   const units = formData.getAll("item_manual_unit").map((v) => String(v));
   const unitPrices = formData.getAll("item_manual_unit_price").map((v) => String(v));
   const applyWhts = formData.getAll("item_manual_apply_wht").map((v) => String(v));
+  const sourceItemIds = formData.getAll("item_manual_source_id").map((v) => String(v));
 
   return descriptions
     .map((description, i) => {
@@ -343,6 +369,7 @@ function parseManualItems(formData: FormData): ParsedManualItem[] {
         // (mirrors manualItemAmount in billing-document-form.tsx).
         amount: Math.round(qty * unitPrice * 1.07 * 100) / 100,
         applyWht: applyWhts[i] !== "false",
+        sourceItemId: sourceItemIds[i] || null,
       };
     })
     .filter((it) => it.description);
@@ -624,6 +651,7 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
       manual_unit: m.unit,
       manual_unit_price: m.unitPrice,
       apply_wht: m.applyWht,
+      source_item_id: m.sourceItemId,
     })),
   ]);
   if (itemsErr) return { error: `บันทึกเอกสารสำเร็จ แต่บันทึกรายการไม่สำเร็จ: ${itemsErr.message}`, id: doc.id };
@@ -847,6 +875,7 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
       manual_unit: m.unit,
       manual_unit_price: m.unitPrice,
       apply_wht: m.applyWht,
+      source_item_id: m.sourceItemId,
     })),
   ]);
   if (itemsErr) return { error: `แก้ไขรายการไม่สำเร็จ: ${itemsErr.message}` };
