@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ const THAI_MONTHS = [
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
 ];
 
+const NAMES_STORAGE_KEY = "incentive-recipient-names";
+
 export function MonthSelector() {
   const router = useRouter();
   const now = new Date();
@@ -22,7 +24,27 @@ export function MonthSelector() {
   // Who the ค่า Incentive pool splits across for this report — freely
   // typed in per generation, not tied to any role in the system (this
   // "ทีม Support" is a different notion of "support" than profiles.role).
-  const [names, setNames] = useState<string[]>([""]);
+  // Remembered in localStorage so the same names stay filled in next time
+  // this page is opened, until the user edits them — most months use the
+  // same people, so re-typing every time is pure friction.
+  const [names, setNames] = useState<string[]>(() => {
+    if (typeof window === "undefined") return [""];
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(NAMES_STORAGE_KEY) ?? "null");
+      return Array.isArray(saved) && saved.length > 0 ? saved : [""];
+    } catch {
+      return [""];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(NAMES_STORAGE_KEY, JSON.stringify(names));
+    } catch {
+      // localStorage unavailable (private browsing, etc.) — remembering
+      // names is a convenience, not a requirement, so fail silently.
+    }
+  }, [names]);
 
   const monthItems = THAI_MONTHS.map((label, i) => ({ value: String(i + 1), label }));
   const validNames = names.map((n) => n.trim()).filter(Boolean);

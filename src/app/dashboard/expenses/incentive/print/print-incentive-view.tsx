@@ -50,7 +50,12 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
 
   return (
     <div>
-      <style>{"@media print { @page { size: landscape; } }"}</style>
+      <style>{`
+        @media print { @page { size: landscape; } }
+        table { page-break-inside: auto; }
+        thead { display: table-header-group; }
+        tbody tr { page-break-inside: avoid; break-inside: avoid; }
+      `}</style>
       <div className="mb-4 flex justify-end gap-2 print:hidden">
         <Button variant="outline" onClick={() => router.back()}>
           ปิด
@@ -161,7 +166,7 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
                   </Fragment>
                 );
               })}
-              <tr>
+              <tr style={{ backgroundColor: "#fff9c4" }}>
                 <td className={td} colSpan={6}></td>
                 <td className={td + " font-medium"}>{num(totals.preVat)}</td>
                 <td className={td + " font-medium"}>{num(totals.totalCost)}</td>
