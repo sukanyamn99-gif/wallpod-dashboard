@@ -1217,7 +1217,7 @@ alter table commission_rate_tiers enable row level security;
 create policy commission_rate_tiers_select on commission_rate_tiers for select
   using (my_role() in ('owner', 'manager', 'account'));
 create policy commission_rate_tiers_write on commission_rate_tiers for all
-  using (my_role() in ('owner', 'manager')) with check (my_role() in ('owner', 'manager'));
+  using (my_role() in ('owner', 'manager', 'account')) with check (my_role() in ('owner', 'manager', 'account'));
 
 insert into commission_rate_tiers (discount_percent, commission_rate_percent) values
   (0, 4.50), (5, 4.25), (10, 4.00), (15, 3.00), (20, 2.50), (25, 2.00), (30, 1.50), (40, 1.00);
@@ -1244,7 +1244,7 @@ alter table commission_entries enable row level security;
 create policy commission_entries_select on commission_entries for select
   using (my_role() in ('owner', 'manager', 'account'));
 create policy commission_entries_write on commission_entries for all
-  using (my_role() in ('owner', 'manager')) with check (my_role() in ('owner', 'manager'));
+  using (my_role() in ('owner', 'manager', 'account')) with check (my_role() in ('owner', 'manager', 'account'));
 
 -- ============ ใบเสนอราคา (Quotations) ============
 
