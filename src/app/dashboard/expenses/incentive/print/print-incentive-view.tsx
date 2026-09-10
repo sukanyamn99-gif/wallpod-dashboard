@@ -47,6 +47,7 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
   const sharePerPerson =
     eligible && names.length > 0 ? Math.round((totals.incentiveAmount / names.length) * 100) / 100 : 0;
   const supportPoolAssigned = sharePerPerson * names.length;
+  const incentivePercentOfSales = totals.preVat ? (totals.incentiveAmount / totals.preVat) * 100 : 0;
 
   return (
     <div>
@@ -181,6 +182,9 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
               </tr>
             </tbody>
           </table>
+          <p className="mt-1 text-right text-[15px] font-medium text-red-600">
+            % ค่า Incentive ต่อยอดขาย {incentivePercentOfSales.toFixed(2)}%
+          </p>
 
           <div className="mt-16 flex items-baseline justify-end gap-2">
             <span className="w-56 border-b border-dotted border-black" />
