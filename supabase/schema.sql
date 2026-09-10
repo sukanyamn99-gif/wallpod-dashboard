@@ -1166,9 +1166,9 @@ create table employees (
 alter table employees enable row level security;
 
 create policy employees_select on employees for select
-  using (my_role() in ('owner', 'manager'));
+  using (my_role() in ('owner', 'manager', 'account'));
 create policy employees_write on employees for all
-  using (my_role() in ('owner', 'manager')) with check (my_role() in ('owner', 'manager'));
+  using (my_role() in ('owner', 'manager', 'account')) with check (my_role() in ('owner', 'manager', 'account'));
 
 create table payroll_entries (
   id uuid primary key default gen_random_uuid(),
@@ -1197,9 +1197,9 @@ create table payroll_entries (
 alter table payroll_entries enable row level security;
 
 create policy payroll_entries_select on payroll_entries for select
-  using (my_role() in ('owner', 'manager'));
+  using (my_role() in ('owner', 'manager', 'account'));
 create policy payroll_entries_write on payroll_entries for all
-  using (my_role() in ('owner', 'manager')) with check (my_role() in ('owner', 'manager'));
+  using (my_role() in ('owner', 'manager', 'account')) with check (my_role() in ('owner', 'manager', 'account'));
 
 -- คำนวณค่าคอมมิชชั่น: a rate-tier lookup table (discount % given to the
 -- customer -> commission % paid to the broker/sales rep who closed the
