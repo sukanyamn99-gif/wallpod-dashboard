@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DownloadPdfButton } from "@/components/dashboard/download-pdf-button";
 import { formatTHB } from "@/lib/format";
@@ -32,6 +33,7 @@ const WHT_OPTIONS = ["ภ.ง.ด.1", "ภ.ง.ด.2", "ภ.ง.ด.3", "ภ.ง
 const SIGNATURE_BLOCKS = ["ผู้จัดทำ", "ผู้ตรวจสอบการเงิน", "ผู้ตรวจสอบบัญชี", "ผู้อนุมัติจ่าย", "ผู้บันทึกบัญชี"];
 
 export function PrintVoucherView({ voucher }: { voucher: PaymentVoucher }) {
+  const router = useRouter();
   const { dd, mm, yy } = dateParts(voucher.voucherDate);
   const netPaid = voucher.amount - voucher.whtAmount;
   const ledgerRows = [...voucher.ledgerLines];
@@ -42,6 +44,9 @@ export function PrintVoucherView({ voucher }: { voucher: PaymentVoucher }) {
   return (
     <div className="mx-auto max-w-3xl bg-white p-6 text-black print:p-0">
       <div className="mb-4 flex justify-end gap-2 print:hidden">
+        <Button variant="outline" onClick={() => router.back()}>
+          ปิด
+        </Button>
         <Button onClick={() => window.print()}>พิมพ์</Button>
         <DownloadPdfButton />
       </div>
