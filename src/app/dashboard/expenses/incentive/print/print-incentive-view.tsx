@@ -197,7 +197,8 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
           reference report's own layout (main table, then this summary). */}
       <div className="mx-auto max-w-[1400px] break-before-page bg-white p-6 text-black print:p-0">
         <div className="text-[11px] leading-tight">
-          <p className="font-medium">บริษัท คูนเว จำกัด</p>
+          <Image src="/koonwaylogo.png" alt="KOONWAY" width={152} height={24} className="h-6 w-auto" />
+          <p className="mt-2 font-medium">บริษัท คูนเว จำกัด</p>
           <p className="font-medium">ค่าคอมมิชชั่นทีม Support</p>
           <p className="mb-4 font-medium">ประจำเดือน {monthLabel(month, year)}</p>
 
