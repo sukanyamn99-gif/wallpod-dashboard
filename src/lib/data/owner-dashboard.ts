@@ -2,6 +2,7 @@ import { getFullProjectReport } from "@/lib/data/project-sales";
 import { getArDashboardData } from "@/lib/data/ar";
 import { getPayablesDashboardData } from "@/lib/data/payables";
 import { getStockDashboardData } from "@/lib/data/stock";
+import { getBankAccounts } from "@/lib/data/bank-accounts";
 
 export interface OwnerDashboardData {
   year: number;
@@ -14,6 +15,7 @@ export interface OwnerDashboardData {
   receivablesTotal: number;
   payablesTotal: number;
   stockValue: number;
+  bankBalanceTotal: number;
 }
 
 // One consolidated "business health" snapshot for the owner, combining
@@ -24,11 +26,12 @@ export interface OwnerDashboardData {
 export async function getOwnerDashboardData(): Promise<OwnerDashboardData> {
   const year = new Date().getFullYear();
 
-  const [{ rows }, ar, payables, stock] = await Promise.all([
+  const [{ rows }, ar, payables, stock, bankAccounts] = await Promise.all([
     getFullProjectReport(),
     getArDashboardData(),
     getPayablesDashboardData(),
     getStockDashboardData(),
+    getBankAccounts(),
   ]);
 
   const yearRows = rows.filter((r) => !r.isCancelled && new Date(r.projectDate).getFullYear() === year);
@@ -59,5 +62,10 @@ export async function getOwnerDashboardData(): Promise<OwnerDashboardData> {
     receivablesTotal: ar.kpis.totalOutstanding,
     payablesTotal: payables.kpis.totalOutstanding,
     stockValue: stock.totalStockValue,
+    // ยอดในธนาคาร (the real, manually-kept-in-sync balance) — not ยอดในระบบ,
+    // which is only an approximation derived from matched โอนเงิน
+    // transactions. Same "sum every account" convention as the Bank
+    // Accounts page's own KPI card.
+    bankBalanceTotal: bankAccounts.reduce((sum, a) => sum + a.actualBalance, 0),
   };
 }

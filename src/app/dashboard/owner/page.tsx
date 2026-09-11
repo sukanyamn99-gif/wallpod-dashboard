@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import {
   Boxes,
+  Building2,
   CircleDollarSign,
   HandCoins,
   Percent,
@@ -42,7 +43,8 @@ export default async function OwnerDashboardPage() {
 
       <div className="space-y-3">
         <h2 className="text-sm font-medium text-muted-foreground">สถานะการเงิน ณ วันนี้</h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <KpiCard label="ยอดเงินในบัญชีธนาคาร" value={formatTHB(data.bankBalanceTotal)} icon={Building2} tone="green" colorValue />
           <KpiCard label="ลูกหนี้คงค้างรวม" value={formatTHB(data.receivablesTotal)} icon={Users} tone="violet" colorValue />
           <KpiCard label="เจ้าหนี้คงค้างรวม" value={formatTHB(data.payablesTotal)} icon={HandCoins} tone="rose" colorValue />
           <KpiCard label="มูลค่าสต๊อกคงเหลือ" value={formatTHB(data.stockValue)} icon={Boxes} tone="blue" colorValue />
