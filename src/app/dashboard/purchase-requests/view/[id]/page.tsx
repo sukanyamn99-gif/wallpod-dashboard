@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/table";
 import { getPurchaseRequestById } from "@/lib/data/purchase-requests";
 import { getCurrentProfile } from "@/lib/data/profile";
-import { canAccessPage } from "@/lib/permissions";
+import { canAccessPage, canSeeCosts } from "@/lib/permissions";
+import { formatTHB } from "@/lib/format";
 import { RequestApprovalActions } from "../../request-approval-actions";
 
 function statusVariant(status: string): "secondary" | "destructive" | "outline" {
@@ -30,6 +31,8 @@ export default async function PurchaseRequestDetailPage({ params }: { params: Pr
   const { id } = await params;
   const request = await getPurchaseRequestById(id);
   const canApprove = profile.role === "owner" || profile.role === "manager";
+  const showCosts = canSeeCosts(profile.role);
+  const grandTotal = request ? request.items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0) : 0;
 
   return (
     <div className="space-y-6">
@@ -44,6 +47,14 @@ export default async function PurchaseRequestDetailPage({ params }: { params: Pr
         </div>
         {request && (
           <div className="flex items-start gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              nativeButton={false}
+              render={<Link href={`/dashboard/purchase-requests/print/${id}`} target="_blank" />}
+            >
+              พิมพ์
+            </Button>
             {canApprove && request.status === "รออนุมัติ" && <RequestApprovalActions requestId={id} />}
             {request.status === "อนุมัติ" && (
               <Button size="sm" nativeButton={false} render={<Link href={`/dashboard/purchase-orders/new?requestId=${id}`} />}>
@@ -62,7 +73,7 @@ export default async function PurchaseRequestDetailPage({ params }: { params: Pr
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <p className="text-sm text-muted-foreground">แผนก</p>
+                <p className="text-sm text-muted-foreground">ฝ่าย/แผนก</p>
                 <p className="font-medium">{request.departmentName ?? "—"}</p>
               </div>
               <div>
@@ -70,13 +81,31 @@ export default async function PurchaseRequestDetailPage({ params }: { params: Pr
                 <p className="font-medium">{request.requestedByName}</p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">วันที่</p>
+                <p className="text-sm text-muted-foreground">วันที่ขอ</p>
                 <p className="font-medium">{new Date(request.requestDate).toLocaleDateString("th-TH")}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">สถานะ</p>
                 <Badge variant={statusVariant(request.status)}>{request.status}</Badge>
               </div>
+              <div>
+                <p className="text-sm text-muted-foreground">PROJECT</p>
+                <p className="font-medium">
+                  {request.jobNo || request.projectName
+                    ? [request.jobNo, request.projectName].filter(Boolean).join("_")
+                    : "—"}
+                </p>
+              </div>
+              {(request.koonwayRefNo || request.flexiplanRefNo) && (
+                <div>
+                  <p className="text-sm text-muted-foreground">เลขที่อ้างอิง</p>
+                  <p className="font-medium">
+                    {request.koonwayRefNo && `No. Koonway: ${request.koonwayRefNo}`}
+                    {request.koonwayRefNo && request.flexiplanRefNo && " · "}
+                    {request.flexiplanRefNo && `No. Flexiplan: ${request.flexiplanRefNo}`}
+                  </p>
+                </div>
+              )}
               {request.purpose && (
                 <div className="sm:col-span-2">
                   <p className="text-sm text-muted-foreground">เหตุผล / วัตถุประสงค์</p>
@@ -111,8 +140,10 @@ export default async function PurchaseRequestDetailPage({ params }: { params: Pr
                   <TableRow>
                     <TableHead>รหัสสินค้า</TableHead>
                     <TableHead>ชื่อสินค้า</TableHead>
+                    <TableHead>ผู้ขาย (Supplier)</TableHead>
                     <TableHead className="text-right">จำนวน</TableHead>
-                    <TableHead>หมายเหตุ</TableHead>
+                    {showCosts && <TableHead className="text-right">ราคา/หน่วย</TableHead>}
+                    {showCosts && <TableHead className="text-right">รวม</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -120,14 +151,21 @@ export default async function PurchaseRequestDetailPage({ params }: { params: Pr
                     <TableRow key={item.id}>
                       <TableCell>{item.productSku ?? "—"}</TableCell>
                       <TableCell>{item.productName}</TableCell>
+                      <TableCell>{item.supplierName ?? "—"}</TableCell>
                       <TableCell className="text-right">
                         {item.quantity} {item.unit}
                       </TableCell>
-                      <TableCell>{item.note ?? "—"}</TableCell>
+                      {showCosts && <TableCell className="text-right">{formatTHB(item.unitPrice)}</TableCell>}
+                      {showCosts && <TableCell className="text-right">{formatTHB(item.quantity * item.unitPrice)}</TableCell>}
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+              {showCosts && (
+                <p className="mt-4 text-right text-sm">
+                  มูลค่ารวม: <span className="font-semibold">{formatTHB(grandTotal)}</span>
+                </p>
+              )}
             </CardContent>
           </Card>
         </>

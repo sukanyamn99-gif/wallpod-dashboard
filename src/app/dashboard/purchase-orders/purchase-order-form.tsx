@@ -65,7 +65,10 @@ export function PurchaseOrderForm({
         name: it.productName,
         unit: it.unit,
         quantity: it.quantity,
-        unitPrice: costByProductId.get(it.stockProductId as string) ?? 0,
+        // The requester's own suggested price (from the ใบขอซื้อ) takes
+        // priority over the product's current cost — it's more specific to
+        // this purchase, when given.
+        unitPrice: it.unitPrice > 0 ? it.unitPrice : (costByProductId.get(it.stockProductId as string) ?? 0),
       }));
   });
   const [, startTransition] = useTransition();
@@ -94,7 +97,7 @@ export function PurchaseOrderForm({
           name: it.productName,
           unit: it.unit,
           quantity: it.quantity,
-          unitPrice: costByProductId.get(it.stockProductId as string) ?? 0,
+          unitPrice: it.unitPrice > 0 ? it.unitPrice : (costByProductId.get(it.stockProductId as string) ?? 0),
         })),
     );
   }

@@ -16,9 +16,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatNumber } from "@/lib/format";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { JobNoSelect } from "@/components/dashboard/job-no-select";
+import { formatNumber, formatTHB } from "@/lib/format";
 import { createPurchaseRequest } from "./actions";
-import type { Department, StockProduct } from "@/lib/types";
+import type { Department, StockProduct, Supplier } from "@/lib/types";
+import type { JobLookupEntry } from "@/lib/data/reference";
+
+const NONE_SUPPLIER = "__none__";
 
 const initialState = { error: null as string | null, id: undefined as string | undefined };
 
@@ -28,17 +40,26 @@ interface SelectedItem {
   name: string;
   unit: string;
   quantity: number;
-  note: string;
+  supplierId: string;
+  unitPrice: number;
 }
 
 export function PurchaseRequestForm({
   departments,
   stockProducts,
+  suppliers,
+  jobNoSuggestions,
+  jobNoLookup,
 }: {
   departments: Department[];
   stockProducts: StockProduct[];
+  suppliers: Supplier[];
+  jobNoSuggestions: string[];
+  jobNoLookup: Record<string, JobLookupEntry>;
 }) {
   const router = useRouter();
+  const [jobNo, setJobNo] = useState("");
+  const [projectName, setProjectName] = useState("");
   const [items, setItems] = useState<SelectedItem[]>([]);
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -51,6 +72,12 @@ export function PurchaseRequestForm({
     }
     return { error: result.error, id: result.id };
   }, initialState);
+
+  function handleJobNoChange(value: string) {
+    setJobNo(value);
+    const match = jobNoLookup[value];
+    if (match) setProjectName(match.projectName);
+  }
 
   const searchResults = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -65,18 +92,28 @@ export function PurchaseRequestForm({
       if (prev.some((it) => it.stockProductId === product.id)) return prev;
       return [
         ...prev,
-        { stockProductId: product.id, sku: product.sku ?? "", name: product.name, unit: product.unit, quantity: 1, note: "" },
+        {
+          stockProductId: product.id,
+          sku: product.sku ?? "",
+          name: product.name,
+          unit: product.unit,
+          quantity: 1,
+          supplierId: "",
+          unitPrice: 0,
+        },
       ];
     });
   }
 
-  function updateItem(id: string, field: "quantity" | "note", value: string | number) {
+  function updateItem(id: string, field: "quantity" | "supplierId" | "unitPrice", value: string | number) {
     setItems((prev) => prev.map((it) => (it.stockProductId === id ? { ...it, [field]: value } : it)));
   }
 
   function removeItem(id: string) {
     setItems((prev) => prev.filter((it) => it.stockProductId !== id));
   }
+
+  const grandTotal = items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0);
 
   return (
     <form
@@ -91,7 +128,8 @@ export function PurchaseRequestForm({
           fd.append("item_sku", it.sku);
           fd.append("item_unit", it.unit);
           fd.append("item_quantity", String(it.quantity));
-          fd.append("item_note", it.note);
+          fd.append("item_supplier_id", it.supplierId);
+          fd.append("item_unit_price", String(it.unitPrice));
         }
         startTransition(() => formAction(fd));
       }}
@@ -103,7 +141,7 @@ export function PurchaseRequestForm({
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="department_id">แผนก</Label>
+            <Label htmlFor="department_id">ฝ่าย/แผนก</Label>
             <Link
               href="/dashboard/stock-requisition/departments"
               className="flex items-center gap-1 text-xs text-muted-foreground underline underline-offset-2"
@@ -126,13 +164,44 @@ export function PurchaseRequestForm({
           </Select>
         </div>
 
+        <div className="space-y-2 rounded-lg border p-3">
+          <Label>PROJECT</Label>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">เลข JOB</Label>
+              <input type="hidden" name="job_no" value={jobNo} />
+              <JobNoSelect id="job_no" value={jobNo} onChange={handleJobNoChange} jobNos={jobNoSuggestions} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">ชื่อโครงการ</Label>
+              <Input
+                name="project_name"
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                placeholder="ชื่อโครงการ"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="koonway_ref_no">No. Koonway</Label>
+            <Input id="koonway_ref_no" name="koonway_ref_no" placeholder="เลขที่อ้างอิง (ถ้ามี)" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="flexiplan_ref_no">No. Flexiplan</Label>
+            <Input id="flexiplan_ref_no" name="flexiplan_ref_no" placeholder="เลขที่อ้างอิง (ถ้ามี)" />
+          </div>
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="purpose">เหตุผล / วัตถุประสงค์การขอซื้อ</Label>
           <Textarea id="purpose" name="purpose" placeholder="เช่น สต็อกใกล้หมด, งานลูกค้าด่วน..." />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="note">หมายเหตุ</Label>
+          <Label htmlFor="note">หมายเหตุ / รายละเอียดส่วนประกอบอื่นๆ</Label>
           <Textarea id="note" name="note" placeholder="ข้อมูลเพิ่มเติม..." />
         </div>
       </div>
@@ -186,35 +255,85 @@ export function PurchaseRequestForm({
               <p className="text-xs text-muted-foreground">ค้นหาสินค้าจากด้านบน</p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {items.map((it) => (
-                <div key={it.stockProductId} className="flex items-center gap-2 rounded-lg border p-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{it.name}</p>
-                    <p className="text-xs text-muted-foreground">{it.sku || "—"}</p>
-                  </div>
-                  <NumberInput
-                    min={0.01}
-                    step={0.01}
-                    value={it.quantity}
-                    onChange={(v) => updateItem(it.stockProductId, "quantity", Number(v))}
-                    className="w-20"
-                  />
-                  <span className="text-xs text-muted-foreground">{it.unit}</span>
-                  <Input
-                    placeholder="หมายเหตุ (ถ้ามี)"
-                    value={it.note}
-                    onChange={(e) => updateItem(it.stockProductId, "note", e.target.value)}
-                    className="w-32"
-                  />
-                  <Button type="button" variant="outline" size="icon-sm" onClick={() => removeItem(it.stockProductId)}>
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ))}
+            <div className="overflow-x-auto rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="whitespace-nowrap">สินค้า</TableHead>
+                    <TableHead className="whitespace-nowrap">ผู้ขาย (Supplier)</TableHead>
+                    <TableHead className="whitespace-nowrap">จำนวน</TableHead>
+                    <TableHead className="whitespace-nowrap">ราคา/หน่วย</TableHead>
+                    <TableHead className="whitespace-nowrap text-right">รวม</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((it) => (
+                    <TableRow key={it.stockProductId}>
+                      <TableCell className="min-w-[140px]">
+                        <p className="text-sm font-medium">{it.name}</p>
+                        <p className="text-xs text-muted-foreground">{it.sku || "—"}</p>
+                      </TableCell>
+                      <TableCell className="min-w-[160px]">
+                        <Select
+                          value={it.supplierId || NONE_SUPPLIER}
+                          onValueChange={(v) => updateItem(it.stockProductId, "supplierId", v === NONE_SUPPLIER ? "" : (v ?? ""))}
+                          items={[{ value: NONE_SUPPLIER, label: "— ไม่ระบุ —" }, ...suppliers.map((s) => ({ value: s.id, label: s.name }))]}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="— ไม่ระบุ —" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={NONE_SUPPLIER}>— ไม่ระบุ —</SelectItem>
+                            {suppliers.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <NumberInput
+                            min={0.01}
+                            step={0.01}
+                            value={it.quantity}
+                            onChange={(v) => updateItem(it.stockProductId, "quantity", Number(v))}
+                            className="w-20"
+                          />
+                          <span className="text-xs whitespace-nowrap text-muted-foreground">{it.unit}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <NumberInput
+                          min={0}
+                          step={0.01}
+                          value={it.unitPrice}
+                          onChange={(v) => updateItem(it.stockProductId, "unitPrice", Number(v))}
+                          className="w-24"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">{formatTHB(it.quantity * it.unitPrice)}</TableCell>
+                      <TableCell>
+                        <Button type="button" variant="outline" size="icon-sm" onClick={() => removeItem(it.stockProductId)}>
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
         </div>
+
+        {items.length > 0 && (
+          <div className="rounded-lg border p-3 text-sm">
+            <p className="text-muted-foreground">มูลค่ารวมโดยประมาณ</p>
+            <p className="text-lg font-semibold">{formatTHB(grandTotal)}</p>
+          </div>
+        )}
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={() => router.push("/dashboard/purchase-requests")}>

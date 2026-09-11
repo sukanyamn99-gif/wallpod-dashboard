@@ -1627,7 +1627,11 @@ create table purchase_requests (
   approved_by uuid references profiles(id),
   approved_at timestamptz,
   note text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  job_no text,
+  project_name text,
+  koonway_ref_no text,
+  flexiplan_ref_no text
 );
 
 create table purchase_request_items (
@@ -1638,7 +1642,9 @@ create table purchase_request_items (
   product_sku_snapshot text,
   unit_snapshot text not null default 'ชิ้น',
   quantity numeric(14,2) not null,
-  note text
+  note text,
+  supplier_id uuid references suppliers(id) on delete set null,
+  unit_price numeric(14,2) not null default 0
 );
 
 alter table purchase_requests enable row level security;

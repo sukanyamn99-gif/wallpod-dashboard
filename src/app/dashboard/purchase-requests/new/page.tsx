@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getDepartments } from "@/lib/data/reference";
+import { getDepartments, getDistinctProjectJobNos, getJobNoLookup } from "@/lib/data/reference";
 import { getStockProducts } from "@/lib/data/stock";
+import { getSuppliers } from "@/lib/data/suppliers";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
 import { PurchaseRequestForm } from "../purchase-request-form";
@@ -11,7 +12,13 @@ export default async function NewPurchaseRequestPage() {
   if (!profile) redirect("/login");
   if (!canAccessPage(profile.role, "/dashboard/purchase-requests")) redirect("/dashboard/sales");
 
-  const [departments, stockProducts] = await Promise.all([getDepartments(), getStockProducts()]);
+  const [departments, stockProducts, suppliers, jobNoSuggestions, jobNoLookup] = await Promise.all([
+    getDepartments(),
+    getStockProducts(),
+    getSuppliers(),
+    getDistinctProjectJobNos(),
+    getJobNoLookup(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -24,7 +31,13 @@ export default async function NewPurchaseRequestPage() {
         </p>
       </div>
 
-      <PurchaseRequestForm departments={departments} stockProducts={stockProducts} />
+      <PurchaseRequestForm
+        departments={departments}
+        stockProducts={stockProducts}
+        suppliers={suppliers}
+        jobNoSuggestions={jobNoSuggestions}
+        jobNoLookup={jobNoLookup}
+      />
     </div>
   );
 }

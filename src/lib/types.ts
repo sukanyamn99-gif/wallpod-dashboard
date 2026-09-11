@@ -413,6 +413,14 @@ export interface PurchaseRequestItem {
   unit: string;
   quantity: number;
   note: string | null;
+  // The requester's own suggested supplier/price for this line — matches
+  // the real paper ใบขอซื้อ form, where these are already known/suggested
+  // at request time (job-specific material, not generic office supplies).
+  // A ใบสั่งซื้อ created from this request can use these as a starting
+  // point, but they're not binding the way a PO's own price is.
+  supplierId: string | null;
+  supplierName: string | null;
+  unitPrice: number;
 }
 
 export interface PurchaseRequest {
@@ -429,6 +437,10 @@ export interface PurchaseRequest {
   approvedAt: string | null;
   note: string | null;
   createdAt: string;
+  jobNo: string | null;
+  projectName: string | null;
+  koonwayRefNo: string | null;
+  flexiplanRefNo: string | null;
   items: PurchaseRequestItem[];
 }
 

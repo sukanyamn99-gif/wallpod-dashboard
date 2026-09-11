@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Eye, Trash2, X } from "lucide-react";
+import { Check, Eye, Printer, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -130,6 +130,15 @@ export function PurchaseRequestsTable({
                   <div className="flex gap-1">
                     <Button size="icon-sm" variant="outline" nativeButton={false} render={<Link href={`/dashboard/purchase-requests/view/${r.id}`} />}>
                       <Eye className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="icon-sm"
+                      variant="outline"
+                      nativeButton={false}
+                      render={<Link href={`/dashboard/purchase-requests/print/${r.id}`} target="_blank" />}
+                      title="พิมพ์"
+                    >
+                      <Printer className="h-3.5 w-3.5" />
                     </Button>
                     {canDelete(currentProfile, r) && <DeleteButton request={r} />}
                   </div>

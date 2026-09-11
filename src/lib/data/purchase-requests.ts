@@ -6,6 +6,7 @@ import type { PurchaseRequest, PurchaseRequestItem, PurchaseRequestStatus } from
 // column is <table>_<column>_fkey.
 const HEADER_COLUMNS =
   "id, doc_no, request_date, requested_by, department_id, purpose, status, approved_by, approved_at, note, created_at, " +
+  "job_no, project_name, koonway_ref_no, flexiplan_ref_no, " +
   "departments(name), " +
   "requester:profiles!purchase_requests_requested_by_fkey(full_name), " +
   "approver:profiles!purchase_requests_approved_by_fkey(full_name)";
@@ -22,6 +23,10 @@ type HeaderRow = {
   approved_at: string | null;
   note: string | null;
   created_at: string;
+  job_no: string | null;
+  project_name: string | null;
+  koonway_ref_no: string | null;
+  flexiplan_ref_no: string | null;
   departments: { name: string } | null;
   requester: { full_name: string } | null;
   approver: { full_name: string } | null;
@@ -42,6 +47,10 @@ function mapHeader(row: HeaderRow): Omit<PurchaseRequest, "items"> {
     approvedAt: row.approved_at,
     note: row.note,
     createdAt: row.created_at,
+    jobNo: row.job_no,
+    projectName: row.project_name,
+    koonwayRefNo: row.koonway_ref_no,
+    flexiplanRefNo: row.flexiplan_ref_no,
   };
 }
 
@@ -64,12 +73,16 @@ async function getItemsByRequestIds(supabase: Awaited<ReturnType<typeof createCl
 
   const { data, error } = await supabase
     .from("purchase_request_items")
-    .select("id, request_id, stock_product_id, product_name_snapshot, product_sku_snapshot, unit_snapshot, quantity, note")
+    .select(
+      "id, request_id, stock_product_id, product_name_snapshot, product_sku_snapshot, unit_snapshot, quantity, note, supplier_id, unit_price, suppliers(name)",
+    )
     .in("request_id", requestIds);
   if (error) throw error;
 
   const map = new Map<string, PurchaseRequestItem[]>();
   for (const row of data ?? []) {
+    // @ts-expect-error -- Supabase types the joined relation loosely here
+    const supplierName = row.suppliers?.name ?? null;
     const item: PurchaseRequestItem = {
       id: row.id,
       stockProductId: row.stock_product_id,
@@ -78,6 +91,9 @@ async function getItemsByRequestIds(supabase: Awaited<ReturnType<typeof createCl
       unit: row.unit_snapshot,
       quantity: Number(row.quantity),
       note: row.note,
+      supplierId: row.supplier_id,
+      supplierName,
+      unitPrice: Number(row.unit_price),
     };
     const list = map.get(row.request_id) ?? [];
     list.push(item);

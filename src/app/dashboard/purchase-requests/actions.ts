@@ -46,6 +46,10 @@ export async function createPurchaseRequest(formData: FormData) {
 
   const purpose = str(formData.get("purpose"));
   const note = str(formData.get("note"));
+  const jobNo = str(formData.get("job_no"));
+  const projectName = str(formData.get("project_name"));
+  const koonwayRefNo = str(formData.get("koonway_ref_no"));
+  const flexiplanRefNo = str(formData.get("flexiplan_ref_no"));
 
   const itemIds = formData.getAll("item_product_id");
   const itemNames = formData.getAll("item_name");
@@ -53,6 +57,8 @@ export async function createPurchaseRequest(formData: FormData) {
   const itemUnits = formData.getAll("item_unit");
   const itemQuantities = formData.getAll("item_quantity");
   const itemNotes = formData.getAll("item_note");
+  const itemSupplierIds = formData.getAll("item_supplier_id");
+  const itemUnitPrices = formData.getAll("item_unit_price");
   const items = itemIds
     .map((id, i) => ({
       stockProductId: String(id),
@@ -61,6 +67,8 @@ export async function createPurchaseRequest(formData: FormData) {
       unit: String(itemUnits[i] ?? "ชิ้น"),
       quantity: num(itemQuantities[i]),
       note: str(itemNotes[i] ?? null),
+      supplierId: str(itemSupplierIds[i] ?? null),
+      unitPrice: num(itemUnitPrices[i]),
     }))
     .filter((it) => it.stockProductId && it.quantity > 0);
 
@@ -81,6 +89,10 @@ export async function createPurchaseRequest(formData: FormData) {
       requested_by: user?.id ?? null,
       purpose,
       note,
+      job_no: jobNo,
+      project_name: projectName,
+      koonway_ref_no: koonwayRefNo,
+      flexiplan_ref_no: flexiplanRefNo,
     })
     .select("id")
     .single();
@@ -95,6 +107,8 @@ export async function createPurchaseRequest(formData: FormData) {
       unit_snapshot: it.unit,
       quantity: it.quantity,
       note: it.note,
+      supplier_id: it.supplierId,
+      unit_price: it.unitPrice,
     })),
   );
   if (itemsErr) return { error: `บันทึกใบขอซื้อสำเร็จ แต่บันทึกรายการสินค้าไม่สำเร็จ: ${itemsErr.message}` };
