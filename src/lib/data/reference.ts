@@ -118,12 +118,28 @@ export async function getDepartments(): Promise<Department[]> {
   return (data ?? []).map((row) => ({ id: row.id, name: row.name, createdAt: row.created_at }));
 }
 
+// Also reads quotations.job_number, not just projects.job_no — a JOB NO. is
+// assigned as soon as a quotation is put into production (ใบลงผลิต), which
+// happens well before that job is ever recorded as a WALLPOD Project Sales
+// row. Every other form that offers a JOB NO. picker (Stock Requisition,
+// billing documents, Payment Voucher, Purchase Request, ...) needs to see a
+// freshly-assigned job immediately, not only once it reaches projects —
+// matches the same two-source union getNextJobNo() already uses.
 export async function getDistinctProjectJobNos(): Promise<string[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
-  const { data, error } = await supabase.from("projects").select("job_no").not("job_no", "is", null);
-  if (error) throw error;
-  const jobNos = new Set((data ?? []).map((row) => row.job_no as string).filter((j) => j.trim().length > 0));
+  const [{ data: projects, error: pErr }, { data: quotes, error: qErr }] = await Promise.all([
+    supabase.from("projects").select("job_no").not("job_no", "is", null),
+    supabase.from("quotations").select("job_number").not("job_number", "is", null),
+  ]);
+  if (pErr) throw pErr;
+  if (qErr) throw qErr;
+  const jobNos = new Set(
+    [
+      ...(projects ?? []).map((row) => row.job_no as string),
+      ...(quotes ?? []).map((row) => row.job_number as string),
+    ].filter((j) => j.trim().length > 0),
+  );
   return Array.from(jobNos).sort();
 }
 
@@ -172,16 +188,40 @@ export interface JobLookupEntry {
 // JOB NO. is picked — deliberately a plain select rather than reusing
 // getFullProjectReport(), which also joins costs/payments/items this
 // lookup has no use for.
+//
+// A quotation-sourced fallback fills in a JOB NO. that's been assigned via
+// ใบลงผลิต but not yet recorded as a projects row (see
+// getDistinctProjectJobNos) — projects data wins when both exist, since
+// it's the accounting-grade record; quotations has no customer_id FK, so
+// that fallback entry's customerId is always null.
 export async function getJobNoLookup(): Promise<Record<string, JobLookupEntry>> {
   if (!isSupabaseConfigured()) return {};
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("projects")
-    .select("job_no, project_name, customer_id, sales_rep_id, customers(name)")
-    .not("job_no", "is", null);
-  if (error) throw error;
+  const [{ data: projects, error: pErr }, { data: quotes, error: qErr }] = await Promise.all([
+    supabase
+      .from("projects")
+      .select("job_no, project_name, customer_id, sales_rep_id, customers(name)")
+      .not("job_no", "is", null),
+    supabase
+      .from("quotations")
+      .select("job_number, project_name, customer_name, sales_rep_id")
+      .not("job_number", "is", null),
+  ]);
+  if (pErr) throw pErr;
+  if (qErr) throw qErr;
+
   const lookup: Record<string, JobLookupEntry> = {};
-  for (const row of data ?? []) {
+  for (const row of quotes ?? []) {
+    const jobNo = row.job_number as string | null;
+    if (!jobNo || !jobNo.trim()) continue;
+    lookup[jobNo] = {
+      projectName: row.project_name ?? "",
+      customerId: null,
+      customerName: row.customer_name ?? "",
+      salesRepId: row.sales_rep_id ?? null,
+    };
+  }
+  for (const row of projects ?? []) {
     const jobNo = row.job_no as string | null;
     if (!jobNo || !jobNo.trim()) continue;
     const customer = row.customers as { name: string } | { name: string }[] | null;
