@@ -17,6 +17,30 @@ import {
 import { createEmployee, deleteEmployee, setEmployeeActive, updateEmployee } from "./actions";
 import type { Employee } from "@/lib/types";
 
+// Counted through today regardless of active/พ้นสภาพ status — there's no
+// separate "leave date" field on file, only start_date, so this is always
+// "how long since they started" rather than "how long they actually
+// worked" for someone who's left. An honest reading of the data available,
+// not a claim about a former employee's real tenure.
+function tenureLabel(startDate: string | null): string {
+  if (!startDate) return "—";
+  const start = new Date(startDate);
+  const now = new Date();
+  let years = now.getFullYear() - start.getFullYear();
+  let months = now.getMonth() - start.getMonth();
+  if (now.getDate() < start.getDate()) months -= 1;
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+  if (years < 0) return "—";
+  if (years === 0 && months === 0) return "น้อยกว่า 1 เดือน";
+  const parts: string[] = [];
+  if (years > 0) parts.push(`${years} ปี`);
+  if (months > 0) parts.push(`${months} เดือน`);
+  return parts.join(" ");
+}
+
 function AddEmployeeForm({ onAdded }: { onAdded: () => void }) {
   const [open, setOpen] = useState(false);
   const [employeeCode, setEmployeeCode] = useState("");
@@ -150,7 +174,7 @@ function EmployeeRow({ employee }: { employee: Employee }) {
   if (editing) {
     return (
       <TableRow>
-        <TableCell colSpan={7}>
+        <TableCell colSpan={8}>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
             <Input value={employeeCode} onChange={(e) => setEmployeeCode(e.target.value)} placeholder="รหัสพนักงาน" />
             <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="ชื่อ-นามสกุล" />
@@ -190,6 +214,7 @@ function EmployeeRow({ employee }: { employee: Employee }) {
       <TableCell className="whitespace-nowrap">
         {employee.startDate ? new Date(employee.startDate).toLocaleDateString("th-TH") : "—"}
       </TableCell>
+      <TableCell className="whitespace-nowrap">{tenureLabel(employee.startDate)}</TableCell>
       <TableCell className="whitespace-nowrap">
         <button type="button" onClick={handleToggleActive} disabled={pending}>
           <Badge variant={employee.active ? "secondary" : "outline"}>
@@ -244,6 +269,7 @@ export function EmployeesTable({ employees }: { employees: Employee[] }) {
               <TableHead className="whitespace-nowrap">ตำแหน่ง</TableHead>
               <TableHead className="whitespace-nowrap">เลขบัตรประชาชน</TableHead>
               <TableHead className="whitespace-nowrap">วันที่เริ่มงาน</TableHead>
+              <TableHead className="whitespace-nowrap">อายุงาน</TableHead>
               <TableHead className="whitespace-nowrap">สถานะ</TableHead>
               <TableHead className="whitespace-nowrap">จัดการ</TableHead>
             </TableRow>
@@ -251,7 +277,7 @@ export function EmployeesTable({ employees }: { employees: Employee[] }) {
           <TableBody>
             {employees.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                <TableCell colSpan={8} className="text-center text-muted-foreground">
                   ยังไม่มีพนักงาน
                 </TableCell>
               </TableRow>
