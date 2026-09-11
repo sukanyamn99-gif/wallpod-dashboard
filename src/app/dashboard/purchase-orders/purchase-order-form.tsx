@@ -30,14 +30,21 @@ import type { PurchaseRequest, StockProduct, Supplier } from "@/lib/types";
 
 const initialState = { error: null as string | null, id: undefined as string | undefined };
 
+// stockProductId can be null here — a ใบขอซื้อ line for something not yet
+// in the Stock Product catalog carries no stock_product_id either, and
+// must not be silently dropped when pulled into a PO. Keyed by a local
+// counter rather than stockProductId for the same reason.
 interface SelectedItem {
-  stockProductId: string;
+  key: number;
+  stockProductId: string | null;
   sku: string;
   name: string;
   unit: string;
   quantity: number;
   unitPrice: number;
 }
+
+let nextKey = 1;
 
 export function PurchaseOrderForm({
   approvedRequests,
@@ -57,19 +64,18 @@ export function PurchaseOrderForm({
   const [items, setItems] = useState<SelectedItem[]>(() => {
     const pr = approvedRequests.find((r) => r.id === preselectedRequestId);
     if (!pr) return [];
-    return pr.items
-      .filter((it) => it.stockProductId)
-      .map((it) => ({
-        stockProductId: it.stockProductId as string,
-        sku: it.productSku ?? "",
-        name: it.productName,
-        unit: it.unit,
-        quantity: it.quantity,
-        // The requester's own suggested price (from the ใบขอซื้อ) takes
-        // priority over the product's current cost — it's more specific to
-        // this purchase, when given.
-        unitPrice: it.unitPrice > 0 ? it.unitPrice : (costByProductId.get(it.stockProductId as string) ?? 0),
-      }));
+    return pr.items.map((it) => ({
+      key: nextKey++,
+      stockProductId: it.stockProductId,
+      sku: it.productSku ?? "",
+      name: it.productName,
+      unit: it.unit,
+      quantity: it.quantity,
+      // The requester's own suggested price (from the ใบขอซื้อ) takes
+      // priority over the product's current cost — it's more specific to
+      // this purchase, when given.
+      unitPrice: it.unitPrice > 0 ? it.unitPrice : (it.stockProductId && costByProductId.get(it.stockProductId)) || 0,
+    }));
   });
   const [, startTransition] = useTransition();
 
@@ -89,25 +95,24 @@ export function PurchaseOrderForm({
       return;
     }
     setItems(
-      pr.items
-        .filter((it) => it.stockProductId)
-        .map((it) => ({
-          stockProductId: it.stockProductId as string,
-          sku: it.productSku ?? "",
-          name: it.productName,
-          unit: it.unit,
-          quantity: it.quantity,
-          unitPrice: it.unitPrice > 0 ? it.unitPrice : (costByProductId.get(it.stockProductId as string) ?? 0),
-        })),
+      pr.items.map((it) => ({
+        key: nextKey++,
+        stockProductId: it.stockProductId,
+        sku: it.productSku ?? "",
+        name: it.productName,
+        unit: it.unit,
+        quantity: it.quantity,
+        unitPrice: it.unitPrice > 0 ? it.unitPrice : (it.stockProductId && costByProductId.get(it.stockProductId)) || 0,
+      })),
     );
   }
 
-  function updateItem(id: string, field: "quantity" | "unitPrice", value: number) {
-    setItems((prev) => prev.map((it) => (it.stockProductId === id ? { ...it, [field]: value } : it)));
+  function updateItem(key: number, field: "quantity" | "unitPrice", value: number) {
+    setItems((prev) => prev.map((it) => (it.key === key ? { ...it, [field]: value } : it)));
   }
 
-  function removeItem(id: string) {
-    setItems((prev) => prev.filter((it) => it.stockProductId !== id));
+  function removeItem(key: number) {
+    setItems((prev) => prev.filter((it) => it.key !== key));
   }
 
   const totalAmount = items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0);
@@ -120,7 +125,7 @@ export function PurchaseOrderForm({
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
         for (const it of items) {
-          fd.append("item_product_id", it.stockProductId);
+          fd.append("item_product_id", it.stockProductId ?? "");
           fd.append("item_name", it.name);
           fd.append("item_sku", it.sku);
           fd.append("item_unit", it.unit);
@@ -220,8 +225,8 @@ export function PurchaseOrderForm({
               </TableHeader>
               <TableBody>
                 {items.map((it) => (
-                  <TableRow key={it.stockProductId}>
-                    <TableCell className="whitespace-nowrap">{it.sku || "—"}</TableCell>
+                  <TableRow key={it.key}>
+                    <TableCell className="whitespace-nowrap">{it.sku || (it.stockProductId ? "—" : "ยังไม่มีในระบบสินค้า")}</TableCell>
                     <TableCell className="min-w-[140px]">{it.name}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
@@ -229,7 +234,7 @@ export function PurchaseOrderForm({
                           min={0.01}
                           step={0.01}
                           value={it.quantity}
-                          onChange={(v) => updateItem(it.stockProductId, "quantity", Number(v))}
+                          onChange={(v) => updateItem(it.key, "quantity", Number(v))}
                           className="w-20"
                         />
                         <span className="text-xs whitespace-nowrap text-muted-foreground">{it.unit}</span>
@@ -240,13 +245,13 @@ export function PurchaseOrderForm({
                         min={0}
                         step={0.01}
                         value={it.unitPrice}
-                        onChange={(v) => updateItem(it.stockProductId, "unitPrice", Number(v))}
+                        onChange={(v) => updateItem(it.key, "unitPrice", Number(v))}
                         className="w-24"
                       />
                     </TableCell>
                     <TableCell className="text-right whitespace-nowrap">{formatTHB(it.quantity * it.unitPrice)}</TableCell>
                     <TableCell>
-                      <Button type="button" variant="outline" size="icon-sm" onClick={() => removeItem(it.stockProductId)}>
+                      <Button type="button" variant="outline" size="icon-sm" onClick={() => removeItem(it.key)}>
                         <X className="h-3.5 w-3.5" />
                       </Button>
                     </TableCell>

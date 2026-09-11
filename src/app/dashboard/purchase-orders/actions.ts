@@ -56,14 +56,16 @@ export async function createPurchaseOrder(formData: FormData) {
   const itemUnitPrices = formData.getAll("item_unit_price");
   const items = itemIds
     .map((id, i) => ({
-      stockProductId: String(id),
-      name: String(itemNames[i] ?? ""),
+      // Empty when this line came from a ใบขอซื้อ item with no catalog
+      // entry yet — must not be dropped on that account.
+      stockProductId: str(id),
+      name: String(itemNames[i] ?? "").trim(),
       sku: String(itemSkus[i] ?? "").trim() || null,
       unit: String(itemUnits[i] ?? "ชิ้น"),
       quantity: num(itemQuantities[i]),
       unitPrice: num(itemUnitPrices[i]),
     }))
-    .filter((it) => it.stockProductId && it.quantity > 0);
+    .filter((it) => it.name && it.quantity > 0);
 
   if (items.length === 0) return { error: "กรุณาเพิ่มรายการสินค้าอย่างน้อย 1 รายการ" };
 

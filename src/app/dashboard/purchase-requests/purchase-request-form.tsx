@@ -34,8 +34,15 @@ const NONE_SUPPLIER = "__none__";
 
 const initialState = { error: null as string | null, id: undefined as string | undefined };
 
+// stockProductId is null for a manually-typed item with no catalog entry
+// yet (e.g. "ไม้ PB 9 mm. สีขาว ขนาดตามแบบแนบ" — a real material never
+// bought before) — a ใบขอซื้อ needs to name something before it exists in
+// Stock Product, unlike every other document in this app that only ever
+// picks from the existing catalog. Keyed by a local counter instead of
+// stockProductId since multiple manual rows have no id to dedupe by.
 interface SelectedItem {
-  stockProductId: string;
+  key: number;
+  stockProductId: string | null;
   sku: string;
   name: string;
   unit: string;
@@ -43,6 +50,8 @@ interface SelectedItem {
   supplierId: string;
   unitPrice: number;
 }
+
+let nextKey = 1;
 
 export function PurchaseRequestForm({
   departments,
@@ -93,6 +102,7 @@ export function PurchaseRequestForm({
       return [
         ...prev,
         {
+          key: nextKey++,
           stockProductId: product.id,
           sku: product.sku ?? "",
           name: product.name,
@@ -105,12 +115,24 @@ export function PurchaseRequestForm({
     });
   }
 
-  function updateItem(id: string, field: "quantity" | "supplierId" | "unitPrice", value: string | number) {
-    setItems((prev) => prev.map((it) => (it.stockProductId === id ? { ...it, [field]: value } : it)));
+  // No catalog match — add whatever was typed as a free-text description
+  // instead (matches the real paper form, which just has one description
+  // column, not a SKU lookup).
+  function addManualItem(description: string) {
+    const name = description.trim();
+    if (!name) return;
+    setItems((prev) => [
+      ...prev,
+      { key: nextKey++, stockProductId: null, sku: "", name, unit: "ชิ้น", quantity: 1, supplierId: "", unitPrice: 0 },
+    ]);
   }
 
-  function removeItem(id: string) {
-    setItems((prev) => prev.filter((it) => it.stockProductId !== id));
+  function updateItem(key: number, field: "quantity" | "supplierId" | "unitPrice" | "unit", value: string | number) {
+    setItems((prev) => prev.map((it) => (it.key === key ? { ...it, [field]: value } : it)));
+  }
+
+  function removeItem(key: number) {
+    setItems((prev) => prev.filter((it) => it.key !== key));
   }
 
   const grandTotal = items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0);
@@ -123,7 +145,7 @@ export function PurchaseRequestForm({
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
         for (const it of items) {
-          fd.append("item_product_id", it.stockProductId);
+          fd.append("item_product_id", it.stockProductId ?? "");
           fd.append("item_name", it.name);
           fd.append("item_sku", it.sku);
           fd.append("item_unit", it.unit);
@@ -220,10 +242,10 @@ export function PurchaseRequestForm({
               }}
               onFocus={() => setSearchOpen(true)}
               onBlur={() => setSearchOpen(false)}
-              placeholder="ค้นหาจากรหัสสินค้าหรือชื่อ..."
+              placeholder="ค้นหาจากรหัสสินค้าหรือชื่อ หรือพิมพ์รายการใหม่..."
               autoComplete="off"
             />
-            {searchOpen && searchResults.length > 0 && (
+            {searchOpen && (searchResults.length > 0 || query.trim()) && (
               <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-md">
                 {searchResults.map((p) => (
                   <li key={p.id}>
@@ -241,6 +263,22 @@ export function PurchaseRequestForm({
                     </button>
                   </li>
                 ))}
+                {query.trim() && (
+                  <li>
+                    <button
+                      type="button"
+                      className="block w-full border-t px-2.5 py-1.5 text-left text-sm text-primary hover:bg-accent"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        addManualItem(query);
+                        setQuery("");
+                        setSearchOpen(false);
+                      }}
+                    >
+                      + เพิ่ม &quot;{query.trim()}&quot; เป็นรายการใหม่ (ยังไม่มีในระบบสินค้า)
+                    </button>
+                  </li>
+                )}
               </ul>
             )}
           </div>
@@ -269,15 +307,15 @@ export function PurchaseRequestForm({
                 </TableHeader>
                 <TableBody>
                   {items.map((it) => (
-                    <TableRow key={it.stockProductId}>
+                    <TableRow key={it.key}>
                       <TableCell className="min-w-[140px]">
                         <p className="text-sm font-medium">{it.name}</p>
-                        <p className="text-xs text-muted-foreground">{it.sku || "—"}</p>
+                        <p className="text-xs text-muted-foreground">{it.sku || (it.stockProductId ? "—" : "ยังไม่มีในระบบสินค้า")}</p>
                       </TableCell>
                       <TableCell className="min-w-[160px]">
                         <Select
                           value={it.supplierId || NONE_SUPPLIER}
-                          onValueChange={(v) => updateItem(it.stockProductId, "supplierId", v === NONE_SUPPLIER ? "" : (v ?? ""))}
+                          onValueChange={(v) => updateItem(it.key, "supplierId", v === NONE_SUPPLIER ? "" : (v ?? ""))}
                           items={[{ value: NONE_SUPPLIER, label: "— ไม่ระบุ —" }, ...suppliers.map((s) => ({ value: s.id, label: s.name }))]}
                         >
                           <SelectTrigger className="w-full">
@@ -299,10 +337,14 @@ export function PurchaseRequestForm({
                             min={0.01}
                             step={0.01}
                             value={it.quantity}
-                            onChange={(v) => updateItem(it.stockProductId, "quantity", Number(v))}
+                            onChange={(v) => updateItem(it.key, "quantity", Number(v))}
                             className="w-20"
                           />
-                          <span className="text-xs whitespace-nowrap text-muted-foreground">{it.unit}</span>
+                          <Input
+                            value={it.unit}
+                            onChange={(e) => updateItem(it.key, "unit", e.target.value)}
+                            className="w-14 px-1 text-xs"
+                          />
                         </div>
                       </TableCell>
                       <TableCell>
@@ -310,13 +352,13 @@ export function PurchaseRequestForm({
                           min={0}
                           step={0.01}
                           value={it.unitPrice}
-                          onChange={(v) => updateItem(it.stockProductId, "unitPrice", Number(v))}
+                          onChange={(v) => updateItem(it.key, "unitPrice", Number(v))}
                           className="w-24"
                         />
                       </TableCell>
                       <TableCell className="text-right whitespace-nowrap">{formatTHB(it.quantity * it.unitPrice)}</TableCell>
                       <TableCell>
-                        <Button type="button" variant="outline" size="icon-sm" onClick={() => removeItem(it.stockProductId)}>
+                        <Button type="button" variant="outline" size="icon-sm" onClick={() => removeItem(it.key)}>
                           <X className="h-3.5 w-3.5" />
                         </Button>
                       </TableCell>

@@ -61,8 +61,12 @@ export async function createPurchaseRequest(formData: FormData) {
   const itemUnitPrices = formData.getAll("item_unit_price");
   const items = itemIds
     .map((id, i) => ({
-      stockProductId: String(id),
-      name: String(itemNames[i] ?? ""),
+      // Empty when this row was typed in free-text rather than picked from
+      // the catalog (no stock_products row exists for it yet) — a real
+      // ใบขอซื้อ need, since the whole point is often requesting something
+      // not already in the system.
+      stockProductId: str(id),
+      name: String(itemNames[i] ?? "").trim(),
       sku: String(itemSkus[i] ?? "").trim() || null,
       unit: String(itemUnits[i] ?? "ชิ้น"),
       quantity: num(itemQuantities[i]),
@@ -70,7 +74,7 @@ export async function createPurchaseRequest(formData: FormData) {
       supplierId: str(itemSupplierIds[i] ?? null),
       unitPrice: num(itemUnitPrices[i]),
     }))
-    .filter((it) => it.stockProductId && it.quantity > 0);
+    .filter((it) => it.name && it.quantity > 0);
 
   if (items.length === 0) return { error: "กรุณาเพิ่มรายการสินค้าอย่างน้อย 1 รายการ" };
 
