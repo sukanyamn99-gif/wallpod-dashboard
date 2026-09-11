@@ -223,32 +223,38 @@ export function PaymentVoucherForm({
         </div>
 
         {/* Only needed to print the official ใบหัก ณ ที่จ่าย certificate —
-            harmless to leave blank on a voucher with no withholding. */}
-        <div className="grid gap-4 border-t pt-3 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="payee_tax_id">เลขประจำตัวผู้เสียภาษีของผู้รับเงิน</Label>
-            <Input id="payee_tax_id" name="payee_tax_id" defaultValue={initialData?.payeeTaxId ?? undefined} />
+            harmless to leave blank on a voucher with no withholding. Given
+            its own heading (not just a divider line) since a user landed on
+            this box's WHT rate/amount/form-type fields and didn't notice
+            these sat below the same border. */}
+        <div className="space-y-3 border-t pt-3">
+          <p className="text-sm font-semibold">สำหรับพิมพ์ใบหัก ณ ที่จ่าย</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="payee_tax_id">เลขประจำตัวผู้เสียภาษีของผู้รับเงิน</Label>
+              <Input id="payee_tax_id" name="payee_tax_id" defaultValue={initialData?.payeeTaxId ?? undefined} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="income_type">ประเภทเงินได้ (สำหรับใบหัก ณ ที่จ่าย)</Label>
+              <input type="hidden" name="income_type" value={incomeType} />
+              <Select value={incomeType} onValueChange={(v) => setIncomeType(v ?? "5")} items={WHT_INCOME_TYPE_OPTIONS}>
+                <SelectTrigger id="income_type" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {WHT_INCOME_TYPE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="income_type">ประเภทเงินได้ (สำหรับใบหัก ณ ที่จ่าย)</Label>
-            <input type="hidden" name="income_type" value={incomeType} />
-            <Select value={incomeType} onValueChange={(v) => setIncomeType(v ?? "5")} items={WHT_INCOME_TYPE_OPTIONS}>
-              <SelectTrigger id="income_type" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {WHT_INCOME_TYPE_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="payee_address">ที่อยู่ผู้รับเงิน (สำหรับใบหัก ณ ที่จ่าย)</Label>
+            <Textarea id="payee_address" name="payee_address" defaultValue={initialData?.payeeAddress ?? undefined} />
           </div>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="payee_address">ที่อยู่ผู้รับเงิน (สำหรับใบหัก ณ ที่จ่าย)</Label>
-          <Textarea id="payee_address" name="payee_address" defaultValue={initialData?.payeeAddress ?? undefined} />
         </div>
       </div>
 
