@@ -22,6 +22,7 @@ import {
   FileDown,
   Factory,
   Files,
+  FileMinus,
   FileSignature,
   FileSpreadsheet,
   FileStack,
@@ -120,6 +121,7 @@ const expensesGroup = {
   items: [
     { title: "บัญชีธนาคาร", url: "/dashboard/bank-accounts", icon: Building2 },
     { title: "Payment Voucher (ใบสำคัญจ่าย)", url: "/dashboard/expenses/payment-vouchers", icon: FileSpreadsheet },
+    { title: "ใบหัก ณ ที่จ่าย", url: "/dashboard/expenses/wht-certificates", icon: FileMinus },
     { title: "เงินสดย่อย", url: "/dashboard/expenses/petty-cash", icon: Wallet },
     { title: "เจ้าหนี้คงค้าง", url: "/dashboard/expenses/payables", icon: HandCoins },
     { title: "เงินเดือน", url: "/dashboard/expenses/payroll", icon: CircleDollarSign },

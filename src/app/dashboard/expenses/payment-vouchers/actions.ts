@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activity-log";
-import type { WhtFormType } from "@/lib/types";
+import type { WhtFormType, WhtIncomeType } from "@/lib/types";
 
 const WHT_FORM_TYPES: WhtFormType[] = ["ภ.ง.ด.1", "ภ.ง.ด.2", "ภ.ง.ด.3", "ภ.ง.ด.53"];
+const WHT_INCOME_TYPES: WhtIncomeType[] = ["1", "2", "3", "4a", "4b", "5", "6"];
 
 function num(v: FormDataEntryValue | null): number {
   const n = Number(v);
@@ -49,11 +50,15 @@ function parseVoucherForm(formData: FormData) {
   const payeeName = str(formData.get("payee_name"));
   const amount = num(formData.get("amount"));
   const whtFormType = str(formData.get("wht_form_type"));
+  const incomeType = str(formData.get("income_type")) ?? "5";
 
   if (!payeeName) return { ok: false as const, error: "กรุณากรอกชื่อผู้รับเงิน" };
   if (amount <= 0) return { ok: false as const, error: "กรุณากรอกจำนวนเงินให้ถูกต้อง" };
   if (whtFormType && !WHT_FORM_TYPES.includes(whtFormType as WhtFormType)) {
     return { ok: false as const, error: "ประเภทแบบภาษีหัก ณ ที่จ่ายไม่ถูกต้อง" };
+  }
+  if (!WHT_INCOME_TYPES.includes(incomeType as WhtIncomeType)) {
+    return { ok: false as const, error: "ประเภทเงินได้ไม่ถูกต้อง" };
   }
 
   const itemAccountCodes = formData.getAll("line_account_code");
@@ -87,6 +92,9 @@ function parseVoucherForm(formData: FormData) {
     bankAccountNo: str(formData.get("bank_account_no")),
     bankTransferDate: str(formData.get("bank_transfer_date")),
     jobNo: str(formData.get("job_no")),
+    payeeTaxId: str(formData.get("payee_tax_id")),
+    payeeAddress: str(formData.get("payee_address")),
+    incomeType: incomeType as WhtIncomeType,
     ledgerLines,
   };
 }
@@ -151,6 +159,9 @@ export async function createPaymentVoucher(formData: FormData) {
       bank_account_no: parsed.bankAccountNo,
       bank_transfer_date: parsed.bankTransferDate,
       job_no: parsed.jobNo,
+      payee_tax_id: parsed.payeeTaxId,
+      payee_address: parsed.payeeAddress,
+      income_type: parsed.incomeType,
     })
     .select("id")
     .single();
@@ -191,6 +202,9 @@ export async function updatePaymentVoucher(id: string, formData: FormData) {
       bank_account_no: parsed.bankAccountNo,
       bank_transfer_date: parsed.bankTransferDate,
       job_no: parsed.jobNo,
+      payee_tax_id: parsed.payeeTaxId,
+      payee_address: parsed.payeeAddress,
+      income_type: parsed.incomeType,
     })
     .eq("id", id);
   if (error) return { error: error.message };

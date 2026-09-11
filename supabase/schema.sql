@@ -970,7 +970,14 @@ create table payment_vouchers (
   bank_name text,
   bank_account_no text,
   bank_transfer_date date,
-  job_no text
+  job_no text,
+  -- ใบหัก ณ ที่จ่าย (มาตรา 50 ทวิ) fields — the payee's side of the official
+  -- certificate; the payer's side reuses this company's own info block
+  -- already printed on the voucher itself.
+  payee_tax_id text,
+  payee_address text,
+  income_type text not null default '5'
+    check (income_type in ('1', '2', '3', '4a', '4b', '5', '6'))
 );
 
 alter table payment_vouchers enable row level security;

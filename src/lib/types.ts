@@ -401,6 +401,11 @@ export interface GoodsReceipt {
 
 export type WhtFormType = "ภ.ง.ด.1" | "ภ.ง.ด.2" | "ภ.ง.ด.3" | "ภ.ง.ด.53";
 
+// The 6 standardized income-type categories on the official ใบหัก ณ ที่จ่าย
+// form (มาตรา 50 ทวิ) — "4a"/"4b" stand in for 4(ก)/4(ข), which the DB check
+// constraint can't store as literal parenthesized text.
+export type WhtIncomeType = "1" | "2" | "3" | "4a" | "4b" | "5" | "6";
+
 export interface PaymentVoucherLedgerLine {
   id: string;
   accountCode: string | null;
@@ -431,6 +436,9 @@ export interface PaymentVoucher {
   bankAccountNo: string | null;
   bankTransferDate: string | null;
   jobNo: string | null;
+  payeeTaxId: string | null;
+  payeeAddress: string | null;
+  incomeType: WhtIncomeType;
   ledgerLines: PaymentVoucherLedgerLine[];
 }
 

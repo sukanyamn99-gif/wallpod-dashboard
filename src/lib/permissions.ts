@@ -46,6 +46,7 @@ const PAGE_ACCESS: Record<string, Role[]> = {
   "/dashboard/bank-accounts": [...ADMIN_ROLES, "account"],
   "/dashboard/expenses": [...ADMIN_ROLES, "account"],
   "/dashboard/expenses/payment-vouchers": [...ADMIN_ROLES, "account"],
+  "/dashboard/expenses/wht-certificates": [...ADMIN_ROLES, "account"],
   "/dashboard/expenses/petty-cash": [...ADMIN_ROLES, "account"],
   "/dashboard/expenses/payables": [...ADMIN_ROLES, "account"],
   // Salary is individually-sensitive in a way the rest of Expenses isn't —

@@ -19,7 +19,7 @@ import {
 import { JobNoSelect } from "@/components/dashboard/job-no-select";
 import { formatTHB } from "@/lib/format";
 import { createPaymentVoucher, updatePaymentVoucher } from "./actions";
-import type { PaymentVoucher, WhtFormType } from "@/lib/types";
+import type { PaymentVoucher, WhtFormType, WhtIncomeType } from "@/lib/types";
 
 const initialState: { error: string | null; docNo?: string; id?: string } = { error: null };
 
@@ -28,6 +28,16 @@ const WHT_FORM_OPTIONS: { value: WhtFormType; label: string }[] = [
   { value: "ภ.ง.ด.2", label: "ภ.ง.ด.2" },
   { value: "ภ.ง.ด.3", label: "ภ.ง.ด.3" },
   { value: "ภ.ง.ด.53", label: "ภ.ง.ด.53" },
+];
+
+const WHT_INCOME_TYPE_OPTIONS: { value: WhtIncomeType; label: string }[] = [
+  { value: "1", label: "1. เงินเดือน ค่าจ้าง ฯลฯ มาตรา 40(1)" },
+  { value: "2", label: "2. ค่าธรรมเนียม ค่านายหน้า ฯลฯ มาตรา 40(2)" },
+  { value: "3", label: "3. ค่าแห่งลิขสิทธิ์ ฯลฯ มาตรา 40(3)" },
+  { value: "4a", label: "4(ก). ดอกเบี้ย ฯลฯ มาตรา 40(4)(ก)" },
+  { value: "4b", label: "4(ข). เงินปันผล เงินส่วนแบ่งกำไร ฯลฯ มาตรา 40(4)(ข)" },
+  { value: "5", label: "5. ค่าจ้างทำของ/บริการ ตามคำสั่งกรมสรรพากร" },
+  { value: "6", label: "6. อื่นๆ" },
 ];
 
 interface LedgerLineDraft {
@@ -56,6 +66,7 @@ export function PaymentVoucherForm({
 }) {
   const router = useRouter();
   const [whtFormType, setWhtFormType] = useState<string>(initialData?.whtFormType ?? "");
+  const [incomeType, setIncomeType] = useState<string>(initialData?.incomeType ?? "5");
   const [jobNo, setJobNo] = useState(initialData?.jobNo ?? "");
   const [lines, setLines] = useState<LedgerLineDraft[]>(() => {
     if (initialData?.ledgerLines && initialData.ledgerLines.length > 0) {
@@ -209,6 +220,35 @@ export function PaymentVoucherForm({
               </SelectContent>
             </Select>
           </div>
+        </div>
+
+        {/* Only needed to print the official ใบหัก ณ ที่จ่าย certificate —
+            harmless to leave blank on a voucher with no withholding. */}
+        <div className="grid gap-4 border-t pt-3 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="payee_tax_id">เลขประจำตัวผู้เสียภาษีของผู้รับเงิน</Label>
+            <Input id="payee_tax_id" name="payee_tax_id" defaultValue={initialData?.payeeTaxId ?? undefined} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="income_type">ประเภทเงินได้ (สำหรับใบหัก ณ ที่จ่าย)</Label>
+            <input type="hidden" name="income_type" value={incomeType} />
+            <Select value={incomeType} onValueChange={(v) => setIncomeType(v ?? "5")} items={WHT_INCOME_TYPE_OPTIONS}>
+              <SelectTrigger id="income_type" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {WHT_INCOME_TYPE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="payee_address">ที่อยู่ผู้รับเงิน (สำหรับใบหัก ณ ที่จ่าย)</Label>
+          <Textarea id="payee_address" name="payee_address" defaultValue={initialData?.payeeAddress ?? undefined} />
         </div>
       </div>
 

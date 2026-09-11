@@ -1,8 +1,8 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import type { PaymentVoucher, PaymentVoucherLedgerLine, WhtFormType } from "@/lib/types";
+import type { PaymentVoucher, PaymentVoucherLedgerLine, WhtFormType, WhtIncomeType } from "@/lib/types";
 
 const COLUMNS =
-  "id, doc_no, voucher_date, payee_name, category, amount, payment_method, reference_no, note, recorded_by, created_at, wht_cert_no, description, wht_rate, wht_form_type, wht_amount, bank_name, bank_account_no, bank_transfer_date, job_no, profiles(full_name)";
+  "id, doc_no, voucher_date, payee_name, category, amount, payment_method, reference_no, note, recorded_by, created_at, wht_cert_no, description, wht_rate, wht_form_type, wht_amount, bank_name, bank_account_no, bank_transfer_date, job_no, payee_tax_id, payee_address, income_type, profiles(full_name)";
 
 type Row = {
   id: string;
@@ -25,6 +25,9 @@ type Row = {
   bank_account_no: string | null;
   bank_transfer_date: string | null;
   job_no: string | null;
+  payee_tax_id: string | null;
+  payee_address: string | null;
+  income_type: string;
   profiles: { full_name: string } | null;
 };
 
@@ -51,6 +54,9 @@ function mapRow(row: Row): Omit<PaymentVoucher, "ledgerLines"> {
     bankAccountNo: row.bank_account_no,
     bankTransferDate: row.bank_transfer_date,
     jobNo: row.job_no,
+    payeeTaxId: row.payee_tax_id,
+    payeeAddress: row.payee_address,
+    incomeType: row.income_type as WhtIncomeType,
   };
 }
 
