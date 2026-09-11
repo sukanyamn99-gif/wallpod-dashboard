@@ -42,7 +42,7 @@ function TaxIdBoxes({ value }: { value: string | null }) {
               {group.map((d, i) => (
                 <span
                   key={i}
-                  className={`flex h-4 w-4 items-center justify-center border border-black text-center text-[10px] ${i === 0 ? "" : "border-l-0"}`}
+                  className={`flex h-[18px] w-[18px] items-center justify-center border border-black text-center text-[11px] ${i === 0 ? "" : "border-l-0"}`}
                 >
                   {d.trim()}
                 </span>
@@ -62,7 +62,7 @@ function BlankTaxIdBoxes() {
   return (
     <div className="flex">
       {Array.from({ length: 13 }).map((_, i) => (
-        <span key={i} className={`flex h-4 w-4 items-center justify-center border border-black ${i === 0 ? "" : "border-l-0"}`} />
+        <span key={i} className={`flex h-[18px] w-[18px] items-center justify-center border border-black ${i === 0 ? "" : "border-l-0"}`} />
       ))}
     </div>
   );
@@ -71,7 +71,7 @@ function BlankTaxIdBoxes() {
 function Checkbox({ checked }: { checked: boolean }) {
   return (
     <span
-      className={`inline-flex h-3 w-3 shrink-0 items-center justify-center border border-black text-[8px] leading-none ${checked ? "bg-black text-white" : ""}`}
+      className={`inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center border border-black text-[9px] leading-none ${checked ? "bg-black text-white" : ""}`}
     >
       {checked ? "x" : ""}
     </span>
@@ -147,7 +147,7 @@ export function PrintWhtCertificateView({ voucher }: { voucher: PaymentVoucher }
         <DownloadPdfButton />
       </div>
 
-      <div className="text-[9.5px] leading-snug">
+      <div className="text-[10.5px] leading-snug">
         <div className="flex justify-between">
           <div>
             <p>ฉบับที่ 1 (สำหรับผู้ถูกหักภาษี ณ ที่จ่าย ใช้แนบพร้อมกับแบบแสดงรายการภาษี)</p>
@@ -160,7 +160,7 @@ export function PrintWhtCertificateView({ voucher }: { voucher: PaymentVoucher }
         </div>
 
         <div className="my-1 text-center">
-          <p className="text-[13px] font-semibold">หนังสือรับรองการหักภาษี ณ ที่จ่าย</p>
+          <p className="text-[15px] font-semibold">หนังสือรับรองการหักภาษี ณ ที่จ่าย</p>
           <p>ตามมาตรา 50 ทวิแห่งประมวลรัษฎากร</p>
         </div>
 
@@ -205,7 +205,9 @@ export function PrintWhtCertificateView({ voucher }: { voucher: PaymentVoucher }
               </span>
             </div>
             <p className="text-neutral-600">(ให้ระบุว่าเป็น บุคคล นิติบุคคล บริษัท สมาคม หรือคณะบุคคล)</p>
-            <p className="mt-0.5">ที่อยู่ {voucher.payeeAddress ?? "—"}</p>
+            <p className="mt-0.5">
+              ที่อยู่ {voucher.payeeAddress || "......................................................................................"}
+            </p>
             <p className="text-neutral-600">
               (ให้ระบุ ชื่ออาคาร/หมู่บ้าน ห้องเลขที่ ชั้นที่ เลขที่ ตรอก/ซอย หมู่ที่ ถนน ตำบล/แขวง อำเภอ/เขต จังหวัด)
             </p>
