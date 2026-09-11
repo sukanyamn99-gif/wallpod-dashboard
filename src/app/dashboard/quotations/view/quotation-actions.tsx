@@ -46,10 +46,20 @@ export function QuotationStatusActions({ quotationId, status }: { quotationId: s
   }
 
   // ลูกค้าตอบตกลง — already accepted; offer the convert action again in
-  // case the user navigated away from /project-sales/new before saving.
+  // case the user navigated away from /project-sales/new before saving, and
+  // a way back to รอตอบรับ for an accidental click (matches the ปฏิเสธ
+  // case's own revert button above). The JOB NO. auto-assigned on accept is
+  // deliberately left as-is — reverting is for "I clicked the wrong
+  // button", not "undo everything"; accepting again later reuses the same
+  // number instead of wasting a new one (see updateQuotationStatus).
   return (
-    <Button size="sm" variant="outline" onClick={convert} disabled={pending}>
-      ไปที่ Project Sales (แปลงอีกครั้ง)
-    </Button>
+    <div className="flex flex-wrap gap-2">
+      <Button size="sm" variant="outline" onClick={convert} disabled={pending}>
+        ไปที่ Project Sales (แปลงอีกครั้ง)
+      </Button>
+      <Button size="sm" variant="outline" onClick={() => setStatus("รอตอบรับ")} disabled={pending}>
+        เปลี่ยนกลับเป็นรอตอบรับ
+      </Button>
+    </div>
   );
 }
