@@ -42,7 +42,7 @@ function TaxIdBoxes({ value }: { value: string | null }) {
               {group.map((d, i) => (
                 <span
                   key={i}
-                  className={`flex h-5 w-5 items-center justify-center border border-black text-center text-[10px] ${i === 0 ? "" : "border-l-0"}`}
+                  className={`flex h-4 w-4 items-center justify-center border border-black text-center text-[10px] ${i === 0 ? "" : "border-l-0"}`}
                 >
                   {d.trim()}
                 </span>
@@ -62,7 +62,7 @@ function BlankTaxIdBoxes() {
   return (
     <div className="flex">
       {Array.from({ length: 13 }).map((_, i) => (
-        <span key={i} className={`flex h-5 w-5 items-center justify-center border border-black ${i === 0 ? "" : "border-l-0"}`} />
+        <span key={i} className={`flex h-4 w-4 items-center justify-center border border-black ${i === 0 ? "" : "border-l-0"}`} />
       ))}
     </div>
   );
@@ -133,6 +133,12 @@ export function PrintWhtCertificateView({ voucher }: { voucher: PaymentVoucher }
 
   return (
     <div className="mx-auto max-w-3xl bg-white p-6 text-black print:p-0">
+      {/* This form's official text is long enough that default browser print
+          margins push the last line or two onto a second page — a smaller
+          @page margin (scoped to this print route only, not app-wide) buys
+          back enough room to keep it on one sheet, matching the real form. */}
+      <style>{`@page { size: A4; margin: 10mm; }`}</style>
+
       <div className="mb-4 flex justify-end gap-2 print:hidden">
         <Button variant="outline" onClick={() => router.back()}>
           ปิด
@@ -141,7 +147,7 @@ export function PrintWhtCertificateView({ voucher }: { voucher: PaymentVoucher }
         <DownloadPdfButton />
       </div>
 
-      <div className="text-[10px] leading-tight">
+      <div className="text-[9.5px] leading-snug">
         <div className="flex justify-between">
           <div>
             <p>ฉบับที่ 1 (สำหรับผู้ถูกหักภาษี ณ ที่จ่าย ใช้แนบพร้อมกับแบบแสดงรายการภาษี)</p>
@@ -153,14 +159,14 @@ export function PrintWhtCertificateView({ voucher }: { voucher: PaymentVoucher }
           </div>
         </div>
 
-        <div className="my-2 text-center">
-          <p className="text-base font-semibold">หนังสือรับรองการหักภาษี ณ ที่จ่าย</p>
+        <div className="my-1 text-center">
+          <p className="text-[13px] font-semibold">หนังสือรับรองการหักภาษี ณ ที่จ่าย</p>
           <p>ตามมาตรา 50 ทวิแห่งประมวลรัษฎากร</p>
         </div>
 
         <div className="border border-black">
           {/* Withholder / ผู้มีหน้าที่หักภาษี ณ ที่จ่าย */}
-          <div className="border-b border-black p-2">
+          <div className="border-b border-black p-1.5">
             <div className="flex flex-wrap items-center justify-between gap-x-2">
               <span>ผู้มีหน้าที่หักภาษี ณ ที่จ่าย : -</span>
               <span className="flex items-center gap-2">
@@ -168,7 +174,7 @@ export function PrintWhtCertificateView({ voucher }: { voucher: PaymentVoucher }
                 <TaxIdBoxes value={COMPANY_TAX_ID} />
               </span>
             </div>
-            <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2">
+            <div className="mt-0.5 flex flex-wrap items-center justify-between gap-x-2">
               <span>ชื่อ {COMPANY_NAME}</span>
               <span className="flex items-center gap-2">
                 <span>เลขประจำตัวผู้เสียภาษีอากร</span>
@@ -176,14 +182,14 @@ export function PrintWhtCertificateView({ voucher }: { voucher: PaymentVoucher }
               </span>
             </div>
             <p className="text-neutral-600">(ให้ระบุว่าเป็น บุคคล นิติบุคคล บริษัท สมาคม หรือคณะบุคคล)</p>
-            <p className="mt-1">ที่อยู่ {COMPANY_ADDRESS}</p>
+            <p className="mt-0.5">ที่อยู่ {COMPANY_ADDRESS}</p>
             <p className="text-neutral-600">
               (ให้ระบุ ชื่ออาคาร/หมู่บ้าน ห้องเลขที่ ชั้นที่ เลขที่ ตรอก/ซอย หมู่ที่ ถนน ตำบล/แขวง อำเภอ/เขต จังหวัด)
             </p>
           </div>
 
           {/* Payee / ผู้ถูกหักภาษี ณ ที่จ่าย */}
-          <div className="border-b border-black p-2">
+          <div className="border-b border-black p-1.5">
             <div className="flex flex-wrap items-center justify-between gap-x-2">
               <span>ผู้ถูกหักภาษี ณ ที่จ่าย : -</span>
               <span className="flex items-center gap-2">
@@ -191,7 +197,7 @@ export function PrintWhtCertificateView({ voucher }: { voucher: PaymentVoucher }
                 <TaxIdBoxes value={voucher.payeeTaxId} />
               </span>
             </div>
-            <div className="mt-1 flex flex-wrap items-center justify-between gap-x-2">
+            <div className="mt-0.5 flex flex-wrap items-center justify-between gap-x-2">
               <span>ชื่อ {voucher.payeeName}</span>
               <span className="flex items-center gap-2">
                 <span>เลขประจำตัวผู้เสียภาษีอากร</span>
@@ -199,14 +205,14 @@ export function PrintWhtCertificateView({ voucher }: { voucher: PaymentVoucher }
               </span>
             </div>
             <p className="text-neutral-600">(ให้ระบุว่าเป็น บุคคล นิติบุคคล บริษัท สมาคม หรือคณะบุคคล)</p>
-            <p className="mt-1">ที่อยู่ {voucher.payeeAddress ?? "—"}</p>
+            <p className="mt-0.5">ที่อยู่ {voucher.payeeAddress ?? "—"}</p>
             <p className="text-neutral-600">
               (ให้ระบุ ชื่ออาคาร/หมู่บ้าน ห้องเลขที่ ชั้นที่ เลขที่ ตรอก/ซอย หมู่ที่ ถนน ตำบล/แขวง อำเภอ/เขต จังหวัด)
             </p>
           </div>
 
           {/* ภ.ง.ด. form-type checkboxes */}
-          <div className="flex flex-wrap items-start gap-x-6 gap-y-1 border-b border-black p-2">
+          <div className="flex flex-wrap items-start gap-x-6 gap-y-0.5 border-b border-black p-1.5">
             <span className="whitespace-nowrap">
               ลำดับที่ <span className="inline-block h-4 w-14 border border-black align-bottom" /> ในแบบ
             </span>
@@ -243,10 +249,10 @@ export function PrintWhtCertificateView({ voucher }: { voucher: PaymentVoucher }
             </colgroup>
             <thead>
               <tr>
-                <th className="border-b border-r border-black p-1 text-center font-medium">ประเภทเงินได้พึงประเมินจ่าย</th>
-                <th className="border-b border-r border-black p-1 text-center font-medium">วัน เดือน หรือปีภาษี ที่จ่าย</th>
-                <th className="border-b border-r border-black p-1 text-center font-medium">จำนวนเงินที่จ่าย</th>
-                <th className="border-b border-black p-1 text-center font-medium">ภาษีที่หักและนำส่งไว้</th>
+                <th className="border-b border-r border-black px-1 py-0.5 text-center font-medium">ประเภทเงินได้พึงประเมินจ่าย</th>
+                <th className="border-b border-r border-black px-1 py-0.5 text-center font-medium">วัน เดือน หรือปีภาษี ที่จ่าย</th>
+                <th className="border-b border-r border-black px-1 py-0.5 text-center font-medium">จำนวนเงินที่จ่าย</th>
+                <th className="border-b border-black px-1 py-0.5 text-center font-medium">ภาษีที่หักและนำส่งไว้</th>
               </tr>
             </thead>
             <tbody>
@@ -256,48 +262,48 @@ export function PrintWhtCertificateView({ voucher }: { voucher: PaymentVoucher }
                 return (
                   <tr key={i}>
                     <td
-                      className={`border-r border-black p-1 align-top ${isLast ? "" : "border-b"}`}
+                      className={`border-r border-black px-1 py-0.5 align-top ${isLast ? "" : "border-b"}`}
                       style={row.indent ? { paddingLeft: `${row.indent * 12 + 4}px` } : undefined}
                     >
                       {row.text}
                       {isMatch && voucher.description && ` (${voucher.description})`}
                     </td>
-                    <td className={`border-r border-black p-1 text-center align-top ${isLast ? "" : "border-b"}`}>
+                    <td className={`border-r border-black px-1 py-0.5 text-center align-top ${isLast ? "" : "border-b"}`}>
                       {isMatch ? numericDate(voucher.voucherDate) : ""}
                     </td>
-                    <td className={`border-r border-black p-1 text-right align-top ${isLast ? "" : "border-b"}`}>
+                    <td className={`border-r border-black px-1 py-0.5 text-right align-top ${isLast ? "" : "border-b"}`}>
                       {isMatch ? formatTHB(voucher.amount) : ""}
                     </td>
-                    <td className={`p-1 text-right align-top ${isLast ? "" : "border-b"}`}>
+                    <td className={`px-1 py-0.5 text-right align-top ${isLast ? "" : "border-b"}`}>
                       {isMatch ? formatTHB(voucher.whtAmount) : ""}
                     </td>
                   </tr>
                 );
               })}
               <tr className="font-medium">
-                <td className="border-t border-r border-black p-1 text-center" colSpan={2}>
+                <td className="border-t border-r border-black px-1 py-0.5 text-center" colSpan={2}>
                   รวมเงินที่จ่ายและภาษีที่หักนำส่ง
                 </td>
-                <td className="border-t border-r border-black p-1 text-right">{formatTHB(voucher.amount)}</td>
-                <td className="border-t border-black p-1 text-right">{formatTHB(voucher.whtAmount)}</td>
+                <td className="border-t border-r border-black px-1 py-0.5 text-right">{formatTHB(voucher.amount)}</td>
+                <td className="border-t border-black px-1 py-0.5 text-right">{formatTHB(voucher.whtAmount)}</td>
               </tr>
             </tbody>
           </table>
 
-          <div className="border-t border-black p-2">
+          <div className="border-t border-black p-1.5">
             รวมเงินภาษีที่หักนำส่ง (ตัวอักษร) ({thaiBahtText(voucher.whtAmount)})
           </div>
 
           {/* Not tracked by this app (no payroll-fund deduction data on a
               payment voucher) — printed blank for layout fidelity. */}
-          <div className="border-t border-black p-2">
+          <div className="border-t border-black p-1.5">
             เงินที่จ่ายเข้า กบข./กสจ./กองทุนสงเคราะห์ครูโรงเรียนเอกชน.......................บาท กองทุนประกันสังคม.......................บาท
             กองทุนสำรองเลี้ยงชีพ.......................บาท
           </div>
 
           {/* This app only ever supports withholding at the time of
               payment (no gross-up), so (1) หัก ณ ที่จ่าย is always checked. */}
-          <div className="flex flex-wrap items-center gap-4 border-t border-black p-2">
+          <div className="flex flex-wrap items-center gap-4 border-t border-black p-1.5">
             <span className="whitespace-nowrap font-medium">ผู้ที่จ่ายเงิน</span>
             <label className="flex items-center gap-1 whitespace-nowrap">
               <Checkbox checked />
@@ -318,30 +324,30 @@ export function PrintWhtCertificateView({ voucher }: { voucher: PaymentVoucher }
           </div>
 
           <div className="grid grid-cols-[1fr_2fr] border-t border-black">
-            <div className="border-r border-black p-2">
+            <div className="border-r border-black p-1.5">
               คำเตือน ผู้มีหน้าที่ออกหนังสือรับรองหักภาษี ณ ที่จ่าย ฝ่าฝืนไม่ปฏิบัติตามมาตรา 50 ทวิ แห่งประมวลรัษฎากร
               ต้องรับโทษทางอาญาตามมาตรา 35 แห่งประมวลรัษฎากร
             </div>
-            <div className="flex flex-col justify-between p-2">
+            <div className="flex flex-col justify-between p-1.5">
               <div>
                 <p>ขอรับรองว่าข้อความและตัวเลขดังกล่าวข้างต้นถูกต้องตรงกับความจริงทุกประการ</p>
-                <p className="mt-3">ลงชื่อ .......................................................ผู้จ่ายเงิน</p>
+                <p className="mt-1.5">ลงชื่อ .......................................................ผู้จ่ายเงิน</p>
                 {voucher.recordedByName && (
-                  <p className="mt-1 ml-6 text-neutral-600">({voucher.recordedByName})</p>
+                  <p className="mt-0.5 ml-6 text-neutral-600">({voucher.recordedByName})</p>
                 )}
-                <p className="mt-1">
+                <p className="mt-0.5">
                   {numericDate(voucher.voucherDate)}
                   <span className="text-neutral-600"> (วัน เดือน ปี ที่ออกหนังสือรับรอง)</span>
                 </p>
               </div>
-              <div className="mt-2 flex justify-end">
-                <Image src="/koonwaylogo.png" alt="KOONWAY" width={120} height={20} className="h-5 w-auto" />
+              <div className="mt-1 flex justify-end">
+                <Image src="/koonwaylogo.png" alt="KOONWAY" width={110} height={18} className="h-[18px] w-auto" />
               </div>
             </div>
           </div>
         </div>
 
-        <p className="mt-1 text-neutral-600">
+        <p className="mt-0.5 text-neutral-600">
           หมายเหตุ เลขประจำตัวผู้เสียภาษีอากร (13 หลัก)* หมายถึง 1. กรณีบุคคลธรรมดาไทย ให้ใช้เลขประจำตัวประชาชนของกรมการปกครอง
           2. กรณีนิติบุคคล ให้ใช้เลขทะเบียนนิติบุคคลของกรมพัฒนาธุรกิจการค้า 3. กรณีอื่นๆ นอกเหนือจาก 1. และ 2.
           ให้ใช้เลขประจำตัวผู้เสียภาษีอากร (13 หลัก) ของกรมสรรพากร
