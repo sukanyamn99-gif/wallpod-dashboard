@@ -129,8 +129,14 @@ export function PaymentVoucherForm({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="wht_cert_no">เลขที่ใบหัก ณ ที่จ่าย</Label>
-          <Input id="wht_cert_no" name="wht_cert_no" defaultValue={initialData?.whtCertNo ?? undefined} />
+          <Label>เลขที่ใบหัก ณ ที่จ่าย</Label>
+          {/* System-numbered (WT + YYMM + running no.), not typed — assigned
+              automatically the first time this voucher is saved with a
+              withholding amount, and kept unchanged on later edits. */}
+          <input type="hidden" name="wht_cert_no" value={initialData?.whtCertNo ?? ""} />
+          <p className="py-2 text-sm text-muted-foreground">
+            {initialData?.whtCertNo ?? "ระบบจะรันเลขที่ให้อัตโนมัติเมื่อบันทึกพร้อมจำนวนภาษีหัก ณ ที่จ่าย"}
+          </p>
         </div>
       </div>
 

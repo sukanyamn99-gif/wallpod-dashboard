@@ -45,6 +45,27 @@ async function generateDocNo(supabase: Awaited<ReturnType<typeof createClient>>)
   return `${prefix}${seq}`;
 }
 
+// Same YY+MM+running-sequence convention as doc_no, prefixed "WT" (WithHolding
+// Tax) — generated once, the first time a voucher's wht_amount becomes > 0
+// with no cert number yet, and never regenerated on later edits.
+async function generateWhtCertNo(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string> {
+  const now = new Date();
+  const yy = String(now.getFullYear() + 543 - 2500).padStart(2, "0");
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const prefix = `WT${yy}${mm}`;
+
+  const { data, error } = await supabase.from("payment_vouchers").select("wht_cert_no").like("wht_cert_no", `${prefix}%`);
+  if (error) throw error;
+
+  let max = 0;
+  for (const row of data ?? []) {
+    const n = parseInt((row.wht_cert_no ?? "").slice(prefix.length), 10);
+    if (Number.isFinite(n)) max = Math.max(max, n);
+  }
+  const seq = String(max + 1).padStart(3, "0");
+  return `${prefix}${seq}`;
+}
+
 function parseVoucherForm(formData: FormData) {
   const voucherDate = str(formData.get("voucher_date")) ?? new Date().toISOString().slice(0, 10);
   const payeeName = str(formData.get("payee_name"));
@@ -137,6 +158,7 @@ export async function createPaymentVoucher(formData: FormData) {
   } = await supabase.auth.getUser();
 
   const docNo = await generateDocNo(supabase);
+  const whtCertNo = parsed.whtAmount > 0 && !parsed.whtCertNo ? await generateWhtCertNo(supabase) : parsed.whtCertNo;
 
   const { data: created, error } = await supabase
     .from("payment_vouchers")
@@ -150,7 +172,7 @@ export async function createPaymentVoucher(formData: FormData) {
       reference_no: parsed.referenceNo,
       note: parsed.note,
       recorded_by: user?.id ?? null,
-      wht_cert_no: parsed.whtCertNo,
+      wht_cert_no: whtCertNo,
       description: parsed.description,
       wht_rate: parsed.whtRate,
       wht_form_type: parsed.whtFormType,
@@ -183,6 +205,7 @@ export async function updatePaymentVoucher(id: string, formData: FormData) {
   if (!parsed.ok) return { error: parsed.error };
 
   const supabase = await createClient();
+  const whtCertNo = parsed.whtAmount > 0 && !parsed.whtCertNo ? await generateWhtCertNo(supabase) : parsed.whtCertNo;
   const { error } = await supabase
     .from("payment_vouchers")
     .update({
@@ -193,7 +216,7 @@ export async function updatePaymentVoucher(id: string, formData: FormData) {
       payment_method: parsed.paymentMethod,
       reference_no: parsed.referenceNo,
       note: parsed.note,
-      wht_cert_no: parsed.whtCertNo,
+      wht_cert_no: whtCertNo,
       description: parsed.description,
       wht_rate: parsed.whtRate,
       wht_form_type: parsed.whtFormType,
