@@ -26,6 +26,22 @@ export interface ArDashboardData {
   list: ReceivableRow[];
 }
 
+// Aging counts from when the ใบวางบิล was actually issued (per the user's
+// explicit request), not the job's own project_date — a job billed months
+// after it closed shouldn't look overdue from day one. A job can have up
+// to 3 installments, each possibly billed via its own ใบวางบิล on a
+// different date; the earliest one is used so a still-outstanding job
+// shows its true worst-case age (matching "ลูกหนี้ค้างนานที่สุด"'s intent).
+// Falls back to project_date for a job that was never billed at all —
+// nothing else to anchor the clock to.
+function billingStartDate(r: FullProjectRow): string {
+  const billingDates = [r.billingNoteDate1, r.billingNoteDate2, r.billingNoteDate3].filter(
+    (d): d is string => !!d,
+  );
+  if (billingDates.length === 0) return r.projectDate;
+  return billingDates.reduce((earliest, d) => (d < earliest ? d : earliest));
+}
+
 export async function getArDashboardData(): Promise<ArDashboardData> {
   const { rows } = await getFullProjectReport();
   const now = new Date();
@@ -36,7 +52,7 @@ export async function getArDashboardData(): Promise<ArDashboardData> {
   // both installments are marked paid — that's rounding noise, not a real debt.
   const receivables: ReceivableRow[] = rows
     .filter((r) => !r.isCancelled && (r.outstanding ?? 0) >= 1)
-    .map((r) => ({ ...r, ageDays: differenceInDays(now, new Date(r.projectDate)) }))
+    .map((r) => ({ ...r, ageDays: differenceInDays(now, new Date(billingStartDate(r))) }))
     .sort((a, b) => b.ageDays - a.ageDays);
 
   const totalOutstanding = receivables.reduce((sum, r) => sum + (r.outstanding ?? 0), 0);
