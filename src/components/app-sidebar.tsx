@@ -212,6 +212,36 @@ export function AppSidebar({ profile }: { profile: Profile }) {
                 </SidebarMenuItem>
               ))}
 
+              {visiblePurchaseDocsItems.length > 0 && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={isPurchaseDocsActive}
+                    onClick={() => setPurchaseDocsOpen((open) => !open)}
+                  >
+                    <purchaseDocsGroup.icon />
+                    <span>{purchaseDocsGroup.title}</span>
+                    {purchaseDocsOpen ? <ChevronDown className="ml-auto" /> : <ChevronRight className="ml-auto" />}
+                  </SidebarMenuButton>
+                  {purchaseDocsOpen && (
+                    <SidebarMenuSub>
+                      {visiblePurchaseDocsItems.map((item) => (
+                        <SidebarMenuSubItem key={item.url}>
+                          <SidebarMenuSubButton
+                            isActive={pathname === item.url}
+                            render={
+                              <Link href={item.url}>
+                                <item.icon />
+                                <span>{item.title}</span>
+                              </Link>
+                            }
+                          />
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  )}
+                </SidebarMenuItem>
+              )}
+
               {visibleSalesDocsItems.length > 0 && (
                 <SidebarMenuItem>
                   <SidebarMenuButton
@@ -283,36 +313,6 @@ export function AppSidebar({ profile }: { profile: Profile }) {
                               ))}
                             </SidebarMenuSub>
                           )}
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  )}
-                </SidebarMenuItem>
-              )}
-
-              {visiblePurchaseDocsItems.length > 0 && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    isActive={isPurchaseDocsActive}
-                    onClick={() => setPurchaseDocsOpen((open) => !open)}
-                  >
-                    <purchaseDocsGroup.icon />
-                    <span>{purchaseDocsGroup.title}</span>
-                    {purchaseDocsOpen ? <ChevronDown className="ml-auto" /> : <ChevronRight className="ml-auto" />}
-                  </SidebarMenuButton>
-                  {purchaseDocsOpen && (
-                    <SidebarMenuSub>
-                      {visiblePurchaseDocsItems.map((item) => (
-                        <SidebarMenuSubItem key={item.url}>
-                          <SidebarMenuSubButton
-                            isActive={pathname === item.url}
-                            render={
-                              <Link href={item.url}>
-                                <item.icon />
-                                <span>{item.title}</span>
-                              </Link>
-                            }
-                          />
                         </SidebarMenuSubItem>
                       ))}
                     </SidebarMenuSub>
