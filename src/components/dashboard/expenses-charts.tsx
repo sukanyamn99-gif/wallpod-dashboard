@@ -111,10 +111,16 @@ export function ExpenseCategoryChart({ data }: { data: { category: string; value
                 height={48}
                 formatter={(value, entry) => {
                   const v = (entry?.payload as unknown as { value: number } | undefined)?.value ?? 0;
-                  const pct = total > 0 ? Math.round((v / total) * 100) : 0;
+                  // Rounding to a whole percent made any real-but-small
+                  // category (petty cash items like ค่าไปรษณีย์/ค่าโปรแกรม are
+                  // typically tiny) display as a flat "(0%)", indistinguishable
+                  // from having no expense at all. One decimal place keeps a
+                  // genuinely small share visible without changing anything
+                  // for the larger categories.
+                  const pct = total > 0 ? (v / total) * 100 : 0;
                   return (
                     <span className="text-sm text-foreground">
-                      {value} ({pct}%)
+                      {value} ({pct.toFixed(1)}%)
                     </span>
                   );
                 }}
