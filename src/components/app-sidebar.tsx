@@ -9,6 +9,7 @@ import {
   Banknote,
   BookUser,
   Boxes,
+  Building2,
   CalendarCheck,
   ChevronDown,
   ChevronRight,
@@ -117,6 +118,7 @@ const expensesGroup = {
   title: "Expenses",
   icon: Banknote,
   items: [
+    { title: "บัญชีธนาคาร", url: "/dashboard/bank-accounts", icon: Building2 },
     { title: "Payment Voucher (ใบสำคัญจ่าย)", url: "/dashboard/expenses/payment-vouchers", icon: FileSpreadsheet },
     { title: "เงินสดย่อย", url: "/dashboard/expenses/petty-cash", icon: Wallet },
     { title: "เจ้าหนี้คงค้าง", url: "/dashboard/expenses/payables", icon: HandCoins },

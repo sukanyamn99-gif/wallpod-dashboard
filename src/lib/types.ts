@@ -434,6 +434,25 @@ export interface PaymentVoucher {
   ledgerLines: PaymentVoucherLedgerLine[];
 }
 
+// ยอดในธนาคาร (actualBalance) and ยอดยกมา (openingBalance) are both
+// manually entered/kept in sync by staff — no live bank API. systemBalance
+// is computed on read from openingBalance plus recorded โอนเงิน
+// transactions on receipts/payment vouchers matched to this account by
+// bank name — see getBankAccounts.
+export interface BankAccount {
+  id: string;
+  bankName: string;
+  accountNo: string;
+  accountType: string;
+  accountName: string;
+  openingBalance: number;
+  actualBalance: number;
+  actualBalanceUpdatedAt: string | null;
+  systemBalance: number;
+  active: boolean;
+  createdAt: string;
+}
+
 export type PettyCashTransactionType = "topup" | "expense";
 
 export interface PettyCashTransaction {
