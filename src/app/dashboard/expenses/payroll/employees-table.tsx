@@ -28,16 +28,23 @@ function tenureLabel(startDate: string | null): string {
   const now = new Date();
   let years = now.getFullYear() - start.getFullYear();
   let months = now.getMonth() - start.getMonth();
-  if (now.getDate() < start.getDate()) months -= 1;
+  let days = now.getDate() - start.getDate();
+  if (days < 0) {
+    months -= 1;
+    // Days in the month right before `now` — the correct "borrow" amount
+    // for a calendar-based date difference (not always 30).
+    days += new Date(now.getFullYear(), now.getMonth(), 0).getDate();
+  }
   if (months < 0) {
     years -= 1;
     months += 12;
   }
   if (years < 0) return "—";
-  if (years === 0 && months === 0) return "น้อยกว่า 1 เดือน";
+  if (years === 0 && months === 0 && days === 0) return "วันนี้";
   const parts: string[] = [];
   if (years > 0) parts.push(`${years} ปี`);
   if (months > 0) parts.push(`${months} เดือน`);
+  if (days > 0) parts.push(`${days} วัน`);
   return parts.join(" ");
 }
 
