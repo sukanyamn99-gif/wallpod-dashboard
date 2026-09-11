@@ -129,14 +129,17 @@ export function PaymentVoucherForm({
           />
         </div>
         <div className="space-y-2">
-          <Label>เลขที่ใบหัก ณ ที่จ่าย</Label>
-          {/* System-numbered (WT + YYMM + running no.), not typed — assigned
-              automatically the first time this voucher is saved with a
-              withholding amount, and kept unchanged on later edits. */}
-          <input type="hidden" name="wht_cert_no" value={initialData?.whtCertNo ?? ""} />
-          <p className="py-2 text-sm text-muted-foreground">
-            {initialData?.whtCertNo ?? "ระบบจะรันเลขที่ให้อัตโนมัติเมื่อบันทึกพร้อมจำนวนภาษีหัก ณ ที่จ่าย"}
-          </p>
+          <Label htmlFor="wht_cert_no">เลขที่ใบหัก ณ ที่จ่าย</Label>
+          {/* Auto-filled (WT + YYMM + running no.) the first time this
+              voucher is saved with a withholding amount — but still a plain
+              editable field, since the office sometimes needs to correct it
+              or match an existing paper cert book number. Clearing it and
+              saving again (with wht_amount still > 0) re-generates a fresh
+              one, same as if it had never been assigned. */}
+          <Input id="wht_cert_no" name="wht_cert_no" defaultValue={initialData?.whtCertNo ?? undefined} />
+          {!initialData?.whtCertNo && (
+            <p className="text-xs text-muted-foreground">เว้นว่างไว้ได้ — ระบบจะรันเลขที่ให้อัตโนมัติเมื่อบันทึกพร้อมจำนวนภาษีหัก ณ ที่จ่าย</p>
+          )}
         </div>
       </div>
 
