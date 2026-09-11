@@ -258,27 +258,29 @@ export function PrintWhtCertificateView({ voucher }: { voucher: PaymentVoucher }
               </tr>
             </thead>
             <tbody>
+              {/* No horizontal rule between individual income-type rows —
+                  matches the official form's own layout, where this list
+                  reads as one continuous block, not a ruled grid. The outer
+                  table border, column dividers, and the totals row's top
+                  rule (marking where the list ends) are untouched. */}
               {INCOME_ROWS.map((row, i) => {
                 const isMatch = !!row.key && voucher.incomeType === row.key;
-                const isLast = i === INCOME_ROWS.length - 1;
                 return (
                   <tr key={i}>
                     <td
-                      className={`border-r border-black px-1 py-0.5 align-top ${isLast ? "" : "border-b"}`}
+                      className="border-r border-black px-1 py-0.5 align-top"
                       style={row.indent ? { paddingLeft: `${row.indent * 12 + 4}px` } : undefined}
                     >
                       {row.text}
                       {isMatch && voucher.description && ` (${voucher.description})`}
                     </td>
-                    <td className={`border-r border-black px-1 py-0.5 text-center align-top ${isLast ? "" : "border-b"}`}>
+                    <td className="border-r border-black px-1 py-0.5 text-center align-top">
                       {isMatch ? numericDate(voucher.voucherDate) : ""}
                     </td>
-                    <td className={`border-r border-black px-1 py-0.5 text-right align-top ${isLast ? "" : "border-b"}`}>
+                    <td className="border-r border-black px-1 py-0.5 text-right align-top">
                       {isMatch ? formatTHB(voucher.amount) : ""}
                     </td>
-                    <td className={`px-1 py-0.5 text-right align-top ${isLast ? "" : "border-b"}`}>
-                      {isMatch ? formatTHB(voucher.whtAmount) : ""}
-                    </td>
+                    <td className="px-1 py-0.5 text-right align-top">{isMatch ? formatTHB(voucher.whtAmount) : ""}</td>
                   </tr>
                 );
               })}
