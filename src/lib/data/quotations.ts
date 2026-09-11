@@ -92,6 +92,7 @@ type ProductionItemRow = {
   thickness: string | null;
   size: string | null;
   color: string | null;
+  cutting_pattern: string | null;
   qty: number;
   unit: string;
   product_code: string | null;
@@ -112,7 +113,7 @@ type ProductionQuotationRow = {
 
 const PRODUCTION_ORDER_COLUMNS =
   "id, doc_no, quote_date, project_name, customer_name, job_number, total, sales_reps(name), " +
-  "quotation_items(id, product_name, thickness, size, color, qty, unit, product_code, sort_order)";
+  "quotation_items(id, product_name, thickness, size, color, cutting_pattern, qty, unit, product_code, sort_order)";
 
 function mapProductionOrderRow(row: ProductionQuotationRow): ProductionOrder {
   const salesRep = row.sales_reps;
@@ -134,6 +135,7 @@ function mapProductionOrderRow(row: ProductionQuotationRow): ProductionOrder {
         thickness: it.thickness,
         size: it.size,
         color: it.color,
+        cuttingPattern: it.cutting_pattern,
         qty: Number(it.qty),
         unit: it.unit,
         productCode: it.product_code,
@@ -204,7 +206,7 @@ export async function getQuotationById(id: string): Promise<QuotationDetail | nu
   const { data: items, error: itemsErr } = await supabase
     .from("quotation_items")
     .select(
-      "id, sort_order, product_code, product_name, thickness, size, color, image_path, unit_price, discount_percent, net_price, qty, unit, total_price",
+      "id, sort_order, product_code, product_name, thickness, size, color, cutting_pattern, image_path, unit_price, discount_percent, net_price, qty, unit, total_price",
     )
     .eq("quotation_id", id)
     .order("sort_order", { ascending: true });
@@ -218,6 +220,7 @@ export async function getQuotationById(id: string): Promise<QuotationDetail | nu
     thickness: row.thickness,
     size: row.size,
     color: row.color,
+    cuttingPattern: row.cutting_pattern,
     imagePath: row.image_path,
     unitPrice: Number(row.unit_price),
     discountPercent: Number(row.discount_percent),
@@ -244,13 +247,23 @@ export interface QuotationItemFieldSuggestions {
   thicknesses: string[];
   sizes: string[];
   colors: string[];
+  cuttingPatterns: string[];
 }
 
+// Always offered even before anyone has typed them on a real quotation yet —
+// the two cutting styles the shop floor actually uses. Historical values
+// (typed later, or anything else that ever gets used) merge in alongside
+// these, same as every other suggestion list here.
+const DEFAULT_CUTTING_PATTERNS = ["ตัดตรง", "เซาะร่อง"];
+
 export async function getDistinctQuotationItemFields(): Promise<QuotationItemFieldSuggestions> {
-  if (!isSupabaseConfigured()) return { productNames: [], thicknesses: [], sizes: [], colors: [] };
+  if (!isSupabaseConfigured())
+    return { productNames: [], thicknesses: [], sizes: [], colors: [], cuttingPatterns: DEFAULT_CUTTING_PATTERNS };
 
   const supabase = await createClient();
-  const { data, error } = await supabase.from("quotation_items").select("product_name, thickness, size, color");
+  const { data, error } = await supabase
+    .from("quotation_items")
+    .select("product_name, thickness, size, color, cutting_pattern");
   if (error) throw error;
 
   const distinct = (values: (string | null)[]) => Array.from(new Set(values.filter((v): v is string => !!v))).sort();
@@ -260,6 +273,7 @@ export async function getDistinctQuotationItemFields(): Promise<QuotationItemFie
     thicknesses: distinct((data ?? []).map((r) => r.thickness)),
     sizes: distinct((data ?? []).map((r) => r.size)),
     colors: distinct((data ?? []).map((r) => r.color)),
+    cuttingPatterns: distinct([...DEFAULT_CUTTING_PATTERNS, ...(data ?? []).map((r) => r.cutting_pattern)]),
   };
 }
 

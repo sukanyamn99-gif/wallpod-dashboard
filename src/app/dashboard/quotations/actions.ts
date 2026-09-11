@@ -49,6 +49,7 @@ type ParsedItem = {
   thickness: string | null;
   size: string | null;
   color: string | null;
+  cuttingPattern: string | null;
   unitPrice: number;
   discountPercent: number;
   qty: number;
@@ -66,6 +67,7 @@ function parseItems(formData: FormData): ParsedItem[] {
   const thicknesses = formData.getAll("item_thickness");
   const sizes = formData.getAll("item_size");
   const colors = formData.getAll("item_color");
+  const cuttingPatterns = formData.getAll("item_cutting_pattern");
   const unitPrices = formData.getAll("item_unit_price");
   const discountPercents = formData.getAll("item_discount_percent");
   const qtys = formData.getAll("item_qty");
@@ -87,6 +89,7 @@ function parseItems(formData: FormData): ParsedItem[] {
         thickness: str(thicknesses[i] ?? null),
         size: str(sizes[i] ?? null),
         color: str(colors[i] ?? null),
+        cuttingPattern: str(cuttingPatterns[i] ?? null),
         unitPrice,
         discountPercent,
         qty,
@@ -254,6 +257,7 @@ export async function createQuotation(formData: FormData) {
       thickness: it.thickness,
       size: it.size,
       color: it.color,
+      cutting_pattern: it.cuttingPattern,
       image_path: imagePath,
       unit_price: it.unitPrice,
       discount_percent: it.discountPercent,
@@ -345,6 +349,7 @@ export async function updateQuotation(id: string, formData: FormData) {
       thickness: it.thickness,
       size: it.size,
       color: it.color,
+      cutting_pattern: it.cuttingPattern,
       image_path: imagePath,
       unit_price: it.unitPrice,
       discount_percent: it.discountPercent,

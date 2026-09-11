@@ -1298,6 +1298,7 @@ create table quotation_items (
   thickness text,
   size text,
   color text,
+  cutting_pattern text,
   image_path text,
   unit_price numeric(14,2) not null default 0,
   discount_percent numeric(5,2) not null default 0,

@@ -759,6 +759,7 @@ export interface QuotationItem {
   thickness: string | null;
   size: string | null;
   color: string | null;
+  cuttingPattern: string | null;
   imagePath: string | null;
   unitPrice: number;
   discountPercent: number;
@@ -811,6 +812,7 @@ export interface ProductionOrderItem {
   thickness: string | null;
   size: string | null;
   color: string | null;
+  cuttingPattern: string | null;
   qty: number;
   unit: string;
   productCode: string | null;

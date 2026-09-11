@@ -66,6 +66,7 @@ export function ProductionOrderForm({ order }: { order: ProductionOrder }) {
                 <th className="p-2 font-medium">ความหนา</th>
                 <th className="p-2 font-medium">ขนาด</th>
                 <th className="p-2 font-medium">สี</th>
+                <th className="p-2 font-medium">รูปแบบการตัด</th>
                 <th className="p-2 font-medium">จำนวน</th>
                 <th className="w-40 p-2 font-medium">รหัสสินค้า</th>
               </tr>
@@ -77,6 +78,7 @@ export function ProductionOrderForm({ order }: { order: ProductionOrder }) {
                   <td className="p-2 text-muted-foreground">{it.thickness ?? "—"}</td>
                   <td className="p-2 text-muted-foreground">{it.size ?? "—"}</td>
                   <td className="p-2 text-muted-foreground">{it.color ?? "—"}</td>
+                  <td className="p-2 text-muted-foreground">{it.cuttingPattern ?? "—"}</td>
                   <td className="p-2 text-muted-foreground">
                     {it.qty} {it.unit}
                   </td>

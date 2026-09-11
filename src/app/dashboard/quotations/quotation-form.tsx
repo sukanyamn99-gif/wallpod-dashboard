@@ -41,6 +41,7 @@ interface ItemRow {
   thickness: string;
   size: string;
   color: string;
+  cuttingPattern: string;
   unitPrice: string;
   discountPercent: string;
   qty: string;
@@ -66,6 +67,7 @@ function itemsFromInitial(initialData?: QuotationDetail): ItemRow[] {
         thickness: "",
         size: "",
         color: "",
+        cuttingPattern: "",
         unitPrice: "",
         discountPercent: "0",
         qty: "1",
@@ -81,6 +83,7 @@ function itemsFromInitial(initialData?: QuotationDetail): ItemRow[] {
     thickness: it.thickness ?? "",
     size: it.size ?? "",
     color: it.color ?? "",
+    cuttingPattern: it.cuttingPattern ?? "",
     unitPrice: String(it.unitPrice),
     discountPercent: String(it.discountPercent),
     qty: String(it.qty),
@@ -111,7 +114,7 @@ export function QuotationForm({
   imageUrlsByItemId?: Record<string, string>;
   itemFieldSuggestions?: QuotationItemFieldSuggestions;
 }) {
-  const suggestions = itemFieldSuggestions ?? { productNames: [], thicknesses: [], sizes: [], colors: [] };
+  const suggestions = itemFieldSuggestions ?? { productNames: [], thicknesses: [], sizes: [], colors: [], cuttingPatterns: [] };
   const router = useRouter();
   const [, startTransition] = useTransition();
 
@@ -159,6 +162,7 @@ export function QuotationForm({
         thickness: "",
         size: "",
         color: "",
+        cuttingPattern: "",
         unitPrice: "",
         discountPercent: "0",
         qty: "1",
@@ -256,6 +260,7 @@ export function QuotationForm({
       fd.append("item_thickness", it.thickness);
       fd.append("item_size", it.size);
       fd.append("item_color", it.color);
+      fd.append("item_cutting_pattern", it.cuttingPattern);
       fd.append("item_unit_price", it.unitPrice || "0");
       fd.append("item_discount_percent", it.discountPercent || "0");
       fd.append("item_qty", it.qty || "1");
@@ -473,6 +478,16 @@ export function QuotationForm({
                     onChange={(v) => updateItem(it.key, { color: v })}
                     suggestions={suggestions.colors}
                     placeholder="เช่น MARIGOLD"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground">รูปแบบการตัด</Label>
+                  <SizeAutocomplete
+                    name={`item_cutting_pattern_${it.key}`}
+                    value={it.cuttingPattern}
+                    onChange={(v) => updateItem(it.key, { cuttingPattern: v })}
+                    suggestions={suggestions.cuttingPatterns}
+                    placeholder="เช่น ตัดตรง, ตัดเข้ามุม"
                   />
                 </div>
               </div>
