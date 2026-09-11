@@ -399,6 +399,97 @@ export interface GoodsReceipt {
   items: GoodsReceiptItem[];
 }
 
+// เอกสารซื้อ: ใบขอซื้อ (PurchaseRequest) → ใบสั่งซื้อ (PurchaseOrder) →
+// ใบรับสินค้า (PurchaseOrderReceipt) — a separate document chain from the
+// existing ad-hoc GoodsReceipt above, specifically for receiving against a
+// purchase order.
+export type PurchaseRequestStatus = "รออนุมัติ" | "อนุมัติ" | "ไม่อนุมัติ";
+
+export interface PurchaseRequestItem {
+  id: string;
+  stockProductId: string | null;
+  productName: string;
+  productSku: string | null;
+  unit: string;
+  quantity: number;
+  note: string | null;
+}
+
+export interface PurchaseRequest {
+  id: string;
+  docNo: string;
+  requestDate: string;
+  requestedById: string | null;
+  requestedByName: string;
+  departmentId: string | null;
+  departmentName: string | null;
+  purpose: string | null;
+  status: PurchaseRequestStatus;
+  approvedByName: string | null;
+  approvedAt: string | null;
+  note: string | null;
+  createdAt: string;
+  items: PurchaseRequestItem[];
+}
+
+export interface PurchaseOrderItem {
+  id: string;
+  stockProductId: string | null;
+  productName: string;
+  productSku: string | null;
+  unit: string;
+  quantity: number;
+  unitPrice: number;
+  // Sum of every purchase_order_receipt_items row referencing this line,
+  // computed on read (not stored) — same "derive, don't sync" convention as
+  // this app's other running-total fields (e.g. AR aging, GP margins).
+  receivedQuantity: number;
+}
+
+export type PurchaseOrderReceivingStatus = "รอรับสินค้า" | "รับบางส่วน" | "รับครบแล้ว";
+
+export interface PurchaseOrder {
+  id: string;
+  docNo: string;
+  requestId: string;
+  requestDocNo: string;
+  supplierId: string | null;
+  supplierName: string | null;
+  orderDate: string;
+  orderedById: string | null;
+  orderedByName: string;
+  expectedDate: string | null;
+  note: string | null;
+  createdAt: string;
+  items: PurchaseOrderItem[];
+  totalAmount: number;
+  receivingStatus: PurchaseOrderReceivingStatus;
+}
+
+export interface PurchaseOrderReceiptItem {
+  id: string;
+  orderItemId: string | null;
+  stockProductId: string | null;
+  productName: string;
+  productSku: string | null;
+  unit: string;
+  quantity: number;
+  unitCost: number;
+}
+
+export interface PurchaseOrderReceipt {
+  id: string;
+  docNo: string;
+  orderId: string;
+  orderDocNo: string;
+  receiptDate: string;
+  receivedById: string | null;
+  receivedByName: string;
+  note: string | null;
+  createdAt: string;
+  items: PurchaseOrderReceiptItem[];
+}
+
 export type WhtFormType = "ภ.ง.ด.1" | "ภ.ง.ด.2" | "ภ.ง.ด.3" | "ภ.ง.ด.53";
 
 // The 6 standardized income-type categories on the official ใบหัก ณ ที่จ่าย

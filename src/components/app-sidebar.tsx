@@ -42,6 +42,9 @@ import {
   ReceiptText,
   ScrollText,
   Settings,
+  ShoppingBag,
+  ShoppingCart,
+  ClipboardCheck,
   Tags,
   Users,
   Wallet,
@@ -115,6 +118,16 @@ const inventoryGroup = {
   ],
 };
 
+const purchaseDocsGroup = {
+  title: "เอกสารซื้อ",
+  icon: ShoppingCart,
+  items: [
+    { title: "ใบขอซื้อ", url: "/dashboard/purchase-requests", icon: ClipboardCheck },
+    { title: "ใบสั่งซื้อ", url: "/dashboard/purchase-orders", icon: ShoppingBag },
+    { title: "ใบรับสินค้า", url: "/dashboard/purchase-order-receipts", icon: PackageCheck },
+  ],
+};
+
 const expensesGroup = {
   title: "Expenses",
   icon: Banknote,
@@ -150,6 +163,8 @@ export function AppSidebar({ profile }: { profile: Profile }) {
     (item) => pathname === item.url || item.children?.some((c) => pathname === c.url),
   );
   const [inventoryOpen, setInventoryOpen] = useState(isInventoryActive);
+  const isPurchaseDocsActive = purchaseDocsGroup.items.some((item) => pathname === item.url);
+  const [purchaseDocsOpen, setPurchaseDocsOpen] = useState(isPurchaseDocsActive);
   const isExpensesActive = expensesGroup.items.some((item) => pathname === item.url);
   const [expensesOpen, setExpensesOpen] = useState(isExpensesActive);
   const isSettingsActive = settingsGroup.items.some((item) => pathname === item.url);
@@ -167,6 +182,7 @@ export function AppSidebar({ profile }: { profile: Profile }) {
     if (canAccessPage(profile.role, item.url)) return [{ ...item, children: visibleChildren }];
     return (visibleChildren ?? []).map((c) => ({ ...c, children: undefined }));
   });
+  const visiblePurchaseDocsItems = purchaseDocsGroup.items.filter((item) => canAccessPage(profile.role, item.url));
   const visibleExpensesItems = expensesGroup.items.filter((item) => canAccessPage(profile.role, item.url));
   const visibleRemainingNavItems = remainingNavItems.filter((item) => canAccessPage(profile.role, item.url));
   const visibleSettingsItems = settingsGroup.items.filter((item) => canAccessPage(profile.role, item.url));
@@ -267,6 +283,36 @@ export function AppSidebar({ profile }: { profile: Profile }) {
                               ))}
                             </SidebarMenuSub>
                           )}
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  )}
+                </SidebarMenuItem>
+              )}
+
+              {visiblePurchaseDocsItems.length > 0 && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={isPurchaseDocsActive}
+                    onClick={() => setPurchaseDocsOpen((open) => !open)}
+                  >
+                    <purchaseDocsGroup.icon />
+                    <span>{purchaseDocsGroup.title}</span>
+                    {purchaseDocsOpen ? <ChevronDown className="ml-auto" /> : <ChevronRight className="ml-auto" />}
+                  </SidebarMenuButton>
+                  {purchaseDocsOpen && (
+                    <SidebarMenuSub>
+                      {visiblePurchaseDocsItems.map((item) => (
+                        <SidebarMenuSubItem key={item.url}>
+                          <SidebarMenuSubButton
+                            isActive={pathname === item.url}
+                            render={
+                              <Link href={item.url}>
+                                <item.icon />
+                                <span>{item.title}</span>
+                              </Link>
+                            }
+                          />
                         </SidebarMenuSubItem>
                       ))}
                     </SidebarMenuSub>
