@@ -11,11 +11,13 @@ export function PrintReportView({
   windowStart,
   windowEnd,
   projects,
+  supportNames,
 }: {
   brokers: string[];
   windowStart: string;
   windowEnd: string;
   projects: CommissionableProject[];
+  supportNames?: string[];
 }) {
   const router = useRouter();
 
@@ -33,7 +35,13 @@ export function PrintReportView({
       </div>
       {brokers.map((broker, i) => (
         <div key={broker} className={i < brokers.length - 1 ? "break-after-page" : ""}>
-          <PrintCommissionView broker={broker} windowStart={windowStart} windowEnd={windowEnd} projects={projects} />
+          <PrintCommissionView
+            broker={broker}
+            windowStart={windowStart}
+            windowEnd={windowEnd}
+            projects={projects}
+            supportNames={supportNames}
+          />
         </div>
       ))}
     </div>

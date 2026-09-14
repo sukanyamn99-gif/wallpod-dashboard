@@ -19,13 +19,13 @@ export async function generateMetadata({
 export default async function PrintCommissionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ brokers?: string; dateFrom?: string; dateTo?: string }>;
+  searchParams: Promise<{ brokers?: string; dateFrom?: string; dateTo?: string; supportNames?: string }>;
 }) {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
   if (!canAccessPage(profile.role, "/dashboard/expenses/commission")) redirect("/dashboard/sales");
 
-  const { brokers: brokersParam, dateFrom, dateTo } = await searchParams;
+  const { brokers: brokersParam, dateFrom, dateTo, supportNames: supportNamesParam } = await searchParams;
 
   // Selecting a date range/broker(s) now happens on the main commission
   // page (ReportSelector) rather than as a step on this page — land back
@@ -33,7 +33,16 @@ export default async function PrintCommissionPage({
   if (!brokersParam || !dateFrom || !dateTo) redirect("/dashboard/expenses/commission");
 
   const brokers = brokersParam.split(",").filter(Boolean);
+  const supportNames = supportNamesParam?.split(",").filter(Boolean) ?? [];
   const projects = await getCommissionForReport(dateFrom, dateTo);
 
-  return <PrintReportView brokers={brokers} windowStart={dateFrom} windowEnd={dateTo} projects={projects} />;
+  return (
+    <PrintReportView
+      brokers={brokers}
+      windowStart={dateFrom}
+      windowEnd={dateTo}
+      projects={projects}
+      supportNames={supportNames}
+    />
+  );
 }

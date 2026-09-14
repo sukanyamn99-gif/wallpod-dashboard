@@ -32,6 +32,24 @@ function num(value: number): string {
   return value ? formatTHB(value) : "-";
 }
 
+// Standing referral-fee arrangement: any job sold by one of these reps pays
+// an extra brokerage fee to this outside company, on top of (not deducted
+// from) the rep's own commission — a separate cash outflow from the rep's
+// payout above, calculated on the pre-VAT sale amount. Two names only
+// today; add more here if the arrangement ever extends to other reps.
+const BROKER_OVERRIDES: Record<string, { brokerName: string; ratePercent: number; recipientLabel: string }> = {
+  "วรินทร  (พี่นิ้ง)": {
+    brokerName: "บจก.แจสเปอร์ซัน โปรเทคชั่น",
+    ratePercent: 5,
+    recipientLabel: "คุณวรินทร สราวาริยา",
+  },
+  "สุดาทิพย์": {
+    brokerName: "บจก.แจสเปอร์ซัน โปรเทคชั่น",
+    ratePercent: 5,
+    recipientLabel: "คุณสุดาทิพย์",
+  },
+};
+
 // The table has no outer bordered wrapper, so it draws its own complete
 // frame: border-t/border-l on the <table> itself, and border-r/border-b on
 // every single cell — including the last column/row, since there's no
@@ -50,11 +68,13 @@ export function PrintCommissionView({
   windowStart,
   windowEnd,
   projects,
+  supportNames = [],
 }: {
   broker: string;
   windowStart: string;
   windowEnd: string;
   projects: CommissionableProject[];
+  supportNames?: string[];
 }) {
   const rows = projects.filter((p) => p.salesRepName === broker);
   const totalPreVat = rows.reduce((sum, r) => sum + r.preVat, 0);
@@ -63,6 +83,17 @@ export function PrintCommissionView({
   // e.g. ยอดขาย 1,000 ค่าคอม 100 → 10% — the overall commission payout as
   // a share of sales for this broker/period, not just the per-job rate.
   const commissionPercentOfSales = totalPreVat ? (totalCommission / totalPreVat) * 100 : 0;
+
+  const brokerOverride = BROKER_OVERRIDES[broker];
+  const brokerOverrideAmount = brokerOverride ? totalPreVat * (brokerOverride.ratePercent / 100) : 0;
+
+  // Support isn't one person — the pool it earned above (already computed
+  // per-job from the discount-tier rate table, same as every other rep)
+  // splits equally across whoever's named for this print run, mirroring
+  // how the Incentive report divides its own Support-team pool.
+  const isSupportTeam = broker === "Support";
+  const supportSharePerPerson =
+    isSupportTeam && supportNames.length > 0 ? Math.round((totalCommission / supportNames.length) * 100) / 100 : 0;
 
   return (
     <div className="mx-auto max-w-6xl bg-white p-6 text-black print:p-0">
@@ -171,6 +202,48 @@ export function PrintCommissionView({
         <p className="mt-1 text-right text-[15px] font-medium text-red-600">
           % ค่าคอมมิชชั่นต่อยอดขาย {commissionPercentOfSales.toFixed(2)}%
         </p>
+
+        {brokerOverride && (
+          <div className="mt-3 space-y-1 text-right">
+            <p className="font-medium">
+              สรุปยอดจ่ายค่านายหน้า {brokerOverride.brokerName}: {formatTHB(brokerOverrideAmount)} บาท
+            </p>
+            <p className="font-medium">
+              สรุปยอดจ่ายค่านายหน้า {brokerOverride.recipientLabel}: {formatTHB(totalCommission)} บาท
+            </p>
+          </div>
+        )}
+
+        {isSupportTeam && (
+          <div className="mt-6 grid max-w-xl grid-cols-[auto_1fr_auto] items-baseline gap-x-4 gap-y-2">
+            <span>สรุปยอดจ่ายค่าคอมมิชชั่นทีม Support</span>
+            <span>จำนวนเงิน</span>
+            <span className="font-medium">{formatTHB(totalCommission)} บาท</span>
+
+            {supportNames.length === 0 && (
+              <p className="col-span-3 mt-2 text-muted-foreground">
+                ยังไม่ได้กรอกชื่อสมาชิกทีม Support — กลับไปกรอกที่หน้าคำนวณค่าคอมมิชชั่นก่อนพิมพ์รายงาน
+              </p>
+            )}
+            {supportNames.map((name, i) => (
+              <Fragment key={i}>
+                <span className="col-start-2">
+                  {i + 1}. คุณ{name}
+                </span>
+                <span className="font-medium">{formatTHB(supportSharePerPerson)} บาท</span>
+              </Fragment>
+            ))}
+            {supportNames.length > 0 && (
+              <>
+                <span />
+                <span className="col-start-2 border-t border-black pt-1">รวม</span>
+                <span className="border-t border-black pt-1 font-medium">
+                  {formatTHB(supportSharePerPerson * supportNames.length)} บาท
+                </span>
+              </>
+            )}
+          </div>
+        )}
 
         <div className="mt-16 flex items-baseline justify-end gap-2">
           <span className="w-56 border-b border-dotted border-black" />
