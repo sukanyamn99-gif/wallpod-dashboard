@@ -78,12 +78,14 @@ function Checkbox({ checked }: { checked: boolean }) {
   );
 }
 
-// Official checklist is (1) ภ.ง.ด.1ก ... (7) ภ.ง.ด.53 — there is no plain
-// "ภ.ง.ด.1" on the real form, so this app's WhtFormType "ภ.ง.ด.1" maps to
-// the closest official item, (1) ภ.ง.ด.1ก. Items (2)/(5)/(6) have no
-// equivalent in this app's data and never get checked.
+// Official checklist is (1) ภ.ง.ด.1ก ... (7) ภ.ง.ด.53 — a plain "ภ.ง.ด.1"
+// box (no ก) isn't part of that numbered list, so it's added here unnumbered
+// ahead of (1) rather than renumbering the government form's own items.
+// Items (2)/(5)/(6) have no equivalent in this app's data and never get
+// checked.
 const FORM_TYPE_ITEMS: { no: string; label: string; match: WhtFormType | null }[] = [
-  { no: "(1)", label: "ภ.ง.ด.1ก", match: "ภ.ง.ด.1" },
+  { no: "", label: "ภ.ง.ด.1", match: "ภ.ง.ด.1" },
+  { no: "(1)", label: "ภ.ง.ด.1ก", match: null },
   { no: "(2)", label: "ภ.ง.ด.1ก พิเศษ", match: null },
   { no: "(3)", label: "ภ.ง.ด.2", match: "ภ.ง.ด.2" },
   { no: "(4)", label: "ภ.ง.ด.3", match: "ภ.ง.ด.3" },
@@ -223,7 +225,8 @@ export function PrintWhtCertificateView({ voucher }: { voucher: PaymentVoucher }
                 {FORM_TYPE_ITEMS.slice(0, 4).map((item) => (
                   <label key={item.no} className="flex items-center gap-1 whitespace-nowrap">
                     <Checkbox checked={!!item.match && voucher.whtFormType === item.match} />
-                    {item.no} {item.label}
+                    {item.no ? `${item.no} ` : ""}
+                    {item.label}
                   </label>
                 ))}
               </div>
@@ -231,7 +234,8 @@ export function PrintWhtCertificateView({ voucher }: { voucher: PaymentVoucher }
                 {FORM_TYPE_ITEMS.slice(4).map((item) => (
                   <label key={item.no} className="flex items-center gap-1 whitespace-nowrap">
                     <Checkbox checked={!!item.match && voucher.whtFormType === item.match} />
-                    {item.no} {item.label}
+                    {item.no ? `${item.no} ` : ""}
+                    {item.label}
                   </label>
                 ))}
               </div>
