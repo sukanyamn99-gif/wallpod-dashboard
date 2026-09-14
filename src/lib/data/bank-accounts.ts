@@ -19,14 +19,25 @@ type ReceivedPayment = {
 // ask, this account's balance shouldn't care which one was used. amount
 // (not amount + wht_amount) is the actual cash that reached the bank; the
 // WHT portion is settled via a certificate, never a bank movement.
+//
+// receipt_no alone isn't proof the money actually landed — a receipt can be
+// issued ahead of payment (the one customer, ร้อกเวิธ, who requires an
+// advance receipt before their own payment cycle actually pays it), so
+// status is what genuinely flips once the money lands. Same
+// isAwaitingPayment rule already used by project-sale-form.tsx's own
+// paidAmount, applied here so a job stuck at รอชำระเงิน never counts as a
+// bank inflow just because it already has a receipt number on file.
 async function getReceivedPayments(
   supabase: Awaited<ReturnType<typeof createClient>>,
 ): Promise<ReceivedPayment[]> {
   const { data, error } = await supabase
     .from("payments")
-    .select("id, amount, received_date, receipt_no, projects(job_no, project_name, is_cancelled, customers(name))")
+    .select(
+      "id, amount, received_date, receipt_no, status, projects(job_no, project_name, is_cancelled, customers(name))",
+    )
     .not("receipt_no", "is", null)
-    .not("received_date", "is", null);
+    .not("received_date", "is", null)
+    .neq("status", "รอชำระเงิน");
   if (error) throw error;
 
   return (data ?? [])
