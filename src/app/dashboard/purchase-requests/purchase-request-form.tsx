@@ -318,21 +318,22 @@ export function PurchaseRequestForm({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="whitespace-nowrap">สินค้า</TableHead>
+                    <TableHead className="whitespace-nowrap">รหัสสินค้า</TableHead>
+                    <TableHead className="whitespace-nowrap">ชื่อสินค้า</TableHead>
                     <TableHead className="whitespace-nowrap">ผู้ขาย (Supplier)</TableHead>
                     <TableHead className="whitespace-nowrap">จำนวน</TableHead>
                     <TableHead className="whitespace-nowrap">ราคา/หน่วย</TableHead>
-                    <TableHead className="whitespace-nowrap text-right">รวม</TableHead>
+                    <TableHead className="whitespace-nowrap text-right">ราคารวม</TableHead>
                     <TableHead />
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.map((it) => (
                     <TableRow key={it.key}>
-                      <TableCell className="min-w-[140px]">
-                        <p className="text-sm font-medium">{it.name}</p>
-                        <p className="text-xs text-muted-foreground">{it.sku || (it.stockProductId ? "—" : "ยังไม่มีในระบบสินค้า")}</p>
+                      <TableCell className="whitespace-nowrap">
+                        {it.sku || (it.stockProductId ? "—" : <span className="text-xs text-muted-foreground">ยังไม่มีในระบบสินค้า</span>)}
                       </TableCell>
+                      <TableCell className="min-w-[140px] text-sm font-medium">{it.name}</TableCell>
                       <TableCell className="min-w-[160px]">
                         <Select
                           value={it.supplierId || NONE_SUPPLIER}
