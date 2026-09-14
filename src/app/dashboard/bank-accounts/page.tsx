@@ -10,7 +10,8 @@ export default async function BankAccountsPage() {
   if (!profile) redirect("/login");
   if (!canAccessPage(profile.role, "/dashboard/bank-accounts")) redirect("/dashboard/sales");
 
-  const [accounts, transactions] = await Promise.all([getBankAccounts(), getBankTransactions()]);
+  const accounts = await getBankAccounts();
+  const transactions = await getBankTransactions(accounts);
   const canManage = profile.role === "owner" || profile.role === "manager" || profile.role === "account";
 
   return (
