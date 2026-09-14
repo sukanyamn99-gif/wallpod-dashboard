@@ -100,7 +100,7 @@ export async function getBankTransactions(accounts: BankAccount[]): Promise<Bank
     getReceivedPayments(supabase),
     supabase
       .from("payment_vouchers")
-      .select("id, doc_no, voucher_date, bank_name, payee_name, amount, wht_amount")
+      .select("id, doc_no, voucher_date, bank_transfer_date, bank_name, payee_name, amount, wht_amount")
       .eq("payment_method", "โอนเงิน"),
   ]);
   if (voucherErr) throw voucherErr;
@@ -126,7 +126,11 @@ export async function getBankTransactions(accounts: BankAccount[]): Promise<Bank
       id: row.id,
       bankName: (row.bank_name ?? "").trim(),
       type: "out" as const,
-      date: row.voucher_date,
+      // The date money actually left — voucher_date is only when the
+      // document was written up, which can predate the real transfer (e.g.
+      // a voucher prepared ahead of payday). Falls back to voucher_date for
+      // the rare row missing วันที่โอน rather than showing no date at all.
+      date: row.bank_transfer_date ?? row.voucher_date,
       docNo: row.doc_no,
       description: row.payee_name,
       // Same net-paid convention as getVoucherOutflowByBankName: the WHT
