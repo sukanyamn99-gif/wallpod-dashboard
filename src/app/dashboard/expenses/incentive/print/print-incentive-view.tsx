@@ -219,7 +219,7 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
         <div className="text-[11px] leading-tight">
           <Image src="/koonwaylogo.png" alt="KOONWAY" width={152} height={24} className="h-6 w-auto" />
           <p className="mt-2 font-medium">บริษัท คูนเว จำกัด</p>
-          <p className="font-medium">ค่าคอมมิชชั่นทีม Support</p>
+          <p className="font-medium">ค่า Incentive ทีม support</p>
           <p className="mb-4 font-medium">ประจำเดือน {monthLabel(month, year)}</p>
 
           <div className="grid max-w-xl grid-cols-[auto_1fr_auto] items-baseline gap-x-4 gap-y-2">
