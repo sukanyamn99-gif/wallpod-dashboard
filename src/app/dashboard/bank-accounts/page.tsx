@@ -1,15 +1,16 @@
 import { redirect } from "next/navigation";
-import { getBankAccounts } from "@/lib/data/bank-accounts";
+import { getBankAccounts, getBankTransactions } from "@/lib/data/bank-accounts";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
 import { BankAccountCards } from "./bank-account-cards";
+import { BankTransactionsTable } from "./bank-transactions-table";
 
 export default async function BankAccountsPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
   if (!canAccessPage(profile.role, "/dashboard/bank-accounts")) redirect("/dashboard/sales");
 
-  const accounts = await getBankAccounts();
+  const [accounts, transactions] = await Promise.all([getBankAccounts(), getBankTransactions()]);
   const canManage = profile.role === "owner" || profile.role === "manager" || profile.role === "account";
 
   return (
@@ -20,6 +21,8 @@ export default async function BankAccountsPage() {
       </div>
 
       <BankAccountCards accounts={accounts} canManage={canManage} />
+
+      <BankTransactionsTable accounts={accounts} transactions={transactions} />
     </div>
   );
 }

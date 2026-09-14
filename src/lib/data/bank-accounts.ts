@@ -1,6 +1,7 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { computeBillingDocumentSummary } from "@/lib/billing-document-summary";
-import type { BankAccount } from "@/lib/types";
+import { normalizeBankName } from "@/lib/bank-name";
+import type { BankAccount, BankTransaction } from "@/lib/types";
 
 // ยอดในระบบ (system/book balance) is an approximation, not a real ledger —
 // it only counts transactions this app already knows are โอนเงิน (bank
@@ -11,10 +12,6 @@ import type { BankAccount } from "@/lib/types";
 // accepted for quotation↔customer name matching elsewhere in this app —
 // good enough at this company's real scale (one bank account today), not a
 // bank-verified reconciliation.
-function normalizeBankName(name: string | null): string {
-  return (name ?? "").trim().toLowerCase();
-}
-
 async function getReceiptInflowByBankName(
   supabase: Awaited<ReturnType<typeof createClient>>,
 ): Promise<Map<string, number>> {
@@ -63,6 +60,71 @@ async function getVoucherOutflowByBankName(
     totals.set(key, (totals.get(key) ?? 0) + netPaid);
   }
   return totals;
+}
+
+// Itemized version of getReceiptInflowByBankName/getVoucherOutflowByBankName
+// above — same rows, same netPayable/netPaid math, just kept as individual
+// lines instead of summed per bank, for the account page's transaction
+// list. bankName is left raw (trimmed, not lowercased) so the UI can show
+// it and still match it against an account via normalizeBankName itself.
+export async function getBankTransactions(): Promise<BankTransaction[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+
+  const [{ data: receipts, error: receiptErr }, { data: vouchers, error: voucherErr }] = await Promise.all([
+    supabase
+      .from("billing_notes")
+      .select(
+        "id, doc_no, doc_date, bank_name, discount_amount, wht_percent, retention_percent, billing_note_items(amount, apply_wht), customers(name)",
+      )
+      .eq("doc_type", "receipt")
+      .eq("payment_method", "โอนเงิน"),
+    supabase
+      .from("payment_vouchers")
+      .select("id, doc_no, voucher_date, bank_name, payee_name, amount, wht_amount")
+      .eq("payment_method", "โอนเงิน"),
+  ]);
+  if (receiptErr) throw receiptErr;
+  if (voucherErr) throw voucherErr;
+
+  const inflows: BankTransaction[] = (receipts ?? [])
+    .filter((row) => (row.bank_name ?? "").trim())
+    .map((row) => {
+      const items = (row.billing_note_items ?? []) as unknown as { amount: number; apply_wht: boolean }[];
+      const summary = computeBillingDocumentSummary(
+        items.map((it) => ({ amount: Number(it.amount), applyWht: it.apply_wht })),
+        Number(row.discount_amount),
+        Number(row.wht_percent),
+        Number(row.retention_percent),
+      );
+      // @ts-expect-error -- Supabase types the joined relation loosely here
+      const customerName: string = row.customers?.name ?? "";
+      return {
+        id: row.id,
+        bankName: (row.bank_name ?? "").trim(),
+        type: "in" as const,
+        date: row.doc_date,
+        docNo: row.doc_no,
+        description: customerName || row.doc_no,
+        amount: summary.netPayable,
+      };
+    });
+
+  const outflows: BankTransaction[] = (vouchers ?? [])
+    .filter((row) => (row.bank_name ?? "").trim())
+    .map((row) => ({
+      id: row.id,
+      bankName: (row.bank_name ?? "").trim(),
+      type: "out" as const,
+      date: row.voucher_date,
+      docNo: row.doc_no,
+      description: row.payee_name,
+      // Same net-paid convention as getVoucherOutflowByBankName: the WHT
+      // portion never leaves via this bank transfer.
+      amount: Number(row.amount) - Number(row.wht_amount),
+    }));
+
+  return [...inflows, ...outflows].sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export async function getBankAccounts(): Promise<BankAccount[]> {

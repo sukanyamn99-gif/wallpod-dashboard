@@ -564,6 +564,20 @@ export interface BankAccount {
   createdAt: string;
 }
 
+// One matched money-in/money-out line feeding a BankAccount's systemBalance
+// — the same underlying rows getVoucherOutflowByBankName/
+// getReceiptInflowByBankName in src/lib/data/bank-accounts.ts sum into a
+// total, just kept itemized here for the transaction list.
+export interface BankTransaction {
+  id: string;
+  bankName: string;
+  type: "in" | "out";
+  date: string;
+  docNo: string;
+  description: string;
+  amount: number;
+}
+
 export type PettyCashTransactionType = "topup" | "expense";
 
 export interface PettyCashTransaction {
