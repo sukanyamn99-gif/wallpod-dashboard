@@ -482,7 +482,10 @@ create table suppliers (
   address text,
   tax_id text,
   branch text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- ในประเทศ/ต่างประเทศ split shown on the management page.
+  supplier_type text not null default 'ในประเทศ'
+    check (supplier_type in ('ในประเทศ', 'ต่างประเทศ'))
 );
 alter table suppliers enable row level security;
 create policy suppliers_select on suppliers for select using (auth.uid() is not null);
@@ -1631,7 +1634,11 @@ create table purchase_requests (
   job_no text,
   project_name text,
   koonway_ref_no text,
-  flexiplan_ref_no text
+  flexiplan_ref_no text,
+  -- Header-level ผู้จำหน่าย (one supplier for the whole document) — the
+  -- UI no longer collects koonway_ref_no/flexiplan_ref_no above, but they
+  -- stay as unused columns rather than being dropped.
+  supplier_id uuid references suppliers(id) on delete set null
 );
 
 create table purchase_request_items (

@@ -6,8 +6,8 @@ import type { PurchaseRequest, PurchaseRequestItem, PurchaseRequestStatus } from
 // column is <table>_<column>_fkey.
 const HEADER_COLUMNS =
   "id, doc_no, request_date, requested_by, department_id, purpose, status, approved_by, approved_at, note, created_at, " +
-  "job_no, project_name, koonway_ref_no, flexiplan_ref_no, " +
-  "departments(name), " +
+  "job_no, project_name, supplier_id, " +
+  "departments(name), suppliers(name), " +
   "requester:profiles!purchase_requests_requested_by_fkey(full_name), " +
   "approver:profiles!purchase_requests_approved_by_fkey(full_name)";
 
@@ -25,9 +25,9 @@ type HeaderRow = {
   created_at: string;
   job_no: string | null;
   project_name: string | null;
-  koonway_ref_no: string | null;
-  flexiplan_ref_no: string | null;
+  supplier_id: string | null;
   departments: { name: string } | null;
+  suppliers: { name: string } | null;
   requester: { full_name: string } | null;
   approver: { full_name: string } | null;
 };
@@ -49,8 +49,8 @@ function mapHeader(row: HeaderRow): Omit<PurchaseRequest, "items"> {
     createdAt: row.created_at,
     jobNo: row.job_no,
     projectName: row.project_name,
-    koonwayRefNo: row.koonway_ref_no,
-    flexiplanRefNo: row.flexiplan_ref_no,
+    supplierId: row.supplier_id,
+    supplierName: row.suppliers?.name ?? null,
   };
 }
 

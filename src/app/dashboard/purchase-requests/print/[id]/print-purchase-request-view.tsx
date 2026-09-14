@@ -94,10 +94,7 @@ export function PrintPurchaseRequestView({
           <span className="font-medium">PROJECT :</span> {project || "—"}
         </p>
         <p>
-          <span className="font-medium">No. Koonway</span> {request.koonwayRefNo ?? ""}
-        </p>
-        <p>
-          <span className="font-medium">No. Flexiplan</span> {request.flexiplanRefNo ?? ""}
+          <span className="font-medium">ผู้จำหน่าย :</span> {request.supplierName ?? "—"}
         </p>
 
         <div className="mt-2 space-y-0.5 text-[10px] text-neutral-600">

@@ -61,6 +61,9 @@ export function PurchaseOrderForm({
   const costByProductId = useMemo(() => new Map(stockProducts.map((p) => [p.id, p.unitCost])), [stockProducts]);
 
   const [requestId, setRequestId] = useState(preselectedRequestId);
+  const [supplierId, setSupplierId] = useState(
+    () => approvedRequests.find((r) => r.id === preselectedRequestId)?.supplierId ?? "",
+  );
   const [items, setItems] = useState<SelectedItem[]>(() => {
     const pr = approvedRequests.find((r) => r.id === preselectedRequestId);
     if (!pr) return [];
@@ -92,8 +95,10 @@ export function PurchaseOrderForm({
     const pr = approvedRequests.find((r) => r.id === id);
     if (!pr) {
       setItems([]);
+      setSupplierId("");
       return;
     }
+    setSupplierId(pr.supplierId ?? "");
     setItems(
       pr.items.map((it) => ({
         key: nextKey++,
@@ -172,7 +177,12 @@ export function PurchaseOrderForm({
               จัดการ
             </Link>
           </div>
-          <Select name="supplier_id" items={suppliers.map((s) => ({ value: s.id, label: s.name }))}>
+          <input type="hidden" name="supplier_id" value={supplierId} />
+          <Select
+            value={supplierId}
+            onValueChange={(v) => setSupplierId(v ?? "")}
+            items={suppliers.map((s) => ({ value: s.id, label: s.name }))}
+          >
             <SelectTrigger id="supplier_id" className="w-full">
               <SelectValue placeholder="— เลือกผู้จำหน่าย (ถ้ามี) —" />
             </SelectTrigger>

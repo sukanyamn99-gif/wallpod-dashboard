@@ -96,14 +96,10 @@ export default async function PurchaseRequestDetailPage({ params }: { params: Pr
                     : "—"}
                 </p>
               </div>
-              {(request.koonwayRefNo || request.flexiplanRefNo) && (
+              {request.supplierName && (
                 <div>
-                  <p className="text-sm text-muted-foreground">เลขที่อ้างอิง</p>
-                  <p className="font-medium">
-                    {request.koonwayRefNo && `No. Koonway: ${request.koonwayRefNo}`}
-                    {request.koonwayRefNo && request.flexiplanRefNo && " · "}
-                    {request.flexiplanRefNo && `No. Flexiplan: ${request.flexiplanRefNo}`}
-                  </p>
+                  <p className="text-sm text-muted-foreground">ผู้จำหน่าย</p>
+                  <p className="font-medium">{request.supplierName}</p>
                 </div>
               )}
               {request.purpose && (

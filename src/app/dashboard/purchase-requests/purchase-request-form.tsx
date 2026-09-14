@@ -69,6 +69,7 @@ export function PurchaseRequestForm({
   const router = useRouter();
   const [jobNo, setJobNo] = useState("");
   const [projectName, setProjectName] = useState("");
+  const [supplierId, setSupplierId] = useState("");
   const [items, setItems] = useState<SelectedItem[]>([]);
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -206,15 +207,35 @@ export function PurchaseRequestForm({
           </div>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="koonway_ref_no">No. Koonway</Label>
-            <Input id="koonway_ref_no" name="koonway_ref_no" placeholder="เลขที่อ้างอิง (ถ้ามี)" />
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="supplier_id">ผู้จำหน่าย</Label>
+            <Link
+              href="/dashboard/suppliers"
+              className="flex items-center gap-1 text-xs text-muted-foreground underline underline-offset-2"
+            >
+              <Settings2 className="h-3 w-3" />
+              จัดการ
+            </Link>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="flexiplan_ref_no">No. Flexiplan</Label>
-            <Input id="flexiplan_ref_no" name="flexiplan_ref_no" placeholder="เลขที่อ้างอิง (ถ้ามี)" />
-          </div>
+          <input type="hidden" name="supplier_id" value={supplierId} />
+          <Select
+            value={supplierId || NONE_SUPPLIER}
+            onValueChange={(v) => setSupplierId(v === NONE_SUPPLIER ? "" : (v ?? ""))}
+            items={[{ value: NONE_SUPPLIER, label: "— ไม่ระบุ —" }, ...suppliers.map((s) => ({ value: s.id, label: s.name }))]}
+          >
+            <SelectTrigger id="supplier_id" className="w-full">
+              <SelectValue placeholder="— ไม่ระบุ —" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NONE_SUPPLIER}>— ไม่ระบุ —</SelectItem>
+              {suppliers.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-2">

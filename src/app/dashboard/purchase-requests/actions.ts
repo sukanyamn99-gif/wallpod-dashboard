@@ -48,8 +48,7 @@ export async function createPurchaseRequest(formData: FormData) {
   const note = str(formData.get("note"));
   const jobNo = str(formData.get("job_no"));
   const projectName = str(formData.get("project_name"));
-  const koonwayRefNo = str(formData.get("koonway_ref_no"));
-  const flexiplanRefNo = str(formData.get("flexiplan_ref_no"));
+  const supplierId = str(formData.get("supplier_id"));
 
   const itemIds = formData.getAll("item_product_id");
   const itemNames = formData.getAll("item_name");
@@ -95,8 +94,7 @@ export async function createPurchaseRequest(formData: FormData) {
       note,
       job_no: jobNo,
       project_name: projectName,
-      koonway_ref_no: koonwayRefNo,
-      flexiplan_ref_no: flexiplanRefNo,
+      supplier_id: supplierId,
     })
     .select("id")
     .single();

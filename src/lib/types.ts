@@ -363,12 +363,15 @@ export interface StockRequisition {
   items: StockRequisitionItem[];
 }
 
+export type SupplierType = "ในประเทศ" | "ต่างประเทศ";
+
 export interface Supplier {
   id: string;
   name: string;
   address: string | null;
   taxId: string | null;
   branch: string | null;
+  supplierType: SupplierType;
   createdAt: string;
 }
 
@@ -439,8 +442,10 @@ export interface PurchaseRequest {
   createdAt: string;
   jobNo: string | null;
   projectName: string | null;
-  koonwayRefNo: string | null;
-  flexiplanRefNo: string | null;
+  // Header-level ผู้จำหน่าย — one supplier for the whole document, distinct
+  // from each PurchaseRequestItem's own per-line supplierId/supplierName.
+  supplierId: string | null;
+  supplierName: string | null;
   items: PurchaseRequestItem[];
 }
 
