@@ -672,7 +672,7 @@ export interface IncentiveInstallment {
   percentOfTotal: number;
   amountWithVat: number;
   invoiceNo: string | null;
-  paidDate: string | null;
+  receivedDate: string | null;
   receiptNo: string | null;
 }
 

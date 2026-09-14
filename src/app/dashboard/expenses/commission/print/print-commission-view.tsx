@@ -123,7 +123,7 @@ export function PrintCommissionView({
                         label: "-",
                         amountWithVat: r.total,
                         invoiceNo: r.invoiceNo,
-                        paidDate: r.receivedDate,
+                        receivedDate: r.receivedDate,
                         receiptNo: r.receiptNo,
                       },
                     ];
@@ -150,7 +150,7 @@ export function PrintCommissionView({
                       <td className={td}>{num(it.amountWithVat)}</td>
                       <td className={td}>{it.invoiceNo ?? "—"}</td>
                       <td className={td}>{it.receiptNo ?? "—"}</td>
-                      <td className={td}>{shortDate(it.paidDate)}</td>
+                      <td className={td}>{shortDate(it.receivedDate)}</td>
                       {j === 0 && (
                         <td className={td} rowSpan={installmentRows.length}>{num(r.commissionAmount)}</td>
                       )}

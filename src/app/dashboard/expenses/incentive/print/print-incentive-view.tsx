@@ -149,7 +149,7 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
                             </td>
                             <td className={td}>{num(it.amountWithVat)}</td>
                             <td className={tdWrap}>{it.invoiceNo ?? "-"}</td>
-                            <td className={td}>{shortDate(it.paidDate)}</td>
+                            <td className={td}>{shortDate(it.receivedDate)}</td>
                             <td className={td}>{it.receiptNo ?? "-"}</td>
                           </>
                         ) : (

@@ -82,12 +82,16 @@ function round2(n: number): number {
 // in, not just one collapsed invoice/receipt number per job. Prefers the
 // ใบกำกับภาษี number over the plain ใบแจ้งหนี้ one per slot, since a job
 // billed via source_tax_invoice_id sync only ever gets tax_invoice_no set.
+// The date shown is received_date (paired with receipt_no) — paid_date is
+// really the invoice/document issue date, not when the money came in, so
+// using it here left "วันที่รับชำระ" blank on jobs that only ever had
+// received_date set (the common case for a receipt-driven installment).
 export function buildPaymentInstallments(row: FullProjectRow): IncentiveInstallment[] {
   const raw = [
-    { amount: row.amount1, invoiceNo: row.taxInvoiceNo1 ?? row.invoiceNo1, paidDate: row.paidDate1, receiptNo: row.receiptNo1 },
-    { amount: row.amount2, invoiceNo: row.taxInvoiceNo2 ?? row.invoiceNo2, paidDate: row.paidDate2, receiptNo: row.receiptNo2 },
-    { amount: row.amount3, invoiceNo: row.taxInvoiceNo3 ?? row.invoiceNo3, paidDate: row.paidDate3, receiptNo: row.receiptNo3 },
-  ].filter((r) => r.amount != null && r.amount > 0) as { amount: number; invoiceNo: string | null; paidDate: string | null; receiptNo: string | null }[];
+    { amount: row.amount1, invoiceNo: row.taxInvoiceNo1 ?? row.invoiceNo1, receivedDate: row.receivedDate1, receiptNo: row.receiptNo1 },
+    { amount: row.amount2, invoiceNo: row.taxInvoiceNo2 ?? row.invoiceNo2, receivedDate: row.receivedDate2, receiptNo: row.receiptNo2 },
+    { amount: row.amount3, invoiceNo: row.taxInvoiceNo3 ?? row.invoiceNo3, receivedDate: row.receivedDate3, receiptNo: row.receiptNo3 },
+  ].filter((r) => r.amount != null && r.amount > 0) as { amount: number; invoiceNo: string | null; receivedDate: string | null; receiptNo: string | null }[];
 
   const total = raw.reduce((sum, r) => sum + r.amount, 0);
   return raw.map((r, i) => ({
@@ -95,7 +99,7 @@ export function buildPaymentInstallments(row: FullProjectRow): IncentiveInstallm
     percentOfTotal: total > 0 ? round2((r.amount / total) * 100) : 0,
     amountWithVat: r.amount,
     invoiceNo: r.invoiceNo,
-    paidDate: r.paidDate,
+    receivedDate: r.receivedDate,
     receiptNo: r.receiptNo,
   }));
 }
