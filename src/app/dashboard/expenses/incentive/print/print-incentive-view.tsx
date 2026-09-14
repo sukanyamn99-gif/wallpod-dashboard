@@ -38,6 +38,14 @@ function pct(value: number | null): string {
 const th = "border-r border-b border-black p-1 font-medium break-words bg-[#c8d7d6]";
 const td = "border-r border-b border-black p-1 whitespace-nowrap";
 const tdWrap = "border-r border-b border-black p-1 break-words";
+// The letterhead row above the column headers deliberately has no border of
+// its own (see print-incentive-view git history) — these add the grid's
+// top/left frame back starting at the actual header row instead, so the
+// data table still reads as a bordered box without a stray line cutting
+// through the letterhead.
+const thTop = th + " border-t";
+const thTopLeft = th + " border-t border-l";
+const tdLeft = td + " border-l";
 
 const SALES_THRESHOLD_FOR_PAYOUT = 800_000;
 
@@ -102,22 +110,22 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
                 </th>
               </tr>
               <tr>
-                <th className={th} rowSpan={2}>ลำดับ</th>
-                <th className={th} rowSpan={2}>วันที่</th>
-                <th className={th} rowSpan={2}>เลขที่ Job</th>
-                <th className={th} rowSpan={2}>ชื่องาน/บริษัท</th>
-                <th className={th} rowSpan={2}>ชื่อโปรเจค</th>
-                <th className={th} rowSpan={2}>พนักงานขาย</th>
-                <th className={th} rowSpan={2}>จำนวนเงิน</th>
-                <th className={th} rowSpan={2}>รวมต้นทุน</th>
-                <th className={th} rowSpan={2}>กำไร</th>
-                <th className={th} rowSpan={2}>กำไร%</th>
-                <th className={th} colSpan={5}>รายการ</th>
-                <th className={th} rowSpan={2}>กำไรขั้นต้น
+                <th className={thTopLeft} rowSpan={2}>ลำดับ</th>
+                <th className={thTop} rowSpan={2}>วันที่</th>
+                <th className={thTop} rowSpan={2}>เลขที่ Job</th>
+                <th className={thTop} rowSpan={2}>ชื่องาน/บริษัท</th>
+                <th className={thTop} rowSpan={2}>ชื่อโปรเจค</th>
+                <th className={thTop} rowSpan={2}>พนักงานขาย</th>
+                <th className={thTop} rowSpan={2}>จำนวนเงิน</th>
+                <th className={thTop} rowSpan={2}>รวมต้นทุน</th>
+                <th className={thTop} rowSpan={2}>กำไร</th>
+                <th className={thTop} rowSpan={2}>กำไร%</th>
+                <th className={thTop} colSpan={5}>รายการ</th>
+                <th className={thTop} rowSpan={2}>กำไรขั้นต้น
                   <br />Koonway 70%</th>
-                <th className={th} rowSpan={2}>ค่าคอมบริษัท
+                <th className={thTop} rowSpan={2}>ค่าคอมบริษัท
                   <br />15%</th>
-                <th className={th} rowSpan={2}>ค่า Incentive
+                <th className={thTop} rowSpan={2}>ค่า Incentive
                   <br />5%</th>
               </tr>
               <tr>
@@ -137,7 +145,7 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
                       <tr key={j}>
                         {j === 0 && (
                           <>
-                            <td className={td} rowSpan={installmentRows.length}>{i + 1}</td>
+                            <td className={tdLeft} rowSpan={installmentRows.length}>{i + 1}</td>
                             <td className={td} rowSpan={installmentRows.length}>{shortDate(r.projectDate)}</td>
                             <td className={td} rowSpan={installmentRows.length}>{r.jobNo ?? "-"}</td>
                             <td className={tdWrap + " text-left"} rowSpan={installmentRows.length}>{r.customerName}</td>
@@ -173,7 +181,7 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
                 );
               })}
               <tr style={{ backgroundColor: "#fff9c4" }}>
-                <td className={td} colSpan={6}></td>
+                <td className={tdLeft} colSpan={6}></td>
                 <td className={td + " font-medium"}>{num(totals.preVat)}</td>
                 <td className={td + " font-medium"}>{num(totals.totalCost)}</td>
                 <td className={td + " font-medium"}>{num(totals.profit)}</td>
