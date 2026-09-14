@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import Image from "next/image";
 import { formatTHB } from "@/lib/format";
 import type { CommissionableProject } from "@/lib/types";
@@ -76,14 +77,16 @@ export function PrintCommissionView({
             <col className="w-[3%]" />
             <col className="w-[5%]" />
             <col className="w-[6%]" />
-            <col className="w-[16%]" />
-            <col className="w-[14%]" />
-            <col className="w-[7%]" />
-            <col className="w-[7%]" />
-            <col className="w-[5%]" />
+            <col className="w-[13%]" />
+            <col className="w-[11%]" />
             <col className="w-[6%]" />
-            <col className="w-[10%]" />
-            <col className="w-[10%]" />
+            <col className="w-[6%]" />
+            <col className="w-[4%]" />
+            <col className="w-[5%]" />
+            <col className="w-[5%]" />
+            <col className="w-[7%]" />
+            <col className="w-[9%]" />
+            <col className="w-[9%]" />
             <col className="w-[5%]" />
             <col className="w-[6%]" />
           </colgroup>
@@ -98,6 +101,8 @@ export function PrintCommissionView({
               <th className={th}>จำนวนเงิน +VAT</th>
               <th className={th}>ส่วนลด</th>
               <th className={th}>อัตราค่าคอมมิชชั่น</th>
+              <th className={th}>งวดที่</th>
+              <th className={th}>จำนวนที่ชำระ</th>
               <th className={th}>เลขที่ใบกำกับ IV</th>
               <th className={th}>เลขที่ใบรับเงิน RE</th>
               <th className={th}>วันที่รับชำระ</th>
@@ -105,28 +110,60 @@ export function PrintCommissionView({
             </tr>
           </thead>
           <tbody>
-            {rows.map((r, i) => (
-              <tr key={r.projectId}>
-                <td className={td}>{i + 1}</td>
-                <td className={td}>{shortDate(r.projectDate)}</td>
-                <td className={td}>{r.jobNo ?? "—"}</td>
-                <td className={tdWrap + " text-left"}>{r.customerName}</td>
-                <td className={tdWrap + " text-left"}>{r.projectName}</td>
-                <td className={td}>{num(r.preVat)}</td>
-                <td className={td}>{num(r.total)}</td>
-                <td className={td}>{r.discountPercent}%</td>
-                <td className={td + " text-red-600"}>{r.commissionRatePercent.toFixed(1)}%</td>
-                <td className={tdWrap}>{r.invoiceNo ?? "—"}</td>
-                <td className={tdWrap}>{r.receiptNo ?? "—"}</td>
-                <td className={td}>{shortDate(r.receivedDate)}</td>
-                <td className={td}>{num(r.commissionAmount)}</td>
-              </tr>
-            ))}
+            {rows.map((r, i) => {
+              // A job with no installment data on file (an honest gap, not
+              // fabricated) still gets exactly one row using its own
+              // collapsed invoiceNo/receiptNo/receivedDate — same fallback
+              // the Incentive report's identical pattern uses.
+              const installmentRows =
+                r.installments.length > 0
+                  ? r.installments
+                  : [
+                      {
+                        label: "-",
+                        amountWithVat: r.total,
+                        invoiceNo: r.invoiceNo,
+                        paidDate: r.receivedDate,
+                        receiptNo: r.receiptNo,
+                      },
+                    ];
+              return (
+                <Fragment key={r.projectId}>
+                  {installmentRows.map((it, j) => (
+                    <tr key={j}>
+                      {j === 0 && (
+                        <>
+                          <td className={td} rowSpan={installmentRows.length}>{i + 1}</td>
+                          <td className={td} rowSpan={installmentRows.length}>{shortDate(r.projectDate)}</td>
+                          <td className={td} rowSpan={installmentRows.length}>{r.jobNo ?? "—"}</td>
+                          <td className={tdWrap + " text-left"} rowSpan={installmentRows.length}>{r.customerName}</td>
+                          <td className={tdWrap + " text-left"} rowSpan={installmentRows.length}>{r.projectName}</td>
+                          <td className={td} rowSpan={installmentRows.length}>{num(r.preVat)}</td>
+                          <td className={td} rowSpan={installmentRows.length}>{num(r.total)}</td>
+                          <td className={td} rowSpan={installmentRows.length}>{r.discountPercent}%</td>
+                          <td className={td + " text-red-600"} rowSpan={installmentRows.length}>
+                            {r.commissionRatePercent.toFixed(1)}%
+                          </td>
+                        </>
+                      )}
+                      <td className={td}>{it.label}</td>
+                      <td className={td}>{num(it.amountWithVat)}</td>
+                      <td className={tdWrap}>{it.invoiceNo ?? "—"}</td>
+                      <td className={tdWrap}>{it.receiptNo ?? "—"}</td>
+                      <td className={td}>{shortDate(it.paidDate)}</td>
+                      {j === 0 && (
+                        <td className={td} rowSpan={installmentRows.length}>{num(r.commissionAmount)}</td>
+                      )}
+                    </tr>
+                  ))}
+                </Fragment>
+              );
+            })}
             <tr>
               <td className={td} colSpan={5}></td>
               <td className={td + " font-medium"}>{num(totalPreVat)}</td>
               <td className={td + " font-medium"}>{num(totalIncVat)}</td>
-              <td className={td} colSpan={5}></td>
+              <td className={td} colSpan={7}></td>
               <td className={td + " font-medium"}>{num(totalCommission)}</td>
             </tr>
           </tbody>

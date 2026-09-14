@@ -1,5 +1,5 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { getFullProjectReport } from "@/lib/data/project-sales";
+import { buildPaymentInstallments, getFullProjectReport } from "@/lib/data/project-sales";
 import type { CommissionRateTier, CommissionableProject } from "@/lib/types";
 
 export async function getCommissionRateTiers(): Promise<CommissionRateTier[]> {
@@ -79,6 +79,7 @@ export async function getCommissionableProjects(): Promise<CommissionableProject
         (row.taxInvoiceNo3 ?? row.invoiceNo3),
       receiptNo: row.receiptNo1 ?? row.receiptNo2 ?? row.receiptNo3,
       receivedDate: latestReceivedDate,
+      installments: buildPaymentInstallments(row),
       discountPercent: existing ? Number(existing.discount_percent) : 0,
       commissionRatePercent: existing ? Number(existing.commission_rate_percent) : 0,
       commissionAmount: existing ? Number(existing.commission_amount) : 0,

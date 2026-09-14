@@ -1,5 +1,5 @@
-import { getFullProjectReport } from "@/lib/data/project-sales";
-import type { IncentiveInstallment, IncentiveReport, IncentiveReportRow } from "@/lib/types";
+import { buildPaymentInstallments, getFullProjectReport } from "@/lib/data/project-sales";
+import type { IncentiveReport, IncentiveReportRow } from "@/lib/types";
 
 // Incentive only actually gets paid out for a month once total sales
 // (preVat) reach this threshold AND every job that month is fully
@@ -20,39 +20,6 @@ function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-function buildInstallments(row: {
-  amount1: number | null;
-  invoiceNo1: string | null;
-  taxInvoiceNo1: string | null;
-  paidDate1: string | null;
-  receiptNo1: string | null;
-  amount2: number | null;
-  invoiceNo2: string | null;
-  taxInvoiceNo2: string | null;
-  paidDate2: string | null;
-  receiptNo2: string | null;
-  amount3: number | null;
-  invoiceNo3: string | null;
-  taxInvoiceNo3: string | null;
-  paidDate3: string | null;
-  receiptNo3: string | null;
-}): IncentiveInstallment[] {
-  const raw = [
-    { amount: row.amount1, invoiceNo: row.taxInvoiceNo1 ?? row.invoiceNo1, paidDate: row.paidDate1, receiptNo: row.receiptNo1 },
-    { amount: row.amount2, invoiceNo: row.taxInvoiceNo2 ?? row.invoiceNo2, paidDate: row.paidDate2, receiptNo: row.receiptNo2 },
-    { amount: row.amount3, invoiceNo: row.taxInvoiceNo3 ?? row.invoiceNo3, paidDate: row.paidDate3, receiptNo: row.receiptNo3 },
-  ].filter((r) => r.amount != null && r.amount > 0) as { amount: number; invoiceNo: string | null; paidDate: string | null; receiptNo: string | null }[];
-
-  const total = raw.reduce((sum, r) => sum + r.amount, 0);
-  return raw.map((r, i) => ({
-    label: `งวดที่ ${i + 1}`,
-    percentOfTotal: total > 0 ? round2((r.amount / total) * 100) : 0,
-    amountWithVat: r.amount,
-    invoiceNo: r.invoiceNo,
-    paidDate: r.paidDate,
-    receiptNo: r.receiptNo,
-  }));
-}
 
 export async function getIncentiveReport(month: number, year: number): Promise<IncentiveReport> {
   const { rows: allRows } = await getFullProjectReport();
@@ -81,7 +48,7 @@ export async function getIncentiveReport(month: number, year: number): Promise<I
       totalCost,
       profit,
       profitPercent,
-      installments: buildInstallments(r),
+      installments: buildPaymentInstallments(r),
       koonwayShare: profit != null ? round2(profit * (KOONWAY_PERCENT / 100)) : null,
       companyCommission: profit != null ? round2(profit * (COMPANY_COMMISSION_PERCENT / 100)) : null,
       incentiveAmount: profit != null ? round2(profit * (INCENTIVE_PERCENT / 100)) : null,

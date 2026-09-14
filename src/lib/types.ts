@@ -649,6 +649,12 @@ export interface CommissionableProject {
   invoiceNo: string | null;
   receiptNo: string | null;
   receivedDate: string;
+  // Every payment installment this job was actually billed/received in —
+  // the printed report shows each one on its own line (invoice/receipt no.
+  // and amount paid can differ per installment), not just the single
+  // invoiceNo/receiptNo above (which only ever reflects one slot, for the
+  // on-screen list's quick-glance column).
+  installments: IncentiveInstallment[];
   discountPercent: number;
   commissionRatePercent: number;
   commissionAmount: number;

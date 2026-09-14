@@ -1,7 +1,7 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { getProductCategories } from "@/lib/data/reference";
 import type { ProjectSaleInitialData } from "@/app/dashboard/project-sales/project-sale-form";
-import type { ProductCategory } from "@/lib/types";
+import type { IncentiveInstallment, ProductCategory } from "@/lib/types";
 
 export interface ProjectDetail {
   id: string;
@@ -70,6 +70,34 @@ export interface FullProjectRow {
 export interface FullProjectReport {
   categories: string[];
   rows: FullProjectRow[];
+}
+
+function round2(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+// One job's up-to-3 payment installments, each with its own invoice/receipt
+// number and paid amount — shared by the Incentive and Commission reports,
+// both of which print every installment a job was actually billed/received
+// in, not just one collapsed invoice/receipt number per job. Prefers the
+// ใบกำกับภาษี number over the plain ใบแจ้งหนี้ one per slot, since a job
+// billed via source_tax_invoice_id sync only ever gets tax_invoice_no set.
+export function buildPaymentInstallments(row: FullProjectRow): IncentiveInstallment[] {
+  const raw = [
+    { amount: row.amount1, invoiceNo: row.taxInvoiceNo1 ?? row.invoiceNo1, paidDate: row.paidDate1, receiptNo: row.receiptNo1 },
+    { amount: row.amount2, invoiceNo: row.taxInvoiceNo2 ?? row.invoiceNo2, paidDate: row.paidDate2, receiptNo: row.receiptNo2 },
+    { amount: row.amount3, invoiceNo: row.taxInvoiceNo3 ?? row.invoiceNo3, paidDate: row.paidDate3, receiptNo: row.receiptNo3 },
+  ].filter((r) => r.amount != null && r.amount > 0) as { amount: number; invoiceNo: string | null; paidDate: string | null; receiptNo: string | null }[];
+
+  const total = raw.reduce((sum, r) => sum + r.amount, 0);
+  return raw.map((r, i) => ({
+    label: `งวดที่ ${i + 1}`,
+    percentOfTotal: total > 0 ? round2((r.amount / total) * 100) : 0,
+    amountWithVat: r.amount,
+    invoiceNo: r.invoiceNo,
+    paidDate: r.paidDate,
+    receiptNo: r.receiptNo,
+  }));
 }
 
 // Sums, per JOB NO., every stock requisition + Payment Voucher + petty-cash
