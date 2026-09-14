@@ -1,5 +1,4 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import { normalizeBankName } from "@/lib/bank-name";
 import type { BankAccount, BankTransaction } from "@/lib/types";
 
 type ReceivedPayment = {
@@ -58,26 +57,44 @@ async function getReceivedPayments(
     });
 }
 
-async function getVoucherOutflowByBankName(
+type VoucherOutflow = {
+  id: string;
+  amount: number;
+  date: string;
+  docNo: string;
+  description: string;
+};
+
+// bank_name/bank_account_no on a voucher are the PAYEE's destination
+// details (confirmed with the user — they can be any bank at all, whatever
+// the payee happens to use) — not which of the company's own accounts paid
+// out. Every โอนเงิน voucher leaves from this company's one real bank
+// account regardless, so none of them are matched or filtered by bank_name;
+// only the payment_method itself decides whether a voucher is a bank
+// movement at all.
+async function getVoucherOutflows(
   supabase: Awaited<ReturnType<typeof createClient>>,
-): Promise<Map<string, number>> {
+): Promise<VoucherOutflow[]> {
   const { data, error } = await supabase
     .from("payment_vouchers")
-    .select("bank_name, amount, wht_amount")
+    .select("id, doc_no, voucher_date, bank_transfer_date, payee_name, amount, wht_amount")
     .eq("payment_method", "โอนเงิน");
   if (error) throw error;
 
-  const totals = new Map<string, number>();
-  for (const row of data ?? []) {
-    const key = normalizeBankName(row.bank_name);
-    if (!key) continue;
+  return (data ?? []).map((row) => ({
+    id: row.id,
     // The WHT portion is remitted to the tax authority, not paid out via
     // this bank transfer — same net-paid convention as the voucher's own
     // print view (netPaid = amount - whtAmount).
-    const netPaid = Number(row.amount) - Number(row.wht_amount);
-    totals.set(key, (totals.get(key) ?? 0) + netPaid);
-  }
-  return totals;
+    amount: Number(row.amount) - Number(row.wht_amount),
+    // The date money actually left — voucher_date is only when the
+    // document was written up, which can predate the real transfer (e.g. a
+    // voucher prepared ahead of payday). Falls back to voucher_date for the
+    // rare row missing วันที่โอน rather than having no date at all.
+    date: row.bank_transfer_date ?? row.voucher_date,
+    docNo: row.doc_no,
+    description: row.payee_name,
+  }));
 }
 
 function cutoffDate(createdAt: string): string {
@@ -86,31 +103,26 @@ function cutoffDate(createdAt: string): string {
 
 // Itemized version of the inflow/outflow totals above, for the account
 // page's transaction list. Only one bank account exists in this company
-// today, so every qualifying inflow (received on/after that account's own
-// created_at — its opening_balance already covers everything before that)
-// is attributed to it directly; a second real account would need its own
-// way to tell which account each direct-entry receipt actually landed in,
-// since payments carries no bank_name of its own the way payment_vouchers
-// does. Outflow still matches by payment_vouchers.bank_name unchanged.
+// today, so every qualifying inflow/outflow (dated on/after that account's
+// own created_at — its opening_balance already covers everything before
+// that) is attributed to it directly; a second real account would need its
+// own way to tell which account each transaction actually moved through,
+// since neither payments nor payment_vouchers records that.
 export async function getBankTransactions(accounts: BankAccount[]): Promise<BankTransaction[]> {
   if (!isSupabaseConfigured() || accounts.length === 0) return [];
   const supabase = await createClient();
 
-  const [receivedPayments, { data: vouchers, error: voucherErr }] = await Promise.all([
+  const [receivedPayments, voucherOutflows] = await Promise.all([
     getReceivedPayments(supabase),
-    supabase
-      .from("payment_vouchers")
-      .select("id, doc_no, voucher_date, bank_transfer_date, bank_name, payee_name, amount, wht_amount")
-      .eq("payment_method", "โอนเงิน"),
+    getVoucherOutflows(supabase),
   ]);
-  if (voucherErr) throw voucherErr;
 
   const inflows: BankTransaction[] = accounts.flatMap((account) => {
     const cutoff = cutoffDate(account.createdAt);
     return receivedPayments
       .filter((p) => p.receivedDate >= cutoff)
       .map((p) => ({
-        id: `${account.id}-${p.id}`,
+        id: `${account.id}-in-${p.id}`,
         bankName: account.bankName,
         type: "in" as const,
         date: p.receivedDate,
@@ -120,23 +132,20 @@ export async function getBankTransactions(accounts: BankAccount[]): Promise<Bank
       }));
   });
 
-  const outflows: BankTransaction[] = (vouchers ?? [])
-    .filter((row) => (row.bank_name ?? "").trim())
-    .map((row) => ({
-      id: row.id,
-      bankName: (row.bank_name ?? "").trim(),
-      type: "out" as const,
-      // The date money actually left — voucher_date is only when the
-      // document was written up, which can predate the real transfer (e.g.
-      // a voucher prepared ahead of payday). Falls back to voucher_date for
-      // the rare row missing วันที่โอน rather than showing no date at all.
-      date: row.bank_transfer_date ?? row.voucher_date,
-      docNo: row.doc_no,
-      description: row.payee_name,
-      // Same net-paid convention as getVoucherOutflowByBankName: the WHT
-      // portion never leaves via this bank transfer.
-      amount: Number(row.amount) - Number(row.wht_amount),
-    }));
+  const outflows: BankTransaction[] = accounts.flatMap((account) => {
+    const cutoff = cutoffDate(account.createdAt);
+    return voucherOutflows
+      .filter((v) => v.date >= cutoff)
+      .map((v) => ({
+        id: `${account.id}-out-${v.id}`,
+        bankName: account.bankName,
+        type: "out" as const,
+        date: v.date,
+        docNo: v.docNo,
+        description: v.description,
+        amount: v.amount,
+      }));
+  });
 
   return [...inflows, ...outflows].sort((a, b) => b.date.localeCompare(a.date));
 }
@@ -145,7 +154,7 @@ export async function getBankAccounts(): Promise<BankAccount[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
 
-  const [{ data: accountRows, error: accountErr }, receivedPayments, outflowByBank] = await Promise.all([
+  const [{ data: accountRows, error: accountErr }, receivedPayments, voucherOutflows] = await Promise.all([
     supabase
       .from("bank_accounts")
       .select(
@@ -153,7 +162,7 @@ export async function getBankAccounts(): Promise<BankAccount[]> {
       )
       .order("bank_name", { ascending: true }),
     getReceivedPayments(supabase),
-    getVoucherOutflowByBankName(supabase),
+    getVoucherOutflows(supabase),
   ]);
   if (accountErr) throw accountErr;
 
@@ -162,7 +171,9 @@ export async function getBankAccounts(): Promise<BankAccount[]> {
     const inflow = receivedPayments
       .filter((p) => p.receivedDate >= cutoff)
       .reduce((sum, p) => sum + p.amount, 0);
-    const outflow = outflowByBank.get(normalizeBankName(row.bank_name)) ?? 0;
+    const outflow = voucherOutflows
+      .filter((v) => v.date >= cutoff)
+      .reduce((sum, v) => sum + v.amount, 0);
     return {
       id: row.id,
       bankName: row.bank_name,
