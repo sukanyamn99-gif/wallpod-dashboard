@@ -67,11 +67,6 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
 
       <div className="mx-auto max-w-[1400px] bg-white p-6 text-black print:p-0">
         <div className="text-[9px] leading-tight">
-          <Image src="/koonwaylogo.png" alt="KOONWAY" width={152} height={24} className="h-6 w-auto" priority />
-          <p className="mt-2 font-medium">บริษัท คูนเว จำกัด</p>
-          <p className="font-medium">ค่าคอมมิชชั่นทีม (7.5%จากกำไรสุทธิ)</p>
-          <p className="font-medium">ประจำเดือน {monthLabel(month, year)}</p>
-
           <table className="mt-3 w-full table-fixed border-collapse border-t border-l border-black text-center">
             <colgroup>
               <col className="w-[2%]" />
@@ -94,6 +89,18 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
               <col className="w-[5%]" />
             </colgroup>
             <thead>
+              {/* Repeats on every printed page via `thead { display:
+                  table-header-group }` above — this is what puts the
+                  letterhead on page 2+ instead of just page 1, which
+                  sitting outside the table never would. */}
+              <tr>
+                <th colSpan={18} className="border-0 p-0 pb-2 text-left align-bottom">
+                  <Image src="/koonwaylogo.png" alt="KOONWAY" width={152} height={24} className="h-6 w-auto" priority />
+                  <p className="mt-2 font-medium">บริษัท คูนเว จำกัด</p>
+                  <p className="font-medium">ค่าคอมมิชชั่นทีม (7.5%จากกำไรสุทธิ)</p>
+                  <p className="font-medium">ประจำเดือน {monthLabel(month, year)}</p>
+                </th>
+              </tr>
               <tr>
                 <th className={th} rowSpan={2}>ลำดับ</th>
                 <th className={th} rowSpan={2}>วันที่</th>
