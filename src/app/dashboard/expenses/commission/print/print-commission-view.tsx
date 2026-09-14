@@ -77,16 +77,16 @@ export function PrintCommissionView({
             <col className="w-[3%]" />
             <col className="w-[5%]" />
             <col className="w-[6%]" />
-            <col className="w-[13%]" />
-            <col className="w-[11%]" />
-            <col className="w-[6%]" />
+            <col className="w-[12%]" />
+            <col className="w-[10%]" />
+            <col className="w-[5%]" />
             <col className="w-[6%]" />
             <col className="w-[4%]" />
             <col className="w-[5%]" />
-            <col className="w-[5%]" />
+            <col className="w-[4%]" />
             <col className="w-[7%]" />
-            <col className="w-[9%]" />
-            <col className="w-[9%]" />
+            <col className="w-[11%]" />
+            <col className="w-[11%]" />
             <col className="w-[5%]" />
             <col className="w-[6%]" />
           </colgroup>
@@ -148,8 +148,8 @@ export function PrintCommissionView({
                       )}
                       <td className={td}>{it.label}</td>
                       <td className={td}>{num(it.amountWithVat)}</td>
-                      <td className={tdWrap}>{it.invoiceNo ?? "—"}</td>
-                      <td className={tdWrap}>{it.receiptNo ?? "—"}</td>
+                      <td className={td}>{it.invoiceNo ?? "—"}</td>
+                      <td className={td}>{it.receiptNo ?? "—"}</td>
                       <td className={td}>{shortDate(it.paidDate)}</td>
                       {j === 0 && (
                         <td className={td} rowSpan={installmentRows.length}>{num(r.commissionAmount)}</td>
