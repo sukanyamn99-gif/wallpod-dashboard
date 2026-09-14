@@ -64,6 +64,8 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
         table { page-break-inside: auto; }
         thead { display: table-header-group; }
         tbody tr { page-break-inside: avoid; break-inside: avoid; }
+        .signature-block { page-break-before: avoid; break-before: avoid; page-break-inside: avoid; break-inside: avoid; }
+        .avoid-split { page-break-inside: avoid; break-inside: avoid; }
       `}</style>
       <div className="mb-4 flex justify-end gap-2 print:hidden">
         <Button variant="outline" onClick={() => router.back()}>
@@ -105,7 +107,7 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
                 <th colSpan={18} className="border-0 p-0 pb-2 text-left align-bottom">
                   <Image src="/koonwaylogo.png" alt="KOONWAY" width={152} height={24} className="h-6 w-auto" priority />
                   <p className="mt-2 font-medium">บริษัท คูนเว จำกัด</p>
-                  <p className="font-medium">ค่าคอมมิชชั่นทีม (7.5%จากกำไรสุทธิ)</p>
+                  <p className="font-medium">ค่า Incentive ทีม support (5% จากกำไรขั้นต้น)</p>
                   <p className="font-medium">ประจำเดือน {monthLabel(month, year)}</p>
                 </th>
               </tr>
@@ -195,20 +197,25 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
               </tr>
             </tbody>
           </table>
-          <p className="mt-1 text-right text-[15px] font-medium text-red-600">
-            % ค่า Incentive ต่อยอดขาย {incentivePercentOfSales.toFixed(2)}%
-          </p>
+          <div className="signature-block">
+            <p className="mt-1 text-right text-[15px] font-medium text-red-600">
+              % ค่า Incentive ต่อยอดขาย {incentivePercentOfSales.toFixed(2)}%
+            </p>
 
-          <div className="mt-16 flex items-baseline justify-end gap-2">
-            <span className="w-56 border-b border-dotted border-black" />
-            <span className="w-20 whitespace-nowrap">ผู้จัดทำ</span>
+            <div className="mt-16 flex items-baseline justify-end gap-2">
+              <span className="w-56 border-b border-dotted border-black" />
+              <span className="w-20 whitespace-nowrap">ผู้จัดทำ</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Support-team incentive split — separate page/section, matching the
-          reference report's own layout (main table, then this summary). */}
-      <div className="mx-auto max-w-[1400px] break-before-page bg-white p-6 text-black print:p-0">
+      {/* Support-team incentive split — continues right after the main
+          table/signature instead of forcing its own fresh page, so a short
+          table doesn't leave a page nearly blank just to keep this section
+          "separate." break-inside keeps it from splitting mid-block if it
+          does land across a page boundary. */}
+      <div className="mx-auto max-w-[1400px] avoid-split bg-white p-6 text-black print:p-0">
         <div className="text-[11px] leading-tight">
           <Image src="/koonwaylogo.png" alt="KOONWAY" width={152} height={24} className="h-6 w-auto" />
           <p className="mt-2 font-medium">บริษัท คูนเว จำกัด</p>
