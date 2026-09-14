@@ -62,10 +62,11 @@ export async function getOwnerDashboardData(): Promise<OwnerDashboardData> {
     receivablesTotal: ar.kpis.totalOutstanding,
     payablesTotal: payables.kpis.totalOutstanding,
     stockValue: stock.totalStockValue,
-    // ยอดในธนาคาร (the real, manually-kept-in-sync balance) — not ยอดในระบบ,
-    // which is only an approximation derived from matched โอนเงิน
-    // transactions. Same "sum every account" convention as the Bank
-    // Accounts page's own KPI card.
-    bankBalanceTotal: bankAccounts.reduce((sum, a) => sum + a.actualBalance, 0),
+    // ยอดในระบบ (computed from opening_balance + recorded inflow/outflow) —
+    // not ยอดในธนาคาร, which only ever moves when someone manually re-syncs
+    // it against the real bank statement and can go stale between syncs.
+    // Per the user's explicit choice: this card should track what the
+    // system itself has recorded, not that manual snapshot.
+    bankBalanceTotal: bankAccounts.reduce((sum, a) => sum + a.systemBalance, 0),
   };
 }
