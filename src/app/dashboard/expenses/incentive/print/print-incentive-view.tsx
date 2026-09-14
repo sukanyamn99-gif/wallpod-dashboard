@@ -67,7 +67,7 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
 
       <div className="mx-auto max-w-[1400px] bg-white p-6 text-black print:p-0">
         <div className="text-[9px] leading-tight">
-          <table className="mt-3 w-full table-fixed border-collapse border-l border-black text-center">
+          <table className="mt-3 w-full table-fixed border-collapse border-black text-center">
             <colgroup>
               <col className="w-[2%]" />
               <col className="w-[4%]" />
