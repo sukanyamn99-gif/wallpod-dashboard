@@ -15,11 +15,13 @@ function revalidateSupplierConsumers() {
 }
 
 function supplierFields(formData: FormData) {
+  const supplierType = String(formData.get("supplier_type") ?? "").trim();
   return {
     name: String(formData.get("name") ?? "").trim(),
     address: String(formData.get("address") ?? "").trim() || null,
     tax_id: String(formData.get("tax_id") ?? "").trim() || null,
     branch: String(formData.get("branch") ?? "").trim() || null,
+    supplier_type: supplierType === "ต่างประเทศ" ? "ต่างประเทศ" : "ในประเทศ",
   };
 }
 
