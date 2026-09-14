@@ -751,22 +751,24 @@ export function ProjectSaleForm({
             </div>
             {/* Auto-synced from the tax invoice/billing note/receipt that
                 deducted it — settled via a WHT certificate, not cash, but
-                not still outstanding either (see paidAmount above). Hidden
-                while empty/0, same convention as เลขที่ใบวางบิล/เลขที่ใบกำกับภาษี. */}
-            {Number(whtAmount1) > 0 && (
-              <div className="space-y-2">
-                <Label htmlFor="wht_amount_1">หัก ณ ที่จ่าย</Label>
-                <NumberInput
-                  id="wht_amount_1"
-                  name="wht_amount_1"
-                  min={0}
-                  step={0.01}
-                  value={whtAmount1}
-                  onChange={setWhtAmount1}
-                  placeholder="0"
-                />
-              </div>
-            )}
+                not still outstanding either (see paidAmount above). Always
+                editable (unlike เลขที่ใบวางบิล/เลขที่ใบกำกับภาษี, which really
+                are document references) since a receipt entered by hand
+                here — not issued through the ใบเสร็จรับเงิน flow — never
+                gets this synced automatically, and the outstanding-amount
+                math needs a way to record the deduction regardless. */}
+            <div className="space-y-2">
+              <Label htmlFor="wht_amount_1">หัก ณ ที่จ่าย</Label>
+              <NumberInput
+                id="wht_amount_1"
+                name="wht_amount_1"
+                min={0}
+                step={0.01}
+                value={whtAmount1}
+                onChange={setWhtAmount1}
+                placeholder="0"
+              />
+            </div>
           </div>
         </div>
 
@@ -854,20 +856,18 @@ export function ProjectSaleForm({
                 <Label htmlFor="received_date_2">วันที่รับชำระเงิน</Label>
                 <DateInput id="received_date_2" name="received_date_2" value={receivedDate2} onChange={setReceivedDate2} />
               </div>
-              {Number(whtAmount2) > 0 && (
-                <div className="space-y-2">
-                  <Label htmlFor="wht_amount_2">หัก ณ ที่จ่าย</Label>
-                  <NumberInput
-                    id="wht_amount_2"
-                    name="wht_amount_2"
-                    min={0}
-                    step={0.01}
-                    value={whtAmount2}
-                    onChange={setWhtAmount2}
-                    placeholder="0"
-                  />
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="wht_amount_2">หัก ณ ที่จ่าย</Label>
+                <NumberInput
+                  id="wht_amount_2"
+                  name="wht_amount_2"
+                  min={0}
+                  step={0.01}
+                  value={whtAmount2}
+                  onChange={setWhtAmount2}
+                  placeholder="0"
+                />
+              </div>
             </div>
           </div>
         ) : (
@@ -962,20 +962,18 @@ export function ProjectSaleForm({
                   <Label htmlFor="received_date_3">วันที่รับชำระเงิน</Label>
                   <DateInput id="received_date_3" name="received_date_3" value={receivedDate3} onChange={setReceivedDate3} />
                 </div>
-                {Number(whtAmount3) > 0 && (
-                  <div className="space-y-2">
-                    <Label htmlFor="wht_amount_3">หัก ณ ที่จ่าย</Label>
-                    <NumberInput
-                      id="wht_amount_3"
-                      name="wht_amount_3"
-                      min={0}
-                      step={0.01}
-                      value={whtAmount3}
-                      onChange={setWhtAmount3}
-                      placeholder="0"
-                    />
-                  </div>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="wht_amount_3">หัก ณ ที่จ่าย</Label>
+                  <NumberInput
+                    id="wht_amount_3"
+                    name="wht_amount_3"
+                    min={0}
+                    step={0.01}
+                    value={whtAmount3}
+                    onChange={setWhtAmount3}
+                    placeholder="0"
+                  />
+                </div>
               </div>
             </div>
           ) : (
