@@ -144,9 +144,7 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
                         )}
                         {it ? (
                           <>
-                            <td className={td}>
-                              {it.label} {it.percentOfTotal}%
-                            </td>
+                            <td className={td}>{it.label}</td>
                             <td className={td}>{num(it.amountWithVat)}</td>
                             <td className={tdWrap}>{it.invoiceNo ?? "-"}</td>
                             <td className={td}>{shortDate(it.receivedDate)}</td>
