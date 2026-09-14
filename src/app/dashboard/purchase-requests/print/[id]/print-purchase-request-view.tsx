@@ -107,17 +107,15 @@ export function PrintPurchaseRequestView({
         <table className="mt-2 w-full table-fixed border-collapse border border-black text-center">
           <colgroup>
             <col className="w-[6%]" />
-            <col className="w-[34%]" />
-            <col className="w-[22%]" />
+            <col className="w-[50%]" />
             <col className="w-[10%]" />
-            <col className="w-[14%]" />
-            <col className="w-[14%]" />
+            <col className="w-[17%]" />
+            <col className="w-[17%]" />
           </colgroup>
           <thead>
             <tr>
               <th className="border border-black p-1 font-medium">ลำดับที่</th>
               <th className="border border-black p-1 font-medium">คำอธิบายสินค้าที่ต้องการซื้อ</th>
-              <th className="border border-black p-1 font-medium">ผู้ขาย (Supplier)</th>
               <th className="border border-black p-1 font-medium">จำนวน</th>
               {showCosts && <th className="border border-black p-1 font-medium">ราคา:หน่วย</th>}
               {showCosts && <th className="border border-black p-1 font-medium">ราคารวม</th>}
@@ -129,7 +127,6 @@ export function PrintPurchaseRequestView({
               <tr key={item.id} className="h-8">
                 <td className="border border-black p-1">{item.productName ? i + 1 : ""}</td>
                 <td className="border border-black p-1 text-left">{item.productName}</td>
-                <td className="border border-black p-1">{item.supplierName ?? ""}</td>
                 <td className="border border-black p-1">
                   {item.productName ? `${item.quantity} ${item.unit}` : ""}
                 </td>
@@ -147,13 +144,13 @@ export function PrintPurchaseRequestView({
               </tr>
             ))}
             <tr>
-              <td className="border border-black p-1 text-left" colSpan={6}>
+              <td className="border border-black p-1 text-left" colSpan={5}>
                 <span className="font-medium">*หมายเหตุ/รายละเอียดส่วนประกอบอื่นๆ :</span> {request.note ?? ""}
               </td>
             </tr>
             {showCosts && (
               <tr>
-                <td className="border border-black p-1 text-right font-medium" colSpan={4}>
+                <td className="border border-black p-1 text-right font-medium" colSpan={3}>
                   รวมมูลค่าโดยประมาณ
                 </td>
                 <td className="border border-black p-1 text-right font-semibold" colSpan={2}>

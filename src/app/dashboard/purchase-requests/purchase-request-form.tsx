@@ -47,7 +47,6 @@ interface SelectedItem {
   name: string;
   unit: string;
   quantity: number;
-  supplierId: string;
   unitPrice: number;
 }
 
@@ -109,7 +108,6 @@ export function PurchaseRequestForm({
           name: product.name,
           unit: product.unit,
           quantity: 1,
-          supplierId: "",
           unitPrice: 0,
         },
       ];
@@ -124,11 +122,11 @@ export function PurchaseRequestForm({
     if (!name) return;
     setItems((prev) => [
       ...prev,
-      { key: nextKey++, stockProductId: null, sku: "", name, unit: "ชิ้น", quantity: 1, supplierId: "", unitPrice: 0 },
+      { key: nextKey++, stockProductId: null, sku: "", name, unit: "ชิ้น", quantity: 1, unitPrice: 0 },
     ]);
   }
 
-  function updateItem(key: number, field: "quantity" | "supplierId" | "unitPrice" | "unit", value: string | number) {
+  function updateItem(key: number, field: "quantity" | "unitPrice" | "unit", value: string | number) {
     setItems((prev) => prev.map((it) => (it.key === key ? { ...it, [field]: value } : it)));
   }
 
@@ -151,7 +149,6 @@ export function PurchaseRequestForm({
           fd.append("item_sku", it.sku);
           fd.append("item_unit", it.unit);
           fd.append("item_quantity", String(it.quantity));
-          fd.append("item_supplier_id", it.supplierId);
           fd.append("item_unit_price", String(it.unitPrice));
         }
         startTransition(() => formAction(fd));
@@ -320,7 +317,6 @@ export function PurchaseRequestForm({
                   <TableRow>
                     <TableHead className="whitespace-nowrap">รหัสสินค้า</TableHead>
                     <TableHead className="whitespace-nowrap">ชื่อสินค้า</TableHead>
-                    <TableHead className="whitespace-nowrap">ผู้ขาย (Supplier)</TableHead>
                     <TableHead className="whitespace-nowrap">จำนวน</TableHead>
                     <TableHead className="whitespace-nowrap">ราคา/หน่วย</TableHead>
                     <TableHead className="whitespace-nowrap text-right">ราคารวม</TableHead>
@@ -334,25 +330,6 @@ export function PurchaseRequestForm({
                         {it.sku || (it.stockProductId ? "—" : <span className="text-xs text-muted-foreground">ยังไม่มีในระบบสินค้า</span>)}
                       </TableCell>
                       <TableCell className="min-w-[140px] text-sm font-medium">{it.name}</TableCell>
-                      <TableCell className="min-w-[160px]">
-                        <Select
-                          value={it.supplierId || NONE_SUPPLIER}
-                          onValueChange={(v) => updateItem(it.key, "supplierId", v === NONE_SUPPLIER ? "" : (v ?? ""))}
-                          items={[{ value: NONE_SUPPLIER, label: "— ไม่ระบุ —" }, ...suppliers.map((s) => ({ value: s.id, label: s.name }))]}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="— ไม่ระบุ —" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={NONE_SUPPLIER}>— ไม่ระบุ —</SelectItem>
-                            {suppliers.map((s) => (
-                              <SelectItem key={s.id} value={s.id}>
-                                {s.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <NumberInput

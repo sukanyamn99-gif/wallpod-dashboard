@@ -136,7 +136,6 @@ export default async function PurchaseRequestDetailPage({ params }: { params: Pr
                   <TableRow>
                     <TableHead>รหัสสินค้า</TableHead>
                     <TableHead>ชื่อสินค้า</TableHead>
-                    <TableHead>ผู้ขาย (Supplier)</TableHead>
                     <TableHead className="text-right">จำนวน</TableHead>
                     {showCosts && <TableHead className="text-right">ราคา/หน่วย</TableHead>}
                     {showCosts && <TableHead className="text-right">รวม</TableHead>}
@@ -147,7 +146,6 @@ export default async function PurchaseRequestDetailPage({ params }: { params: Pr
                     <TableRow key={item.id}>
                       <TableCell>{item.productSku ?? "—"}</TableCell>
                       <TableCell>{item.productName}</TableCell>
-                      <TableCell>{item.supplierName ?? "—"}</TableCell>
                       <TableCell className="text-right">
                         {item.quantity} {item.unit}
                       </TableCell>
