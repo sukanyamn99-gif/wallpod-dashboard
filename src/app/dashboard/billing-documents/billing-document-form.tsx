@@ -10,6 +10,7 @@ import { NumberInput } from "@/components/ui/number-input";
 import { DateInput } from "@/components/ui/date-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomplete";
 import { JobNoSelect } from "@/components/dashboard/job-no-select";
 import { formatTHB } from "@/lib/format";
@@ -146,6 +147,15 @@ export function BillingDocumentForm({
   // every other doc type keeps billing from quotations directly, since a
   // tax invoice may not exist yet for those.
   const usesTaxInvoiceSource = docType === "billing_note" || docType === "receipt";
+  // ใบเสร็จรับเงิน's create form asks up front whether this receipt is
+  // collecting against a real tax invoice/ใบวางบิล, or something else
+  // entirely (a deposit, advance payment, etc. with no underlying document)
+  // — the two sections further down are mutually exclusive based on this
+  // choice, matching the reference dialog. Not asked in edit mode (the
+  // existing items already imply which kind it is) or for any other doc
+  // type (they only ever have one source to begin with).
+  const needsReceiptKindChoice = docType === "receipt" && mode === "create";
+  const [receiptKind, setReceiptKind] = useState<"tax_invoice" | "other" | null>(null);
   const [jobNo, setJobNo] = useState("");
   const [docNo, setDocNo] = useState(initialData?.docNo ?? "");
   const [customerId, setCustomerId] = useState(initialData?.customerId ?? "");
@@ -535,7 +545,47 @@ export function BillingDocumentForm({
   ];
 
   return (
-    <form
+    <>
+      {needsReceiptKindChoice && receiptKind === null && (
+        <Dialog open onOpenChange={(next) => !next && router.push(listPath)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>ประเภทใบเสร็จรับเงิน</DialogTitle>
+            </DialogHeader>
+            <DialogBody className="space-y-2 pb-4">
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-muted">
+                <input
+                  type="radio"
+                  name="receipt_kind_choice"
+                  className="mt-1 h-4 w-4"
+                  checked={false}
+                  onChange={() => setReceiptKind("tax_invoice")}
+                />
+                <span>
+                  <span className="block text-sm font-medium">รับเงินจากใบกำกับภาษี (ใบเสร็จรวม)</span>
+                  <span className="block text-xs text-muted-foreground">สร้างโดยเลือกจากใบกำกับภาษีเดียว หรือหลายใบ</span>
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-muted">
+                <input
+                  type="radio"
+                  name="receipt_kind_choice"
+                  className="mt-1 h-4 w-4"
+                  checked={false}
+                  onChange={() => setReceiptKind("other")}
+                />
+                <span>
+                  <span className="block text-sm font-medium">รับเงินอื่นๆ</span>
+                  <span className="block text-xs text-muted-foreground">
+                    เช่น เงินประกัน เงินมัดจำ รับเงินล่วงหน้า หรืออื่นๆ
+                  </span>
+                </span>
+              </label>
+            </DialogBody>
+          </DialogContent>
+        </Dialog>
+      )}
+      <form
       action={formAction}
       noValidate
       onSubmit={(e) => {
@@ -612,6 +662,24 @@ export function BillingDocumentForm({
             <p className="text-xs text-muted-foreground">
               เลือก JOB เพื่อดึงลูกค้าและรายการใบแจ้งหนี้ของ JOB นั้นมาให้อัตโนมัติ (หรือค้นหาลูกค้าด้านล่างแทนก็ได้)
             </p>
+          </div>
+        )}
+
+        {needsReceiptKindChoice && receiptKind !== null && (
+          <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2 text-sm">
+            <span>
+              ประเภท:{" "}
+              <span className="font-medium">
+                {receiptKind === "tax_invoice" ? "รับเงินจากใบกำกับภาษี (ใบเสร็จรวม)" : "รับเงินอื่นๆ"}
+              </span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setReceiptKind(null)}
+              className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            >
+              เปลี่ยนประเภท
+            </button>
           </div>
         )}
 
@@ -790,6 +858,7 @@ export function BillingDocumentForm({
       </div>
 
       <div className="space-y-4">
+        {receiptKind !== "other" && (
         <div className="space-y-2">
           <Label>รายการใบแจ้งหนี้ที่ยังไม่ได้ชำระ</Label>
           {!customerId ? (
@@ -849,6 +918,7 @@ export function BillingDocumentForm({
             </div>
           )}
         </div>
+        )}
 
         {customerId && !loadingInvoices && quotations.length > 0 && (
           <div className="space-y-2">
@@ -909,7 +979,7 @@ export function BillingDocumentForm({
           </div>
         )}
 
-        {usesTaxInvoiceSource && customerId && !loadingInvoices && (
+        {usesTaxInvoiceSource && customerId && !loadingInvoices && receiptKind !== "other" && (
           <div className="space-y-2">
             <Label>
               {docType === "receipt" ? "ใบกำกับภาษี/ใบวางบิลที่ยังไม่ได้ออกใบเสร็จ" : "ใบกำกับภาษีที่ยังไม่ได้วางบิล"}
@@ -983,6 +1053,7 @@ export function BillingDocumentForm({
           </div>
         )}
 
+        {receiptKind !== "tax_invoice" && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label>รายการที่พิมพ์เอง</Label>
@@ -1050,6 +1121,7 @@ export function BillingDocumentForm({
             </div>
           )}
         </div>
+        )}
 
         {docType === "tax_invoice" && relevantFinishedGoods.length > 0 && (
           <div className="space-y-2">
@@ -1154,6 +1226,7 @@ export function BillingDocumentForm({
           </Button>
         </div>
       </div>
-    </form>
+      </form>
+    </>
   );
 }
