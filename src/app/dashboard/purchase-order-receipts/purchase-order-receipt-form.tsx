@@ -125,6 +125,9 @@ function LinkStockProductCell({
           เพิ่มสินค้าใหม่ <ExternalLink className="h-3 w-3" />
         </Link>
       </p>
+      <p className="text-xs text-muted-foreground">
+        ตอนสร้างสินค้าใหม่ ให้เว้น &quot;จำนวนเริ่มต้น&quot; ไว้เป็น 0 — จำนวนที่รับตามใบสั่งซื้อนี้จะถูกเพิ่มให้เองในขั้นตอนถัดไป ใส่ตอนนี้ด้วยจะนับซ้ำ
+      </p>
     </div>
   );
 }
