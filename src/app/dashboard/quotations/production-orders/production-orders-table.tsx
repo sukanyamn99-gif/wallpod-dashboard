@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Ban, Eye, Pencil, RotateCcw } from "lucide-react";
+import { Ban, Check, Eye, Pencil, RotateCcw, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,27 +21,56 @@ import { setProductionOrderCancelled } from "./actions";
 function CancelButton({ order }: { order: ProductionOrder }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
-  function handleClick() {
-    const next = !order.isCancelled;
-    if (next && !window.confirm(`ยืนยันยกเลิกใบลงผลิต "${order.docNo}" — ${order.projectName}?`)) return;
+  function handleToggle() {
     setError(null);
     startTransition(async () => {
       const result = await setProductionOrderCancelled(order.id, !order.isCancelled);
       if (result.error) setError(result.error);
+      setConfirming(false);
     });
+  }
+
+  // Restoring is non-destructive — no confirm step needed, matches
+  // cancel's own asymmetry elsewhere in this app (e.g. Project Sales'
+  // cancel/restore).
+  if (!order.isCancelled) {
+    if (confirming) {
+      return (
+        <div className="flex flex-col gap-1">
+          <div className="flex gap-1">
+            <Button
+              size="icon-sm"
+              variant="destructive"
+              onClick={handleToggle}
+              disabled={pending}
+              title={`ยืนยันยกเลิกใบลงผลิต "${order.docNo}"`}
+            >
+              <Check className="h-3.5 w-3.5" />
+            </Button>
+            <Button size="icon-sm" variant="outline" onClick={() => setConfirming(false)} disabled={pending} title="ยกเลิก">
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+        </div>
+      );
+    }
+    return (
+      <div className="flex flex-col gap-1">
+        <Button size="icon-sm" variant="outline" onClick={() => setConfirming(true)} title="ยกเลิกใบลงผลิต">
+          <Ban className="h-3.5 w-3.5" />
+        </Button>
+        {error && <p className="text-xs text-destructive">{error}</p>}
+      </div>
+    );
   }
 
   return (
     <div className="flex flex-col gap-1">
-      <Button
-        size="icon-sm"
-        variant="outline"
-        onClick={handleClick}
-        disabled={pending}
-        title={order.isCancelled ? "กู้คืนใบลงผลิต" : "ยกเลิกใบลงผลิต"}
-      >
-        {order.isCancelled ? <RotateCcw className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
+      <Button size="icon-sm" variant="outline" onClick={handleToggle} disabled={pending} title="กู้คืนใบลงผลิต">
+        <RotateCcw className="h-3.5 w-3.5" />
       </Button>
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Ban, RotateCcw, Save } from "lucide-react";
+import { Ban, Check, RotateCcw, Save, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,24 +13,42 @@ import type { ProductionOrder } from "@/lib/types";
 function CancelSection({ order }: { order: ProductionOrder }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
-  function handleClick() {
-    const next = !order.isCancelled;
-    if (next && !window.confirm(`ยืนยันยกเลิกใบลงผลิต "${order.docNo}" — ${order.projectName}?`)) return;
+  function handleToggle(next: boolean) {
     setError(null);
     startTransition(async () => {
       const result = await setProductionOrderCancelled(order.id, next);
       if (result.error) setError(result.error);
+      setConfirming(false);
     });
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center justify-end gap-2">
       {order.isCancelled && <Badge variant="destructive">ยกเลิกแล้ว</Badge>}
-      <Button size="sm" variant="outline" onClick={handleClick} disabled={pending}>
-        {order.isCancelled ? <RotateCcw className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
-        {order.isCancelled ? "กู้คืนใบลงผลิต" : "ยกเลิกใบลงผลิต"}
-      </Button>
+      {order.isCancelled ? (
+        <Button size="sm" variant="outline" onClick={() => handleToggle(false)} disabled={pending}>
+          <RotateCcw className="h-3.5 w-3.5" />
+          กู้คืนใบลงผลิต
+        </Button>
+      ) : confirming ? (
+        <>
+          <Button size="sm" variant="destructive" onClick={() => handleToggle(true)} disabled={pending}>
+            <Check className="h-3.5 w-3.5" />
+            ยืนยันยกเลิก
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setConfirming(false)} disabled={pending}>
+            <X className="h-3.5 w-3.5" />
+            ไม่ยกเลิก
+          </Button>
+        </>
+      ) : (
+        <Button size="sm" variant="outline" onClick={() => setConfirming(true)}>
+          <Ban className="h-3.5 w-3.5" />
+          ยกเลิกใบลงผลิต
+        </Button>
+      )}
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
