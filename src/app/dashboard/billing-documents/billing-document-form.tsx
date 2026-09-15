@@ -655,7 +655,12 @@ export function BillingDocumentForm({
 
         {state.error && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>}
 
-        {mode === "create" && (
+        {/* ใบเสร็จรับเงิน is deliberately excluded — per feedback, its
+            document picker should always start from the customer, since
+            one receipt commonly bundles tax invoices across several
+            different JOBs for the same company, unlike ใบแจ้งหนี้/
+            ใบกำกับภาษี/ใบวางบิล which are each naturally scoped to one JOB. */}
+        {mode === "create" && docType !== "receipt" && (
           <div className="space-y-2">
             <Label htmlFor="job_no_picker">เลขที่ Job</Label>
             <JobNoSelect id="job_no_picker" value={jobNo} onChange={handleJobNoChange} jobNos={jobNoSuggestions} />
