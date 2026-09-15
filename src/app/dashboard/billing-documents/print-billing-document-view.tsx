@@ -263,6 +263,7 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
             <tr className="bg-[#c8d7d6]">
               <th className="w-10 border-r border-black p-1.5 font-medium">ลำดับ</th>
               <th className="border-r border-black p-1.5 font-medium">เลขที่เอกสาร</th>
+              <th className="w-20 border-r border-black p-1.5 font-medium">เลขที่ Job</th>
               <th className="w-24 border-r border-black p-1.5 font-medium">เอกสารวันที่</th>
               <th className="w-24 border-r border-black p-1.5 font-medium">วันครบกำหนด</th>
               <th className="w-28 border-r border-black p-1.5 font-medium">ยอดรวมตามเอกสาร</th>
@@ -292,6 +293,7 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
                       <div className="text-xs text-neutral-500">(ใบเสนอราคา)</div>
                     )}
                   </td>
+                  <td className="border-r border-t border-black p-1.5">{it.jobNo ?? "—"}</td>
                   <td className="border-r border-t border-black p-1.5">{fmtDate(docDate)}</td>
                   <td className="border-r border-t border-black p-1.5">{fmtDate(document.dueDate)}</td>
                   <td className="border-r border-t border-black p-1.5 text-right">{formatTHB(it.grossAmount)}</td>

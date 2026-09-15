@@ -930,6 +930,7 @@ export interface BillableTaxInvoice {
   docNo: string;
   docDate: string;
   quotationId: string;
+  jobNo: string | null;
   netPayable: number;
   // The tax invoice's own WHT rate — used to auto-suggest the bundling
   // document's wht_percent when this invoice is picked, so staff don't have
@@ -979,6 +980,11 @@ export interface BillingDocumentItem {
   paymentId: string | null;
   invoiceNo: string;
   invoiceDate: string | null;
+  // This line's own JOB NO. — resolved via its payment's project for
+  // payment-sourced lines, or via its quotation for quotation-sourced
+  // lines. A receipt commonly bundles several different JOBs for one
+  // customer, so this is per-line, not just the document-level jobNo.
+  jobNo: string | null;
   amount: number;
   // The document's real face value before its own WHT/retention deduction
   // (amount is already net-payable for a quotation-sourced line once a tax

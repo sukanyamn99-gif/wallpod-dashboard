@@ -1015,7 +1015,10 @@ export function BillingDocumentForm({
                       className="h-4 w-4"
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{ti.docNo}</p>
+                      <p className="truncate text-sm font-medium">
+                        {ti.docNo}
+                        {ti.jobNo && <span className="text-muted-foreground"> — {ti.jobNo}</span>}
+                      </p>
                       <p className="truncate text-xs text-muted-foreground">{new Date(ti.docDate).toLocaleDateString("th-TH")}</p>
                     </div>
                     {selectedTaxInvoices.has(ti.id) && Number(whtPercent) > 0 && (

@@ -89,7 +89,7 @@ export async function getBillableTaxInvoicesForCustomer(
   const { data: invoices, error } = await supabase
     .from("billing_notes")
     .select(
-      "id, doc_no, doc_date, discount_amount, wht_percent, retention_percent, billing_note_items(quotation_id, amount, apply_wht)",
+      "id, doc_no, doc_date, discount_amount, wht_percent, retention_percent, billing_note_items(quotation_id, amount, apply_wht, quotations(job_number))",
     )
     .in("doc_type", sourceDocTypes)
     .eq("customer_id", customerId);
@@ -111,8 +111,10 @@ export async function getBillableTaxInvoicesForCustomer(
       quotation_id: string | null;
       amount: number;
       apply_wht: boolean;
+      quotations: { job_number: string | null } | null;
     }[];
-    const quotationId = items.find((it) => it.quotation_id)?.quotation_id;
+    const matched = items.find((it) => it.quotation_id);
+    const quotationId = matched?.quotation_id;
     if (!quotationId || billedQuotationIds.has(quotationId)) continue;
 
     const summary = computeBillingDocumentSummary(
@@ -126,6 +128,7 @@ export async function getBillableTaxInvoicesForCustomer(
       docNo: inv.doc_no,
       docDate: inv.doc_date,
       quotationId,
+      jobNo: matched?.quotations?.job_number ?? null,
       netPayable: summary.netPayable,
       whtPercent: Number(inv.wht_percent),
     });
@@ -383,9 +386,11 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
   // "เลขที่เอกสาร" label on every doc type, not just these two.
   const showsItemizedDetail = header.doc_type === "invoice" || header.doc_type === "tax_invoice";
   const MANUAL_COLUMNS = "manual_description, manual_qty, manual_unit, manual_unit_price";
-  const itemsSelect = showsItemizedDetail
-    ? `id, payment_id, quotation_id, invoice_no_snapshot, invoice_date_snapshot, amount, apply_wht, ${MANUAL_COLUMNS}, payments(projects(job_no))`
-    : `id, payment_id, quotation_id, invoice_no_snapshot, invoice_date_snapshot, amount, apply_wht, ${MANUAL_COLUMNS}`;
+  // JOB NO. per line is needed for every doc type now — ใบเสร็จรับเงิน
+  // items are quotation-sourced (via quotations.job_number) since it bills
+  // straight off ใบกำกับภาษี, everything else is payment-sourced (via
+  // payments.projects.job_no) — a line can only ever have one of the two.
+  const itemsSelect = `id, payment_id, quotation_id, invoice_no_snapshot, invoice_date_snapshot, amount, apply_wht, ${MANUAL_COLUMNS}, payments(projects(job_no)), quotations(job_number)`;
   const { data: items, error: itemsErr } = await supabase
     .from("billing_note_items")
     .select(itemsSelect)
@@ -405,6 +410,7 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     manual_unit: string | null;
     manual_unit_price: number | null;
     payments?: { projects: { job_no: string | null } | null } | null;
+    quotations?: { job_number: string | null } | null;
   };
   const itemRows = (items ?? []) as unknown as ItemRow[];
 
@@ -460,7 +466,7 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     ...mapHeader(header),
     jobNo: jobNoFallback,
     items: itemRows.map((it) => {
-      const jobNo = it.payments?.projects?.job_no ?? null;
+      const jobNo = it.payments?.projects?.job_no ?? it.quotations?.job_number ?? null;
       const quotationDetail = it.quotation_id
         ? quotationDetailById[it.quotation_id]
         : jobNo
@@ -474,6 +480,7 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
         quotationId: it.quotation_id,
         invoiceNo: it.invoice_no_snapshot,
         invoiceDate: it.invoice_date_snapshot,
+        jobNo,
         amount,
         // Falls back to amount itself for payment-sourced/manual lines,
         // which were never netted against a tax invoice's own WHT.
