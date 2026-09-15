@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Eye, Pencil } from "lucide-react";
+import { Ban, Eye, Pencil, RotateCcw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,37 @@ import {
 } from "@/components/ui/table";
 import type { ProductionOrder } from "@/lib/types";
 import { formatTHB } from "@/lib/format";
+import { setProductionOrderCancelled } from "./actions";
+
+function CancelButton({ order }: { order: ProductionOrder }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function handleClick() {
+    const next = !order.isCancelled;
+    if (next && !window.confirm(`ยืนยันยกเลิกใบลงผลิต "${order.docNo}" — ${order.projectName}?`)) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await setProductionOrderCancelled(order.id, !order.isCancelled);
+      if (result.error) setError(result.error);
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Button
+        size="icon-sm"
+        variant="outline"
+        onClick={handleClick}
+        disabled={pending}
+        title={order.isCancelled ? "กู้คืนใบลงผลิต" : "ยกเลิกใบลงผลิต"}
+      >
+        {order.isCancelled ? <RotateCcw className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
+      </Button>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
 
 export function ProductionOrdersTable({ orders }: { orders: ProductionOrder[] }) {
   const [query, setQuery] = useState("");
@@ -65,7 +96,7 @@ export function ProductionOrdersTable({ orders }: { orders: ProductionOrder[] })
               </TableRow>
             )}
             {filtered.map((o) => (
-              <TableRow key={o.id}>
+              <TableRow key={o.id} className={o.isCancelled ? "opacity-60" : undefined}>
                 <TableCell className="font-medium whitespace-nowrap">{o.jobNumber ?? "—"}</TableCell>
                 <TableCell className="whitespace-nowrap">{new Date(o.quoteDate).toLocaleDateString("th-TH")}</TableCell>
                 <TableCell className="whitespace-nowrap">{o.customerName}</TableCell>
@@ -73,7 +104,11 @@ export function ProductionOrdersTable({ orders }: { orders: ProductionOrder[] })
                 <TableCell className="whitespace-nowrap">{o.salesRepName ?? "—"}</TableCell>
                 <TableCell className="text-right whitespace-nowrap">{formatTHB(o.total)}</TableCell>
                 <TableCell>
-                  <Badge variant="secondary">ลูกค้าตอบตกลง</Badge>
+                  {o.isCancelled ? (
+                    <Badge variant="destructive">ยกเลิกแล้ว</Badge>
+                  ) : (
+                    <Badge variant="secondary">ลูกค้าตอบตกลง</Badge>
+                  )}
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-1">
@@ -95,6 +130,7 @@ export function ProductionOrdersTable({ orders }: { orders: ProductionOrder[] })
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
+                    <CancelButton order={o} />
                   </div>
                 </TableCell>
               </TableRow>

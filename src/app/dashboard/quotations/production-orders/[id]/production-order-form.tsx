@@ -1,13 +1,40 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Save } from "lucide-react";
+import { Ban, RotateCcw, Save } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { updateProductionInfo } from "../actions";
+import { updateProductionInfo, setProductionOrderCancelled } from "../actions";
 import type { ProductionOrder } from "@/lib/types";
+
+function CancelSection({ order }: { order: ProductionOrder }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function handleClick() {
+    const next = !order.isCancelled;
+    if (next && !window.confirm(`ยืนยันยกเลิกใบลงผลิต "${order.docNo}" — ${order.projectName}?`)) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await setProductionOrderCancelled(order.id, next);
+      if (result.error) setError(result.error);
+    });
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      {order.isCancelled && <Badge variant="destructive">ยกเลิกแล้ว</Badge>}
+      <Button size="sm" variant="outline" onClick={handleClick} disabled={pending}>
+        {order.isCancelled ? <RotateCcw className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
+        {order.isCancelled ? "กู้คืนใบลงผลิต" : "ยกเลิกใบลงผลิต"}
+      </Button>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
 
 export function ProductionOrderForm({ order }: { order: ProductionOrder }) {
   const [jobNumber, setJobNumber] = useState(order.jobNumber ?? "");
@@ -52,9 +79,12 @@ export function ProductionOrderForm({ order }: { order: ProductionOrder }) {
             {order.salesRepName && ` • ${order.salesRepName}`}
           </p>
         </div>
-        <div className="text-right">
-          <p className="text-xs text-muted-foreground">เลขที่ใบเสนอราคา</p>
-          <CardTitle className="text-base">{order.docNo}</CardTitle>
+        <div className="space-y-2 text-right">
+          <div>
+            <p className="text-xs text-muted-foreground">เลขที่ใบเสนอราคา</p>
+            <CardTitle className="text-base">{order.docNo}</CardTitle>
+          </div>
+          <CancelSection order={order} />
         </div>
       </CardHeader>
       <CardContent className="space-y-3">

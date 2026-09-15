@@ -111,10 +111,11 @@ type ProductionQuotationRow = {
   total: number;
   sales_reps: { name: string } | null;
   quotation_items: ProductionItemRow[] | null;
+  production_cancelled: boolean;
 };
 
 const PRODUCTION_ORDER_COLUMNS =
-  "id, doc_no, quote_date, project_name, customer_name, job_number, total, sales_reps(name), " +
+  "id, doc_no, quote_date, project_name, customer_name, job_number, total, sales_reps(name), production_cancelled, " +
   "quotation_items(id, product_name, thickness, size, color, cutting_pattern, qty, unit, product_code, sort_order)";
 
 function mapProductionOrderRow(row: ProductionQuotationRow): ProductionOrder {
@@ -129,6 +130,7 @@ function mapProductionOrderRow(row: ProductionQuotationRow): ProductionOrder {
     salesRepName: salesRep?.name ?? null,
     jobNumber: row.job_number,
     total: Number(row.total),
+    isCancelled: row.production_cancelled,
     items: [...items]
       .sort((a, b) => a.sort_order - b.sort_order)
       .map((it) => ({

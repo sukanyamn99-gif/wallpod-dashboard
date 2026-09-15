@@ -42,3 +42,25 @@ export async function updateProductionInfo(quotationId: string, formData: FormDa
   revalidatePath(`/dashboard/quotations/view/${quotationId}`);
   return { error: null };
 }
+
+// Cancels/restores just this quotation's ใบลงผลิต — a separate, reversible
+// flag from quotations.status (see production_cancelled's own comment in
+// the schema), so cancelling here never touches "ลูกค้าตอบตกลง" and the
+// row stays visible (with a badge) rather than disappearing from every
+// other view that depends on that status.
+export async function setProductionOrderCancelled(quotationId: string, cancelled: boolean) {
+  if (!isSupabaseConfigured()) {
+    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("quotations")
+    .update({ production_cancelled: cancelled })
+    .eq("id", quotationId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/dashboard/quotations/production-orders");
+  revalidatePath(`/dashboard/quotations/production-orders/${quotationId}`);
+  return { error: null };
+}

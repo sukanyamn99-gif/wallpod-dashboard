@@ -1295,7 +1295,11 @@ create table quotations (
   created_at timestamptz not null default now(),
   -- ค่าของ (goods) vs ค่าติดตั้ง (installation) — drives which standard
   -- remark text and which extra conditions block the print view shows.
-  quotation_type text not null default 'ค่าของ' check (quotation_type in ('ค่าของ', 'ค่าติดตั้ง'))
+  quotation_type text not null default 'ค่าของ' check (quotation_type in ('ค่าของ', 'ค่าติดตั้ง')),
+  -- Cancels this quotation's ใบลงผลิต (production order) without touching
+  -- status above — a separate, reversible event from the customer
+  -- rejecting the quote.
+  production_cancelled boolean not null default false
 );
 
 create table quotation_items (

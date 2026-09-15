@@ -878,6 +878,7 @@ export interface ProductionOrder {
   jobNumber: string | null;
   total: number;
   items: ProductionOrderItem[];
+  isCancelled: boolean;
 }
 
 export type BillingDocumentType = "invoice" | "billing_note" | "tax_invoice" | "receipt";
