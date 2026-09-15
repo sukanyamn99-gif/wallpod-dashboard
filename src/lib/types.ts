@@ -508,6 +508,10 @@ export interface PurchaseOrderReceipt {
   docNo: string;
   orderId: string;
   orderDocNo: string;
+  supplierName: string | null;
+  supplierAddress: string | null;
+  supplierTaxId: string | null;
+  supplierBranch: string | null;
   receiptDate: string;
   receivedById: string | null;
   receivedByName: string;

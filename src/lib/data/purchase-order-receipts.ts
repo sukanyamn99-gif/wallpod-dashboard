@@ -2,7 +2,8 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type { PurchaseOrderReceipt, PurchaseOrderReceiptItem } from "@/lib/types";
 
 const HEADER_COLUMNS =
-  "id, doc_no, order_id, receipt_date, received_by, note, created_at, purchase_orders(doc_no), profiles(full_name)";
+  "id, doc_no, order_id, receipt_date, received_by, note, created_at, " +
+  "purchase_orders(doc_no, suppliers(name, address, tax_id, branch)), profiles(full_name)";
 
 type HeaderRow = {
   id: string;
@@ -12,16 +13,24 @@ type HeaderRow = {
   received_by: string | null;
   note: string | null;
   created_at: string;
-  purchase_orders: { doc_no: string } | null;
+  purchase_orders: {
+    doc_no: string;
+    suppliers: { name: string; address: string | null; tax_id: string | null; branch: string | null } | null;
+  } | null;
   profiles: { full_name: string } | null;
 };
 
 function mapHeader(row: HeaderRow): Omit<PurchaseOrderReceipt, "items"> {
+  const supplier = row.purchase_orders?.suppliers ?? null;
   return {
     id: row.id,
     docNo: row.doc_no,
     orderId: row.order_id,
     orderDocNo: row.purchase_orders?.doc_no ?? "",
+    supplierName: supplier?.name ?? null,
+    supplierAddress: supplier?.address ?? null,
+    supplierTaxId: supplier?.tax_id ?? null,
+    supplierBranch: supplier?.branch ?? null,
     receiptDate: row.receipt_date,
     receivedById: row.received_by,
     receivedByName: row.profiles?.full_name ?? "",

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -14,6 +15,13 @@ import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage, canSeeCosts } from "@/lib/permissions";
 import { formatTHB } from "@/lib/format";
 
+// Mirrors purchase_order_receipts_update's own RLS: owner/manager can edit
+// any receipt, anyone else only their own.
+function canEdit(role: string, receivedById: string | null, profileId: string) {
+  if (role === "owner" || role === "manager") return true;
+  return receivedById === profileId;
+}
+
 export default async function PurchaseOrderReceiptDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
@@ -26,13 +34,32 @@ export default async function PurchaseOrderReceiptDetailPage({ params }: { param
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">{receipt ? `ใบรับสินค้า ${receipt.docNo}` : "ไม่พบข้อมูล"}</h1>
-        <p className="text-sm text-muted-foreground">
-          <Link href="/dashboard/purchase-order-receipts" className="underline underline-offset-2">
-            ← กลับไปหน้าใบรับสินค้า
-          </Link>
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">{receipt ? `ใบรับสินค้า ${receipt.docNo}` : "ไม่พบข้อมูล"}</h1>
+          <p className="text-sm text-muted-foreground">
+            <Link href="/dashboard/purchase-order-receipts" className="underline underline-offset-2">
+              ← กลับไปหน้าใบรับสินค้า
+            </Link>
+          </p>
+        </div>
+        {receipt && (
+          <div className="flex items-start gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              nativeButton={false}
+              render={<Link href={`/dashboard/purchase-order-receipts/print/${id}`} target="_blank" />}
+            >
+              พิมพ์
+            </Button>
+            {canEdit(profile.role, receipt.receivedById, profile.id) && (
+              <Button size="sm" nativeButton={false} render={<Link href={`/dashboard/purchase-order-receipts/edit/${id}`} />}>
+                แก้ไข
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       {receipt ? (

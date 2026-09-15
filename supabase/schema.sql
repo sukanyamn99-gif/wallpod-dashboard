@@ -1751,7 +1751,30 @@ create policy purchase_order_receipts_insert on purchase_order_receipts for inse
   with check (my_role() in ('owner', 'manager', 'production', 'support_sale', 'account'));
 create policy purchase_order_receipts_delete on purchase_order_receipts for delete
   using (my_role() in ('owner', 'manager') or received_by = auth.uid());
+create policy purchase_order_receipts_update on purchase_order_receipts for update
+  using (my_role() in ('owner', 'manager') or received_by = auth.uid())
+  with check (my_role() in ('owner', 'manager') or received_by = auth.uid());
 
 create policy purchase_order_receipt_items_select on purchase_order_receipt_items for select using (my_role() <> 'sales');
 create policy purchase_order_receipt_items_insert on purchase_order_receipt_items for insert
   with check (my_role() in ('owner', 'manager', 'production', 'support_sale', 'account'));
+create policy purchase_order_receipt_items_delete on purchase_order_receipt_items for delete
+  using (
+    exists (
+      select 1 from purchase_order_receipts r
+      where r.id = receipt_id and (my_role() in ('owner', 'manager') or r.received_by = auth.uid())
+    )
+  );
+create policy purchase_order_receipt_items_update on purchase_order_receipt_items for update
+  using (
+    exists (
+      select 1 from purchase_order_receipts r
+      where r.id = receipt_id and (my_role() in ('owner', 'manager') or r.received_by = auth.uid())
+    )
+  )
+  with check (
+    exists (
+      select 1 from purchase_order_receipts r
+      where r.id = receipt_id and (my_role() in ('owner', 'manager') or r.received_by = auth.uid())
+    )
+  );
