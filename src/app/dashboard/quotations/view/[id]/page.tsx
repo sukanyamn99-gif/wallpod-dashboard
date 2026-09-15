@@ -186,8 +186,20 @@ export default async function QuotationDetailPage({
           <div className="mt-4 ml-auto max-w-xs space-y-1 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">รวมเป็นเงิน</span>
-              <span>{formatTHB(quotation.preVat)}</span>
+              <span>{formatTHB(quotation.preVat + quotation.extraDiscountAmount)}</span>
             </div>
+            {quotation.extraDiscountAmount > 0 && (
+              <>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">ส่วนลดพิเศษ</span>
+                  <span>-{formatTHB(quotation.extraDiscountAmount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">ยอดหลังหักส่วนลด</span>
+                  <span>{formatTHB(quotation.preVat)}</span>
+                </div>
+              </>
+            )}
             <div className="flex justify-between">
               <span className="text-muted-foreground">ภาษีมูลค่าเพิ่ม 7%</span>
               <span>{formatTHB(quotation.vat)}</span>

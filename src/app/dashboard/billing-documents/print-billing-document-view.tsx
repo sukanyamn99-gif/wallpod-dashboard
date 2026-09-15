@@ -47,7 +47,12 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
     }
     if (it.quotationItems && it.quotationItems.length > 0) {
       const preVatSum = it.quotationItems.reduce((sum, qi) => sum + qi.totalPrice, 0);
-      return { amount: Math.round(preVatSum * 1.07 * 100) / 100, applyWht: it.applyWht };
+      // The quotation's own Extra Discount/ส่วนลดพิเศษ is document-level, not
+      // allocated per item — apply it here too so a discounted quotation
+      // isn't silently over-billed once it's referenced by an itemized
+      // invoice/tax invoice.
+      const netPreVatSum = Math.max(0, preVatSum - (it.quotationExtraDiscountAmount ?? 0));
+      return { amount: Math.round(netPreVatSum * 1.07 * 100) / 100, applyWht: it.applyWht };
     }
     // No itemized detail available (e.g. no matching quotation found) —
     // amount is the best figure left to fall back to.

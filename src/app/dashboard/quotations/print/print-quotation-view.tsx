@@ -251,8 +251,22 @@ export function PrintQuotationView({
             <tbody>
               <tr>
                 <td className="border-b border-black px-1 py-0.5">Total/ยอดรวม</td>
-                <td className="border-b border-black px-1 py-0.5 text-right">{num(quotation.preVat)}</td>
+                <td className="border-b border-black px-1 py-0.5 text-right">
+                  {num(quotation.preVat + quotation.extraDiscountAmount)}
+                </td>
               </tr>
+              {quotation.extraDiscountAmount > 0 && (
+                <>
+                  <tr>
+                    <td className="border-b border-black px-1 py-0.5">Extra Discount/ส่วนลดพิเศษ</td>
+                    <td className="border-b border-black px-1 py-0.5 text-right">-{num(quotation.extraDiscountAmount)}</td>
+                  </tr>
+                  <tr>
+                    <td className="border-b border-black px-1 py-0.5">ยอดหลังหักส่วนลด</td>
+                    <td className="border-b border-black px-1 py-0.5 text-right">{num(quotation.preVat)}</td>
+                  </tr>
+                </>
+              )}
               <tr>
                 <td className="border-b border-black px-1 py-0.5">Vate 7% /ภาษีมูลค่าเพิ่ม</td>
                 <td className="border-b border-black px-1 py-0.5 text-right">{num(quotation.vat)}</td>

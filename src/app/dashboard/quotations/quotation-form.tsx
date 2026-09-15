@@ -130,6 +130,9 @@ export function QuotationForm({
   const [poNumber, setPoNumber] = useState(initialData?.poNumber ?? "");
   const [priceValidity, setPriceValidity] = useState(initialData?.priceValidity ?? "");
   const [remark, setRemark] = useState(initialData?.remark ?? "");
+  const [extraDiscountAmount, setExtraDiscountAmount] = useState(
+    initialData?.extraDiscountAmount ? String(initialData.extraDiscountAmount) : "",
+  );
   const [salesRepId, setSalesRepId] = useState(initialData?.salesRepId ?? "");
   const [quotationType, setQuotationType] = useState<QuotationType>(initialData?.quotationType ?? "ค่าของ");
 
@@ -224,7 +227,9 @@ export function QuotationForm({
     [items],
   );
 
-  const preVat = computedItems.reduce((sum, it) => sum + it.totalPrice, 0);
+  const rawPreVat = computedItems.reduce((sum, it) => sum + it.totalPrice, 0);
+  const extraDiscountValue = Number(extraDiscountAmount) || 0;
+  const preVat = Math.max(0, Math.round((rawPreVat - extraDiscountValue) * 100) / 100);
   const vat = Math.round(preVat * 0.07 * 100) / 100;
   const grandTotal = Math.round((preVat + vat) * 100) / 100;
 
@@ -250,6 +255,7 @@ export function QuotationForm({
     fd.set("delivery_date", deliveryDate);
     fd.set("price_validity", priceValidity);
     fd.set("remark", remark);
+    fd.set("extra_discount_amount", extraDiscountAmount || "0");
     fd.set("sales_rep_id", salesRepId === NONE_VALUE ? "" : salesRepId);
     fd.set("quotation_type", quotationType);
 
@@ -561,8 +567,26 @@ export function QuotationForm({
         <div className="space-y-1 rounded-lg border p-4 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">รวมเป็นเงิน</span>
-            <span>{formatTHB(preVat)}</span>
+            <span>{formatTHB(rawPreVat)}</span>
           </div>
+          <div className="flex items-center justify-between gap-2">
+            <Label htmlFor="extra_discount_amount" className="text-muted-foreground font-normal">
+              ส่วนลดพิเศษ (Extra Discount)
+            </Label>
+            <NumberInput
+              id="extra_discount_amount"
+              value={extraDiscountAmount}
+              onChange={setExtraDiscountAmount}
+              min={0}
+              className="w-28 text-right"
+            />
+          </div>
+          {extraDiscountValue > 0 && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">ยอดหลังหักส่วนลด</span>
+              <span>{formatTHB(preVat)}</span>
+            </div>
+          )}
           <div className="flex justify-between">
             <span className="text-muted-foreground">ภาษีมูลค่าเพิ่ม 7%</span>
             <span>{formatTHB(vat)}</span>

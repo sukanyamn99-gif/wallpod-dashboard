@@ -398,8 +398,14 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
   };
   const itemRows = (items ?? []) as unknown as ItemRow[];
 
-  let quotationDetailByJobNo: Record<string, { quotationDocNo: string; items: QuotationItemDetail[] }> = {};
-  let quotationDetailById: Record<string, { quotationDocNo: string; items: QuotationItemDetail[] }> = {};
+  let quotationDetailByJobNo: Record<
+    string,
+    { quotationDocNo: string; items: QuotationItemDetail[]; extraDiscountAmount: number }
+  > = {};
+  let quotationDetailById: Record<
+    string,
+    { quotationDocNo: string; items: QuotationItemDetail[]; extraDiscountAmount: number }
+  > = {};
   if (showsItemizedDetail) {
     const jobNos = itemRows.filter((it) => !it.quotation_id).map((it) => it.payments?.projects?.job_no ?? null);
     const quotationIds = itemRows.filter((it) => it.quotation_id).map((it) => it.quotation_id as string);
@@ -470,7 +476,11 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
         taxInvoiceDocNo: taxInvoiceRef?.docNo ?? null,
         taxInvoiceDocDate: taxInvoiceRef?.docDate ?? null,
         ...(showsItemizedDetail
-          ? { quotationDocNo: quotationDetail?.quotationDocNo ?? null, quotationItems: quotationDetail?.items ?? null }
+          ? {
+              quotationDocNo: quotationDetail?.quotationDocNo ?? null,
+              quotationItems: quotationDetail?.items ?? null,
+              quotationExtraDiscountAmount: quotationDetail?.extraDiscountAmount ?? null,
+            }
           : {}),
       };
     }),

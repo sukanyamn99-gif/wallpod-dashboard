@@ -13,7 +13,7 @@ const IMAGE_BUCKET = "quotation-item-images";
 
 const HEADER_COLUMNS =
   "id, doc_no, quote_date, project_name, attn, customer_name, customer_address, customer_tel, customer_tax_id, " +
-  "job_number, po_number, delivery_date, price_validity, remark, payment_terms, pre_vat, vat, total, " +
+  "job_number, po_number, delivery_date, price_validity, remark, payment_terms, pre_vat, extra_discount_amount, vat, total, " +
   "sales_rep_id, status, quotation_type, converted_project_id, created_at, sales_reps(name)";
 
 type HeaderRow = {
@@ -33,6 +33,7 @@ type HeaderRow = {
   remark: string | null;
   payment_terms: QuotationPaymentTerm[];
   pre_vat: number;
+  extra_discount_amount: number;
   vat: number;
   total: number;
   sales_rep_id: string | null;
@@ -61,6 +62,7 @@ function mapHeader(row: HeaderRow): Quotation {
     remark: row.remark,
     paymentTerms: row.payment_terms ?? [],
     preVat: Number(row.pre_vat),
+    extraDiscountAmount: Number(row.extra_discount_amount),
     vat: Number(row.vat),
     total: Number(row.total),
     salesRepId: row.sales_rep_id,
@@ -293,7 +295,7 @@ export function normalizeJobNo(jobNo: string): string {
 
 export async function getQuotationItemsByJobNumbers(
   jobNumbers: string[],
-): Promise<Record<string, { quotationDocNo: string; items: QuotationItemDetail[] }>> {
+): Promise<Record<string, { quotationDocNo: string; items: QuotationItemDetail[]; extraDiscountAmount: number }>> {
   const uniqueJobNumbers = Array.from(new Set(jobNumbers.filter((j): j is string => !!j)));
   if (!isSupabaseConfigured() || uniqueJobNumbers.length === 0) return {};
   const wantedJobNos = new Set(uniqueJobNumbers.map(normalizeJobNo));
@@ -301,14 +303,17 @@ export async function getQuotationItemsByJobNumbers(
   const supabase = await createClient();
   const { data: quotes, error } = await supabase
     .from("quotations")
-    .select("id, doc_no, job_number, status, created_at")
+    .select("id, doc_no, job_number, status, created_at, extra_discount_amount")
     .not("job_number", "is", null);
   if (error) throw error;
 
   // Map from the ORIGINAL (un-normalized) job number as passed in, so the
   // result's keys still match what the caller looks up by.
   const originalByNormalized = new Map(uniqueJobNumbers.map((j) => [normalizeJobNo(j), j]));
-  const bestByJobNumber = new Map<string, { id: string; doc_no: string; status: string; created_at: string }>();
+  const bestByJobNumber = new Map<
+    string,
+    { id: string; doc_no: string; status: string; created_at: string; extra_discount_amount: number }
+  >();
   for (const q of quotes ?? []) {
     if (!q.job_number) continue;
     const normalized = normalizeJobNo(q.job_number);
@@ -331,9 +336,13 @@ export async function getQuotationItemsByJobNumbers(
   const quotationIds = Array.from(bestByJobNumber.values()).map((q) => q.id);
   const itemsByQuotationId = await fetchQuotationItemDetailsByIds(supabase, quotationIds);
 
-  const result: Record<string, { quotationDocNo: string; items: QuotationItemDetail[] }> = {};
+  const result: Record<string, { quotationDocNo: string; items: QuotationItemDetail[]; extraDiscountAmount: number }> = {};
   for (const [jobNo, q] of bestByJobNumber) {
-    result[jobNo] = { quotationDocNo: q.doc_no, items: itemsByQuotationId.get(q.id) ?? [] };
+    result[jobNo] = {
+      quotationDocNo: q.doc_no,
+      items: itemsByQuotationId.get(q.id) ?? [],
+      extraDiscountAmount: Number(q.extra_discount_amount),
+    };
   }
   return result;
 }
@@ -377,19 +386,26 @@ async function fetchQuotationItemDetailsByIds(
 // the exact quotation is already known.
 export async function getQuotationItemsByIds(
   quotationIds: string[],
-): Promise<Record<string, { quotationDocNo: string; items: QuotationItemDetail[] }>> {
+): Promise<Record<string, { quotationDocNo: string; items: QuotationItemDetail[]; extraDiscountAmount: number }>> {
   const uniqueIds = Array.from(new Set(quotationIds));
   if (!isSupabaseConfigured() || uniqueIds.length === 0) return {};
 
   const supabase = await createClient();
-  const { data: quotes, error } = await supabase.from("quotations").select("id, doc_no").in("id", uniqueIds);
+  const { data: quotes, error } = await supabase
+    .from("quotations")
+    .select("id, doc_no, extra_discount_amount")
+    .in("id", uniqueIds);
   if (error) throw error;
   if (!quotes || quotes.length === 0) return {};
 
   const itemsByQuotationId = await fetchQuotationItemDetailsByIds(supabase, uniqueIds);
-  const result: Record<string, { quotationDocNo: string; items: QuotationItemDetail[] }> = {};
+  const result: Record<string, { quotationDocNo: string; items: QuotationItemDetail[]; extraDiscountAmount: number }> = {};
   for (const q of quotes) {
-    result[q.id] = { quotationDocNo: q.doc_no, items: itemsByQuotationId.get(q.id) ?? [] };
+    result[q.id] = {
+      quotationDocNo: q.doc_no,
+      items: itemsByQuotationId.get(q.id) ?? [],
+      extraDiscountAmount: Number(q.extra_discount_amount),
+    };
   }
   return result;
 }

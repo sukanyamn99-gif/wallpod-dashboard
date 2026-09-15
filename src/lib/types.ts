@@ -823,6 +823,10 @@ export interface Quotation {
   remark: string | null;
   paymentTerms: QuotationPaymentTerm[];
   preVat: number;
+  // Document-level discount applied before VAT (on top of each item's own
+  // ส่วนลด %) — preVat above is already net of this; the raw pre-discount
+  // subtotal is preVat + extraDiscountAmount.
+  extraDiscountAmount: number;
   vat: number;
   total: number;
   salesRepId: string | null;
@@ -983,6 +987,11 @@ export interface BillingDocumentItem {
   // attempted (other doc types).
   quotationDocNo?: string | null;
   quotationItems?: QuotationItemDetail[] | null;
+  // The source quotation's own document-level Extra Discount/ส่วนลดพิเศษ —
+  // quotationItems above only carries raw (pre-discount) item totals, so
+  // this is needed to keep the itemized summary in sync with what the
+  // quotation itself actually charges after that discount.
+  quotationExtraDiscountAmount?: number | null;
   // A third source, alongside paymentId/quotationId: typed directly into
   // the document with no underlying invoice or quotation (e.g. a one-off
   // charge). Set together — all four or none.

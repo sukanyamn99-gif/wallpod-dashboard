@@ -21,6 +21,17 @@ function str(v: FormDataEntryValue | null): string | null {
   return s === "" ? null : s;
 }
 
+// Extra Discount / ส่วนลดพิเศษ is applied before VAT, on top of each item's
+// own ส่วนลด % — pre_vat ends up net of it, matching how it's already used
+// as a WALLPOD Project Sales item amount when a quotation is converted.
+function computeQuotationTotals(items: { totalPrice: number }[], extraDiscountAmount: number) {
+  const rawPreVat = items.reduce((sum, it) => sum + it.totalPrice, 0);
+  const preVat = Math.max(0, Math.round((rawPreVat - extraDiscountAmount) * 100) / 100);
+  const vat = Math.round(preVat * 0.07 * 100) / 100;
+  const grandTotal = Math.round((preVat + vat) * 100) / 100;
+  return { preVat, vat, grandTotal };
+}
+
 async function generateDocNo(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string> {
   const now = new Date();
   const yy = String(now.getFullYear() + 543 - 2500).padStart(2, "0");
@@ -133,6 +144,7 @@ function parseHeader(formData: FormData) {
     deliveryDate: str(formData.get("delivery_date")),
     priceValidity: str(formData.get("price_validity")),
     remark: str(formData.get("remark")),
+    extraDiscountAmount: num(formData.get("extra_discount_amount")),
     salesRepId: str(formData.get("sales_rep_id")),
     quotationType: (QUOTATION_TYPES as string[]).includes(String(formData.get("quotation_type")))
       ? (formData.get("quotation_type") as QuotationType)
@@ -203,9 +215,7 @@ export async function createQuotation(formData: FormData) {
   const items = parseItems(formData);
   if (items.length === 0) return { error: "กรุณาเพิ่มรายการสินค้าอย่างน้อย 1 รายการ" };
 
-  const preVat = items.reduce((sum, it) => sum + it.totalPrice, 0);
-  const vat = Math.round(preVat * 0.07 * 100) / 100;
-  const grandTotal = Math.round((preVat + vat) * 100) / 100;
+  const { preVat, vat, grandTotal } = computeQuotationTotals(items, header.extraDiscountAmount);
   const paymentTerms = parsePaymentTerms(formData, grandTotal);
 
   const supabase = await createClient();
@@ -232,7 +242,8 @@ export async function createQuotation(formData: FormData) {
       price_validity: header.priceValidity,
       remark: header.remark,
       payment_terms: paymentTerms,
-      pre_vat: Math.round(preVat * 100) / 100,
+      pre_vat: preVat,
+      extra_discount_amount: header.extraDiscountAmount,
       vat,
       sales_rep_id: header.salesRepId,
       quotation_type: header.quotationType,
@@ -288,9 +299,7 @@ export async function updateQuotation(id: string, formData: FormData) {
   const items = parseItems(formData);
   if (items.length === 0) return { error: "กรุณาเพิ่มรายการสินค้าอย่างน้อย 1 รายการ" };
 
-  const preVat = items.reduce((sum, it) => sum + it.totalPrice, 0);
-  const vat = Math.round(preVat * 0.07 * 100) / 100;
-  const grandTotal = Math.round((preVat + vat) * 100) / 100;
+  const { preVat, vat, grandTotal } = computeQuotationTotals(items, header.extraDiscountAmount);
   const paymentTerms = parsePaymentTerms(formData, grandTotal);
 
   const supabase = await createClient();
@@ -311,7 +320,8 @@ export async function updateQuotation(id: string, formData: FormData) {
       price_validity: header.priceValidity,
       remark: header.remark,
       payment_terms: paymentTerms,
-      pre_vat: Math.round(preVat * 100) / 100,
+      pre_vat: preVat,
+      extra_discount_amount: header.extraDiscountAmount,
       vat,
       sales_rep_id: header.salesRepId,
       quotation_type: header.quotationType,

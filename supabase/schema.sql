@@ -1277,6 +1277,12 @@ create table quotations (
   pre_vat numeric(14,2) not null default 0,
   vat numeric(14,2) not null default 0,
   total numeric(14,2) generated always as (pre_vat + vat) stored,
+  -- Extra Discount / ส่วนลดพิเศษ — a document-level discount applied before
+  -- VAT, on top of each item's own ส่วนลด %. pre_vat above already stores
+  -- the taxable base net of this discount; this column is kept only so the
+  -- raw (pre-discount) subtotal and the discount itself can still be shown
+  -- separately on the form/print view.
+  extra_discount_amount numeric(14,2) not null default 0,
   sales_rep_id uuid references sales_reps(id),
   status text not null default 'รอตอบรับ' check (status in ('รอตอบรับ', 'ลูกค้าตอบตกลง', 'ปฏิเสธ')),
   -- Set whenever status transitions to ลูกค้าตอบตกลง (see
