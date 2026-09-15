@@ -261,7 +261,13 @@ export function BillingDocumentForm({
     try {
       const [rows, billableQuotations, billableTaxInvoices, billableBillingNoteItems] = await Promise.all([
         fetchUnbilledInvoices(id),
-        usesTaxInvoiceSource ? Promise.resolve([]) : fetchBillableQuotations(name),
+        // The "accepted quotations not yet a real job" picker is hidden in
+        // create mode for every doc type now (previously shown only for
+        // tax_invoice) — per feedback, billing should always go through a
+        // real WALLPOD Project Sales invoice. Edit mode still fetches it
+        // separately (see the effect below) so an already-saved
+        // quotation-sourced line doesn't silently disappear on save.
+        Promise.resolve([]),
         usesTaxInvoiceSource ? fetchBillableTaxInvoices(id, docType as "billing_note" | "receipt") : Promise.resolve([]),
         usesTaxInvoiceSource ? fetchBillableBillingNoteItems(id, docType as "billing_note" | "receipt") : Promise.resolve([]),
       ]);
