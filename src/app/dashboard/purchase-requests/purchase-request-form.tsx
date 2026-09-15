@@ -52,48 +52,56 @@ interface SelectedItem {
 
 let nextKey = 1;
 
-// The ชื่อสินค้า cell for one row — typing suggests matching Stock Product
-// catalog entries (same "existing item" list the old top search box drew
-// from); picking one fills sku/unit/stockProductId too, but typing anything
-// that doesn't match just stays a free-text item (the same fallback the
-// catalog-only rest of this app doesn't otherwise need — see SelectedItem's
-// own comment on why).
-function ItemNameCell({
+// Either the รหัสสินค้า or ชื่อสินค้า cell for one row — both search the same
+// Stock Product catalog (by sku or name, whichever the user is actually
+// typing into), so a real item can be found by either field. Picking a
+// suggestion fills sku/name/unit/stockProductId together regardless of
+// which field triggered it; typing something with no match just stays a
+// free-text item in whichever field(s) the user actually typed into (see
+// SelectedItem's own comment on why that's needed at all).
+function ItemSearchCell({
   item,
+  field,
   stockProducts,
   onUpdate,
+  placeholder,
+  className,
 }: {
   item: SelectedItem;
+  field: "name" | "sku";
   stockProducts: StockProduct[];
   onUpdate: (patch: Partial<SelectedItem>) => void;
+  placeholder: string;
+  className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const value = item[field];
 
   const suggestions = useMemo(() => {
-    const q = item.name.trim().toLowerCase();
+    const q = value.trim().toLowerCase();
     if (!q) return [];
     return stockProducts
       .filter((p) => (p.sku ?? "").toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
       .slice(0, 8);
-  }, [item.name, stockProducts]);
+  }, [value, stockProducts]);
 
   return (
-    <div className="relative min-w-[160px]">
+    <div className="relative min-w-[140px]">
       <Input
-        value={item.name}
+        value={value}
         onChange={(e) => {
-          // Typing away from a previously-matched product turns this back
-          // into a free-text row — same "no longer bound to that catalog
-          // entry" rule the top-level search-and-add used to enforce by
-          // only ever adding a fresh row per pick.
-          onUpdate({ name: e.target.value, stockProductId: null, sku: "" });
+          // Editing either field by hand detaches this row from whatever
+          // catalog entry it was matched to — the OTHER field's own typed
+          // text is left alone, so someone can type a custom name and a
+          // custom code independently for a real free-text item.
+          onUpdate({ [field]: e.target.value, stockProductId: null } as Partial<SelectedItem>);
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
-        placeholder="พิมพ์ชื่อหรือรหัสสินค้า..."
+        placeholder={placeholder}
         autoComplete="off"
-        className="text-sm font-medium"
+        className={className}
       />
       {open && suggestions.length > 0 && (
         <ul className="absolute z-10 mt-1 w-64 overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-md">
@@ -315,16 +323,25 @@ export function PurchaseRequestForm({
                 <TableBody>
                   {items.map((it) => (
                     <TableRow key={it.key}>
-                      <TableCell className="whitespace-nowrap">
-                        {it.sku ||
-                          (it.stockProductId
-                            ? "—"
-                            : it.name.trim() && (
-                                <span className="text-xs text-muted-foreground">ยังไม่มีในระบบสินค้า</span>
-                              ))}
+                      <TableCell>
+                        <ItemSearchCell
+                          item={it}
+                          field="sku"
+                          stockProducts={stockProducts}
+                          onUpdate={(patch) => updateItem(it.key, patch)}
+                          placeholder="รหัสสินค้า"
+                          className="text-sm"
+                        />
                       </TableCell>
                       <TableCell>
-                        <ItemNameCell item={it} stockProducts={stockProducts} onUpdate={(patch) => updateItem(it.key, patch)} />
+                        <ItemSearchCell
+                          item={it}
+                          field="name"
+                          stockProducts={stockProducts}
+                          onUpdate={(patch) => updateItem(it.key, patch)}
+                          placeholder="ชื่อสินค้า"
+                          className="text-sm font-medium"
+                        />
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
