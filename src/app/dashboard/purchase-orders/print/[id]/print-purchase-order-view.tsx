@@ -49,7 +49,7 @@ export function PrintPurchaseOrderView({ order }: { order: PurchaseOrder }) {
         <DownloadPdfButton />
       </div>
 
-      <div className="text-[12px] leading-tight">
+      <div className="flex min-h-[277mm] flex-col text-[12px] leading-tight">
         {/* Header */}
         <div className="flex items-start justify-between border-b-2 border-black pb-3">
           <div>
@@ -218,8 +218,10 @@ export function PrintPurchaseOrderView({ order }: { order: PurchaseOrder }) {
           </div>
         </div>
 
-        {/* Signatures */}
-        <div className="mt-10 grid grid-cols-2 gap-8 text-center">
+        {/* Signatures — mt-auto pushes this to the bottom of the page
+            (the wrapper above is a min-h-[277mm] flex column) instead of
+            sitting right under the summary when the content is short. */}
+        <div className="mt-auto grid grid-cols-2 gap-8 pt-10 text-center">
           <div>
             <p>ลงชื่อ_______________________ผู้ขาย</p>
             <p className="mt-1">({order.supplierName ?? "_______________________"})</p>
