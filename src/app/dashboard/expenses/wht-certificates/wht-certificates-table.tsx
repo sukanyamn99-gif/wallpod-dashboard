@@ -2,7 +2,7 @@
 
 import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
-import { Pencil, Printer } from "lucide-react";
+import { Copy, Pencil, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MultiSelectFilter } from "@/components/dashboard/multi-select-filter";
@@ -161,6 +161,15 @@ export function WhtCertificatesTable({ vouchers }: { vouchers: VoucherRow[] }) {
                           title="แก้ไขข้อมูล (ที่ Payment Voucher)"
                         >
                           <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="icon-sm"
+                          variant="outline"
+                          nativeButton={false}
+                          render={<Link href={`/dashboard/expenses/payment-vouchers/new?copyFrom=${v.id}`} />}
+                          title="คัดลอกเพื่อสร้างใบใหม่"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </TableCell>
