@@ -863,7 +863,10 @@ export function BillingDocumentForm({
       </div>
 
       <div className="space-y-4">
-        {receiptKind !== "other" && (
+        {/* ใบเสร็จรับเงิน is deliberately excluded — per feedback, a receipt
+            should only ever collect against a real ใบกำกับภาษี, never
+            directly against a raw ใบแจ้งหนี้/unbilled payment record. */}
+        {docType !== "receipt" && (
         <div className="space-y-2">
           <Label>รายการใบแจ้งหนี้ที่ยังไม่ได้ชำระ</Label>
           {!customerId ? (

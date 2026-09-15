@@ -80,9 +80,12 @@ export async function getBillableTaxInvoicesForCustomer(
 
   // ใบวางบิล is deliberately never a source here (for either target) — per
   // feedback, ใบเสร็จรับเงิน's "ใบกำกับภาษี/ใบวางบิลที่ยังไม่ได้ออกใบเสร็จ"
-  // picker should only ever surface ใบกำกับภาษี/ใบแจ้งหนี้ items, not a
-  // previously-issued ใบวางบิล's own quotation-sourced line.
-  const sourceDocTypes = ["tax_invoice", "invoice"];
+  // picker should only ever surface ใบกำกับภาษี items, not a
+  // previously-issued ใบวางบิล's own quotation-sourced line. ใบแจ้งหนี้ is
+  // also excluded for receipts specifically (a receipt should only ever
+  // collect against a real ใบกำกับภาษี), but still a valid source for a new
+  // ใบวางบิล, which can be billed straight off an unconverted ใบแจ้งหนี้.
+  const sourceDocTypes = targetDocType === "receipt" ? ["tax_invoice"] : ["tax_invoice", "invoice"];
   const { data: invoices, error } = await supabase
     .from("billing_notes")
     .select(
@@ -154,9 +157,10 @@ export async function getBillableBillingNoteItemsForCustomer(
 
   // ใบวางบิล is deliberately never a source here (for either target) — per
   // feedback, ใบเสร็จรับเงิน's "ใบกำกับภาษี/ใบวางบิลที่ยังไม่ได้ออกใบเสร็จ"
-  // picker should only ever surface ใบกำกับภาษี/ใบแจ้งหนี้ items, not a
-  // previously-issued ใบวางบิล's own manual lines.
-  const sourceDocTypes = ["tax_invoice", "invoice"];
+  // picker should only ever surface ใบกำกับภาษี items, not a
+  // previously-issued ใบวางบิล's own manual lines. ใบแจ้งหนี้ is also
+  // excluded for receipts specifically — see getBillableTaxInvoicesForCustomer.
+  const sourceDocTypes = targetDocType === "receipt" ? ["tax_invoice"] : ["tax_invoice", "invoice"];
   const { data: notes, error } = await supabase
     .from("billing_notes")
     .select(
