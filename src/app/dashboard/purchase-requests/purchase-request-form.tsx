@@ -1,9 +1,9 @@
 "use client";
 
-import { useActionState, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, useActionState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Package, Settings2, X } from "lucide-react";
+import { Package, Plus, Settings2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { JobNoSelect } from "@/components/dashboard/job-no-select";
-import { formatNumber, formatTHB } from "@/lib/format";
+import { formatTHB } from "@/lib/format";
 import { createPurchaseRequest } from "./actions";
 import type { Department, StockProduct, Supplier } from "@/lib/types";
 import type { JobLookupEntry } from "@/lib/data/reference";
@@ -52,6 +52,72 @@ interface SelectedItem {
 
 let nextKey = 1;
 
+// The ชื่อสินค้า cell for one row — typing suggests matching Stock Product
+// catalog entries (same "existing item" list the old top search box drew
+// from); picking one fills sku/unit/stockProductId too, but typing anything
+// that doesn't match just stays a free-text item (the same fallback the
+// catalog-only rest of this app doesn't otherwise need — see SelectedItem's
+// own comment on why).
+function ItemNameCell({
+  item,
+  stockProducts,
+  onUpdate,
+}: {
+  item: SelectedItem;
+  stockProducts: StockProduct[];
+  onUpdate: (patch: Partial<SelectedItem>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const suggestions = useMemo(() => {
+    const q = item.name.trim().toLowerCase();
+    if (!q) return [];
+    return stockProducts
+      .filter((p) => (p.sku ?? "").toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [item.name, stockProducts]);
+
+  return (
+    <div className="relative min-w-[160px]">
+      <Input
+        value={item.name}
+        onChange={(e) => {
+          // Typing away from a previously-matched product turns this back
+          // into a free-text row — same "no longer bound to that catalog
+          // entry" rule the top-level search-and-add used to enforce by
+          // only ever adding a fresh row per pick.
+          onUpdate({ name: e.target.value, stockProductId: null, sku: "" });
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        placeholder="พิมพ์ชื่อหรือรหัสสินค้า..."
+        autoComplete="off"
+        className="text-sm font-medium"
+      />
+      {open && suggestions.length > 0 && (
+        <ul className="absolute z-10 mt-1 w-64 overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-md">
+          {suggestions.map((p) => (
+            <li key={p.id}>
+              <button
+                type="button"
+                className="block w-full px-2.5 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onUpdate({ name: p.name, sku: p.sku ?? "", unit: p.unit, stockProductId: p.id });
+                  setOpen(false);
+                }}
+              >
+                {p.sku ?? "—"} — {p.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function PurchaseRequestForm({
   departments,
   stockProducts,
@@ -70,8 +136,6 @@ export function PurchaseRequestForm({
   const [projectName, setProjectName] = useState("");
   const [supplierId, setSupplierId] = useState("");
   const [items, setItems] = useState<SelectedItem[]>([]);
-  const [query, setQuery] = useState("");
-  const [searchOpen, setSearchOpen] = useState(false);
   const [, startTransition] = useTransition();
 
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
@@ -88,46 +152,19 @@ export function PurchaseRequestForm({
     if (match) setProjectName(match.projectName);
   }
 
-  const searchResults = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return [];
-    return stockProducts
-      .filter((p) => (p.sku ?? "").toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
-      .slice(0, 8);
-  }, [query, stockProducts]);
-
-  function addItem(product: StockProduct) {
-    setItems((prev) => {
-      if (prev.some((it) => it.stockProductId === product.id)) return prev;
-      return [
-        ...prev,
-        {
-          key: nextKey++,
-          stockProductId: product.id,
-          sku: product.sku ?? "",
-          name: product.name,
-          unit: product.unit,
-          quantity: 1,
-          unitPrice: 0,
-        },
-      ];
-    });
-  }
-
-  // No catalog match — add whatever was typed as a free-text description
-  // instead (matches the real paper form, which just has one description
-  // column, not a SKU lookup).
-  function addManualItem(description: string) {
-    const name = description.trim();
-    if (!name) return;
+  // A blank row the user fills in directly (name/quantity/price all inline)
+  // — no separate search-then-add step. Typing a name still suggests
+  // existing Stock Product entries via ItemNameCell, exactly like before;
+  // this just changes how a row gets created in the first place.
+  function addBlankItem() {
     setItems((prev) => [
       ...prev,
-      { key: nextKey++, stockProductId: null, sku: "", name, unit: "ชิ้น", quantity: 1, unitPrice: 0 },
+      { key: nextKey++, stockProductId: null, sku: "", name: "", unit: "ชิ้น", quantity: 1, unitPrice: 0 },
     ]);
   }
 
-  function updateItem(key: number, field: "quantity" | "unitPrice" | "unit", value: string | number) {
-    setItems((prev) => prev.map((it) => (it.key === key ? { ...it, [field]: value } : it)));
+  function updateItem(key: number, patch: Partial<SelectedItem>) {
+    setItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...patch } : it)));
   }
 
   function removeItem(key: number) {
@@ -249,66 +286,18 @@ export function PurchaseRequestForm({
       {/* Right column */}
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="product_search">เพิ่มรายการสินค้า</Label>
-          <div className="relative">
-            <Input
-              id="product_search"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setSearchOpen(true);
-              }}
-              onFocus={() => setSearchOpen(true)}
-              onBlur={() => setSearchOpen(false)}
-              placeholder="ค้นหาจากรหัสสินค้าหรือชื่อ หรือพิมพ์รายการใหม่..."
-              autoComplete="off"
-            />
-            {searchOpen && (searchResults.length > 0 || query.trim()) && (
-              <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-md">
-                {searchResults.map((p) => (
-                  <li key={p.id}>
-                    <button
-                      type="button"
-                      className="block w-full px-2.5 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        addItem(p);
-                        setQuery("");
-                        setSearchOpen(false);
-                      }}
-                    >
-                      {p.sku ?? "—"} — {p.name} (คงเหลือ {formatNumber(p.quantityOnHand)} {p.unit})
-                    </button>
-                  </li>
-                ))}
-                {query.trim() && (
-                  <li>
-                    <button
-                      type="button"
-                      className="block w-full border-t px-2.5 py-1.5 text-left text-sm text-primary hover:bg-accent"
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        addManualItem(query);
-                        setQuery("");
-                        setSearchOpen(false);
-                      }}
-                    >
-                      + เพิ่ม &quot;{query.trim()}&quot; เป็นรายการใหม่ (ยังไม่มีในระบบสินค้า)
-                    </button>
-                  </li>
-                )}
-              </ul>
-            )}
+          <div className="flex items-center justify-between">
+            <Label>รายการที่ขอซื้อ</Label>
+            <Button type="button" variant="outline" size="sm" onClick={addBlankItem}>
+              <Plus className="h-4 w-4" />
+              เพิ่มรายการ
+            </Button>
           </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label>รายการที่ขอซื้อ</Label>
           {items.length === 0 ? (
             <div className="rounded-lg border border-dashed p-8 text-center">
               <Package className="mx-auto h-8 w-8 text-muted-foreground" />
               <p className="mt-2 text-sm text-muted-foreground">ยังไม่มีรายการสินค้า</p>
-              <p className="text-xs text-muted-foreground">ค้นหาสินค้าจากด้านบน</p>
+              <p className="text-xs text-muted-foreground">กด &quot;เพิ่มรายการ&quot; ด้านบนเพื่อเริ่มกรอก</p>
             </div>
           ) : (
             <div className="overflow-x-auto rounded-lg border">
@@ -327,21 +316,28 @@ export function PurchaseRequestForm({
                   {items.map((it) => (
                     <TableRow key={it.key}>
                       <TableCell className="whitespace-nowrap">
-                        {it.sku || (it.stockProductId ? "—" : <span className="text-xs text-muted-foreground">ยังไม่มีในระบบสินค้า</span>)}
+                        {it.sku ||
+                          (it.stockProductId
+                            ? "—"
+                            : it.name.trim() && (
+                                <span className="text-xs text-muted-foreground">ยังไม่มีในระบบสินค้า</span>
+                              ))}
                       </TableCell>
-                      <TableCell className="min-w-[140px] text-sm font-medium">{it.name}</TableCell>
+                      <TableCell>
+                        <ItemNameCell item={it} stockProducts={stockProducts} onUpdate={(patch) => updateItem(it.key, patch)} />
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <NumberInput
                             min={0.01}
                             step={0.01}
                             value={it.quantity}
-                            onChange={(v) => updateItem(it.key, "quantity", Number(v))}
+                            onChange={(v) => updateItem(it.key, { quantity: Number(v) })}
                             className="w-20"
                           />
                           <Input
                             value={it.unit}
-                            onChange={(e) => updateItem(it.key, "unit", e.target.value)}
+                            onChange={(e) => updateItem(it.key, { unit: e.target.value })}
                             className="w-14 px-1 text-xs"
                           />
                         </div>
@@ -351,7 +347,7 @@ export function PurchaseRequestForm({
                           min={0}
                           step={0.01}
                           value={it.unitPrice}
-                          onChange={(v) => updateItem(it.key, "unitPrice", Number(v))}
+                          onChange={(v) => updateItem(it.key, { unitPrice: Number(v) })}
                           className="w-24"
                         />
                       </TableCell>
