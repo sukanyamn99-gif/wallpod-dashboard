@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Leelawadee UI", "Noto Sans Thai", Roboto,
+  --font-sans: var(--font-noto-sans-thai), -apple-system, BlinkMacSystemFont, "Segoe UI", "Leelawadee UI", Roboto,
     Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --font-heading: var(--font-sans);
