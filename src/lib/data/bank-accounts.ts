@@ -78,7 +78,14 @@ async function getVoucherOutflows(
   const { data, error } = await supabase
     .from("payment_vouchers")
     .select("id, doc_no, voucher_date, bank_transfer_date, payee_name, amount, wht_amount")
-    .eq("payment_method", "โอนเงิน");
+    .eq("payment_method", "โอนเงิน")
+    // A voucher can be written up before the money actually moves (e.g.
+    // prepared ahead of payday) — bank_transfer_date is when it really
+    // left. Without a transfer date yet, no money has left the account,
+    // so it must not count as an outflow at all — previously this fell
+    // back to voucher_date, which deducted the balance for a transfer
+    // that hadn't happened yet.
+    .not("bank_transfer_date", "is", null);
   if (error) throw error;
 
   return (data ?? []).map((row) => ({
@@ -87,11 +94,7 @@ async function getVoucherOutflows(
     // this bank transfer — same net-paid convention as the voucher's own
     // print view (netPaid = amount - whtAmount).
     amount: Number(row.amount) - Number(row.wht_amount),
-    // The date money actually left — voucher_date is only when the
-    // document was written up, which can predate the real transfer (e.g. a
-    // voucher prepared ahead of payday). Falls back to voucher_date for the
-    // rare row missing วันที่โอน rather than having no date at all.
-    date: row.bank_transfer_date ?? row.voucher_date,
+    date: row.bank_transfer_date as string,
     docNo: row.doc_no,
     description: row.payee_name,
   }));
