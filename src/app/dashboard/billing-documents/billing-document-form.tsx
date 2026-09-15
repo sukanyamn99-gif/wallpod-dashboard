@@ -874,7 +874,7 @@ export function BillingDocumentForm({
               <p className="mt-2 text-sm text-muted-foreground">
                 ลูกค้ารายนี้ไม่มีใบแจ้งหนี้ค้างชำระ
                 {quotations.length > 0 && " — เลือกจากใบเสนอราคาด้านล่างแทนได้"}
-                {usesTaxInvoiceSource && taxInvoices.length > 0 && (docType === "receipt" ? " — เลือกจากใบกำกับภาษี/ใบวางบิลด้านล่างแทนได้" : " — เลือกจากใบกำกับภาษีด้านล่างแทนได้")}
+                {usesTaxInvoiceSource && taxInvoices.length > 0 && " — เลือกจากใบกำกับภาษีด้านล่างแทนได้"}
               </p>
             </div>
           ) : (
@@ -981,12 +981,10 @@ export function BillingDocumentForm({
 
         {usesTaxInvoiceSource && customerId && !loadingInvoices && receiptKind !== "other" && (
           <div className="space-y-2">
-            <Label>
-              {docType === "receipt" ? "ใบกำกับภาษี/ใบวางบิลที่ยังไม่ได้ออกใบเสร็จ" : "ใบกำกับภาษีที่ยังไม่ได้วางบิล"}
-            </Label>
+            <Label>{docType === "receipt" ? "ใบกำกับภาษีที่ยังไม่ได้ออกใบเสร็จ" : "ใบกำกับภาษีที่ยังไม่ได้วางบิล"}</Label>
             <p className="text-xs text-muted-foreground">
               {docType === "receipt"
-                ? "เลือกใบกำกับภาษีหรือใบวางบิลที่ต้องการออกใบเสร็จโดยตรง"
+                ? "เลือกใบกำกับภาษีที่ต้องการออกใบเสร็จโดยตรง"
                 : "เลือกใบกำกับภาษีที่ต้องการวางบิลโดยตรง"}
             </p>
             {taxInvoices.length === 0 && billingNoteItems.length === 0 ? (
@@ -994,7 +992,7 @@ export function BillingDocumentForm({
                 <Package className="mx-auto h-8 w-8 text-muted-foreground" />
                 <p className="mt-2 text-sm text-muted-foreground">
                   {docType === "receipt"
-                    ? "ลูกค้ารายนี้ไม่มีใบกำกับภาษีหรือใบวางบิลที่ยังไม่ได้ออกใบเสร็จ"
+                    ? "ลูกค้ารายนี้ไม่มีใบกำกับภาษีที่ยังไม่ได้ออกใบเสร็จ"
                     : "ลูกค้ารายนี้ไม่มีใบกำกับภาษีที่ยังไม่ได้วางบิล"}
                 </p>
               </div>

@@ -78,8 +78,11 @@ export async function getBillableTaxInvoicesForCustomer(
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
 
-  const sourceDocTypes =
-    targetDocType === "receipt" ? ["tax_invoice", "billing_note", "invoice"] : ["tax_invoice", "invoice"];
+  // ใบวางบิล is deliberately never a source here (for either target) — per
+  // feedback, ใบเสร็จรับเงิน's "ใบกำกับภาษี/ใบวางบิลที่ยังไม่ได้ออกใบเสร็จ"
+  // picker should only ever surface ใบกำกับภาษี/ใบแจ้งหนี้ items, not a
+  // previously-issued ใบวางบิล's own quotation-sourced line.
+  const sourceDocTypes = ["tax_invoice", "invoice"];
   const { data: invoices, error } = await supabase
     .from("billing_notes")
     .select(
@@ -149,8 +152,11 @@ export async function getBillableBillingNoteItemsForCustomer(
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
 
-  const sourceDocTypes =
-    targetDocType === "receipt" ? ["tax_invoice", "billing_note", "invoice"] : ["tax_invoice", "invoice"];
+  // ใบวางบิล is deliberately never a source here (for either target) — per
+  // feedback, ใบเสร็จรับเงิน's "ใบกำกับภาษี/ใบวางบิลที่ยังไม่ได้ออกใบเสร็จ"
+  // picker should only ever surface ใบกำกับภาษี/ใบแจ้งหนี้ items, not a
+  // previously-issued ใบวางบิล's own manual lines.
+  const sourceDocTypes = ["tax_invoice", "invoice"];
   const { data: notes, error } = await supabase
     .from("billing_notes")
     .select(
