@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Eye, Trash2, X } from "lucide-react";
+import { Check, Eye, Printer, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -134,6 +134,14 @@ export function PurchaseOrdersTable({
                   <div className="flex gap-1">
                     <Button size="icon-sm" variant="outline" nativeButton={false} render={<Link href={`/dashboard/purchase-orders/view/${o.id}`} />}>
                       <Eye className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="icon-sm"
+                      variant="outline"
+                      nativeButton={false}
+                      render={<Link href={`/dashboard/purchase-orders/print/${o.id}`} target="_blank" />}
+                    >
+                      <Printer className="h-3.5 w-3.5" />
                     </Button>
                     {canDelete(currentProfile, o) && <DeleteButton order={o} />}
                   </div>

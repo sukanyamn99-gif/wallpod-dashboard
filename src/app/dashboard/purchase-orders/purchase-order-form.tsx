@@ -64,6 +64,10 @@ export function PurchaseOrderForm({
   const [supplierId, setSupplierId] = useState(
     () => approvedRequests.find((r) => r.id === preselectedRequestId)?.supplierId ?? "",
   );
+  const [todayMs] = useState(() => Date.now());
+  const [creditDays, setCreditDays] = useState("30");
+  const [discountAmount, setDiscountAmount] = useState("");
+  const [whtPercent, setWhtPercent] = useState("");
   const [items, setItems] = useState<SelectedItem[]>(() => {
     const pr = approvedRequests.find((r) => r.id === preselectedRequestId);
     if (!pr) return [];
@@ -121,6 +125,12 @@ export function PurchaseOrderForm({
   }
 
   const totalAmount = items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0);
+  const discountValue = Number(discountAmount) || 0;
+  const afterDiscount = Math.max(0, totalAmount - discountValue);
+  const vat = Math.round(afterDiscount * 0.07 * 100) / 100;
+  const whtValue = Number(whtPercent) || 0;
+  const whtAmount = Math.round(afterDiscount * (whtValue / 100) * 100) / 100;
+  const netPayable = Math.round((afterDiscount + vat - whtAmount) * 100) / 100;
 
   return (
     <form
@@ -129,6 +139,9 @@ export function PurchaseOrderForm({
       onSubmit={(e) => {
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
+        fd.set("credit_days", creditDays || "0");
+        fd.set("discount_amount", discountAmount || "0");
+        fd.set("wht_percent", whtPercent || "0");
         for (const it of items) {
           fd.append("item_product_id", it.stockProductId ?? "");
           fd.append("item_name", it.name);
@@ -201,14 +214,60 @@ export function PurchaseOrderForm({
           <DateInput id="expected_date" name="expected_date" />
         </div>
 
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label htmlFor="credit_days">เครดิต (วัน)</Label>
+            <NumberInput id="credit_days" value={creditDays} onChange={setCreditDays} min={0} />
+          </div>
+          <div className="space-y-2">
+            <Label>ครบกำหนด</Label>
+            <p className="flex h-8 items-center text-sm text-muted-foreground">
+              {new Date(todayMs + (Number(creditDays) || 0) * 86400000).toLocaleDateString("th-TH")}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label htmlFor="discount_amount">ส่วนลด (บาท)</Label>
+            <NumberInput id="discount_amount" value={discountAmount} onChange={setDiscountAmount} min={0} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="wht_percent">หัก ณ ที่จ่าย (%)</Label>
+            <NumberInput id="wht_percent" value={whtPercent} onChange={setWhtPercent} min={0} />
+          </div>
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="note">หมายเหตุ</Label>
           <Textarea id="note" name="note" placeholder="เงื่อนไขการสั่งซื้อ, ข้อมูลเพิ่มเติม..." />
         </div>
 
-        <div className="rounded-lg border p-3 text-sm">
-          <p className="text-muted-foreground">มูลค่ารวม</p>
-          <p className="text-lg font-semibold">{formatTHB(totalAmount)}</p>
+        <div className="space-y-1 rounded-lg border p-3 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">รวมเป็นเงิน</span>
+            <span>{formatTHB(totalAmount)}</span>
+          </div>
+          {discountValue > 0 && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">หักส่วนลด</span>
+              <span>-{formatTHB(discountValue)}</span>
+            </div>
+          )}
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">ภาษีมูลค่าเพิ่ม 7%</span>
+            <span>{formatTHB(vat)}</span>
+          </div>
+          {whtValue > 0 && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">หัก ณ ที่จ่าย {whtValue}%</span>
+              <span>-{formatTHB(whtAmount)}</span>
+            </div>
+          )}
+          <div className="flex justify-between border-t pt-1 text-base font-semibold">
+            <span>ยอดชำระ</span>
+            <span>{formatTHB(netPayable)}</span>
+          </div>
         </div>
       </div>
 

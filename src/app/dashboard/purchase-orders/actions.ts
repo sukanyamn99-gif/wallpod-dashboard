@@ -47,6 +47,9 @@ export async function createPurchaseOrder(formData: FormData) {
   const supplierId = str(formData.get("supplier_id"));
   const expectedDate = str(formData.get("expected_date"));
   const note = str(formData.get("note"));
+  const creditDays = num(formData.get("credit_days"));
+  const discountAmount = num(formData.get("discount_amount"));
+  const whtPercent = num(formData.get("wht_percent"));
 
   const itemIds = formData.getAll("item_product_id");
   const itemNames = formData.getAll("item_name");
@@ -85,6 +88,9 @@ export async function createPurchaseOrder(formData: FormData) {
       ordered_by: user?.id ?? null,
       expected_date: expectedDate,
       note,
+      credit_days: creditDays,
+      discount_amount: discountAmount,
+      wht_percent: whtPercent,
     })
     .select("id")
     .single();

@@ -3,7 +3,8 @@ import type { PurchaseOrder, PurchaseOrderItem, PurchaseOrderReceivingStatus } f
 
 const HEADER_COLUMNS =
   "id, doc_no, request_id, supplier_id, order_date, ordered_by, expected_date, note, created_at, " +
-  "purchase_requests(doc_no), suppliers(name), profiles(full_name)";
+  "credit_days, discount_amount, wht_percent, " +
+  "purchase_requests(doc_no), suppliers(name, address, tax_id, branch), profiles(full_name)";
 
 type HeaderRow = {
   id: string;
@@ -15,10 +16,19 @@ type HeaderRow = {
   expected_date: string | null;
   note: string | null;
   created_at: string;
+  credit_days: number;
+  discount_amount: number | string;
+  wht_percent: number | string;
   purchase_requests: { doc_no: string } | null;
-  suppliers: { name: string } | null;
+  suppliers: { name: string; address: string | null; tax_id: string | null; branch: string | null } | null;
   profiles: { full_name: string } | null;
 };
+
+function addDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 type ItemRow = {
   id: string;
@@ -94,6 +104,9 @@ function mapHeader(row: HeaderRow, items: PurchaseOrderItem[]): PurchaseOrder {
     requestDocNo: row.purchase_requests?.doc_no ?? "",
     supplierId: row.supplier_id,
     supplierName: row.suppliers?.name ?? null,
+    supplierAddress: row.suppliers?.address ?? null,
+    supplierTaxId: row.suppliers?.tax_id ?? null,
+    supplierBranch: row.suppliers?.branch ?? null,
     orderDate: row.order_date,
     orderedById: row.ordered_by,
     orderedByName: row.profiles?.full_name ?? "",
@@ -103,6 +116,10 @@ function mapHeader(row: HeaderRow, items: PurchaseOrderItem[]): PurchaseOrder {
     items,
     totalAmount: items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0),
     receivingStatus: receivingStatusOf(items),
+    creditDays: row.credit_days,
+    dueDate: addDays(row.order_date, row.credit_days),
+    discountAmount: Number(row.discount_amount),
+    whtPercent: Number(row.wht_percent),
   };
 }
 

@@ -472,6 +472,9 @@ export interface PurchaseOrder {
   requestDocNo: string;
   supplierId: string | null;
   supplierName: string | null;
+  supplierAddress: string | null;
+  supplierTaxId: string | null;
+  supplierBranch: string | null;
   orderDate: string;
   orderedById: string | null;
   orderedByName: string;
@@ -481,6 +484,12 @@ export interface PurchaseOrder {
   items: PurchaseOrderItem[];
   totalAmount: number;
   receivingStatus: PurchaseOrderReceivingStatus;
+  // Print-related fields — dueDate is derived (orderDate + creditDays), not
+  // stored, same "derive, don't sync" convention as receivedQuantity above.
+  creditDays: number;
+  dueDate: string;
+  discountAmount: number;
+  whtPercent: number;
 }
 
 export interface PurchaseOrderReceiptItem {

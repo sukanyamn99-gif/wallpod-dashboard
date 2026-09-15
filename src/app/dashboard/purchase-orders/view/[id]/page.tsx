@@ -43,10 +43,22 @@ export default async function PurchaseOrderDetailPage({ params }: { params: Prom
             </Link>
           </p>
         </div>
-        {order && order.receivingStatus !== "รับครบแล้ว" && (
-          <Button size="sm" nativeButton={false} render={<Link href={`/dashboard/purchase-order-receipts/new?orderId=${id}`} />}>
-            รับสินค้าตามใบสั่งซื้อนี้
-          </Button>
+        {order && (
+          <div className="flex items-start gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              nativeButton={false}
+              render={<Link href={`/dashboard/purchase-orders/print/${id}`} target="_blank" />}
+            >
+              พิมพ์
+            </Button>
+            {order.receivingStatus !== "รับครบแล้ว" && (
+              <Button size="sm" nativeButton={false} render={<Link href={`/dashboard/purchase-order-receipts/new?orderId=${id}`} />}>
+                รับสินค้าตามใบสั่งซื้อนี้
+              </Button>
+            )}
+          </div>
         )}
       </div>
 

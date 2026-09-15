@@ -1685,7 +1685,12 @@ create table purchase_orders (
   ordered_by uuid references profiles(id),
   expected_date date,
   note text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- Fields needed to print a formal ใบสั่งซื้อ document — due date is
+  -- computed on read as order_date + credit_days, not stored.
+  credit_days integer not null default 30,
+  discount_amount numeric(14,2) not null default 0,
+  wht_percent numeric(5,2) not null default 0
 );
 
 create table purchase_order_items (
