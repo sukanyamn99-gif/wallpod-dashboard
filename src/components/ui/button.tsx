@@ -26,10 +26,19 @@ const buttonVariants = cva(
         sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
         lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
         icon: "size-8",
+        // icon-xs/icon-sm stay their existing visual size (desktop density
+        // is unchanged) but get an invisible ::after hit-area extending 2px
+        // past each edge — the most that fits without overlapping an
+        // adjacent icon button in the row-action groups these are used in
+        // everywhere (gap-1 = 4px between buttons, so 2px + 2px meets
+        // exactly at the midpoint). Real tap targets are ~24-32px today,
+        // under the ~44px guideline, and used in tight clusters (Edit/
+        // Delete/Print/Copy per table row) — this narrows that gap without
+        // risking mis-taps between neighbors.
         "icon-xs":
-          "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
+          "relative size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3 after:absolute after:-inset-0.5 after:content-['']",
         "icon-sm":
-          "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
+          "relative size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg after:absolute after:-inset-0.5 after:content-['']",
         "icon-lg": "size-9",
       },
     },
