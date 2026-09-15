@@ -322,7 +322,21 @@ export function PurchaseRequestForm({
                 </TableHeader>
                 <TableBody>
                   {items.map((it) => (
-                    <TableRow key={it.key}>
+                    <TableRow
+                      key={it.key}
+                      onKeyDown={(e) => {
+                        // Enter inside any item-row field would otherwise
+                        // submit the whole ใบขอซื้อ (the browser's default
+                        // for a text input inside a <form>) — treat it as
+                        // "add another item" instead, matching how filling
+                        // in one line and moving to the next actually works
+                        // in a spreadsheet-like list like this one.
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addBlankItem();
+                        }
+                      }}
+                    >
                       <TableCell>
                         <ItemSearchCell
                           item={it}
