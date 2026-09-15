@@ -1,9 +1,11 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useMemo, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Package } from "lucide-react";
+import Link from "next/link";
+import { ExternalLink, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NumberInput } from "@/components/ui/number-input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,13 +26,16 @@ import {
 } from "@/components/ui/table";
 import { formatTHB } from "@/lib/format";
 import { createPurchaseOrderReceipt } from "./actions";
-import type { PurchaseOrder } from "@/lib/types";
+import type { PurchaseOrder, StockProduct } from "@/lib/types";
 
 const initialState = { error: null as string | null, id: undefined as string | undefined };
 
 interface ReceiveItem {
   orderItemId: string;
-  stockProductId: string;
+  // null when the ใบขอซื้อ line this PO item came from was free-typed —
+  // never matched to a real Stock Product catalog entry. Can't be received
+  // (stock has nowhere to deduct into) until linked to one here.
+  stockProductId: string | null;
   sku: string;
   name: string;
   unit: string;
@@ -42,12 +47,12 @@ interface ReceiveItem {
 function itemsFromOrder(order: PurchaseOrder | undefined): ReceiveItem[] {
   if (!order) return [];
   return order.items
-    .filter((it) => it.stockProductId && it.quantity - it.receivedQuantity > 0)
+    .filter((it) => it.quantity - it.receivedQuantity > 0)
     .map((it) => {
       const remaining = it.quantity - it.receivedQuantity;
       return {
         orderItemId: it.id,
-        stockProductId: it.stockProductId as string,
+        stockProductId: it.stockProductId,
         sku: it.productSku ?? "",
         name: it.productName,
         unit: it.unit,
@@ -58,7 +63,79 @@ function itemsFromOrder(order: PurchaseOrder | undefined): ReceiveItem[] {
     });
 }
 
-export function PurchaseOrderReceiptForm({ openOrders }: { openOrders: PurchaseOrder[] }) {
+// Search-and-link cell for a PO item with no matching Stock Product yet —
+// same Input + filtered-suggestion-list + onMouseDown pattern already
+// proven for this kind of "free-typed item, optional catalog match" field
+// elsewhere in this app (e.g. Purchase Request's ItemSearchCell).
+function LinkStockProductCell({
+  item,
+  stockProducts,
+  onLink,
+}: {
+  item: ReceiveItem;
+  stockProducts: StockProduct[];
+  onLink: (product: StockProduct) => void;
+}) {
+  const [query, setQuery] = useState(item.name);
+  const [open, setOpen] = useState(false);
+  const suggestions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return stockProducts
+      .filter((p) => (p.sku ?? "").toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [query, stockProducts]);
+
+  return (
+    <div className="space-y-1">
+      <div className="relative">
+        <Input
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setOpen(false)}
+          placeholder="ค้นหาสินค้าในสต๊อกที่ตรงกัน..."
+          className="text-sm"
+        />
+        {open && suggestions.length > 0 && (
+          <ul className="absolute z-10 mt-1 w-64 overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-md">
+            {suggestions.map((p) => (
+              <li key={p.id}>
+                <button
+                  type="button"
+                  className="block w-full px-2.5 py-1.5 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    onLink(p);
+                  }}
+                >
+                  {p.sku ?? "—"} — {p.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <p className="flex items-center gap-1 text-xs text-destructive">
+        ยังไม่ได้ผูกกับสินค้าในระบบ — เลือกสินค้าที่ตรงกัน หรือ
+        <Link href="/dashboard/stock-product/new" target="_blank" className="inline-flex items-center gap-0.5 underline underline-offset-2">
+          เพิ่มสินค้าใหม่ <ExternalLink className="h-3 w-3" />
+        </Link>
+      </p>
+    </div>
+  );
+}
+
+export function PurchaseOrderReceiptForm({
+  openOrders,
+  stockProducts,
+}: {
+  openOrders: PurchaseOrder[];
+  stockProducts: StockProduct[];
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedOrderId = searchParams.get("orderId") ?? "";
@@ -86,8 +163,19 @@ export function PurchaseOrderReceiptForm({ openOrders }: { openOrders: PurchaseO
     setItems((prev) => prev.map((it) => (it.orderItemId === orderItemId ? { ...it, [field]: value } : it)));
   }
 
+  function linkStockProduct(orderItemId: string, product: StockProduct) {
+    setItems((prev) =>
+      prev.map((it) =>
+        it.orderItemId === orderItemId
+          ? { ...it, stockProductId: product.id, sku: product.sku ?? it.sku, unit: product.unit }
+          : it,
+      ),
+    );
+  }
+
   const totalValue = items.reduce((sum, it) => sum + it.quantity * it.unitCost, 0);
   const selectedOrder = openOrders.find((o) => o.id === orderId);
+  const unlinkedCount = items.filter((it) => !it.stockProductId).length;
 
   return (
     <form
@@ -97,7 +185,7 @@ export function PurchaseOrderReceiptForm({ openOrders }: { openOrders: PurchaseO
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
         for (const it of items) {
-          if (it.quantity <= 0) continue;
+          if (it.quantity <= 0 || !it.stockProductId) continue;
           fd.append("item_order_item_id", it.orderItemId);
           fd.append("item_product_id", it.stockProductId);
           fd.append("item_name", it.name);
@@ -173,36 +261,79 @@ export function PurchaseOrderReceiptForm({ openOrders }: { openOrders: PurchaseO
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {items.map((it) => (
-                  <TableRow key={it.orderItemId}>
-                    <TableCell className="whitespace-nowrap">{it.sku || "—"}</TableCell>
-                    <TableCell className="min-w-[140px]">{it.name}</TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {it.remaining} {it.unit}
-                    </TableCell>
-                    <TableCell>
-                      <NumberInput
-                        min={0}
-                        step={0.01}
-                        value={it.quantity}
-                        onChange={(v) => updateItem(it.orderItemId, "quantity", Number(v))}
-                        className="w-24"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <NumberInput
-                        min={0}
-                        step={0.01}
-                        value={it.unitCost}
-                        onChange={(v) => updateItem(it.orderItemId, "unitCost", Number(v))}
-                        className="w-24"
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {items.map((it) =>
+                  it.stockProductId ? (
+                    <TableRow key={it.orderItemId}>
+                      <TableCell className="whitespace-nowrap">{it.sku || "—"}</TableCell>
+                      <TableCell className="min-w-[140px]">{it.name}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {it.remaining} {it.unit}
+                      </TableCell>
+                      <TableCell>
+                        <NumberInput
+                          min={0}
+                          step={0.01}
+                          value={it.quantity}
+                          onChange={(v) => updateItem(it.orderItemId, "quantity", Number(v))}
+                          className="w-24"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <NumberInput
+                          min={0}
+                          step={0.01}
+                          value={it.unitCost}
+                          onChange={(v) => updateItem(it.orderItemId, "unitCost", Number(v))}
+                          className="w-24"
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    // No stockProductId — this ใบขอซื้อ line was free-typed
+                    // and never matched to a real Stock Product, so there's
+                    // nothing to deduct stock into yet. Spans the row with a
+                    // search/link cell instead of the normal columns.
+                    <TableRow key={it.orderItemId}>
+                      <TableCell colSpan={3} className="min-w-[220px]">
+                        <p className="mb-1 text-sm font-medium">
+                          {it.name} <span className="font-normal text-muted-foreground">({it.remaining} {it.unit})</span>
+                        </p>
+                        <LinkStockProductCell
+                          item={it}
+                          stockProducts={stockProducts}
+                          onLink={(product) => linkStockProduct(it.orderItemId, product)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <NumberInput
+                          min={0}
+                          step={0.01}
+                          value={it.quantity}
+                          onChange={(v) => updateItem(it.orderItemId, "quantity", Number(v))}
+                          className="w-24"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <NumberInput
+                          min={0}
+                          step={0.01}
+                          value={it.unitCost}
+                          onChange={(v) => updateItem(it.orderItemId, "unitCost", Number(v))}
+                          className="w-24"
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ),
+                )}
               </TableBody>
             </Table>
           </div>
+        )}
+
+        {unlinkedCount > 0 && (
+          <p className="text-xs text-amber-600">
+            มี {unlinkedCount} รายการที่ยังไม่ได้ผูกกับสินค้าในระบบ — รายการเหล่านี้จะไม่ถูกบันทึกจนกว่าจะเลือกสินค้าที่ตรงกัน
+          </p>
         )}
 
         <div className="flex justify-end gap-2">

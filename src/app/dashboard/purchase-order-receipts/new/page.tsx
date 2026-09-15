@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getOpenPurchaseOrders } from "@/lib/data/purchase-orders";
+import { getStockProducts } from "@/lib/data/stock";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
 import { PurchaseOrderReceiptForm } from "../purchase-order-receipt-form";
@@ -11,7 +12,7 @@ export default async function NewPurchaseOrderReceiptPage() {
   if (!profile) redirect("/login");
   if (!canAccessPage(profile.role, "/dashboard/purchase-order-receipts")) redirect("/dashboard/sales");
 
-  const openOrders = await getOpenPurchaseOrders();
+  const [openOrders, stockProducts] = await Promise.all([getOpenPurchaseOrders(), getStockProducts()]);
 
   return (
     <div className="space-y-6">
@@ -25,7 +26,7 @@ export default async function NewPurchaseOrderReceiptPage() {
       </div>
 
       <Suspense>
-        <PurchaseOrderReceiptForm openOrders={openOrders} />
+        <PurchaseOrderReceiptForm openOrders={openOrders} stockProducts={stockProducts} />
       </Suspense>
     </div>
   );
