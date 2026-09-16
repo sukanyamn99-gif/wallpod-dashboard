@@ -20,7 +20,9 @@ const PAGE_ACCESS: Record<string, Role[]> = {
   // opened alongside canSeeCosts below (same reasoning, same role).
   "/dashboard/gp": [...ADMIN_ROLES, "account"],
   "/dashboard/ar": [...ADMIN_ROLES, "account"],
-  "/dashboard/project-sales": STOCK_STAFF,
+  // "design" sees the page but not cost/profit — canSeeProjectCosts below
+  // doesn't include design, so that stays hidden without any extra change.
+  "/dashboard/project-sales": [...STOCK_STAFF, "design"],
   "/dashboard/quotations": STOCK_STAFF,
   // Deliberately narrower than STOCK_STAFF — the user explicitly asked for
   // ใบลงผลิต to be visible only to support staff, owner/manager, and
