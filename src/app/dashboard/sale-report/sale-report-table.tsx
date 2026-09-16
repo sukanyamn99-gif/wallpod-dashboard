@@ -106,6 +106,82 @@ function RowActions({ report }: { report: SaleReport }) {
   );
 }
 
+// Mobile equivalent of one table row — same data, same tap-to-open-detail
+// behavior, just laid out to read top-to-bottom instead of needing a
+// horizontal scroll through 14 truncated columns. Shown only below sm:,
+// the table takes over from sm: up (see the render split below).
+function SaleReportCard({
+  report,
+  index,
+  imageUrls,
+  currentProfile,
+  onView,
+}: {
+  report: SaleReport;
+  index: number;
+  imageUrls: Record<string, string>;
+  currentProfile: Profile;
+  onView: () => void;
+}) {
+  const thumbPath = report.image_paths[0];
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onView}
+      onKeyDown={(e) => e.key === "Enter" && onView()}
+      className="flex gap-3 rounded-lg border p-3 text-left active:bg-muted/50"
+    >
+      {thumbPath && imageUrls[thumbPath] ? (
+        <div className="relative shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element -- private signed URL, not an optimizable remote asset */}
+          <img src={imageUrls[thumbPath]} alt="" className="h-14 w-14 rounded-md border object-cover" />
+          {report.image_paths.length > 1 && (
+            <span className="absolute -right-1 -bottom-1 rounded-full bg-primary px-1 text-[10px] leading-4 text-primary-foreground">
+              +{report.image_paths.length - 1}
+            </span>
+          )}
+        </div>
+      ) : (
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md border text-xs text-muted-foreground">
+          #{index + 1}
+        </div>
+      )}
+
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex items-start justify-between gap-2">
+          <p className="truncate font-medium">{report.customer_name}</p>
+          <Badge variant="secondary" className="shrink-0">
+            {report.stage}
+          </Badge>
+        </div>
+        {report.project_name && <p className="truncate text-sm text-muted-foreground">{report.project_name}</p>}
+        <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+          <span>{report.sales_rep_name}</span>
+          <span>·</span>
+          <span>{new Date(report.created_at).toLocaleDateString("th-TH")}</span>
+          {report.est_value > 0 && (
+            <>
+              <span>·</span>
+              <span className="font-medium text-foreground">{formatTHB(report.est_value)}</span>
+            </>
+          )}
+        </div>
+        {report.next_action && (
+          <p className="truncate text-xs text-muted-foreground">Next: {report.next_action}</p>
+        )}
+
+        <div className="flex items-center gap-1 pt-1" onClick={(e) => e.stopPropagation()}>
+          <Button size="icon-sm" variant="outline" onClick={onView} title="ดูรายละเอียด">
+            <Eye className="h-3.5 w-3.5" />
+          </Button>
+          {canManage(report, currentProfile) && <RowActions report={report} />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-0.5">
@@ -325,7 +401,28 @@ export function SaleReportTable({
           ))}
         </div>
 
-        <div className="rounded-md border">
+        {/* Below sm: the table's own table-fixed + percentage widths would
+            squeeze all 15 columns into a phone-width row, truncating every
+            cell to almost nothing — a card per report reads top-to-bottom
+            instead and reuses the exact same tap-to-open-detail, actions,
+            and thumbnail behavior as the table row below. */}
+        <div className="space-y-2 sm:hidden">
+          {filtered.length === 0 && (
+            <p className="rounded-md border p-4 text-center text-sm text-muted-foreground">ไม่พบข้อมูล</p>
+          )}
+          {filtered.map((r, index) => (
+            <SaleReportCard
+              key={r.id}
+              report={r}
+              index={index}
+              imageUrls={imageUrls}
+              currentProfile={currentProfile}
+              onView={() => setViewingReport(r)}
+            />
+          ))}
+        </div>
+
+        <div className="hidden rounded-md border sm:block">
           <Table className="table-fixed" containerClassName="overflow-x-visible">
             <TableHeader className="bg-muted">
               <TableRow>
