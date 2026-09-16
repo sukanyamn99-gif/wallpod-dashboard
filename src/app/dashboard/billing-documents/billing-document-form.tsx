@@ -147,15 +147,17 @@ export function BillingDocumentForm({
   // every other doc type keeps billing from quotations directly, since a
   // tax invoice may not exist yet for those.
   const usesTaxInvoiceSource = docType === "billing_note" || docType === "receipt";
-  // ใบเสร็จรับเงิน's create form asks up front whether this receipt is
-  // collecting against a real tax invoice/ใบวางบิล, or something else
-  // entirely (a deposit, advance payment, etc. with no underlying document)
-  // — the two sections further down are mutually exclusive based on this
-  // choice, matching the reference dialog. Not asked in edit mode (the
-  // existing items already imply which kind it is) or for any other doc
-  // type (they only ever have one source to begin with).
-  const needsReceiptKindChoice = docType === "receipt" && mode === "create";
-  const [receiptKind, setReceiptKind] = useState<"tax_invoice" | "other" | null>(null);
+  // ใบเสร็จรับเงิน and ใบแจ้งหนี้'s create forms both ask up front whether
+  // this document is collecting/billing against existing records (can
+  // combine several — a tax invoice/ใบวางบิล for a receipt, an unbilled
+  // payment for an invoice), or something else entirely (a deposit,
+  // advance payment, etc. with no underlying document) — the two sections
+  // further down are mutually exclusive based on this choice, matching the
+  // reference dialog. Not asked in edit mode (the existing items already
+  // imply which kind it is) or for billing_note/tax_invoice (they only
+  // ever have one source to begin with).
+  const needsSourceKindChoice = (docType === "receipt" || docType === "invoice") && mode === "create";
+  const [sourceKind, setSourceKind] = useState<"existing" | "other" | null>(null);
   const [jobNo, setJobNo] = useState("");
   const [docNo, setDocNo] = useState(initialData?.docNo ?? "");
   const [customerId, setCustomerId] = useState(initialData?.customerId ?? "");
@@ -546,36 +548,42 @@ export function BillingDocumentForm({
 
   return (
     <>
-      {needsReceiptKindChoice && receiptKind === null && (
+      {needsSourceKindChoice && sourceKind === null && (
         <Dialog open onOpenChange={(next) => !next && router.push(listPath)}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>ประเภทใบเสร็จรับเงิน</DialogTitle>
+              <DialogTitle>{docType === "receipt" ? "ประเภทใบเสร็จรับเงิน" : "ประเภทใบแจ้งหนี้"}</DialogTitle>
             </DialogHeader>
             <DialogBody className="space-y-2 pb-4">
               <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-muted">
                 <input
                   type="radio"
-                  name="receipt_kind_choice"
+                  name="source_kind_choice"
                   className="mt-1 h-4 w-4"
                   checked={false}
-                  onChange={() => setReceiptKind("tax_invoice")}
+                  onChange={() => setSourceKind("existing")}
                 />
                 <span>
-                  <span className="block text-sm font-medium">รับเงินจากใบกำกับภาษี (ใบเสร็จรวม)</span>
-                  <span className="block text-xs text-muted-foreground">สร้างโดยเลือกจากใบกำกับภาษีเดียว หรือหลายใบ</span>
+                  <span className="block text-sm font-medium">
+                    {docType === "receipt" ? "รับเงินจากใบกำกับภาษี (ใบเสร็จรวม)" : "ออกจากรายการที่ยังไม่ได้แจ้งหนี้ (รวมได้หลายรายการ)"}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {docType === "receipt"
+                      ? "สร้างโดยเลือกจากใบกำกับภาษีเดียว หรือหลายใบ"
+                      : "สร้างโดยเลือกจากรายการเดียว หรือหลายรายการ"}
+                  </span>
                 </span>
               </label>
               <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-muted">
                 <input
                   type="radio"
-                  name="receipt_kind_choice"
+                  name="source_kind_choice"
                   className="mt-1 h-4 w-4"
                   checked={false}
-                  onChange={() => setReceiptKind("other")}
+                  onChange={() => setSourceKind("other")}
                 />
                 <span>
-                  <span className="block text-sm font-medium">รับเงินอื่นๆ</span>
+                  <span className="block text-sm font-medium">{docType === "receipt" ? "รับเงินอื่นๆ" : "รายการอื่นๆ"}</span>
                   <span className="block text-xs text-muted-foreground">
                     เช่น เงินประกัน เงินมัดจำ รับเงินล่วงหน้า หรืออื่นๆ
                   </span>
@@ -670,17 +678,23 @@ export function BillingDocumentForm({
           </div>
         )}
 
-        {needsReceiptKindChoice && receiptKind !== null && (
+        {needsSourceKindChoice && sourceKind !== null && (
           <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-3 py-2 text-sm">
             <span>
               ประเภท:{" "}
               <span className="font-medium">
-                {receiptKind === "tax_invoice" ? "รับเงินจากใบกำกับภาษี (ใบเสร็จรวม)" : "รับเงินอื่นๆ"}
+                {sourceKind === "existing"
+                  ? docType === "receipt"
+                    ? "รับเงินจากใบกำกับภาษี (ใบเสร็จรวม)"
+                    : "ออกจากรายการที่ยังไม่ได้แจ้งหนี้"
+                  : docType === "receipt"
+                    ? "รับเงินอื่นๆ"
+                    : "รายการอื่นๆ"}
               </span>
             </span>
             <button
               type="button"
-              onClick={() => setReceiptKind(null)}
+              onClick={() => setSourceKind(null)}
               className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
             >
               เปลี่ยนประเภท
@@ -865,8 +879,10 @@ export function BillingDocumentForm({
       <div className="space-y-4">
         {/* ใบเสร็จรับเงิน is deliberately excluded — per feedback, a receipt
             should only ever collect against a real ใบกำกับภาษี, never
-            directly against a raw ใบแจ้งหนี้/unbilled payment record. */}
-        {docType !== "receipt" && (
+            directly against a raw ใบแจ้งหนี้/unbilled payment record.
+            ใบแจ้งหนี้ itself hides this when its own create-form choice is
+            "other" (a one-off charge, not against any existing record). */}
+        {docType !== "receipt" && sourceKind !== "other" && (
         <div className="space-y-2">
           <Label>รายการใบแจ้งหนี้ที่ยังไม่ได้ชำระ</Label>
           {!customerId ? (
@@ -987,7 +1003,7 @@ export function BillingDocumentForm({
           </div>
         )}
 
-        {usesTaxInvoiceSource && customerId && !loadingInvoices && receiptKind !== "other" && (
+        {usesTaxInvoiceSource && customerId && !loadingInvoices && sourceKind !== "other" && (
           <div className="space-y-2">
             <Label>{docType === "receipt" ? "ใบกำกับภาษีที่ยังไม่ได้ออกใบเสร็จ" : "ใบกำกับภาษีที่ยังไม่ได้วางบิล"}</Label>
             <p className="text-xs text-muted-foreground">
@@ -1062,7 +1078,7 @@ export function BillingDocumentForm({
           </div>
         )}
 
-        {receiptKind !== "tax_invoice" && (
+        {sourceKind !== "existing" && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label>รายการที่พิมพ์เอง</Label>
