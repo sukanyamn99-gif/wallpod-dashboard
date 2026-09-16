@@ -18,11 +18,13 @@ export function formatQuotationItemDescription(item: {
   thickness: string | null;
   size: string | null;
   color: string | null;
+  cuttingPattern?: string | null;
 }): string {
   const lines: string[] = [];
   if (item.productName) lines.push(`Product Name : ${item.productName}`);
   if (item.thickness) lines.push(`Thickness /หนา : ${item.thickness}`);
   if (item.size) lines.push(`Size /ขนาด : ${item.size}`);
   if (item.color) lines.push(`Color/สี : ${item.color}`);
+  if (item.cuttingPattern) lines.push(`Cutting /รูปแบบการตัด : ${item.cuttingPattern}`);
   return lines.join("\n");
 }
