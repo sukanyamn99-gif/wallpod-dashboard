@@ -219,7 +219,9 @@ export function PrintQuotationView({
                   </td>
                   <td className={rowTd + " text-right whitespace-nowrap"}>{num(it.netPrice)}</td>
                   <td className={rowTd + " text-right whitespace-nowrap"}>
-                    {it.qty} {it.unit}
+                    {it.qty}
+                    <br />
+                    {it.unit}
                   </td>
                   <td className={(last ? td + " border-b-0" : td) + " border-r-0 text-right whitespace-nowrap font-medium"}>
                     {num(it.totalPrice)}
