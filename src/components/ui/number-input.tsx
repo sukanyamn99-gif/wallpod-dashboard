@@ -10,6 +10,14 @@ import { cn } from "@/lib/utils";
 // editable digits while it is, so typing/backspacing never fights comma
 // insertion. The actual submitted value (under `name`) is always the plain
 // numeric string — formatting is display-only, never sent to the server.
+//
+// While focused, the internally-typed string — not the `value` prop — is
+// the source of truth for what's displayed. Many callers immediately
+// coerce onChange's string via Number(v) and feed the rounded result
+// straight back in as `value` (e.g. quantity fields storing a plain
+// number); without this, typing "5." would collapse back to "5" on every
+// keystroke (Number("5.") === 5), making it impossible to ever type a
+// decimal point into a controlled numeric field.
 
 export interface NumberInputProps {
   id?: string;
@@ -62,11 +70,12 @@ export function NumberInput({
   const [internalRaw, setInternalRaw] = useState(() =>
     defaultValue === null || defaultValue === undefined ? "" : String(defaultValue),
   );
-  const raw = isControlled ? (value === null || value === undefined ? "" : String(value)) : internalRaw;
   const [focused, setFocused] = useState(false);
+  const controlledRaw = value === null || value === undefined ? "" : String(value);
+  const raw = isControlled && !focused ? controlledRaw : internalRaw;
 
   function setRaw(next: string) {
-    if (!isControlled) setInternalRaw(next);
+    setInternalRaw(next);
     onChange?.(next);
   }
 
@@ -81,7 +90,10 @@ export function NumberInput({
         step={step}
         autoFocus={autoFocus}
         value={focused ? raw : formatDisplay(raw)}
-        onFocus={() => setFocused(true)}
+        onFocus={() => {
+          if (isControlled) setInternalRaw(controlledRaw);
+          setFocused(true);
+        }}
         onBlur={() => setFocused(false)}
         onChange={(e) => setRaw(cleanRaw(e.target.value))}
         placeholder={placeholder}
