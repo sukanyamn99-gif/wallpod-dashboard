@@ -16,10 +16,36 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { resizeImageToBlob } from "@/lib/image-resize";
-import { DATA_DOCUMENTS_BUCKET } from "@/lib/data-documents-constants";
+import { DATA_DOCUMENTS_BUCKET, DATA_DOCUMENT_CATEGORIES } from "@/lib/data-documents-constants";
 import { createClient } from "@/lib/supabase/client";
 import { recordDataDocument } from "./actions";
+
+// A blank `file.type` (some OS/browser combinations don't always populate
+// it) fell back to application/octet-stream — the browser can't tell that's
+// really a viewable PDF, so it force-downloaded instead of previewing
+// inline in the "ดูตัวอย่าง" tab, which read as "the view button acts like
+// the download button." Extension-based fallback keeps that from happening
+// for the file types this library actually deals with.
+const MIME_BY_EXTENSION: Record<string, string> = {
+  pdf: "application/pdf",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ppt: "application/vnd.ms-powerpoint",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+};
+
+function resolveContentType(file: File): string {
+  if (file.type) return file.type;
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return MIME_BY_EXTENSION[ext] ?? "application/octet-stream";
+}
 
 // Supabase's simple storage.upload() (a single POST) proved unreliable for
 // real catalog PDFs in real testing — it hung indefinitely and never
@@ -48,7 +74,7 @@ function uploadResumable(
       metadata: {
         bucketName: DATA_DOCUMENTS_BUCKET,
         objectName: path,
-        contentType: (file instanceof File ? file.type : "image/jpeg") || "application/octet-stream",
+        contentType: file instanceof File ? resolveContentType(file) : "image/jpeg",
         cacheControl: "3600",
       },
       chunkSize: 6 * 1024 * 1024,
@@ -71,6 +97,7 @@ export function UploadDocumentDialog() {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [category, setCategory] = useState<string>(DATA_DOCUMENT_CATEGORIES[0]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -84,7 +111,6 @@ export function UploadDocumentDialog() {
 
     const fd = new FormData(e.currentTarget);
     const title = String(fd.get("title") ?? "").trim();
-    const category = String(fd.get("category") ?? "").trim();
 
     try {
       const supabase = createClient();
@@ -131,6 +157,7 @@ export function UploadDocumentDialog() {
 
       setOpen(false);
       setFile(null);
+      setCategory(DATA_DOCUMENT_CATEGORIES[0]);
       if (thumbnail) URL.revokeObjectURL(thumbnail.previewUrl);
       setThumbnail(null);
       router.refresh();
@@ -166,7 +193,22 @@ export function UploadDocumentDialog() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="doc_category">หมวดหมู่</Label>
-              <Input id="doc_category" name="category" defaultValue="เอกสาร" />
+              <Select
+                value={category}
+                onValueChange={(v) => setCategory((v as string) ?? category)}
+                items={DATA_DOCUMENT_CATEGORIES.map((c) => ({ value: c, label: c }))}
+              >
+                <SelectTrigger id="doc_category" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DATA_DOCUMENT_CATEGORIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="doc_file">ไฟล์เอกสาร (PDF ฯลฯ)</Label>

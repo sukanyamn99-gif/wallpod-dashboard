@@ -58,8 +58,15 @@ export async function deleteDataDocument(id: string) {
   const paths = [existing.filePath, ...(existing.thumbnailPath ? [existing.thumbnailPath] : [])];
   await supabase.storage.from(DATA_DOCUMENTS_BUCKET).remove(paths); // best-effort cleanup
 
-  const { error } = await supabase.from("data_documents").delete().eq("id", id);
+  // .select() after .delete() is required to detect this: under RLS, a
+  // delete matching zero rows (no error, wrong role, id mismatch, etc.)
+  // returns { data: [], error: null } — not an error — so checking only
+  // `error` would silently report success while the row survives.
+  const { data: deletedRows, error } = await supabase.from("data_documents").delete().eq("id", id).select("id");
   if (error) return { error: error.message };
+  if (!deletedRows || deletedRows.length === 0) {
+    return { error: "ลบไม่สำเร็จ: ไม่มีสิทธิ์ลบเอกสารนี้" };
+  }
 
   revalidatePath("/dashboard/data-documents");
   return { error: null };

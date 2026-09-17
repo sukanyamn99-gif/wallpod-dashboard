@@ -1,13 +1,25 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Download, Eye, FileText, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { deleteDataDocument } from "./actions";
 import { UploadDocumentDialog } from "./upload-document-dialog";
+import { DATA_DOCUMENT_CATEGORIES } from "@/lib/data-documents-constants";
 import type { DataDocument } from "@/lib/types";
+
+const ALL_CATEGORY = "ทั้งหมด";
 
 function formatFileSize(bytes: number): string {
   const mb = bytes / (1024 * 1024);
@@ -24,21 +36,54 @@ export function DataDocumentsView({
   signedUrls: Record<string, string>;
   canManage: boolean;
 }) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
+  const [activeCategory, setActiveCategory] = useState<string>(ALL_CATEGORY);
   const [, startTransition] = useTransition();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  // Confirming via an in-app Dialog instead of window.confirm() — a native
+  // confirm() dialog silently no-ops (returns false without ever showing)
+  // in some browser/webview contexts, which read as "the delete button
+  // does nothing" with no way to tell why.
+  const [confirmTarget, setConfirmTarget] = useState<DataDocument | null>(null);
+
+  // Union with the fixed category list so older documents saved under a
+  // different category (e.g. the original free-text "เอกสาร" default,
+  // before this filter existed) still get a reachable tab instead of
+  // becoming invisible outside "ทั้งหมด".
+  const categoryTabs = [
+    ALL_CATEGORY,
+    ...Array.from(new Set([...DATA_DOCUMENT_CATEGORIES, ...documents.map((d) => d.category)])),
+  ];
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return documents;
-    return documents.filter((d) => d.title.toLowerCase().includes(q) || d.category.toLowerCase().includes(q));
-  }, [documents, search]);
+    return documents.filter((d) => {
+      const matchesCategory = activeCategory === ALL_CATEGORY || d.category === activeCategory;
+      const matchesSearch = !q || d.title.toLowerCase().includes(q) || d.category.toLowerCase().includes(q);
+      return matchesCategory && matchesSearch;
+    });
+  }, [documents, search, activeCategory]);
 
-  function handleDelete(id: string, title: string) {
-    if (!window.confirm(`ลบเอกสาร "${title}" ถาวร?`)) return;
-    setDeletingId(id);
+  function confirmDelete() {
+    const target = confirmTarget;
+    if (!target) return;
+    setConfirmTarget(null);
+    setDeletingId(target.id);
+    setDeleteError(null);
     startTransition(async () => {
-      await deleteDataDocument(id);
+      const result = await deleteDataDocument(target.id);
+      if (result.error) {
+        setDeleteError(result.error);
+      } else {
+        // revalidatePath inside the action invalidates the server-side
+        // cache, but this already-rendered client page needs its own
+        // explicit refresh to actually re-fetch and show the change —
+        // without this the delete succeeds silently and the row just sits
+        // there until an unrelated navigation happens to reload it.
+        router.refresh();
+      }
       setDeletingId(null);
     });
   }
@@ -60,6 +105,24 @@ export function DataDocumentsView({
           {canManage && <UploadDocumentDialog />}
         </div>
       </div>
+
+      <div className="flex flex-wrap gap-2">
+        {categoryTabs.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => setActiveCategory(c)}
+            className={
+              "rounded-full border px-3 py-1 text-sm transition-colors " +
+              (activeCategory === c ? "border-primary bg-primary/10 text-primary" : "border-input text-muted-foreground")
+            }
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+
+      {deleteError && <p className="text-sm text-destructive">ลบไม่สำเร็จ: {deleteError}</p>}
 
       {filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
@@ -113,7 +176,7 @@ export function DataDocumentsView({
                         variant="outline"
                         size="icon"
                         disabled={deletingId === d.id}
-                        onClick={() => handleDelete(d.id, d.title)}
+                        onClick={() => setConfirmTarget(d)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -125,6 +188,27 @@ export function DataDocumentsView({
           })}
         </div>
       )}
+
+      <Dialog open={confirmTarget !== null} onOpenChange={(v) => !v && setConfirmTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>ลบเอกสารนี้?</DialogTitle>
+          </DialogHeader>
+          <DialogBody className="pb-4">
+            <p className="text-sm text-muted-foreground">
+              ลบเอกสาร &quot;{confirmTarget?.title}&quot; ถาวร — ยกเลิกภายหลังไม่ได้
+            </p>
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmTarget(null)}>
+              ยกเลิก
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              ลบเอกสาร
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
