@@ -70,23 +70,35 @@ export function FuelAllowanceView({
 
   // Persisted across visits so the eligible list doesn't need re-picking
   // every month — same convention as commission/incentive's remembered names.
-  const [eligibleReps, setEligibleReps] = useState<Set<string>>(() => {
-    if (typeof window === "undefined") return new Set(DEFAULT_ELIGIBLE_REPS);
-    try {
-      const saved = JSON.parse(window.localStorage.getItem(ELIGIBLE_REPS_STORAGE_KEY) ?? "null");
-      return Array.isArray(saved) ? new Set(saved) : new Set(DEFAULT_ELIGIBLE_REPS);
-    } catch {
-      return new Set(DEFAULT_ELIGIBLE_REPS);
-    }
-  });
+  // Initial state must be identical on server and client (no `typeof window`
+  // branch here) — reading localStorage in the useState initializer would
+  // make the very first client render differ from the SSR-ed HTML whenever
+  // a saved selection differs from the default, causing a hydration
+  // mismatch. Load the real value in an effect after mount instead, and
+  // don't persist until that load has happened, so the effect below never
+  // clobbers a real saved selection with this SSR-safe default.
+  const [eligibleReps, setEligibleReps] = useState<Set<string>>(() => new Set(DEFAULT_ELIGIBLE_REPS));
+  const [repsLoaded, setRepsLoaded] = useState(false);
 
   useEffect(() => {
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(ELIGIBLE_REPS_STORAGE_KEY) ?? "null");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional one-time sync from localStorage (an external system) right after mount, exactly what this rule's own guidance recommends over branching on `typeof window` in the initializer
+      if (Array.isArray(saved) && saved.length > 0) setEligibleReps(new Set(saved));
+    } catch {
+      // keep the default
+    }
+    setRepsLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!repsLoaded) return;
     try {
       window.localStorage.setItem(ELIGIBLE_REPS_STORAGE_KEY, JSON.stringify(Array.from(eligibleReps)));
     } catch {
       // Remembering the selection is a convenience, not a requirement.
     }
-  }, [eligibleReps]);
+  }, [eligibleReps, repsLoaded]);
 
   function toggleRep(name: string) {
     setEligibleReps((prev) => {
