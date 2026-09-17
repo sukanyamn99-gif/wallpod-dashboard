@@ -120,6 +120,11 @@ export function PrintFuelAllowanceView({
                       <tr>
                         <th className="border border-black p-1 font-medium">วันที่</th>
                         <th className="border border-black p-1 text-left font-medium">ลูกค้า</th>
+                        <th className="border border-black p-1 text-left font-medium">ชื่อโปรเจค</th>
+                        <th className="border border-black p-1 text-right font-medium">ยอดใบเสนอราคา</th>
+                        <th className="border border-black p-1 font-medium">สถานะ</th>
+                        <th className="border border-black p-1 text-left font-medium">ผู้ติดต่อ</th>
+                        <th className="border border-black p-1 font-medium">เบอร์โทร</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -127,6 +132,11 @@ export function PrintFuelAllowanceView({
                         <tr key={i}>
                           <td className="border border-black p-1 text-center whitespace-nowrap">{shortThaiDate(v.date)}</td>
                           <td className="border border-black p-1">{v.customerName}</td>
+                          <td className="border border-black p-1">{v.projectName ?? "—"}</td>
+                          <td className="border border-black p-1 text-right tabular-nums">{formatTHB(v.estValue)}</td>
+                          <td className="border border-black p-1 text-center">{v.stage}</td>
+                          <td className="border border-black p-1">{v.contactName ?? "—"}</td>
+                          <td className="border border-black p-1 text-center whitespace-nowrap">{v.phone ?? "—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -146,11 +156,6 @@ export function PrintFuelAllowanceView({
                         <th className="border border-black p-1 font-medium">เลขที่ Job</th>
                         <th className="border border-black p-1 text-left font-medium">ชื่องาน</th>
                         <th className="border border-black p-1 text-right font-medium">ยอดขาย</th>
-                        <th className="border border-black p-1 text-left font-medium">ชื่อโปรเจค</th>
-                        <th className="border border-black p-1 text-right font-medium">ยอดใบเสนอราคา</th>
-                        <th className="border border-black p-1 font-medium">สถานะ</th>
-                        <th className="border border-black p-1 text-left font-medium">ผู้ติดต่อ</th>
-                        <th className="border border-black p-1 font-medium">เบอร์โทร</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -160,13 +165,6 @@ export function PrintFuelAllowanceView({
                           <td className="border border-black p-1 text-center">{s.jobNo ?? "—"}</td>
                           <td className="border border-black p-1">{s.projectName}</td>
                           <td className="border border-black p-1 text-right tabular-nums">{formatTHB(s.amount)}</td>
-                          <td className="border border-black p-1">{s.quotation?.projectName ?? "—"}</td>
-                          <td className="border border-black p-1 text-right tabular-nums">
-                            {s.quotation ? formatTHB(s.quotation.total) : "—"}
-                          </td>
-                          <td className="border border-black p-1 text-center">{s.quotation?.status ?? "—"}</td>
-                          <td className="border border-black p-1">{s.quotation?.attn ?? "—"}</td>
-                          <td className="border border-black p-1 text-center whitespace-nowrap">{s.quotation?.customerTel ?? "—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -176,7 +174,6 @@ export function PrintFuelAllowanceView({
                           รวม
                         </td>
                         <td className="border border-black p-1 text-right font-medium tabular-nums">{formatTHB(r.salesAmount)}</td>
-                        <td className="border border-black p-1" colSpan={5} />
                       </tr>
                     </tfoot>
                   </table>

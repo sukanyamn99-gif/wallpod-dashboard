@@ -4,11 +4,9 @@ import type {
   ProductionOrder,
   Quotation,
   QuotationDetail,
-  QuotationHeaderForJob,
   QuotationItem,
   QuotationItemDetail,
   QuotationPaymentTerm,
-  QuotationStatus,
 } from "@/lib/types";
 
 const IMAGE_BUCKET = "quotation-item-images";
@@ -347,62 +345,6 @@ export async function getQuotationItemsByJobNumbers(
       quotationDocNo: q.doc_no,
       items: itemsByQuotationId.get(q.id) ?? [],
       extraDiscountAmount: Number(q.extra_discount_amount),
-    };
-  }
-  return result;
-}
-
-// Sibling of getQuotationItemsByJobNumbers above, returning header fields
-// (project name, total, status, contact, phone) instead of line items —
-// used to show which quotation a WALLPOD Project Sales job came from on
-// the ค่าน้ำมัน report. Same "prefer accepted, else most recent" selection
-// rule, kept as its own small copy rather than sharing that filter with
-// the items version since the two queries select different columns.
-export async function getQuotationHeadersByJobNumbers(
-  jobNumbers: string[],
-): Promise<Record<string, QuotationHeaderForJob>> {
-  const uniqueJobNumbers = Array.from(new Set(jobNumbers.filter((j): j is string => !!j)));
-  if (!isSupabaseConfigured() || uniqueJobNumbers.length === 0) return {};
-  const wantedJobNos = new Set(uniqueJobNumbers.map(normalizeJobNo));
-
-  const supabase = await createClient();
-  const { data: quotes, error } = await supabase
-    .from("quotations")
-    .select("job_number, status, created_at, project_name, total, attn, customer_tel")
-    .not("job_number", "is", null);
-  if (error) throw error;
-
-  const originalByNormalized = new Map(uniqueJobNumbers.map((j) => [normalizeJobNo(j), j]));
-  const bestByJobNumber = new Map<
-    string,
-    { status: string; created_at: string; project_name: string; total: number; attn: string | null; customer_tel: string | null }
-  >();
-  for (const q of quotes ?? []) {
-    if (!q.job_number) continue;
-    const normalized = normalizeJobNo(q.job_number);
-    if (!wantedJobNos.has(normalized)) continue;
-    const jobNoKey = originalByNormalized.get(normalized) ?? q.job_number;
-    const existing = bestByJobNumber.get(jobNoKey);
-    if (!existing) {
-      bestByJobNumber.set(jobNoKey, q);
-      continue;
-    }
-    const existingAccepted = existing.status === "ลูกค้าตอบตกลง";
-    const candidateAccepted = q.status === "ลูกค้าตอบตกลง";
-    const candidateIsBetter =
-      (candidateAccepted && !existingAccepted) ||
-      (candidateAccepted === existingAccepted && q.created_at > existing.created_at);
-    if (candidateIsBetter) bestByJobNumber.set(jobNoKey, q);
-  }
-
-  const result: Record<string, QuotationHeaderForJob> = {};
-  for (const [jobNo, q] of bestByJobNumber) {
-    result[jobNo] = {
-      projectName: q.project_name,
-      total: Number(q.total),
-      status: q.status as QuotationStatus,
-      attn: q.attn,
-      customerTel: q.customer_tel,
     };
   }
   return result;

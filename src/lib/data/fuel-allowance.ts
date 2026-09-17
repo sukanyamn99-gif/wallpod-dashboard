@@ -1,5 +1,4 @@
 import { getFullProjectReport } from "@/lib/data/project-sales";
-import { getQuotationHeadersByJobNumbers } from "@/lib/data/quotations";
 import { getAllSaleReports } from "@/lib/data/sale-reports";
 import { calculateFuelAllowance } from "@/lib/fuel-allowance";
 import type { FuelAllowanceRow } from "@/lib/types";
@@ -52,12 +51,23 @@ export async function getFuelAllowanceReport(month: number, year: number): Promi
 
   const [reports, { rows: projects }] = await Promise.all([getAllSaleReports(), getFullProjectReport()]);
 
-  const visitsByRep = new Map<string, { customerName: string; date: string }[]>();
+  const visitsByRep = new Map<
+    string,
+    { customerName: string; date: string; projectName: string | null; estValue: number; stage: string; contactName: string | null; phone: string | null }[]
+  >();
   for (const r of reports) {
     const visitDate = r.created_at.slice(0, 10);
     if (visitDate < visitBounds.from || visitDate > visitBounds.to) continue;
     const list = visitsByRep.get(r.sales_rep_name) ?? [];
-    list.push({ customerName: r.customer_name, date: visitDate });
+    list.push({
+      customerName: r.customer_name,
+      date: visitDate,
+      projectName: r.project_name,
+      estValue: r.est_value,
+      stage: r.stage,
+      contactName: r.contact_name,
+      phone: r.phone,
+    });
     visitsByRep.set(r.sales_rep_name, list);
   }
 
@@ -69,15 +79,6 @@ export async function getFuelAllowanceReport(month: number, year: number): Promi
     salesByRep.set(p.salesRepName, list);
   }
 
-  // Enrich each sale with its originating quotation's header (project name,
-  // total, status, contact, phone) so the report shows the full context
-  // behind each job, not just its bare amount.
-  const allJobNos = Array.from(salesByRep.values())
-    .flat()
-    .map((s) => s.jobNo)
-    .filter((j): j is string => !!j);
-  const quotationsByJobNo = await getQuotationHeadersByJobNumbers(allJobNos);
-
   // Every rep ever seen, not just ones active this month — a rep with zero
   // sales/visits this month still gets a row at the floor tier instead of
   // silently disappearing from the report.
@@ -86,9 +87,7 @@ export async function getFuelAllowanceReport(month: number, year: number): Promi
   const rows = Array.from(allNames)
     .map((salesRepName) => {
       const visits = (visitsByRep.get(salesRepName) ?? []).sort((a, b) => a.date.localeCompare(b.date));
-      const sales = (salesByRep.get(salesRepName) ?? [])
-        .map((s) => ({ ...s, quotation: s.jobNo ? (quotationsByJobNo[s.jobNo] ?? null) : null }))
-        .sort((a, b) => a.date.localeCompare(b.date));
+      const sales = (salesByRep.get(salesRepName) ?? []).sort((a, b) => a.date.localeCompare(b.date));
       const salesAmount = sales.reduce((sum, s) => sum + s.amount, 0);
       const tier = calculateFuelAllowance(salesAmount, visits.length);
       return { salesRepName, visitCount: visits.length, salesAmount, fuelAmount: tier.amount, visits, sales };
