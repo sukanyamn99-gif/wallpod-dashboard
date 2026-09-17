@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { ChevronLeft } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronLeft, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NumberInput } from "@/components/ui/number-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,6 +14,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatNumber, formatTHB } from "@/lib/format";
 import { FUEL_ALLOWANCE_TIERS } from "@/lib/fuel-allowance";
 import type { FuelAllowanceRow } from "@/lib/types";
+
+const ELIGIBLE_REPS_STORAGE_KEY = "fuel-allowance-eligible-reps";
+// Only sales reps with a monthly sales quota get ค่าน้ำมัน — confirmed as
+// อภิญญา and ธีรวัฒน์ when this page shipped. Kept editable (not hardcoded
+// as a fixed filter) since who's eligible is a business decision that
+// changes as reps join/leave the quota program, not something derivable
+// from the sales data itself.
+const DEFAULT_ELIGIBLE_REPS = ["อภิญญา (แนน)", "ธีรวัฒน์ (โต้)"];
 
 const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -32,10 +41,76 @@ function visitRangeLabel(index: number): string {
   return isLast ? `${tier.minVisits} รายขึ้นไป` : `${tier.minVisits} ราย`;
 }
 
-export function FuelAllowanceView({ rows, month, year }: { rows: FuelAllowanceRow[]; month: number; year: number }) {
+export function FuelAllowanceView({
+  rows,
+  allNames,
+  month,
+  year,
+}: {
+  rows: FuelAllowanceRow[];
+  allNames: string[];
+  month: number;
+  year: number;
+}) {
   const router = useRouter();
   const [pendingMonth, setPendingMonth] = useState(String(month));
   const [pendingYear, setPendingYear] = useState(String(year + 543));
+
+  // Persisted across visits so the eligible list doesn't need re-picking
+  // every month — same convention as commission/incentive's remembered names.
+  const [eligibleReps, setEligibleReps] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set(DEFAULT_ELIGIBLE_REPS);
+    try {
+      const saved = JSON.parse(window.localStorage.getItem(ELIGIBLE_REPS_STORAGE_KEY) ?? "null");
+      return Array.isArray(saved) ? new Set(saved) : new Set(DEFAULT_ELIGIBLE_REPS);
+    } catch {
+      return new Set(DEFAULT_ELIGIBLE_REPS);
+    }
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(ELIGIBLE_REPS_STORAGE_KEY, JSON.stringify(Array.from(eligibleReps)));
+    } catch {
+      // Remembering the selection is a convenience, not a requirement.
+    }
+  }, [eligibleReps]);
+
+  function toggleRep(name: string) {
+    setEligibleReps((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }
+
+  const [newRepName, setNewRepName] = useState("");
+  function addNewRep() {
+    const name = newRepName.trim();
+    if (!name) return;
+    setEligibleReps((prev) => new Set(prev).add(name));
+    setNewRepName("");
+  }
+
+  // Union of every name ever seen plus any custom name already added (e.g.
+  // a brand-new rep with no sales/Sale Report history yet) — so both kinds
+  // of reps render as a toggle-able chip, not just historical ones.
+  const pickerNames = Array.from(new Set([...allNames, ...eligibleReps])).sort();
+
+  // A rep marked eligible but with zero sales/visits this month still gets
+  // a floor-tier row instead of silently vanishing from the report.
+  const visibleRows = Array.from(eligibleReps)
+    .map(
+      (name) =>
+        rows.find((r) => r.salesRepName === name) ?? {
+          salesRepName: name,
+          visitCount: 0,
+          salesAmount: 0,
+          fuelAmount: FUEL_ALLOWANCE_TIERS[0].amount,
+        },
+    )
+    .sort((a, b) => b.fuelAmount - a.fuelAmount || b.salesAmount - a.salesAmount);
 
   const monthItems = THAI_MONTHS.map((label, i) => ({ value: String(i + 1), label }));
 
@@ -102,6 +177,50 @@ export function FuelAllowanceView({ rows, month, year }: { rows: FuelAllowanceRo
         </CardContent>
       </Card>
 
+      <Card className="print:hidden">
+        <CardHeader>
+          <CardTitle>เซลล์ที่รับเป้าค่าน้ำมัน</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            เลือกเฉพาะพนักงานขายที่รับเป้าและต้องจ่ายค่าน้ำมัน — คนอื่นในระบบจะไม่ถูกนำมาคำนวณ เลือกไว้ครั้งเดียว ระบบจะจำไว้ทุกครั้งที่เปิดหน้านี้
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {pickerNames.length === 0 && <p className="text-sm text-muted-foreground">ยังไม่มีชื่อพนักงานขายในระบบ</p>}
+            {pickerNames.map((name) => (
+              <button
+                key={name}
+                type="button"
+                onClick={() => toggleRep(name)}
+                className={
+                  "rounded-full border px-3 py-1 text-sm transition-colors " +
+                  (eligibleReps.has(name) ? "border-primary bg-primary/10 text-primary" : "border-input text-muted-foreground")
+                }
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+          <div className="flex max-w-md gap-2">
+            <Input
+              placeholder="เพิ่มชื่อเซลล์ใหม่ (ยังไม่เคยมีข้อมูลในระบบ)"
+              value={newRepName}
+              onChange={(e) => setNewRepName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addNewRep();
+                }
+              }}
+            />
+            <Button type="button" variant="outline" onClick={addNewRep} disabled={!newRepName.trim()}>
+              <Plus className="h-4 w-4" />
+              เพิ่ม
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>
@@ -119,14 +238,14 @@ export function FuelAllowanceView({ rows, month, year }: { rows: FuelAllowanceRo
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.length === 0 ? (
+              {visibleRows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                    ยังไม่มีข้อมูลยอดขายหรือ Sale Report ในเดือนนี้
+                    ยังไม่ได้เลือกเซลล์ที่รับเป้าค่าน้ำมัน — เลือกได้ที่การ์ด &quot;เซลล์ที่รับเป้าค่าน้ำมัน&quot; ด้านบน
                   </TableCell>
                 </TableRow>
               ) : (
-                rows.map((r) => (
+                visibleRows.map((r) => (
                   <TableRow key={r.salesRepName}>
                     <TableCell className="font-medium">{r.salesRepName}</TableCell>
                     <TableCell className="text-right tabular-nums">{formatTHB(r.salesAmount)}</TableCell>
