@@ -18,7 +18,7 @@ export default async function FuelAllowancePage({
   const month = Number(monthParam) || now.getMonth() + 1;
   const year = Number(yearParam) || now.getFullYear();
 
-  const { rows, allNames } = await getFuelAllowanceReport(month, year);
+  const { rows, allNames, visitPeriod } = await getFuelAllowanceReport(month, year);
 
-  return <FuelAllowanceView rows={rows} allNames={allNames} month={month} year={year} />;
+  return <FuelAllowanceView rows={rows} allNames={allNames} visitPeriod={visitPeriod} month={month} year={year} />;
 }

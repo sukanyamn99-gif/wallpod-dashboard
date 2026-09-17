@@ -12,22 +12,47 @@ export interface FuelAllowanceReport {
   // set of names to offer as options.
   allNames: string[];
   rows: FuelAllowanceRow[];
+  // The actual date range ("YYYY-MM-DD") used to count จำนวนลูกค้าที่วิ่ง —
+  // surfaced so the report itself states the cutoff instead of leaving the
+  // 25th-to-25th rule as something only the code knows about.
+  visitPeriod: { from: string; to: string };
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+// The visit-count cutoff runs the 25th of the previous month through the
+// 25th of this month, inclusive both ends — e.g. the figure paid at the end
+// of September counts visits from Aug 25 through Sep 25 (confirmed
+// explicitly by the user; this cutoff does NOT apply to ยอดขาย, which stays
+// on the plain calendar month per project_date). Comparing the "YYYY-MM-DD"
+// prefix of created_at as a string (not a parsed Date) matches this
+// function's existing convention below for sales amount, and sorts
+// correctly since that format is lexicographically ordered the same as
+// chronologically.
+function visitPeriodBounds(month: number, year: number): { from: string; to: string } {
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  return { from: `${prevYear}-${pad2(prevMonth)}-25`, to: `${year}-${pad2(month)}-25` };
 }
 
 // "ยอดขาย" is real closed revenue from WALLPOD Project Sales (pre_vat,
 // bucketed by the job's own project_date — matches how every other monthly
 // sales figure in this app, e.g. GP/AR/weekly sales, is bucketed), not the
 // self-reported pipeline value on a Sale Report entry. "จำนวนลูกค้าที่วิ่ง"
-// is every Sale Report entry that rep filed in the month, one row = one
-// visit, with no dedupe by customer name.
+// is every Sale Report entry that rep filed in the visit-count cutoff
+// window above, one row = one visit, with no dedupe by customer name.
 export async function getFuelAllowanceReport(month: number, year: number): Promise<FuelAllowanceReport> {
   const monthPrefix = `${year}-${String(month).padStart(2, "0")}`;
+  const visitBounds = visitPeriodBounds(month, year);
 
   const [reports, { rows: projects }] = await Promise.all([getAllSaleReports(), getFullProjectReport()]);
 
   const visitCounts = new Map<string, number>();
   for (const r of reports) {
-    if (!r.created_at.startsWith(monthPrefix)) continue;
+    const visitDate = r.created_at.slice(0, 10);
+    if (visitDate < visitBounds.from || visitDate > visitBounds.to) continue;
     visitCounts.set(r.sales_rep_name, (visitCounts.get(r.sales_rep_name) ?? 0) + 1);
   }
 
@@ -51,5 +76,5 @@ export async function getFuelAllowanceReport(month: number, year: number): Promi
     })
     .sort((a, b) => b.fuelAmount - a.fuelAmount || b.salesAmount - a.salesAmount);
 
-  return { allNames: Array.from(allNames).sort(), rows };
+  return { allNames: Array.from(allNames).sort(), rows, visitPeriod: visitBounds };
 }

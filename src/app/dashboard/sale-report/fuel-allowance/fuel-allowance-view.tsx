@@ -27,6 +27,15 @@ const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
 ];
+const THAI_MONTHS_SHORT = [
+  "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+  "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
+];
+
+function shortThaiDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return `${d} ${THAI_MONTHS_SHORT[m - 1]} ${y + 543}`;
+}
 
 function salesRangeLabel(index: number): string {
   const tier = FUEL_ALLOWANCE_TIERS[index];
@@ -44,11 +53,13 @@ function visitRangeLabel(index: number): string {
 export function FuelAllowanceView({
   rows,
   allNames,
+  visitPeriod,
   month,
   year,
 }: {
   rows: FuelAllowanceRow[];
   allNames: string[];
+  visitPeriod: { from: string; to: string };
   month: number;
   year: number;
 }) {
@@ -129,7 +140,8 @@ export function FuelAllowanceView({
         </Link>
         <h1 className="mt-2 text-2xl font-semibold">คำนวณค่าน้ำมันเซลล์</h1>
         <p className="text-sm text-muted-foreground">
-          คำนวณตามยอดขายจริง (Koonway Project Sales) หรือจำนวนรายการ Sale Report ในเดือนนั้น — เลือกยอดที่สูงกว่าให้อัตโนมัติ
+          ยอดขายคำนวณตามเดือนปฏิทิน (Koonway Project Sales) ส่วนจำนวนลูกค้าที่วิ่งตัดยอดวันที่ 25 ของเดือนก่อนหน้าถึงวันที่
+          25 ของเดือนนี้ — เลือกยอดที่สูงกว่าให้อัตโนมัติ
         </p>
       </div>
 
@@ -226,6 +238,10 @@ export function FuelAllowanceView({
           <CardTitle>
             ค่าน้ำมันประจำเดือน {THAI_MONTHS[month - 1]} {year + 543}
           </CardTitle>
+          <p className="text-xs text-muted-foreground">
+            ยอดขาย: เดือน {THAI_MONTHS[month - 1]} {year + 543} (ปฏิทิน) — จำนวนลูกค้าที่วิ่ง: {shortThaiDate(visitPeriod.from)}{" "}
+            ถึง {shortThaiDate(visitPeriod.to)}
+          </p>
         </CardHeader>
         <CardContent>
           <Table>
