@@ -202,6 +202,11 @@ export interface FuelAllowanceRow {
   visitCount: number;
   salesAmount: number;
   fuelAmount: number;
+  // The individual visits/jobs behind visitCount/salesAmount, sorted by
+  // date — lets the UI show exactly which customer/date and which job made
+  // up the totals, not just the aggregate numbers.
+  visits: { customerName: string; date: string }[];
+  sales: { jobNo: string | null; projectName: string; date: string; amount: number }[];
 }
 
 export interface SaleReportChangeLog {

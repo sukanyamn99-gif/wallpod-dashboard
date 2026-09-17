@@ -42,24 +42,30 @@ function visitPeriodBounds(month: number, year: number): { from: string; to: str
 // sales figure in this app, e.g. GP/AR/weekly sales, is bucketed), not the
 // self-reported pipeline value on a Sale Report entry. "จำนวนลูกค้าที่วิ่ง"
 // is every Sale Report entry that rep filed in the visit-count cutoff
-// window above, one row = one visit, with no dedupe by customer name.
+// window above, one row = one visit, with no dedupe by customer name. Each
+// row also carries the individual visits/jobs behind its totals so the UI
+// can show exactly which customer/date and which job made up the numbers.
 export async function getFuelAllowanceReport(month: number, year: number): Promise<FuelAllowanceReport> {
   const monthPrefix = `${year}-${String(month).padStart(2, "0")}`;
   const visitBounds = visitPeriodBounds(month, year);
 
   const [reports, { rows: projects }] = await Promise.all([getAllSaleReports(), getFullProjectReport()]);
 
-  const visitCounts = new Map<string, number>();
+  const visitsByRep = new Map<string, { customerName: string; date: string }[]>();
   for (const r of reports) {
     const visitDate = r.created_at.slice(0, 10);
     if (visitDate < visitBounds.from || visitDate > visitBounds.to) continue;
-    visitCounts.set(r.sales_rep_name, (visitCounts.get(r.sales_rep_name) ?? 0) + 1);
+    const list = visitsByRep.get(r.sales_rep_name) ?? [];
+    list.push({ customerName: r.customer_name, date: visitDate });
+    visitsByRep.set(r.sales_rep_name, list);
   }
 
-  const salesAmounts = new Map<string, number>();
+  const salesByRep = new Map<string, { jobNo: string | null; projectName: string; date: string; amount: number }[]>();
   for (const p of projects) {
     if (p.isCancelled || !p.projectDate.startsWith(monthPrefix)) continue;
-    salesAmounts.set(p.salesRepName, (salesAmounts.get(p.salesRepName) ?? 0) + p.preVat);
+    const list = salesByRep.get(p.salesRepName) ?? [];
+    list.push({ jobNo: p.jobNo, projectName: p.projectName, date: p.projectDate, amount: p.preVat });
+    salesByRep.set(p.salesRepName, list);
   }
 
   // Every rep ever seen, not just ones active this month — a rep with zero
@@ -69,10 +75,11 @@ export async function getFuelAllowanceReport(month: number, year: number): Promi
 
   const rows = Array.from(allNames)
     .map((salesRepName) => {
-      const visitCount = visitCounts.get(salesRepName) ?? 0;
-      const salesAmount = salesAmounts.get(salesRepName) ?? 0;
-      const tier = calculateFuelAllowance(salesAmount, visitCount);
-      return { salesRepName, visitCount, salesAmount, fuelAmount: tier.amount };
+      const visits = (visitsByRep.get(salesRepName) ?? []).sort((a, b) => a.date.localeCompare(b.date));
+      const sales = (salesByRep.get(salesRepName) ?? []).sort((a, b) => a.date.localeCompare(b.date));
+      const salesAmount = sales.reduce((sum, s) => sum + s.amount, 0);
+      const tier = calculateFuelAllowance(salesAmount, visits.length);
+      return { salesRepName, visitCount: visits.length, salesAmount, fuelAmount: tier.amount, visits, sales };
     })
     .sort((a, b) => b.fuelAmount - a.fuelAmount || b.salesAmount - a.salesAmount);
 

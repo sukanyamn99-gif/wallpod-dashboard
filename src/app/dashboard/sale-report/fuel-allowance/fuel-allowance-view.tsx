@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { ChevronLeft, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NumberInput } from "@/components/ui/number-input";
@@ -111,7 +112,7 @@ export function FuelAllowanceView({
 
   // A rep marked eligible but with zero sales/visits this month still gets
   // a floor-tier row instead of silently vanishing from the report.
-  const visibleRows = Array.from(eligibleReps)
+  const visibleRows: FuelAllowanceRow[] = Array.from(eligibleReps)
     .map(
       (name) =>
         rows.find((r) => r.salesRepName === name) ?? {
@@ -119,6 +120,8 @@ export function FuelAllowanceView({
           visitCount: 0,
           salesAmount: 0,
           fuelAmount: FUEL_ALLOWANCE_TIERS[0].amount,
+          visits: [],
+          sales: [],
         },
     )
     .sort((a, b) => b.fuelAmount - a.fuelAmount || b.salesAmount - a.salesAmount);
@@ -251,12 +254,13 @@ export function FuelAllowanceView({
                 <TableHead className="text-right">ยอดขาย (บาท)</TableHead>
                 <TableHead className="text-right">จำนวนลูกค้าที่วิ่ง</TableHead>
                 <TableHead className="text-right">ค่าน้ำมันที่ได้รับ</TableHead>
+                <TableHead className="print:hidden" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {visibleRows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                     ยังไม่ได้เลือกเซลล์ที่รับเป้าค่าน้ำมัน — เลือกได้ที่การ์ด &quot;เซลล์ที่รับเป้าค่าน้ำมัน&quot; ด้านบน
                   </TableCell>
                 </TableRow>
@@ -267,6 +271,75 @@ export function FuelAllowanceView({
                     <TableCell className="text-right tabular-nums">{formatTHB(r.salesAmount)}</TableCell>
                     <TableCell className="text-right tabular-nums">{formatNumber(r.visitCount)} ราย</TableCell>
                     <TableCell className="text-right font-medium tabular-nums">{formatTHB(r.fuelAmount)}</TableCell>
+                    <TableCell className="print:hidden">
+                      <Dialog>
+                        <DialogTrigger render={<Button type="button" variant="outline" size="sm" />}>
+                          ดูรายการ
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle>รายละเอียดของ {r.salesRepName}</DialogTitle>
+                          </DialogHeader>
+                          <DialogBody className="space-y-4 pb-4">
+                            <div>
+                              <p className="mb-2 text-sm font-medium">
+                                รายการที่วิ่ง ({shortThaiDate(visitPeriod.from)} ถึง {shortThaiDate(visitPeriod.to)}) —{" "}
+                                {r.visits.length} ราย
+                              </p>
+                              {r.visits.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">ไม่มีรายการ</p>
+                              ) : (
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>วันที่</TableHead>
+                                      <TableHead>ลูกค้า</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {r.visits.map((v, i) => (
+                                      <TableRow key={i}>
+                                        <TableCell className="whitespace-nowrap">{shortThaiDate(v.date)}</TableCell>
+                                        <TableCell>{v.customerName}</TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              )}
+                            </div>
+                            <div>
+                              <p className="mb-2 text-sm font-medium">
+                                รายการยอดขาย (เดือน {THAI_MONTHS[month - 1]} {year + 543}) — {formatTHB(r.salesAmount)} บาท
+                              </p>
+                              {r.sales.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">ไม่มีรายการ</p>
+                              ) : (
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>วันที่</TableHead>
+                                      <TableHead>เลขที่ Job</TableHead>
+                                      <TableHead>ชื่องาน</TableHead>
+                                      <TableHead className="text-right">ยอดขาย</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {r.sales.map((s, i) => (
+                                      <TableRow key={i}>
+                                        <TableCell className="whitespace-nowrap">{shortThaiDate(s.date)}</TableCell>
+                                        <TableCell>{s.jobNo ?? "—"}</TableCell>
+                                        <TableCell>{s.projectName}</TableCell>
+                                        <TableCell className="text-right tabular-nums">{formatTHB(s.amount)}</TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              )}
+                            </div>
+                          </DialogBody>
+                        </DialogContent>
+                      </Dialog>
+                    </TableCell>
                   </TableRow>
                 ))
               )}

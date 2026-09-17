@@ -48,7 +48,14 @@ export default async function PrintFuelAllowancePage({
     if (existing) return existing;
     // Not found means zero sales/visits this month — still floor-tier, same
     // fallback the calculator page itself uses, not a bare zero.
-    return { salesRepName: name, visitCount: 0, salesAmount: 0, fuelAmount: calculateFuelAllowance(0, 0).amount };
+    return {
+      salesRepName: name,
+      visitCount: 0,
+      salesAmount: 0,
+      fuelAmount: calculateFuelAllowance(0, 0).amount,
+      visits: [],
+      sales: [],
+    };
   });
 
   return <PrintFuelAllowanceView rows={visibleRows} month={month} year={year} visitPeriod={visitPeriod} />;
