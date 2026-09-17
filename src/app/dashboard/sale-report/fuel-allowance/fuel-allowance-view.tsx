@@ -306,8 +306,17 @@ export function FuelAllowanceView({
       </Card>
 
       <div className="flex justify-end gap-2 print:hidden">
-        <Button variant="outline" onClick={() => window.print()}>
-          พิมพ์
+        <Button
+          nativeButton={false}
+          render={
+            <a
+              href={`/dashboard/sale-report/fuel-allowance/print?month=${month}&year=${year}&reps=${encodeURIComponent(
+                visibleRows.map((r) => r.salesRepName).join(","),
+              )}`}
+            />
+          }
+        >
+          พิมพ์เอกสารอนุมัติ
         </Button>
       </div>
     </div>
