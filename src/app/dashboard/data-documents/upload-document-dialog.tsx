@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { ImagePlus, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +23,7 @@ export function UploadDocumentDialog() {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [thumbnail, setThumbnail] = useState<{ blob: Blob; previewUrl: string } | null>(null);
+  const [, startTransition] = useTransition();
 
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
     const result = await createDataDocument(formData);
@@ -57,7 +58,7 @@ export function UploadDocumentDialog() {
             e.preventDefault();
             const fd = new FormData(e.currentTarget);
             if (thumbnail) fd.set("thumbnail", thumbnail.blob, "thumbnail.jpg");
-            formAction(fd);
+            startTransition(() => formAction(fd));
           }}
         >
           <DialogBody className="space-y-4 pb-4">

@@ -10,8 +10,12 @@ const nextConfig: NextConfig = {
   // noisy Next.js dev error overlay; it doesn't change any real behavior.
   reactStrictMode: false,
   experimental: {
+    // 8mb was originally sized for Sale Report's resized photo uploads.
+    // เอกสารข้อมูล (src/app/dashboard/data-documents) uploads real catalog
+    // PDFs unresized — the reference catalog the user shared was 29MB —
+    // so this needs real headroom above that, not just past the old ceiling.
     serverActions: {
-      bodySizeLimit: "8mb",
+      bodySizeLimit: "50mb",
     },
   },
   // Keeps puppeteer-core/@sparticuz/chromium as plain Node requires instead
