@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Fuel, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getSalesReps } from "@/lib/data/reference";
 import { getCurrentProfile } from "@/lib/data/profile";
@@ -32,6 +32,10 @@ export default async function SaleReportPage() {
             ภาพรวมการเข้าพบลูกค้าทั้งหมด — ข้อมูลนี้ใช้คำนวณกราฟ Pipeline บน Sales Dashboard
           </p>
         </div>
+        <Button variant="outline" nativeButton={false} render={<a href="/dashboard/sale-report/fuel-allowance" />}>
+          <Fuel className="h-4 w-4" />
+          คำนวณค่าน้ำมัน
+        </Button>
         <Button nativeButton={false} render={<a href="/dashboard/sale-report/new" />}>
           <Plus className="h-4 w-4" />
           เพิ่ม Sale Report

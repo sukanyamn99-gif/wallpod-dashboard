@@ -195,6 +195,15 @@ export interface SaleReport {
   created_at: string;
 }
 
+// One sales rep's ค่าน้ำมัน for one calendar month — see
+// src/lib/fuel-allowance.ts for the tier table this is computed from.
+export interface FuelAllowanceRow {
+  salesRepName: string;
+  visitCount: number;
+  salesAmount: number;
+  fuelAmount: number;
+}
+
 export interface SaleReportChangeLog {
   id: string;
   action: "update" | "delete";
