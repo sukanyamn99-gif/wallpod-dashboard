@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import * as tus from "tus-js-client";
 import { ImagePlus, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +21,48 @@ import { DATA_DOCUMENTS_BUCKET } from "@/lib/data-documents-constants";
 import { createClient } from "@/lib/supabase/client";
 import { recordDataDocument } from "./actions";
 
+// Supabase's simple storage.upload() (a single POST) proved unreliable for
+// real catalog PDFs in real testing — it hung indefinitely and never
+// resolved, even for a 500KB file. This is Supabase's own documented
+// reason for recommending the resumable (TUS) protocol for anything but
+// the smallest files: it uploads in fixed 6MB chunks (a hard requirement
+// of Supabase's TUS endpoint, not a tunable choice) with retries per
+// chunk, instead of one long-lived request that has no way to recover if
+// it stalls.
+function uploadResumable(
+  file: File | Blob,
+  fileName: string,
+  path: string,
+  accessToken: string,
+  onProgress: (percent: number) => void,
+): Promise<void> {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  return new Promise((resolve, reject) => {
+    const upload = new tus.Upload(file, {
+      endpoint: `${supabaseUrl}/storage/v1/upload/resumable`,
+      retryDelays: [0, 1000, 3000, 5000, 10000],
+      headers: { authorization: `Bearer ${accessToken}`, apikey: anonKey },
+      uploadDataDuringCreation: true,
+      removeFingerprintOnSuccess: true,
+      metadata: {
+        bucketName: DATA_DOCUMENTS_BUCKET,
+        objectName: path,
+        contentType: (file instanceof File ? file.type : "image/jpeg") || "application/octet-stream",
+        cacheControl: "3600",
+      },
+      chunkSize: 6 * 1024 * 1024,
+      onError: reject,
+      onProgress: (sent, total) => onProgress(Math.round((sent / total) * 100)),
+      onSuccess: () => resolve(),
+    });
+    upload.findPreviousUploads().then((previous) => {
+      if (previous.length > 0) upload.resumeFromPreviousUpload(previous[0]);
+      upload.start();
+    });
+  });
+}
+
 export function UploadDocumentDialog() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -27,6 +70,7 @@ export function UploadDocumentDialog() {
   const [thumbnail, setThumbnail] = useState<{ blob: Blob; previewUrl: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -35,6 +79,7 @@ export function UploadDocumentDialog() {
       return;
     }
     setPending(true);
+    setProgress(0);
     setError(null);
 
     const fd = new FormData(e.currentTarget);
@@ -42,22 +87,23 @@ export function UploadDocumentDialog() {
     const category = String(fd.get("category") ?? "").trim();
 
     try {
-      // Uploaded directly from the browser to Supabase Storage — see
-      // actions.ts's comment for why this doesn't go through the Next.js
-      // server at all.
       const supabase = createClient();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) {
+        setError("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่");
+        return;
+      }
+
       const id = crypto.randomUUID();
       const ext = file.name.split(".").pop()?.toLowerCase() || "pdf";
       const filePath = `${id}/file.${ext}`;
 
-      const { error: uploadErr } = await supabase.storage
-        .from(DATA_DOCUMENTS_BUCKET)
-        .upload(filePath, file, { contentType: file.type || "application/octet-stream" });
-      if (uploadErr) {
-        setError(`อัปโหลดไฟล์ไม่สำเร็จ: ${uploadErr.message}`);
-        return;
-      }
+      await uploadResumable(file, file.name, filePath, session.access_token, setProgress);
 
+      // The cover thumbnail is small (resized to 600x600 JPEG) — simple
+      // upload is fine for it, unlike the main document file above.
       let thumbnailPath: string | null = null;
       if (thumbnail) {
         const candidatePath = `${id}/thumbnail.jpg`;
@@ -170,7 +216,7 @@ export function UploadDocumentDialog() {
           </DialogBody>
           <DialogFooter>
             <Button type="submit" disabled={pending}>
-              {pending ? "กำลังอัปโหลด..." : "บันทึก"}
+              {pending ? `กำลังอัปโหลด... ${progress}%` : "บันทึก"}
             </Button>
           </DialogFooter>
         </form>
