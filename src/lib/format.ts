@@ -19,6 +19,7 @@ export function formatQuotationItemDescription(item: {
   size: string | null;
   color: string | null;
   cuttingPattern?: string | null;
+  note?: string | null;
 }): string {
   const lines: string[] = [];
   if (item.productName) lines.push(`Product Name : ${item.productName}`);
@@ -26,5 +27,6 @@ export function formatQuotationItemDescription(item: {
   if (item.size) lines.push(`Size /ขนาด : ${item.size}`);
   if (item.color) lines.push(`Color/สี : ${item.color}`);
   if (item.cuttingPattern) lines.push(`Cutting /รูปแบบการตัด : ${item.cuttingPattern}`);
+  if (item.note) lines.push(`หมายเหตุ : ${item.note}`);
   return lines.join("\n");
 }

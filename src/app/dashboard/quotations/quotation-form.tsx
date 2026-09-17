@@ -42,6 +42,7 @@ interface ItemRow {
   size: string;
   color: string;
   cuttingPattern: string;
+  note: string;
   unitPrice: string;
   discountPercent: string;
   qty: string;
@@ -68,6 +69,7 @@ function itemsFromInitial(initialData?: QuotationDetail): ItemRow[] {
         size: "",
         color: "",
         cuttingPattern: "",
+        note: "",
         unitPrice: "",
         discountPercent: "0",
         qty: "1",
@@ -84,6 +86,7 @@ function itemsFromInitial(initialData?: QuotationDetail): ItemRow[] {
     size: it.size ?? "",
     color: it.color ?? "",
     cuttingPattern: it.cuttingPattern ?? "",
+    note: it.note ?? "",
     unitPrice: String(it.unitPrice),
     discountPercent: String(it.discountPercent),
     qty: String(it.qty),
@@ -166,6 +169,7 @@ export function QuotationForm({
         size: "",
         color: "",
         cuttingPattern: "",
+        note: "",
         unitPrice: "",
         discountPercent: "0",
         qty: "1",
@@ -267,6 +271,7 @@ export function QuotationForm({
       fd.append("item_size", it.size);
       fd.append("item_color", it.color);
       fd.append("item_cutting_pattern", it.cuttingPattern);
+      fd.append("item_note", it.note);
       fd.append("item_unit_price", it.unitPrice || "0");
       fd.append("item_discount_percent", it.discountPercent || "0");
       fd.append("item_qty", it.qty || "1");
@@ -520,6 +525,15 @@ export function QuotationForm({
               <Button type="button" size="icon-sm" variant="ghost" onClick={() => removeItem(it.key)} disabled={items.length === 1}>
                 <Trash2 className="h-4 w-4" />
               </Button>
+            </div>
+
+            <div className="space-y-1 sm:col-span-2 lg:col-span-7">
+              <Label className="text-[10px] text-muted-foreground">หมายเหตุ (เฉพาะรายการนี้)</Label>
+              <Input
+                placeholder="เช่น เงื่อนไขการติดตั้งเฉพาะรายการนี้"
+                value={it.note}
+                onChange={(e) => updateItem(it.key, { note: e.target.value })}
+              />
             </div>
 
             <div className="text-xs text-muted-foreground sm:col-span-2 lg:col-span-7">

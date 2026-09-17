@@ -210,7 +210,7 @@ export async function getQuotationById(id: string): Promise<QuotationDetail | nu
   const { data: items, error: itemsErr } = await supabase
     .from("quotation_items")
     .select(
-      "id, sort_order, product_code, product_name, thickness, size, color, cutting_pattern, image_path, unit_price, discount_percent, net_price, qty, unit, total_price",
+      "id, sort_order, product_code, product_name, thickness, size, color, cutting_pattern, note, image_path, unit_price, discount_percent, net_price, qty, unit, total_price",
     )
     .eq("quotation_id", id)
     .order("sort_order", { ascending: true });
@@ -225,6 +225,7 @@ export async function getQuotationById(id: string): Promise<QuotationDetail | nu
     size: row.size,
     color: row.color,
     cuttingPattern: row.cutting_pattern,
+    note: row.note,
     imagePath: row.image_path,
     unitPrice: Number(row.unit_price),
     discountPercent: Number(row.discount_percent),

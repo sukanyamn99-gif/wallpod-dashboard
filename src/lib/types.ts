@@ -810,6 +810,7 @@ export interface QuotationItem {
   size: string | null;
   color: string | null;
   cuttingPattern: string | null;
+  note: string | null;
   imagePath: string | null;
   unitPrice: number;
   discountPercent: number;
