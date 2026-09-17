@@ -333,6 +333,11 @@ export function FuelAllowanceView({
                                       <TableHead>เลขที่ Job</TableHead>
                                       <TableHead>ชื่องาน</TableHead>
                                       <TableHead className="text-right">ยอดขาย</TableHead>
+                                      <TableHead>ชื่อโปรเจค</TableHead>
+                                      <TableHead className="text-right">ยอดใบเสนอราคา</TableHead>
+                                      <TableHead>สถานะ</TableHead>
+                                      <TableHead>ผู้ติดต่อ</TableHead>
+                                      <TableHead>เบอร์โทร</TableHead>
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
@@ -342,6 +347,13 @@ export function FuelAllowanceView({
                                         <TableCell>{s.jobNo ?? "—"}</TableCell>
                                         <TableCell>{s.projectName}</TableCell>
                                         <TableCell className="text-right tabular-nums">{formatTHB(s.amount)}</TableCell>
+                                        <TableCell>{s.quotation?.projectName ?? "—"}</TableCell>
+                                        <TableCell className="text-right tabular-nums">
+                                          {s.quotation ? formatTHB(s.quotation.total) : "—"}
+                                        </TableCell>
+                                        <TableCell>{s.quotation?.status ?? "—"}</TableCell>
+                                        <TableCell>{s.quotation?.attn ?? "—"}</TableCell>
+                                        <TableCell>{s.quotation?.customerTel ?? "—"}</TableCell>
                                       </TableRow>
                                     ))}
                                   </TableBody>
@@ -351,6 +363,7 @@ export function FuelAllowanceView({
                                         รวม
                                       </TableCell>
                                       <TableCell className="text-right font-medium tabular-nums">{formatTHB(r.salesAmount)}</TableCell>
+                                      <TableCell colSpan={5} />
                                     </TableRow>
                                   </TableFooter>
                                 </Table>

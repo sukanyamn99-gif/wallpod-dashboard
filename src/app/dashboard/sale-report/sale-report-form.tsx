@@ -299,7 +299,7 @@ export function SaleReportForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="stage">Stage</Label>
+          <Label htmlFor="stage">สถานะ</Label>
           <Select name="stage" required defaultValue={initialData?.stage}>
             <SelectTrigger id="stage" className="w-full">
               <SelectValue placeholder="เลือก" />

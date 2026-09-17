@@ -38,6 +38,7 @@ export function PrintFuelAllowanceView({
 
   return (
     <div>
+      <style>{`@media print { @page { size: landscape; } }`}</style>
       <div className="mb-4 flex justify-end gap-2 print:hidden">
         <Button variant="outline" onClick={() => router.back()}>
           ปิด
@@ -46,7 +47,7 @@ export function PrintFuelAllowanceView({
         <DownloadPdfButton />
       </div>
 
-      <div className="mx-auto max-w-[900px] bg-white p-8 text-black print:p-0">
+      <div className="mx-auto max-w-[1200px] bg-white p-8 text-black print:p-0">
         <Image src="/koonwaylogo.png" alt="KOONWAY" width={152} height={24} className="h-6 w-auto" priority />
         <p className="mt-3 font-medium">บริษัท คูนเว จำกัด</p>
         <p className="font-medium">สรุปค่าน้ำมันพนักงานขาย</p>
@@ -145,6 +146,11 @@ export function PrintFuelAllowanceView({
                         <th className="border border-black p-1 font-medium">เลขที่ Job</th>
                         <th className="border border-black p-1 text-left font-medium">ชื่องาน</th>
                         <th className="border border-black p-1 text-right font-medium">ยอดขาย</th>
+                        <th className="border border-black p-1 text-left font-medium">ชื่อโปรเจค</th>
+                        <th className="border border-black p-1 text-right font-medium">ยอดใบเสนอราคา</th>
+                        <th className="border border-black p-1 font-medium">สถานะ</th>
+                        <th className="border border-black p-1 text-left font-medium">ผู้ติดต่อ</th>
+                        <th className="border border-black p-1 font-medium">เบอร์โทร</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -154,6 +160,13 @@ export function PrintFuelAllowanceView({
                           <td className="border border-black p-1 text-center">{s.jobNo ?? "—"}</td>
                           <td className="border border-black p-1">{s.projectName}</td>
                           <td className="border border-black p-1 text-right tabular-nums">{formatTHB(s.amount)}</td>
+                          <td className="border border-black p-1">{s.quotation?.projectName ?? "—"}</td>
+                          <td className="border border-black p-1 text-right tabular-nums">
+                            {s.quotation ? formatTHB(s.quotation.total) : "—"}
+                          </td>
+                          <td className="border border-black p-1 text-center">{s.quotation?.status ?? "—"}</td>
+                          <td className="border border-black p-1">{s.quotation?.attn ?? "—"}</td>
+                          <td className="border border-black p-1 text-center whitespace-nowrap">{s.quotation?.customerTel ?? "—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -163,6 +176,7 @@ export function PrintFuelAllowanceView({
                           รวม
                         </td>
                         <td className="border border-black p-1 text-right font-medium tabular-nums">{formatTHB(r.salesAmount)}</td>
+                        <td className="border border-black p-1" colSpan={5} />
                       </tr>
                     </tfoot>
                   </table>

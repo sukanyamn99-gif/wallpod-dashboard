@@ -206,7 +206,16 @@ export interface FuelAllowanceRow {
   // date — lets the UI show exactly which customer/date and which job made
   // up the totals, not just the aggregate numbers.
   visits: { customerName: string; date: string }[];
-  sales: { jobNo: string | null; projectName: string; date: string; amount: number }[];
+  sales: {
+    jobNo: string | null;
+    projectName: string;
+    date: string;
+    amount: number;
+    // Header info from the job's originating quotation (matched by JOB
+    // NO., same "prefer accepted, else most recent" rule used elsewhere in
+    // this app) — null when no quotation is on file for that job number.
+    quotation: QuotationHeaderForJob | null;
+  }[];
 }
 
 export interface SaleReportChangeLog {
@@ -832,6 +841,17 @@ export interface QuotationItem {
   qty: number;
   unit: string;
   totalPrice: number;
+}
+
+// The subset of a quotation's header shown alongside a fuel-allowance
+// sales-list line (see FuelAllowanceRow.sales) — matched to a WALLPOD
+// Project Sales job by JOB NO., same lookup as getQuotationItemsByJobNumbers.
+export interface QuotationHeaderForJob {
+  projectName: string;
+  total: number;
+  status: QuotationStatus;
+  attn: string | null;
+  customerTel: string | null;
 }
 
 export interface Quotation {

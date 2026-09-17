@@ -1,4 +1,5 @@
 import { getFullProjectReport } from "@/lib/data/project-sales";
+import { getQuotationHeadersByJobNumbers } from "@/lib/data/quotations";
 import { getAllSaleReports } from "@/lib/data/sale-reports";
 import { calculateFuelAllowance } from "@/lib/fuel-allowance";
 import type { FuelAllowanceRow } from "@/lib/types";
@@ -68,6 +69,15 @@ export async function getFuelAllowanceReport(month: number, year: number): Promi
     salesByRep.set(p.salesRepName, list);
   }
 
+  // Enrich each sale with its originating quotation's header (project name,
+  // total, status, contact, phone) so the report shows the full context
+  // behind each job, not just its bare amount.
+  const allJobNos = Array.from(salesByRep.values())
+    .flat()
+    .map((s) => s.jobNo)
+    .filter((j): j is string => !!j);
+  const quotationsByJobNo = await getQuotationHeadersByJobNumbers(allJobNos);
+
   // Every rep ever seen, not just ones active this month — a rep with zero
   // sales/visits this month still gets a row at the floor tier instead of
   // silently disappearing from the report.
@@ -76,7 +86,9 @@ export async function getFuelAllowanceReport(month: number, year: number): Promi
   const rows = Array.from(allNames)
     .map((salesRepName) => {
       const visits = (visitsByRep.get(salesRepName) ?? []).sort((a, b) => a.date.localeCompare(b.date));
-      const sales = (salesByRep.get(salesRepName) ?? []).sort((a, b) => a.date.localeCompare(b.date));
+      const sales = (salesByRep.get(salesRepName) ?? [])
+        .map((s) => ({ ...s, quotation: s.jobNo ? (quotationsByJobNo[s.jobNo] ?? null) : null }))
+        .sort((a, b) => a.date.localeCompare(b.date));
       const salesAmount = sales.reduce((sum, s) => sum + s.amount, 0);
       const tier = calculateFuelAllowance(salesAmount, visits.length);
       return { salesRepName, visitCount: visits.length, salesAmount, fuelAmount: tier.amount, visits, sales };

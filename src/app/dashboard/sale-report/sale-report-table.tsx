@@ -432,7 +432,7 @@ export function SaleReportTable({
                 <TableHead className="truncate" style={{ width: "8%" }}>ลูกค้า</TableHead>
                 <TableHead className="truncate" style={{ width: "8%" }}>งาน/โปรเจกต์</TableHead>
                 <TableHead className="truncate" style={{ width: "4%" }}>กลุ่มลูกค้า</TableHead>
-                <TableHead className="truncate" style={{ width: "6%" }}>Stage</TableHead>
+                <TableHead className="truncate" style={{ width: "6%" }}>สถานะ</TableHead>
                 <TableHead className="truncate text-right" style={{ width: "8%" }}>มูลค่าโดยประมาณ</TableHead>
                 <TableHead className="truncate" style={{ width: "8%" }}>ผู้ติดต่อ</TableHead>
                 <TableHead className="truncate" style={{ width: "8%" }}>เบอร์โทร</TableHead>
