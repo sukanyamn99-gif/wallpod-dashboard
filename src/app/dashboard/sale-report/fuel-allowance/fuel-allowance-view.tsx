@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NumberInput } from "@/components/ui/number-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatNumber, formatTHB } from "@/lib/format";
 import { FUEL_ALLOWANCE_TIERS } from "@/lib/fuel-allowance";
 import type { FuelAllowanceRow } from "@/lib/types";
@@ -345,6 +345,14 @@ export function FuelAllowanceView({
                                       </TableRow>
                                     ))}
                                   </TableBody>
+                                  <TableFooter>
+                                    <TableRow>
+                                      <TableCell colSpan={3} className="font-medium">
+                                        รวม
+                                      </TableCell>
+                                      <TableCell className="text-right font-medium tabular-nums">{formatTHB(r.salesAmount)}</TableCell>
+                                    </TableRow>
+                                  </TableFooter>
                                 </Table>
                               )}
                             </div>

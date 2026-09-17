@@ -157,6 +157,14 @@ export function PrintFuelAllowanceView({
                         </tr>
                       ))}
                     </tbody>
+                    <tfoot>
+                      <tr>
+                        <td className="border border-black p-1 font-medium" colSpan={3}>
+                          รวม
+                        </td>
+                        <td className="border border-black p-1 text-right font-medium tabular-nums">{formatTHB(r.salesAmount)}</td>
+                      </tr>
+                    </tfoot>
                   </table>
                 )}
               </div>
