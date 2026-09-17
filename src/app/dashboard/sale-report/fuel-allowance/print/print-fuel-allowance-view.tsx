@@ -101,6 +101,69 @@ export function PrintFuelAllowanceView({
 
         {rows.length > 0 && <p className="mt-2 text-right text-sm">({thaiBahtText(total)})</p>}
 
+        {rows.length > 0 && (
+          <div className="mt-8 space-y-6">
+            <p className="font-medium">รายละเอียดประกอบการคำนวณ</p>
+            {rows.map((r) => (
+              <div key={r.salesRepName} className="break-inside-avoid space-y-2">
+                <p className="font-medium">{r.salesRepName}</p>
+
+                <p className="text-xs text-gray-600">
+                  รายการที่วิ่ง ({shortThaiDate(visitPeriod.from)} ถึง {shortThaiDate(visitPeriod.to)}) — {r.visits.length} ราย
+                </p>
+                {r.visits.length === 0 ? (
+                  <p className="text-xs text-gray-500">ไม่มีรายการ</p>
+                ) : (
+                  <table className="w-full border-collapse border border-black text-xs">
+                    <thead>
+                      <tr>
+                        <th className="border border-black p-1 font-medium">วันที่</th>
+                        <th className="border border-black p-1 text-left font-medium">ลูกค้า</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {r.visits.map((v, i) => (
+                        <tr key={i}>
+                          <td className="border border-black p-1 text-center whitespace-nowrap">{shortThaiDate(v.date)}</td>
+                          <td className="border border-black p-1">{v.customerName}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                <p className="text-xs text-gray-600">
+                  รายการยอดขาย (เดือน {THAI_MONTHS[month - 1]} {year + 543}) — {formatTHB(r.salesAmount)} บาท
+                </p>
+                {r.sales.length === 0 ? (
+                  <p className="text-xs text-gray-500">ไม่มีรายการ</p>
+                ) : (
+                  <table className="w-full border-collapse border border-black text-xs">
+                    <thead>
+                      <tr>
+                        <th className="border border-black p-1 font-medium">วันที่</th>
+                        <th className="border border-black p-1 font-medium">เลขที่ Job</th>
+                        <th className="border border-black p-1 text-left font-medium">ชื่องาน</th>
+                        <th className="border border-black p-1 text-right font-medium">ยอดขาย</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {r.sales.map((s, i) => (
+                        <tr key={i}>
+                          <td className="border border-black p-1 text-center whitespace-nowrap">{shortThaiDate(s.date)}</td>
+                          <td className="border border-black p-1 text-center">{s.jobNo ?? "—"}</td>
+                          <td className="border border-black p-1">{s.projectName}</td>
+                          <td className="border border-black p-1 text-right tabular-nums">{formatTHB(s.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="mt-20 flex justify-between px-8">
           <div className="flex flex-col items-center gap-2">
             <span className="w-48 border-b border-dotted border-black" />
