@@ -143,7 +143,10 @@ const expensesGroup = {
   ],
 };
 
-const remainingNavItems = [{ title: "Sale Report", url: "/dashboard/sale-report", icon: CalendarCheck }];
+const remainingNavItems = [
+  { title: "Sale Report", url: "/dashboard/sale-report", icon: CalendarCheck },
+  { title: "เอกสารข้อมูล", url: "/dashboard/data-documents", icon: FileText },
+];
 
 const settingsGroup = {
   title: "ตั้งค่า",

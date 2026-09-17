@@ -235,6 +235,18 @@ export interface SaleReportChangeLog {
   createdAt: string;
 }
 
+// เอกสารข้อมูล — a catalog/document library entry staff can browse/download.
+export interface DataDocument {
+  id: string;
+  title: string;
+  category: string;
+  filePath: string;
+  fileType: string;
+  fileSizeBytes: number;
+  thumbnailPath: string | null;
+  createdAt: string;
+}
+
 export interface StockProduct {
   id: string;
   sku: string | null;
