@@ -114,7 +114,7 @@ export function PrintFuelAllowanceView({
                 {r.visits.length === 0 ? (
                   <p className="text-xs text-gray-500">ไม่มีรายการ</p>
                 ) : (
-                  <table className="w-full border-collapse border border-black text-xs">
+                  <table className="w-full border-collapse border border-black text-sm">
                     <thead>
                       <tr>
                         <th className="border border-black p-1 font-medium">วันที่</th>
@@ -138,7 +138,7 @@ export function PrintFuelAllowanceView({
                 {r.sales.length === 0 ? (
                   <p className="text-xs text-gray-500">ไม่มีรายการ</p>
                 ) : (
-                  <table className="w-full border-collapse border border-black text-xs">
+                  <table className="w-full border-collapse border border-black text-sm">
                     <thead>
                       <tr>
                         <th className="border border-black p-1 font-medium">วันที่</th>
