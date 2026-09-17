@@ -165,7 +165,24 @@ export function DateInput({
         type="button"
         tabIndex={-1}
         disabled={disabled}
-        onClick={() => pickerRef.current?.showPicker?.()}
+        onClick={() => {
+          const picker = pickerRef.current;
+          if (!picker) return;
+          // showPicker() isn't supported everywhere yet (older iOS Safari,
+          // some in-app browsers like LINE's) — fall back to focus()+click(),
+          // the pre-showPicker way of opening a native date picker, so the
+          // button never silently does nothing when tapped.
+          if (typeof picker.showPicker === "function") {
+            try {
+              picker.showPicker();
+              return;
+            } catch {
+              // fall through to the focus()+click() fallback below
+            }
+          }
+          picker.focus();
+          picker.click();
+        }}
         className="ml-auto shrink-0 text-muted-foreground hover:text-foreground"
         aria-label="เปิดปฏิทิน"
       >
