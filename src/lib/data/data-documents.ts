@@ -1,7 +1,8 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { DATA_DOCUMENTS_BUCKET } from "@/lib/data-documents-constants";
 import type { DataDocument } from "@/lib/types";
 
-export const DATA_DOCUMENTS_BUCKET = "data-documents";
+export { DATA_DOCUMENTS_BUCKET };
 
 const COLUMNS = "id, title, category, file_path, file_type, file_size_bytes, thumbnail_path, created_at";
 

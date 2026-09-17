@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ImagePlus, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,26 +16,84 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { resizeImageToBlob } from "@/lib/image-resize";
-import { createDataDocument } from "./actions";
-
-const initialState = { error: null as string | null };
+import { DATA_DOCUMENTS_BUCKET } from "@/lib/data-documents-constants";
+import { createClient } from "@/lib/supabase/client";
+import { recordDataDocument } from "./actions";
 
 export function UploadDocumentDialog() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [thumbnail, setThumbnail] = useState<{ blob: Blob; previewUrl: string } | null>(null);
-  const [, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
-  const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
-    const result = await createDataDocument(formData);
-    if (!result.error) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!file) {
+      setError("กรุณาเลือกไฟล์เอกสาร");
+      return;
+    }
+    setPending(true);
+    setError(null);
+
+    const fd = new FormData(e.currentTarget);
+    const title = String(fd.get("title") ?? "").trim();
+    const category = String(fd.get("category") ?? "").trim();
+
+    try {
+      // Uploaded directly from the browser to Supabase Storage — see
+      // actions.ts's comment for why this doesn't go through the Next.js
+      // server at all.
+      const supabase = createClient();
+      const id = crypto.randomUUID();
+      const ext = file.name.split(".").pop()?.toLowerCase() || "pdf";
+      const filePath = `${id}/file.${ext}`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from(DATA_DOCUMENTS_BUCKET)
+        .upload(filePath, file, { contentType: file.type || "application/octet-stream" });
+      if (uploadErr) {
+        setError(`อัปโหลดไฟล์ไม่สำเร็จ: ${uploadErr.message}`);
+        return;
+      }
+
+      let thumbnailPath: string | null = null;
+      if (thumbnail) {
+        const candidatePath = `${id}/thumbnail.jpg`;
+        const { error: thumbErr } = await supabase.storage
+          .from(DATA_DOCUMENTS_BUCKET)
+          .upload(candidatePath, thumbnail.blob, { contentType: "image/jpeg" });
+        if (!thumbErr) thumbnailPath = candidatePath; // best-effort — missing thumbnail just falls back to a generic icon
+      }
+
+      const result = await recordDataDocument({
+        title,
+        category,
+        filePath,
+        fileType: ext.toUpperCase(),
+        fileSizeBytes: file.size,
+        thumbnailPath,
+      });
+      if (result.error) {
+        await supabase.storage
+          .from(DATA_DOCUMENTS_BUCKET)
+          .remove([filePath, ...(thumbnailPath ? [thumbnailPath] : [])]);
+        setError(result.error);
+        return;
+      }
+
       setOpen(false);
       setFile(null);
       if (thumbnail) URL.revokeObjectURL(thumbnail.previewUrl);
       setThumbnail(null);
+      router.refresh();
+    } catch {
+      setError("อัปโหลดไม่สำเร็จ ลองใหม่อีกครั้ง");
+    } finally {
+      setPending(false);
     }
-    return result;
-  }, initialState);
+  }
 
   async function handleThumbnailSelect(f: File) {
     const blob = await resizeImageToBlob(f, 600, 600, 0.8);
@@ -52,17 +111,9 @@ export function UploadDocumentDialog() {
         <DialogHeader>
           <DialogTitle>เพิ่มเอกสารข้อมูล</DialogTitle>
         </DialogHeader>
-        <form
-          action={formAction}
-          onSubmit={(e) => {
-            e.preventDefault();
-            const fd = new FormData(e.currentTarget);
-            if (thumbnail) fd.set("thumbnail", thumbnail.blob, "thumbnail.jpg");
-            startTransition(() => formAction(fd));
-          }}
-        >
+        <form onSubmit={handleSubmit}>
           <DialogBody className="space-y-4 pb-4">
-            {state.error && <p className="text-sm text-destructive">{state.error}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
             <div className="space-y-2">
               <Label htmlFor="doc_title">ชื่อเอกสาร</Label>
               <Input id="doc_title" name="title" required placeholder="เช่น Acoustic Silencer" />
