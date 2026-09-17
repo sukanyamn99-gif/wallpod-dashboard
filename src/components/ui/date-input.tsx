@@ -161,44 +161,28 @@ export function DateInput({
         className="w-10 min-w-0 bg-transparent text-center tabular-nums outline-none placeholder:text-muted-foreground"
       />
 
-      <button
-        type="button"
-        tabIndex={-1}
-        disabled={disabled}
-        onClick={() => {
-          const picker = pickerRef.current;
-          if (!picker) return;
-          // showPicker() isn't supported everywhere yet (older iOS Safari,
-          // some in-app browsers like LINE's) — fall back to focus()+click(),
-          // the pre-showPicker way of opening a native date picker, so the
-          // button never silently does nothing when tapped.
-          if (typeof picker.showPicker === "function") {
-            try {
-              picker.showPicker();
-              return;
-            } catch {
-              // fall through to the focus()+click() fallback below
-            }
-          }
-          picker.focus();
-          picker.click();
-        }}
-        className="ml-auto shrink-0 text-muted-foreground hover:text-foreground"
-        aria-label="เปิดปฏิทิน"
-      >
-        <CalendarDays className="h-3.5 w-3.5" />
-      </button>
-      {/* Native picker as a convenience only — visually hidden but still
-          reachable via showPicker(); picking a date here fills the segments. */}
-      <input
-        ref={pickerRef}
-        type="date"
-        value={isoValue}
-        onChange={(e) => update(parseIso(e.target.value))}
-        tabIndex={-1}
-        aria-hidden="true"
-        className="sr-only"
-      />
+      {/* Native picker as a convenience only. Deliberately NOT triggered via
+          showPicker()/click() proxied from a separate icon button — that
+          silently fails on browsers without showPicker() (older iOS Safari,
+          some in-app browsers like LINE's) and proved unreliable even with a
+          focus()+click() fallback on real devices. Instead the real <input
+          type="date"> is stacked directly under the icon with opacity:0, so
+          the user's tap IS the native gesture the OS expects, which is the
+          one thing every mobile browser supports. Picking a date here fills
+          the same three segments via onChange. */}
+      <div className="relative ml-auto flex h-6 w-6 shrink-0 items-center justify-center text-muted-foreground">
+        <CalendarDays className="pointer-events-none h-3.5 w-3.5" aria-hidden="true" />
+        <input
+          ref={pickerRef}
+          type="date"
+          value={isoValue}
+          onChange={(e) => update(parseIso(e.target.value))}
+          disabled={disabled}
+          tabIndex={-1}
+          aria-label="เปิดปฏิทิน"
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        />
+      </div>
       {name && <input type="hidden" name={name} value={isoValue} />}
     </div>
   );
