@@ -310,7 +310,17 @@ export function PettyCashForm({
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-2">
+              {/* Display-only — this is the base the WHT amount below and
+                  the printed ใบหัก ณ ที่จ่าย certificate both actually use
+                  (amount minus VAT), shown here so that base is visible
+                  without doing the math by hand. Not its own DB column:
+                  it's always exactly amount - vat_amount, both of which are
+                  already stored, so there's nothing to persist separately. */}
+              <Label htmlFor="pre_vat_amount">ราคาก่อนภาษีมูลค่าเพิ่ม</Label>
+              <NumberInput id="pre_vat_amount" value={preVatAmount ? preVatAmount.toFixed(2) : ""} readOnly />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="vat_amount">ภาษีซื้อ</Label>
               <NumberInput

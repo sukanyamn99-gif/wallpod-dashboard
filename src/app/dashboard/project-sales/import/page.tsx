@@ -11,10 +11,10 @@ export default async function ImportProjectSalesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Import Excel — WALLPOD Project Sales</h1>
+        <h1 className="text-2xl font-semibold">Import Excel — Koonway Project Sales</h1>
         <p className="text-sm text-muted-foreground">
           <Link href="/dashboard/project-sales" className="underline underline-offset-2">
-            ← กลับไปหน้า WALLPOD Project Sales
+            ← กลับไปหน้า Koonway Project Sales
           </Link>
         </p>
       </div>

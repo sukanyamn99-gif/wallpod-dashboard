@@ -97,7 +97,7 @@ export default async function NewProjectSalePage({
         <h1 className="text-2xl font-semibold">บันทึกงานขายใหม่</h1>
         <p className="text-sm text-muted-foreground">
           <Link href="/dashboard/project-sales" className="underline underline-offset-2">
-            ← กลับไปหน้า WALLPOD Project Sales
+            ← กลับไปหน้า Koonway Project Sales
           </Link>
         </p>
         {quotation && (

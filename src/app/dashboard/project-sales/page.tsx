@@ -18,7 +18,7 @@ export default async function ProjectSalesPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">WALLPOD Project Sales</h1>
+          <h1 className="text-2xl font-semibold">Koonway Project Sales</h1>
           <p className="text-sm text-muted-foreground">
             รายงานงานขายทั้งหมด — ข้อมูลนี้เชื่อมกับ Sales Dashboard โดยตรง
           </p>

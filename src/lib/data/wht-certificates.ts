@@ -29,7 +29,14 @@ function fromPettyCash(t: PettyCashTransaction): WhtCertificateRow {
     docNo: t.docNo,
     date: t.transactionDate,
     payeeName: t.billerName ?? "",
-    amount: t.amount,
+    // The official certificate's "จำนวนเงินที่จ่าย" is the pre-VAT base the
+    // withholding tax was actually calculated on (matches whtAmount, which
+    // the entry form already computes off the pre-VAT amount) — t.amount
+    // itself is the VAT-inclusive total entered on the petty cash form, so
+    // VAT is subtracted back out here. No separate pre-VAT column exists;
+    // amount - vatAmount is exact since vatAmount was derived from the same
+    // amount at entry time and both are stored to 2 decimals.
+    amount: t.amount - t.vatAmount,
     description: t.description,
     whtCertNo: t.whtCertNo,
     whtRate: t.whtRate,

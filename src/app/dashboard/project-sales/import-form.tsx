@@ -65,7 +65,7 @@ export function ImportForm() {
             แทนที่ข้อมูลสำเร็จ — นำเข้า {successCount} งาน แทนที่ข้อมูลเดิมทั้งหมดเรียบร้อยแล้ว
           </p>
           <Button nativeButton={false} render={<Link href="/dashboard/project-sales" />}>
-            ไปหน้ารายการ WALLPOD Project Sales
+            ไปหน้ารายการ Koonway Project Sales
           </Button>
         </CardContent>
       </Card>
