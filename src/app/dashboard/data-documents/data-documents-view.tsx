@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { deleteDataDocument } from "./actions";
 import { UploadDocumentDialog } from "./upload-document-dialog";
-import { EditThumbnailDialog } from "./edit-thumbnail-dialog";
+import { EditDocumentDialog } from "./edit-document-dialog";
 import { DATA_DOCUMENT_CATEGORIES } from "@/lib/data-documents-constants";
 import type { DataDocument } from "@/lib/types";
 
@@ -172,7 +172,7 @@ export function DataDocumentsView({
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
-                    {canManage && <EditThumbnailDialog document={d} currentThumbnailUrl={thumbnailUrl} />}
+                    {canManage && <EditDocumentDialog document={d} currentThumbnailUrl={thumbnailUrl} />}
                     {canManage && (
                       <Button
                         variant="outline"

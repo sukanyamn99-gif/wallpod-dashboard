@@ -46,13 +46,24 @@ export async function recordDataDocument(fields: {
   return { error: null };
 }
 
-// The new thumbnail image is already uploaded to Storage by the caller
-// (same client-side pattern as create) before this runs — this action just
-// swaps the DB pointer and best-effort removes the old file.
-export async function updateDataDocumentThumbnail(id: string, thumbnailPath: string | null) {
+// Edits every editable field at once (title, category, and optionally a
+// replacement file and/or thumbnail) — any new file/thumbnail is already
+// uploaded to Storage by the caller (same client-side pattern as create)
+// before this runs; this action only swaps the DB row and best-effort
+// removes whichever old Storage objects got replaced.
+export async function updateDataDocument(
+  id: string,
+  fields: {
+    title: string;
+    category: string;
+    thumbnailPath: string | null;
+    file?: { filePath: string; fileType: string; fileSizeBytes: number };
+  },
+) {
   if (!isSupabaseConfigured()) {
     return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
   }
+  if (!fields.title.trim()) return { error: "กรุณากรอกชื่อเอกสาร" };
 
   const existing = await getDataDocumentById(id);
   if (!existing) return { error: "ไม่พบเอกสารนี้ในระบบ" };
@@ -60,7 +71,18 @@ export async function updateDataDocumentThumbnail(id: string, thumbnailPath: str
   const supabase = await createClient();
   const { data: updatedRows, error } = await supabase
     .from("data_documents")
-    .update({ thumbnail_path: thumbnailPath })
+    .update({
+      title: fields.title.trim(),
+      category: fields.category.trim() || "เอกสาร",
+      thumbnail_path: fields.thumbnailPath,
+      ...(fields.file
+        ? {
+            file_path: fields.file.filePath,
+            file_type: fields.file.fileType,
+            file_size_bytes: fields.file.fileSizeBytes,
+          }
+        : {}),
+    })
     .eq("id", id)
     .select("id");
   if (error) return { error: error.message };
@@ -68,8 +90,15 @@ export async function updateDataDocumentThumbnail(id: string, thumbnailPath: str
     return { error: "แก้ไขไม่สำเร็จ: ไม่มีสิทธิ์แก้ไขเอกสารนี้" };
   }
 
-  if (existing.thumbnailPath && existing.thumbnailPath !== thumbnailPath) {
-    await supabase.storage.from(DATA_DOCUMENTS_BUCKET).remove([existing.thumbnailPath]); // best-effort cleanup
+  const staleObjects: string[] = [];
+  if (existing.thumbnailPath && existing.thumbnailPath !== fields.thumbnailPath) {
+    staleObjects.push(existing.thumbnailPath);
+  }
+  if (fields.file && existing.filePath !== fields.file.filePath) {
+    staleObjects.push(existing.filePath);
+  }
+  if (staleObjects.length > 0) {
+    await supabase.storage.from(DATA_DOCUMENTS_BUCKET).remove(staleObjects); // best-effort cleanup
   }
 
   revalidatePath("/dashboard/data-documents");

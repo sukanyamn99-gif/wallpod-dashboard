@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import * as tus from "tus-js-client";
 import { ImagePlus, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,75 +18,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { resizeImageToBlob } from "@/lib/image-resize";
 import { DATA_DOCUMENTS_BUCKET, DATA_DOCUMENT_CATEGORIES } from "@/lib/data-documents-constants";
+import { uploadResumable } from "@/lib/data-documents-upload";
 import { createClient } from "@/lib/supabase/client";
 import { recordDataDocument } from "./actions";
-
-// A blank `file.type` (some OS/browser combinations don't always populate
-// it) fell back to application/octet-stream — the browser can't tell that's
-// really a viewable PDF, so it force-downloaded instead of previewing
-// inline in the "ดูตัวอย่าง" tab, which read as "the view button acts like
-// the download button." Extension-based fallback keeps that from happening
-// for the file types this library actually deals with.
-const MIME_BY_EXTENSION: Record<string, string> = {
-  pdf: "application/pdf",
-  doc: "application/msword",
-  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  xls: "application/vnd.ms-excel",
-  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  ppt: "application/vnd.ms-powerpoint",
-  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  png: "image/png",
-};
-
-function resolveContentType(file: File): string {
-  if (file.type) return file.type;
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-  return MIME_BY_EXTENSION[ext] ?? "application/octet-stream";
-}
-
-// Supabase's simple storage.upload() (a single POST) proved unreliable for
-// real catalog PDFs in real testing — it hung indefinitely and never
-// resolved, even for a 500KB file. This is Supabase's own documented
-// reason for recommending the resumable (TUS) protocol for anything but
-// the smallest files: it uploads in fixed 6MB chunks (a hard requirement
-// of Supabase's TUS endpoint, not a tunable choice) with retries per
-// chunk, instead of one long-lived request that has no way to recover if
-// it stalls.
-function uploadResumable(
-  file: File | Blob,
-  fileName: string,
-  path: string,
-  accessToken: string,
-  onProgress: (percent: number) => void,
-): Promise<void> {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  return new Promise((resolve, reject) => {
-    const upload = new tus.Upload(file, {
-      endpoint: `${supabaseUrl}/storage/v1/upload/resumable`,
-      retryDelays: [0, 1000, 3000, 5000, 10000],
-      headers: { authorization: `Bearer ${accessToken}`, apikey: anonKey },
-      uploadDataDuringCreation: true,
-      removeFingerprintOnSuccess: true,
-      metadata: {
-        bucketName: DATA_DOCUMENTS_BUCKET,
-        objectName: path,
-        contentType: file instanceof File ? resolveContentType(file) : "image/jpeg",
-        cacheControl: "3600",
-      },
-      chunkSize: 6 * 1024 * 1024,
-      onError: reject,
-      onProgress: (sent, total) => onProgress(Math.round((sent / total) * 100)),
-      onSuccess: () => resolve(),
-    });
-    upload.findPreviousUploads().then((previous) => {
-      if (previous.length > 0) upload.resumeFromPreviousUpload(previous[0]);
-      upload.start();
-    });
-  });
-}
 
 export function UploadDocumentDialog() {
   const router = useRouter();
@@ -126,7 +59,7 @@ export function UploadDocumentDialog() {
       const ext = file.name.split(".").pop()?.toLowerCase() || "pdf";
       const filePath = `${id}/file.${ext}`;
 
-      await uploadResumable(file, file.name, filePath, session.access_token, setProgress);
+      await uploadResumable(file, filePath, session.access_token, setProgress);
 
       // The cover thumbnail is small (resized to 600x600 JPEG) — simple
       // upload is fine for it, unlike the main document file above.
