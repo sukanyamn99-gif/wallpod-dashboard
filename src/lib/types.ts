@@ -604,6 +604,32 @@ export interface PaymentVoucher {
   ledgerLines: PaymentVoucherLedgerLine[];
 }
 
+export type WhtCertificateSource = "payment_voucher" | "petty_cash";
+
+// Unified shape for ใบหัก ณ ที่จ่าย regardless of which table the underlying
+// withholding transaction lives in (Payment Voucher or Petty Cash) — lets
+// the certificates list/print view work against one row type instead of
+// branching on source everywhere. `date`/`payeeName` are the two fields
+// that differ by column name between the two sources (voucherDate/payeeName
+// vs. transactionDate/billerName).
+export interface WhtCertificateRow {
+  id: string;
+  source: WhtCertificateSource;
+  docNo: string;
+  date: string;
+  payeeName: string;
+  amount: number;
+  description: string | null;
+  whtCertNo: string | null;
+  whtRate: number | null;
+  whtFormType: WhtFormType | null;
+  whtAmount: number;
+  payeeTaxId: string | null;
+  payeeAddress: string | null;
+  incomeType: WhtIncomeType;
+  recordedByName: string;
+}
+
 // ยอดในธนาคาร (actualBalance) and ยอดยกมา (openingBalance) are both
 // manually entered/kept in sync by staff — no live bank API. systemBalance
 // is computed on read from openingBalance plus recorded โอนเงิน
@@ -655,6 +681,15 @@ export interface PettyCashTransaction {
   jobNo: string | null;
   vatAmount: number;
   whtAmount: number;
+  // Mirrors PaymentVoucher's own WHT certificate fields — billerName
+  // doubles as the certificate's ผู้ถูกหักภาษี name (petty cash has no
+  // separate payee field of its own).
+  whtCertNo: string | null;
+  whtRate: number | null;
+  whtFormType: WhtFormType | null;
+  payeeTaxId: string | null;
+  payeeAddress: string | null;
+  incomeType: WhtIncomeType;
 }
 
 export interface Employee {

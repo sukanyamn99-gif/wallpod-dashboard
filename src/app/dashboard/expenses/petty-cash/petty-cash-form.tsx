@@ -12,9 +12,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { JobNoSelect } from "@/components/dashboard/job-no-select";
 import { cn } from "@/lib/utils";
 import { createPettyCashTransaction, updatePettyCashTransaction } from "./actions";
-import type { PettyCashTransaction, PettyCashTransactionType } from "@/lib/types";
+import type { PettyCashTransaction, PettyCashTransactionType, WhtFormType, WhtIncomeType } from "@/lib/types";
 
 const initialState: { error: string | null; docNo?: string } = { error: null };
+
+const WHT_FORM_OPTIONS: { value: WhtFormType; label: string }[] = [
+  { value: "ภ.ง.ด.1", label: "ภ.ง.ด.1" },
+  { value: "ภ.ง.ด.2", label: "ภ.ง.ด.2" },
+  { value: "ภ.ง.ด.3", label: "ภ.ง.ด.3" },
+  { value: "ภ.ง.ด.53", label: "ภ.ง.ด.53" },
+];
+
+const WHT_INCOME_TYPE_OPTIONS: { value: WhtIncomeType; label: string }[] = [
+  { value: "1", label: "1. เงินเดือน ค่าจ้าง ฯลฯ มาตรา 40(1)" },
+  { value: "2", label: "2. ค่าธรรมเนียม ค่านายหน้า ฯลฯ มาตรา 40(2)" },
+  { value: "3", label: "3. ค่าแห่งลิขสิทธิ์ ฯลฯ มาตรา 40(3)" },
+  { value: "4a", label: "4(ก). ดอกเบี้ย ฯลฯ มาตรา 40(4)(ก)" },
+  { value: "4b", label: "4(ข). เงินปันผล เงินส่วนแบ่งกำไร ฯลฯ มาตรา 40(4)(ข)" },
+  { value: "5", label: "5. ค่าจ้างทำของ/บริการ ตามคำสั่งกรมสรรพากร" },
+  { value: "6", label: "6. อื่นๆ" },
+];
 
 // Common Thai withholding-tax rates (ภ.ง.ด.3/53 practice: 1% transport,
 // 2%/3% services, 5% rent/advertising) — no single rate is universally
@@ -98,6 +115,8 @@ export function PettyCashForm({
   const [whtRatePercent, setWhtRatePercent] = useState(() =>
     initialData ? inferWhtRatePercent(initialData.whtAmount, initialData.amount / 1.07) : "0",
   );
+  const [whtFormType, setWhtFormType] = useState<string>(initialData?.whtFormType ?? "");
+  const [incomeType, setIncomeType] = useState<string>(initialData?.incomeType ?? "5");
   const [jobNo, setJobNo] = useState(initialData?.jobNo ?? "");
   // Not every bill has VAT (many small/non-VAT-registered vendors don't
   // charge it) — checked by default since that's the common case, but a
@@ -311,6 +330,7 @@ export function PettyCashForm({
             </div>
             <div className="space-y-2">
               <Label htmlFor="wht_rate">อัตราภาษีหัก ณ ที่จ่าย</Label>
+              <input type="hidden" name="wht_rate" value={whtRatePercent} />
               <Select value={whtRatePercent} onValueChange={(v) => setWhtRatePercent(v ?? "0")} items={WHT_RATE_OPTIONS}>
                 <SelectTrigger id="wht_rate" className="w-full">
                   <SelectValue />
@@ -332,6 +352,65 @@ export function PettyCashForm({
               />
             </div>
           </div>
+
+          {whtAmount > 0 && (
+            <div className="space-y-3 border-t pt-3">
+              <p className="text-sm font-semibold">สำหรับพิมพ์ใบหัก ณ ที่จ่าย</p>
+              <div className="space-y-2">
+                <Label htmlFor="wht_cert_no">เลขที่ใบหัก ณ ที่จ่าย</Label>
+                {/* Same auto-fill-once-then-editable convention as Payment
+                    Voucher's own cert-no field — see payment-voucher-form.tsx. */}
+                <Input id="wht_cert_no" name="wht_cert_no" defaultValue={initialData?.whtCertNo ?? undefined} />
+                {!initialData?.whtCertNo && (
+                  <p className="text-xs text-muted-foreground">
+                    เว้นว่างไว้ได้ — ระบบจะรันเลขที่ให้อัตโนมัติเมื่อบันทึก
+                  </p>
+                )}
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="wht_form_type">ประเภทแบบ</Label>
+                  <input type="hidden" name="wht_form_type" value={whtFormType} />
+                  <Select value={whtFormType} onValueChange={(v) => setWhtFormType(v ?? "")} items={WHT_FORM_OPTIONS}>
+                    <SelectTrigger id="wht_form_type" className="w-full">
+                      <SelectValue placeholder="— ไม่ระบุ —" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {WHT_FORM_OPTIONS.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="payee_tax_id">เลขประจำตัวผู้เสียภาษีของผู้รับเงิน</Label>
+                  <Input id="payee_tax_id" name="payee_tax_id" defaultValue={initialData?.payeeTaxId ?? undefined} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="income_type">ประเภทเงินได้ (สำหรับใบหัก ณ ที่จ่าย)</Label>
+                <input type="hidden" name="income_type" value={incomeType} />
+                <Select value={incomeType} onValueChange={(v) => setIncomeType(v ?? "5")} items={WHT_INCOME_TYPE_OPTIONS}>
+                  <SelectTrigger id="income_type" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {WHT_INCOME_TYPE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="payee_address">ที่อยู่ผู้รับเงิน (สำหรับใบหัก ณ ที่จ่าย)</Label>
+                <Textarea id="payee_address" name="payee_address" defaultValue={initialData?.payeeAddress ?? undefined} />
+              </div>
+            </div>
+          )}
         </div>
       )}
 

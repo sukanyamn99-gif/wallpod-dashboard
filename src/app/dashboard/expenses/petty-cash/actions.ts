@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import type { PettyCashTransactionType } from "@/lib/types";
+import { generateWhtCertNo } from "@/lib/wht-cert-no";
+import type { PettyCashTransactionType, WhtFormType, WhtIncomeType } from "@/lib/types";
+
+const WHT_FORM_TYPES: WhtFormType[] = ["ภ.ง.ด.1", "ภ.ง.ด.2", "ภ.ง.ด.3", "ภ.ง.ด.53"];
+const WHT_INCOME_TYPES: WhtIncomeType[] = ["1", "2", "3", "4a", "4b", "5", "6"];
 
 function num(v: FormDataEntryValue | null): number {
   const n = Number(v);
@@ -49,9 +53,20 @@ export async function createPettyCashTransaction(formData: FormData) {
   if (amount <= 0) return { error: "กรุณากรอกจำนวนเงินให้ถูกต้อง" };
   const description = String(formData.get("description") ?? "").trim();
   if (!description) return { error: "กรุณากรอกรายละเอียด" };
+  const whtFormType = str(formData.get("wht_form_type"));
+  if (whtFormType && !WHT_FORM_TYPES.includes(whtFormType as WhtFormType)) {
+    return { error: "ประเภทแบบภาษีหัก ณ ที่จ่ายไม่ถูกต้อง" };
+  }
+  const incomeType = str(formData.get("income_type")) ?? "5";
+  if (!WHT_INCOME_TYPES.includes(incomeType as WhtIncomeType)) {
+    return { error: "ประเภทเงินได้ไม่ถูกต้อง" };
+  }
 
   const supabase = await createClient();
   const docNo = await generateDocNo(supabase);
+  const whtAmount = num(formData.get("wht_amount"));
+  const existingWhtCertNo = str(formData.get("wht_cert_no"));
+  const whtCertNo = whtAmount > 0 && !existingWhtCertNo ? await generateWhtCertNo(supabase) : existingWhtCertNo;
 
   const { error } = await supabase.rpc("record_petty_cash_transaction", {
     p_doc_no: docNo,
@@ -62,8 +77,14 @@ export async function createPettyCashTransaction(formData: FormData) {
     p_biller_name: str(formData.get("biller_name")),
     p_job_no: str(formData.get("job_no")),
     p_vat_amount: num(formData.get("vat_amount")),
-    p_wht_amount: num(formData.get("wht_amount")),
+    p_wht_amount: whtAmount,
     p_transaction_date: str(formData.get("transaction_date")) ?? new Date().toISOString().slice(0, 10),
+    p_wht_rate: formData.get("wht_rate") ? num(formData.get("wht_rate")) : null,
+    p_wht_form_type: whtFormType,
+    p_wht_cert_no: whtCertNo,
+    p_payee_tax_id: str(formData.get("payee_tax_id")),
+    p_payee_address: str(formData.get("payee_address")),
+    p_income_type: incomeType,
   });
   if (error) return { error: error.message };
 
@@ -85,8 +106,20 @@ export async function updatePettyCashTransaction(id: string, formData: FormData)
   if (amount <= 0) return { error: "กรุณากรอกจำนวนเงินให้ถูกต้อง" };
   const description = String(formData.get("description") ?? "").trim();
   if (!description) return { error: "กรุณากรอกรายละเอียด" };
+  const whtFormType = str(formData.get("wht_form_type"));
+  if (whtFormType && !WHT_FORM_TYPES.includes(whtFormType as WhtFormType)) {
+    return { error: "ประเภทแบบภาษีหัก ณ ที่จ่ายไม่ถูกต้อง" };
+  }
+  const incomeType = str(formData.get("income_type")) ?? "5";
+  if (!WHT_INCOME_TYPES.includes(incomeType as WhtIncomeType)) {
+    return { error: "ประเภทเงินได้ไม่ถูกต้อง" };
+  }
 
   const supabase = await createClient();
+  const whtAmount = num(formData.get("wht_amount"));
+  const existingWhtCertNo = str(formData.get("wht_cert_no"));
+  const whtCertNo = whtAmount > 0 && !existingWhtCertNo ? await generateWhtCertNo(supabase) : existingWhtCertNo;
+
   const { error } = await supabase.rpc("update_petty_cash_transaction", {
     p_id: id,
     p_type: transactionType satisfies PettyCashTransactionType,
@@ -96,8 +129,14 @@ export async function updatePettyCashTransaction(id: string, formData: FormData)
     p_biller_name: str(formData.get("biller_name")),
     p_job_no: str(formData.get("job_no")),
     p_vat_amount: num(formData.get("vat_amount")),
-    p_wht_amount: num(formData.get("wht_amount")),
+    p_wht_amount: whtAmount,
     p_transaction_date: str(formData.get("transaction_date")) ?? new Date().toISOString().slice(0, 10),
+    p_wht_rate: formData.get("wht_rate") ? num(formData.get("wht_rate")) : null,
+    p_wht_form_type: whtFormType,
+    p_wht_cert_no: whtCertNo,
+    p_payee_tax_id: str(formData.get("payee_tax_id")),
+    p_payee_address: str(formData.get("payee_address")),
+    p_income_type: incomeType,
   });
   if (error) return { error: error.message };
 

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activity-log";
+import { generateWhtCertNo } from "@/lib/wht-cert-no";
 import type { WhtFormType, WhtIncomeType } from "@/lib/types";
 
 const WHT_FORM_TYPES: WhtFormType[] = ["ภ.ง.ด.1", "ภ.ง.ด.2", "ภ.ง.ด.3", "ภ.ง.ด.53"];
@@ -39,27 +40,6 @@ async function generateDocNo(supabase: Awaited<ReturnType<typeof createClient>>)
   let max = 0;
   for (const row of data ?? []) {
     const n = parseInt(row.doc_no.slice(prefix.length), 10);
-    if (Number.isFinite(n)) max = Math.max(max, n);
-  }
-  const seq = String(max + 1).padStart(3, "0");
-  return `${prefix}${seq}`;
-}
-
-// Same YY+MM+running-sequence convention as doc_no, prefixed "WT" (WithHolding
-// Tax) — generated once, the first time a voucher's wht_amount becomes > 0
-// with no cert number yet, and never regenerated on later edits.
-async function generateWhtCertNo(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string> {
-  const now = new Date();
-  const yy = String(now.getFullYear() + 543 - 2500).padStart(2, "0");
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const prefix = `WT${yy}${mm}`;
-
-  const { data, error } = await supabase.from("payment_vouchers").select("wht_cert_no").like("wht_cert_no", `${prefix}%`);
-  if (error) throw error;
-
-  let max = 0;
-  for (const row of data ?? []) {
-    const n = parseInt((row.wht_cert_no ?? "").slice(prefix.length), 10);
     if (Number.isFinite(n)) max = Math.max(max, n);
   }
   const seq = String(max + 1).padStart(3, "0");

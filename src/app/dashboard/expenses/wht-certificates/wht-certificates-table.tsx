@@ -15,9 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatTHB } from "@/lib/format";
-import type { PaymentVoucher } from "@/lib/types";
-
-type VoucherRow = Omit<PaymentVoucher, "ledgerLines">;
+import type { WhtCertificateRow } from "@/lib/types";
 
 const TOTAL_COLUMNS = 7;
 
@@ -36,42 +34,42 @@ function monthLabelOf(key: string) {
   return THAI_MONTHS[month - 1];
 }
 
-export function WhtCertificatesTable({ vouchers }: { vouchers: VoucherRow[] }) {
+export function WhtCertificatesTable({ rows: allRows }: { rows: WhtCertificateRow[] }) {
   const [query, setQuery] = useState("");
   const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set());
 
   const monthOptions = useMemo(() => {
-    const keys = new Set(vouchers.map((v) => monthKeyOf(v.voucherDate)));
+    const keys = new Set(allRows.map((v) => monthKeyOf(v.date)));
     return Array.from(keys)
       .sort((a, b) => b.localeCompare(a))
       .map((key) => ({ value: key, label: monthLabelOf(key) }));
-  }, [vouchers]);
+  }, [allRows]);
 
   const searched = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return vouchers;
-    return vouchers.filter(
+    if (!q) return allRows;
+    return allRows.filter(
       (v) =>
         v.docNo.toLowerCase().includes(q) ||
         v.payeeName.toLowerCase().includes(q) ||
         (v.whtCertNo ?? "").toLowerCase().includes(q),
     );
-  }, [vouchers, query]);
+  }, [allRows, query]);
 
   const filtered = useMemo(() => {
     if (selectedMonths.size === 0) return searched;
-    return searched.filter((v) => selectedMonths.has(monthKeyOf(v.voucherDate)));
+    return searched.filter((v) => selectedMonths.has(monthKeyOf(v.date)));
   }, [searched, selectedMonths]);
 
   const totalWht = filtered.reduce((sum, v) => sum + v.whtAmount, 0);
 
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const monthGroups = useMemo(() => {
-    const keys = Array.from(new Set(filtered.map((v) => monthKeyOf(v.voucherDate)))).sort((a, b) =>
+    const keys = Array.from(new Set(filtered.map((v) => monthKeyOf(v.date)))).sort((a, b) =>
       b.localeCompare(a),
     );
     return keys.map((key) => {
-      const rows = filtered.filter((v) => monthKeyOf(v.voucherDate) === key);
+      const rows = filtered.filter((v) => monthKeyOf(v.date) === key);
       return {
         key,
         label: monthLabelOf(key),
@@ -132,56 +130,68 @@ export function WhtCertificatesTable({ vouchers }: { vouchers: VoucherRow[] }) {
                     {group.label} ({group.rows.length} รายการ — รวมภาษีหัก {formatTHB(group.subtotal)})
                   </TableCell>
                 </TableRow>
-                {group.rows.map((v) => (
-                  <TableRow key={v.id}>
-                    <TableCell className="font-medium whitespace-nowrap">{v.whtCertNo ?? "—"}</TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {new Date(v.voucherDate).toLocaleDateString("th-TH")}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">{v.payeeName}</TableCell>
-                    <TableCell className="whitespace-nowrap">{v.whtFormType ?? "—"}</TableCell>
-                    <TableCell className="text-right whitespace-nowrap">{v.whtRate ?? "—"}</TableCell>
-                    <TableCell className="text-right whitespace-nowrap">{formatTHB(v.whtAmount)}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button
-                          size="icon-sm"
-                          variant="outline"
-                          nativeButton={false}
-                          render={<Link href={`/dashboard/expenses/wht-certificates/print/${v.id}`} target="_blank" />}
-                          title="พิมพ์ใบหัก ณ ที่จ่าย"
-                        >
-                          <Printer className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          size="icon-sm"
-                          variant="outline"
-                          nativeButton={false}
-                          render={<Link href={`/dashboard/expenses/payment-vouchers/edit/${v.id}`} />}
-                          title="แก้ไขข้อมูล (ที่ Payment Voucher)"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          size="icon-sm"
-                          variant="outline"
-                          nativeButton={false}
-                          render={<Link href={`/dashboard/expenses/payment-vouchers/new?copyFrom=${v.id}`} />}
-                          title="คัดลอกเพื่อสร้างใบใหม่"
-                        >
-                          <Copy className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {group.rows.map((v) => {
+                  const editHref =
+                    v.source === "petty_cash"
+                      ? `/dashboard/expenses/petty-cash/edit/${v.id}`
+                      : `/dashboard/expenses/payment-vouchers/edit/${v.id}`;
+                  const editTitle = v.source === "petty_cash" ? "แก้ไขข้อมูล (ที่เงินสดย่อย)" : "แก้ไขข้อมูล (ที่ Payment Voucher)";
+                  return (
+                    <TableRow key={`${v.source}-${v.id}`}>
+                      <TableCell className="font-medium whitespace-nowrap">{v.whtCertNo ?? "—"}</TableCell>
+                      <TableCell className="whitespace-nowrap">{new Date(v.date).toLocaleDateString("th-TH")}</TableCell>
+                      <TableCell className="whitespace-nowrap">{v.payeeName}</TableCell>
+                      <TableCell className="whitespace-nowrap">{v.whtFormType ?? "—"}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap">{v.whtRate ?? "—"}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap">{formatTHB(v.whtAmount)}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button
+                            size="icon-sm"
+                            variant="outline"
+                            nativeButton={false}
+                            render={
+                              <Link
+                                href={`/dashboard/expenses/wht-certificates/print/${v.id}?source=${v.source}`}
+                                target="_blank"
+                              />
+                            }
+                            title="พิมพ์ใบหัก ณ ที่จ่าย"
+                          >
+                            <Printer className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="icon-sm"
+                            variant="outline"
+                            nativeButton={false}
+                            render={<Link href={editHref} />}
+                            title={editTitle}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          {v.source === "payment_voucher" && (
+                            <Button
+                              size="icon-sm"
+                              variant="outline"
+                              nativeButton={false}
+                              render={<Link href={`/dashboard/expenses/payment-vouchers/new?copyFrom=${v.id}`} />}
+                              title="คัดลอกเพื่อสร้างใบใหม่"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </Fragment>
             ))}
           </TableBody>
         </Table>
       </div>
       <p className="text-sm text-muted-foreground">
-        แสดง {filtered.length} จาก {vouchers.length} รายการ
+        แสดง {filtered.length} จาก {allRows.length} รายการ
       </p>
     </div>
   );

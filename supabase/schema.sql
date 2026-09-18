@@ -1048,7 +1048,17 @@ create table petty_cash_transactions (
   biller_name text,
   job_no text,
   vat_amount numeric(14,2) not null default 0,
-  wht_amount numeric(14,2) not null default 0
+  wht_amount numeric(14,2) not null default 0,
+  -- Mirrors payment_vouchers' own WHT certificate fields exactly, so
+  -- ใบหัก ณ ที่จ่าย can pull from both sources with one shared shape.
+  -- biller_name (ผู้เบิก) doubles as the certificate's ผู้ถูกหักภาษี name —
+  -- petty cash has no separate payee concept of its own.
+  wht_cert_no text,
+  wht_rate numeric(5,2),
+  wht_form_type text check (wht_form_type in ('ภ.ง.ด.1', 'ภ.ง.ด.2', 'ภ.ง.ด.3', 'ภ.ง.ด.53')),
+  payee_tax_id text,
+  payee_address text,
+  income_type text not null default '5' check (income_type in ('1', '2', '3', '4a', '4b', '5', '6'))
 );
 
 alter table petty_cash_transactions enable row level security;
@@ -1072,7 +1082,9 @@ create policy petty_cash_delete on petty_cash_transactions for delete
 create function record_petty_cash_transaction(
   p_doc_no text, p_type text, p_amount numeric, p_description text,
   p_category text default null, p_biller_name text default null, p_job_no text default null,
-  p_vat_amount numeric default 0, p_wht_amount numeric default 0, p_transaction_date date default current_date
+  p_vat_amount numeric default 0, p_wht_amount numeric default 0, p_transaction_date date default current_date,
+  p_wht_rate numeric default null, p_wht_form_type text default null, p_wht_cert_no text default null,
+  p_payee_tax_id text default null, p_payee_address text default null, p_income_type text default '5'
 )
 returns void language plpgsql security definer as $$
 declare
@@ -1096,11 +1108,13 @@ begin
 
   insert into petty_cash_transactions (
     doc_no, transaction_type, amount, description, balance_after, recorded_by,
-    category, biller_name, job_no, vat_amount, wht_amount, transaction_date
+    category, biller_name, job_no, vat_amount, wht_amount, transaction_date,
+    wht_rate, wht_form_type, wht_cert_no, payee_tax_id, payee_address, income_type
   )
   values (
     p_doc_no, p_type, p_amount, p_description, v_new_balance, auth.uid(),
-    p_category, p_biller_name, p_job_no, p_vat_amount, p_wht_amount, p_transaction_date
+    p_category, p_biller_name, p_job_no, p_vat_amount, p_wht_amount, p_transaction_date,
+    p_wht_rate, p_wht_form_type, p_wht_cert_no, p_payee_tax_id, p_payee_address, p_income_type
   );
 end;
 $$;
@@ -1127,7 +1141,9 @@ $$;
 create function update_petty_cash_transaction(
   p_id uuid, p_type text, p_amount numeric, p_description text,
   p_category text default null, p_biller_name text default null, p_job_no text default null,
-  p_vat_amount numeric default 0, p_wht_amount numeric default 0, p_transaction_date date default current_date
+  p_vat_amount numeric default 0, p_wht_amount numeric default 0, p_transaction_date date default current_date,
+  p_wht_rate numeric default null, p_wht_form_type text default null, p_wht_cert_no text default null,
+  p_payee_tax_id text default null, p_payee_address text default null, p_income_type text default '5'
 )
 returns void language plpgsql security definer as $$
 begin
@@ -1138,7 +1154,9 @@ begin
   update petty_cash_transactions
   set transaction_type = p_type, amount = p_amount, description = p_description,
       category = p_category, biller_name = p_biller_name, job_no = p_job_no,
-      vat_amount = p_vat_amount, wht_amount = p_wht_amount, transaction_date = p_transaction_date
+      vat_amount = p_vat_amount, wht_amount = p_wht_amount, transaction_date = p_transaction_date,
+      wht_rate = p_wht_rate, wht_form_type = p_wht_form_type, wht_cert_no = p_wht_cert_no,
+      payee_tax_id = p_payee_tax_id, payee_address = p_payee_address, income_type = p_income_type
   where id = p_id;
 
   perform recompute_petty_cash_balances();

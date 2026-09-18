@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getPaymentVouchers } from "@/lib/data/payment-vouchers";
+import { getWhtCertificates } from "@/lib/data/wht-certificates";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
 import { WhtCertificatesTable } from "./wht-certificates-table";
@@ -9,22 +9,22 @@ export default async function WhtCertificatesPage() {
   if (!profile) redirect("/login");
   if (!canAccessPage(profile.role, "/dashboard/expenses/wht-certificates")) redirect("/dashboard/sales");
 
-  const vouchers = await getPaymentVouchers();
-  // A ใบหัก ณ ที่จ่าย only exists where a voucher actually withheld tax —
-  // this menu is a filtered view over Payment Voucher, not a separate
-  // record; edit the underlying voucher to fix any field shown here.
-  const withheld = vouchers.filter((v) => v.whtAmount > 0);
+  // A ใบหัก ณ ที่จ่าย only exists where a transaction actually withheld tax
+  // — this menu is a filtered, merged view over Payment Voucher and Petty
+  // Cash, not a separate record; edit the underlying transaction to fix
+  // any field shown here.
+  const rows = await getWhtCertificates();
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">ใบหัก ณ ที่จ่าย</h1>
         <p className="text-sm text-muted-foreground">
-          รายการใบสำคัญจ่ายที่มีการหักภาษี ณ ที่จ่าย — แก้ไขข้อมูลได้ที่หน้า Payment Voucher
+          รายการที่มีการหักภาษี ณ ที่จ่าย จาก Payment Voucher และเงินสดย่อย — แก้ไขข้อมูลได้ที่หน้าต้นทาง
         </p>
       </div>
 
-      <WhtCertificatesTable vouchers={withheld} />
+      <WhtCertificatesTable rows={rows} />
     </div>
   );
 }

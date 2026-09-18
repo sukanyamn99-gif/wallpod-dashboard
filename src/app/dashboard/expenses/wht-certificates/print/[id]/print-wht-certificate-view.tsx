@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { DownloadPdfButton } from "@/components/dashboard/download-pdf-button";
 import { formatTHB } from "@/lib/format";
 import { thaiBahtText } from "@/lib/thai-baht-text";
-import type { PaymentVoucher, WhtFormType, WhtIncomeType } from "@/lib/types";
+import type { WhtCertificateRow, WhtFormType, WhtIncomeType } from "@/lib/types";
 
 const COMPANY_TAX_ID = "0105559182973";
 const COMPANY_NAME = "บริษัท คูนเว จำกัด (สำนักงานใหญ่)";
@@ -130,7 +130,7 @@ const INCOME_ROWS: IncomeRow[] = [
   { key: "6", text: "6. อื่นๆ (ระบุ)....................................." },
 ];
 
-export function PrintWhtCertificateView({ voucher }: { voucher: PaymentVoucher }) {
+export function PrintWhtCertificateView({ certificate: voucher }: { certificate: WhtCertificateRow }) {
   const router = useRouter();
 
   return (
@@ -279,7 +279,7 @@ export function PrintWhtCertificateView({ voucher }: { voucher: PaymentVoucher }
                       {isMatch && voucher.description && ` (${voucher.description})`}
                     </td>
                     <td className="border-r border-black px-1 py-0.5 text-center align-top">
-                      {isMatch ? numericDate(voucher.voucherDate) : ""}
+                      {isMatch ? numericDate(voucher.date) : ""}
                     </td>
                     <td className="border-r border-black px-1 py-0.5 text-right align-top">
                       {isMatch ? formatTHB(voucher.amount) : ""}
@@ -344,7 +344,7 @@ export function PrintWhtCertificateView({ voucher }: { voucher: PaymentVoucher }
                   <p className="mt-0.5 ml-6 text-neutral-600">({voucher.recordedByName})</p>
                 )}
                 <p className="mt-0.5">
-                  {numericDate(voucher.voucherDate)}
+                  {numericDate(voucher.date)}
                   <span className="text-neutral-600"> (วัน เดือน ปี ที่ออกหนังสือรับรอง)</span>
                 </p>
               </div>
