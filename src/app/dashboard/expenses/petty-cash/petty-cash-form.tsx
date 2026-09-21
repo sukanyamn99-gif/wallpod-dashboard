@@ -112,9 +112,22 @@ export function PettyCashForm({
   const router = useRouter();
   const [type, setType] = useState<PettyCashTransactionType>(initialData?.transactionType ?? "expense");
   const [amount, setAmount] = useState(initialData ? String(initialData.amount) : "");
-  const [whtRatePercent, setWhtRatePercent] = useState(() =>
-    initialData ? inferWhtRatePercent(initialData.whtAmount, initialData.amount / 1.07) : "0",
-  );
+  const [whtRatePercent, setWhtRatePercent] = useState(() => {
+    if (!initialData) return "0";
+    const saved = initialData.whtRate === null ? null : String(initialData.whtRate);
+    if (saved !== null && WHT_RATE_OPTIONS.some((o) => o.value === saved)) return saved;
+    return inferWhtRatePercent(initialData.whtAmount, initialData.preVatAmount ?? initialData.amount / 1.07);
+  });
+  // Bill paid AFTER withholding was deducted (e.g. a phone bill paid net of
+  // 3% WHT): the cash amount typed in is then the total minus WHT, not the
+  // VAT-inclusive total. Only detectable on edit from the stored base:
+  // amount matches pre-VAT + VAT - WHT instead of pre-VAT + VAT.
+  const [netOfWht, setNetOfWht] = useState(() => {
+    if (!initialData || initialData.preVatAmount === null || initialData.whtAmount <= 0) return false;
+    const gross = initialData.preVatAmount + initialData.vatAmount;
+    const net = gross - initialData.whtAmount;
+    return Math.abs(initialData.amount - net) < 0.05 && Math.abs(initialData.amount - gross) >= 0.05;
+  });
   const [whtFormType, setWhtFormType] = useState<string>(initialData?.whtFormType ?? "");
   const [incomeType, setIncomeType] = useState<string>(initialData?.incomeType ?? "5");
   const [jobNo, setJobNo] = useState(initialData?.jobNo ?? "");
@@ -122,20 +135,26 @@ export function PettyCashForm({
   // charge it) — checked by default since that's the common case, but a
   // biller with no VAT needs to be able to clear it back to 0 instead of
   // having it force-extracted from the total.
-  const [hasVat, setHasVat] = useState(true);
+  const [hasVat, setHasVat] = useState(() => (initialData ? initialData.vatAmount > 0 : true));
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
   const billerRef = useRef<HTMLInputElement>(null);
   const categoryRef = useRef<HTMLInputElement>(null);
 
-  // "จำนวนเงิน (รวมสุทธิ)" is entered VAT-inclusive, so VAT is extracted
-  // out of it (×7/107) rather than added on top; WHT then applies to the
-  // pre-VAT portion, matching standard Thai withholding-tax practice. When
-  // hasVat is off, the full amount is treated as pre-VAT instead.
+  // Normally "จำนวนเงิน (รวมสุทธิ)" is entered VAT-inclusive, so VAT is
+  // extracted out of it (×7/107) rather than added on top; WHT then applies
+  // to the pre-VAT portion, matching standard Thai withholding-tax practice.
+  // When hasVat is off, the full amount is treated as pre-VAT instead. In
+  // net mode the amount is the cash actually paid after WHT was deducted, so
+  // pre-VAT is solved from amount = preVat × (1 + vat% − wht%) instead.
+  const round2 = (n: number) => Math.round(n * 100) / 100;
   const amountNum = Number(amount) || 0;
-  const preVatAmount = hasVat ? amountNum / 1.07 : amountNum;
-  const vatAmount = hasVat && amountNum > 0 ? amountNum - preVatAmount : 0;
   const whtRateNum = Number(whtRatePercent) || 0;
-  const whtAmount = whtRateNum > 0 ? preVatAmount * (whtRateNum / 100) : 0;
+  const netMode = type === "expense" && netOfWht && whtRateNum > 0;
+  const vatFactor = hasVat ? 1.07 : 1;
+  const divisor = netMode ? vatFactor - whtRateNum / 100 : vatFactor;
+  const preVatAmount = amountNum > 0 ? round2(amountNum / divisor) : 0;
+  const vatAmount = !hasVat || amountNum <= 0 ? 0 : netMode ? round2(preVatAmount * 0.07) : round2(amountNum - preVatAmount);
+  const whtAmount = whtRateNum > 0 ? round2(preVatAmount * (whtRateNum / 100)) : 0;
 
   // Text actually typed before (most relevant to this business) leads,
   // followed by the generic fixed suggestions — deduplicated so a phrase
@@ -217,7 +236,7 @@ export function PettyCashForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="amount">จำนวนเงิน (รวมสุทธิ)</Label>
+        <Label htmlFor="amount">{netMode ? "จำนวนเงิน (ยอดจ่ายจริง หลังหัก ณ ที่จ่ายแล้ว)" : "จำนวนเงิน (รวมสุทธิ)"}</Label>
         <NumberInput
           id="amount"
           name="amount"
@@ -319,7 +338,12 @@ export function PettyCashForm({
                   it's always exactly amount - vat_amount, both of which are
                   already stored, so there's nothing to persist separately. */}
               <Label htmlFor="pre_vat_amount">ราคาก่อนภาษีมูลค่าเพิ่ม</Label>
-              <NumberInput id="pre_vat_amount" value={preVatAmount ? preVatAmount.toFixed(2) : ""} readOnly />
+              <NumberInput
+                id="pre_vat_amount"
+                name="pre_vat_amount"
+                value={preVatAmount ? preVatAmount.toFixed(2) : ""}
+                readOnly
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="vat_amount">ภาษีซื้อ</Label>
@@ -353,6 +377,12 @@ export function PettyCashForm({
                   ))}
                 </SelectContent>
               </Select>
+              {whtRateNum > 0 && (
+                <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <input type="checkbox" checked={netOfWht} onChange={(e) => setNetOfWht(e.target.checked)} />
+                  จำนวนเงินที่กรอกคือยอดที่จ่ายจริงหลังหัก ณ ที่จ่ายแล้ว (ระบบคำนวณราคาก่อนภาษีให้ย้อนกลับ)
+                </label>
+              )}
               <Label htmlFor="wht_amount">ภาษีหัก ณ ที่จ่าย</Label>
               <NumberInput
                 id="wht_amount"

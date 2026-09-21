@@ -2,7 +2,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type { PettyCashTransaction, PettyCashTransactionType, WhtFormType, WhtIncomeType } from "@/lib/types";
 
 const COLUMNS =
-  "id, doc_no, transaction_date, transaction_type, amount, description, balance_after, recorded_by, created_at, category, biller_name, job_no, vat_amount, wht_amount, wht_cert_no, wht_rate, wht_form_type, payee_tax_id, payee_address, income_type, profiles(full_name)";
+  "id, doc_no, transaction_date, transaction_type, amount, description, balance_after, recorded_by, created_at, category, biller_name, job_no, vat_amount, wht_amount, pre_vat_amount, wht_cert_no, wht_rate, wht_form_type, payee_tax_id, payee_address, income_type, profiles(full_name)";
 
 type Row = {
   id: string;
@@ -19,6 +19,7 @@ type Row = {
   job_no: string | null;
   vat_amount: number | string;
   wht_amount: number | string;
+  pre_vat_amount: number | string | null;
   wht_cert_no: string | null;
   wht_rate: number | string | null;
   wht_form_type: string | null;
@@ -45,6 +46,7 @@ function mapRow(row: Row): PettyCashTransaction {
     jobNo: row.job_no,
     vatAmount: Number(row.vat_amount),
     whtAmount: Number(row.wht_amount),
+    preVatAmount: row.pre_vat_amount === null ? null : Number(row.pre_vat_amount),
     whtCertNo: row.wht_cert_no,
     whtRate: row.wht_rate === null ? null : Number(row.wht_rate),
     whtFormType: row.wht_form_type as WhtFormType | null,

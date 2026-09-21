@@ -1049,6 +1049,9 @@ create table petty_cash_transactions (
   job_no text,
   vat_amount numeric(14,2) not null default 0,
   wht_amount numeric(14,2) not null default 0,
+  -- Base that VAT/WHT were computed on. Explicit because amount is the cash
+  -- actually paid, which can be net of WHT — see migration_085.
+  pre_vat_amount numeric(14,2),
   -- Mirrors payment_vouchers' own WHT certificate fields exactly, so
   -- ใบหัก ณ ที่จ่าย can pull from both sources with one shared shape.
   -- biller_name (ผู้เบิก) doubles as the certificate's ผู้ถูกหักภาษี name —

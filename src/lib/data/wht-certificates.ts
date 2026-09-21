@@ -30,13 +30,11 @@ function fromPettyCash(t: PettyCashTransaction): WhtCertificateRow {
     date: t.transactionDate,
     payeeName: t.billerName ?? "",
     // The official certificate's "จำนวนเงินที่จ่าย" is the pre-VAT base the
-    // withholding tax was actually calculated on (matches whtAmount, which
-    // the entry form already computes off the pre-VAT amount) — t.amount
-    // itself is the VAT-inclusive total entered on the petty cash form, so
-    // VAT is subtracted back out here. No separate pre-VAT column exists;
-    // amount - vatAmount is exact since vatAmount was derived from the same
-    // amount at entry time and both are stored to 2 decimals.
-    amount: t.amount - t.vatAmount,
+    // withholding tax was actually calculated on. t.amount is the cash that
+    // left the fund, which can be net of WHT (bill paid after deduction), so
+    // the stored base is used; rows saved before that column existed were
+    // always entered as the VAT-inclusive total, where amount - vat is exact.
+    amount: t.preVatAmount ?? t.amount - t.vatAmount,
     description: t.description,
     whtCertNo: t.whtCertNo,
     whtRate: t.whtRate,

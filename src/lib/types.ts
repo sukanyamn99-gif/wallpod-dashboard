@@ -681,6 +681,9 @@ export interface PettyCashTransaction {
   jobNo: string | null;
   vatAmount: number;
   whtAmount: number;
+  // Base VAT/WHT were computed on. null on rows saved before this existed —
+  // those fall back to amount - vatAmount (amount was always the gross then).
+  preVatAmount: number | null;
   // Mirrors PaymentVoucher's own WHT certificate fields — billerName
   // doubles as the certificate's ผู้ถูกหักภาษี name (petty cash has no
   // separate payee field of its own).

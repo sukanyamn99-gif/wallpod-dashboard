@@ -40,6 +40,27 @@ async function generateDocNo(supabase: Awaited<ReturnType<typeof createClient>>)
   return `${prefix}${seq}`;
 }
 
+// Written outside the RPC on purpose: the RPCs only own balance_after, and
+// leaving their signatures alone means running the column migration can't
+// break the already-deployed app in the gap before this code ships. Returns
+// an error string, or null on success. A missing value clears the column.
+async function savePreVatAmount(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  match: { column: "id" | "doc_no"; value: string },
+  formData: FormData,
+): Promise<string | null> {
+  const raw = str(formData.get("pre_vat_amount"));
+  const preVat = raw === null ? null : num(raw);
+  const { data, error } = await supabase
+    .from("petty_cash_transactions")
+    .update({ pre_vat_amount: preVat })
+    .eq(match.column, match.value)
+    .select("id");
+  if (error) return error.message;
+  if (!data || data.length === 0) return "ไม่มีสิทธิ์บันทึกราคาก่อนภาษีมูลค่าเพิ่ม";
+  return null;
+}
+
 export async function createPettyCashTransaction(formData: FormData) {
   if (!isSupabaseConfigured()) {
     return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
@@ -87,6 +108,11 @@ export async function createPettyCashTransaction(formData: FormData) {
     p_income_type: incomeType,
   });
   if (error) return { error: error.message };
+
+  if (str(formData.get("pre_vat_amount")) !== null) {
+    const preVatError = await savePreVatAmount(supabase, { column: "doc_no", value: docNo }, formData);
+    if (preVatError) return { error: `บันทึกรายการสำเร็จ แต่บันทึกราคาก่อนภาษีไม่สำเร็จ: ${preVatError}` };
+  }
 
   revalidatePath("/dashboard/expenses/petty-cash");
   revalidatePath("/dashboard/expenses");
@@ -139,6 +165,11 @@ export async function updatePettyCashTransaction(id: string, formData: FormData)
     p_income_type: incomeType,
   });
   if (error) return { error: error.message };
+
+  // Always written on edit (null when absent) so switching an entry from
+  // ใช้จ่าย to เติมเงิน doesn't leave a stale base behind.
+  const preVatError = await savePreVatAmount(supabase, { column: "id", value: id }, formData);
+  if (preVatError) return { error: `บันทึกรายการสำเร็จ แต่บันทึกราคาก่อนภาษีไม่สำเร็จ: ${preVatError}` };
 
   revalidatePath("/dashboard/expenses/petty-cash");
   revalidatePath("/dashboard/expenses");
