@@ -5,7 +5,6 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
-  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -89,44 +88,52 @@ export function ExpenseCategoryChart({ data }: { data: { category: string; value
         {data.length === 0 ? (
           <p className="py-16 text-center text-sm text-muted-foreground">ไม่มีข้อมูล</p>
         ) : (
-          <ResponsiveContainer width="100%" height={280}>
-            <PieChart>
-              <Pie
-                data={data}
-                dataKey="value"
-                nameKey="category"
-                innerRadius={60}
-                outerRadius={100}
-                paddingAngle={2}
-                stroke="var(--card)"
-                strokeWidth={2}
-              >
-                {data.map((entry, i) => (
-                  <Cell key={entry.category} fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip content={<ChartTooltip />} />
-              <Legend
-                verticalAlign="bottom"
-                height={48}
-                formatter={(value, entry) => {
-                  const v = (entry?.payload as unknown as { value: number } | undefined)?.value ?? 0;
-                  // Rounding to a whole percent made any real-but-small
-                  // category (petty cash items like ค่าไปรษณีย์/ค่าโปรแกรม are
-                  // typically tiny) display as a flat "(0%)", indistinguishable
-                  // from having no expense at all. One decimal place keeps a
-                  // genuinely small share visible without changing anything
-                  // for the larger categories.
-                  const pct = total > 0 ? (v / total) * 100 : 0;
-                  return (
-                    <span className="text-sm text-foreground">
-                      {value} ({pct.toFixed(1)}%)
+          <>
+            <ResponsiveContainer width="100%" height={240}>
+              <PieChart>
+                <Pie
+                  data={data}
+                  dataKey="value"
+                  nameKey="category"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={2}
+                  stroke="var(--card)"
+                  strokeWidth={2}
+                >
+                  {data.map((entry, i) => (
+                    <Cell key={entry.category} fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip content={<ChartTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+            {/* Plain HTML legend instead of recharts' <Legend>: that one is
+                given a fixed pixel height, and with this many categories it
+                wraps to more rows than fit, clipping the rest. A normal
+                flex-wrap list simply grows to fit however many there are. */}
+            <ul className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1.5 text-sm">
+              {data.map((entry, i) => {
+                // Rounding to a whole percent made any real-but-small
+                // category (petty cash items like ค่าไปรษณีย์/ค่าโปรแกรม are
+                // typically tiny) display as a flat "(0%)", indistinguishable
+                // from having no expense at all. One decimal place keeps a
+                // genuinely small share visible.
+                const pct = total > 0 ? (entry.value / total) * 100 : 0;
+                return (
+                  <li key={entry.category} className="flex items-center gap-1.5">
+                    <span
+                      className="h-3 w-3 shrink-0 rounded-sm"
+                      style={{ backgroundColor: CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length] }}
+                    />
+                    <span>
+                      {entry.category} ({pct.toFixed(1)}%)
                     </span>
-                  );
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
       </CardContent>
     </Card>

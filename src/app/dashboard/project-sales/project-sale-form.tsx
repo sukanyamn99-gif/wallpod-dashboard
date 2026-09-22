@@ -180,6 +180,7 @@ export function ProjectSaleForm({
   // their leftover typed values; a fresh key remounts everything cleanly,
   // the same as a real page reload would.
   const [formKey, setFormKey] = useState(0);
+  const initialDataKey = initialData ? JSON.stringify(initialData) : "";
 
   const jobNoRef = useRef<HTMLInputElement>(null);
   const [jobNoError, setJobNoError] = useState<string | null>(null);
@@ -263,12 +264,12 @@ export function ProjectSaleForm({
         setSavedMessage(true);
         // A successful edit save triggers Next's automatic RSC refetch for
         // this route (the server action calls revalidatePath), which hands
-        // this component a freshly-fetched `initialData` object — bumping
-        // formKey remounts the <form> so its uncontrolled inputs
-        // (DateInput/tax_invoice_no/receipt_no, etc.) pick up that fresh
-        // defaultValue as a real fresh mount, instead of Base UI seeing
-        // their defaultValue prop silently change on an already-initialized
-        // field and warning about it.
+        // this component a freshly-fetched `initialData` object. Uncontrolled
+        // inputs must see that as a fresh mount, not a defaultValue change on
+        // an already-initialized field (Base UI warns about that). Bumping
+        // formKey here remounts before the refetch has necessarily arrived,
+        // so the form key also includes initialDataKey below, which remounts
+        // again the moment the new data actually lands.
         setFormKey((k) => k + 1);
       }
     }
@@ -332,7 +333,7 @@ export function ProjectSaleForm({
 
   return (
     <form
-      key={formKey}
+      key={`${formKey}:${initialDataKey}`}
       action={formAction}
       className="space-y-6"
       noValidate
