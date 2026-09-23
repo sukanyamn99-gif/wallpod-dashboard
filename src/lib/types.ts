@@ -1021,6 +1021,11 @@ export interface BillableTaxInvoice {
   // document's wht_percent when this invoice is picked, so staff don't have
   // to remember and re-type a rate that's already on file.
   whtPercent: number;
+  // This picker's source can be either ใบกำกับภาษี or ใบแจ้งหนี้ (see
+  // getBillableTaxInvoicesForCustomer's sourceDocTypes) — shown per row so
+  // the generic "ใบกำกับภาษี..." section label doesn't misdescribe a row
+  // that's actually an ใบแจ้งหนี้.
+  docType: "tax_invoice" | "invoice";
 }
 
 // A single manually-typed line item on an issued ใบวางบิล, offered as a

@@ -99,7 +99,7 @@ export async function getBillableTaxInvoicesForCustomer(
   const { data: invoices, error } = await supabase
     .from("billing_notes")
     .select(
-      "id, doc_no, doc_date, discount_amount, wht_percent, retention_percent, billing_note_items(quotation_id, amount, apply_wht, quotations(job_number))",
+      "id, doc_no, doc_date, doc_type, discount_amount, wht_percent, retention_percent, billing_note_items(quotation_id, amount, apply_wht, quotations(job_number))",
     )
     .in("doc_type", sourceDocTypes)
     .eq("customer_id", customerId);
@@ -141,6 +141,7 @@ export async function getBillableTaxInvoicesForCustomer(
       jobNo: matched?.quotations?.job_number ?? null,
       netPayable: summary.netPayable,
       whtPercent: Number(inv.wht_percent),
+      docType: inv.doc_type as "tax_invoice" | "invoice",
     });
   }
   return result;

@@ -1164,14 +1164,14 @@ export function BillingDocumentForm({
                 ? "ใบวางบิลที่ยังไม่ได้ออกใบกำกับภาษี"
                 : docType === "receipt"
                   ? "ใบกำกับภาษีที่ยังไม่ได้ออกใบเสร็จ"
-                  : "ใบกำกับภาษีที่ยังไม่ได้วางบิล"}
+                  : "ใบกำกับภาษี/ใบแจ้งหนี้ที่ยังไม่ได้วางบิล"}
             </Label>
             <p className="text-xs text-muted-foreground">
               {taxInvoiceSourceIsBillingNotes
                 ? "เลือกใบวางบิลที่ต้องการออกใบกำกับภาษีโดยตรง"
                 : docType === "receipt"
                   ? "เลือกใบกำกับภาษีที่ต้องการออกใบเสร็จโดยตรง"
-                  : "เลือกใบกำกับภาษีที่ต้องการวางบิลโดยตรง"}
+                  : "เลือกใบกำกับภาษีหรือใบแจ้งหนี้ที่ต้องการวางบิลโดยตรง"}
             </p>
             {relevantTaxInvoices.length === 0 && relevantBillingNoteItems.length === 0 ? (
               <div className="rounded-lg border border-dashed p-8 text-center">
@@ -1183,7 +1183,7 @@ export function BillingDocumentForm({
                       ? "ลูกค้ารายนี้ไม่มีใบวางบิลที่ยังไม่ได้ออกใบกำกับภาษี"
                       : docType === "receipt"
                         ? "ลูกค้ารายนี้ไม่มีใบกำกับภาษีที่ยังไม่ได้ออกใบเสร็จ"
-                        : "ลูกค้ารายนี้ไม่มีใบกำกับภาษีที่ยังไม่ได้วางบิล"}
+                        : "ลูกค้ารายนี้ไม่มีใบกำกับภาษีหรือใบแจ้งหนี้ที่ยังไม่ได้วางบิล"}
                 </p>
               </div>
             ) : (
@@ -1199,6 +1199,14 @@ export function BillingDocumentForm({
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">
                         {ti.docNo}
+                        {/* This picker mixes ใบกำกับภาษี and ใบแจ้งหนี้ rows only
+                            when billing a ใบวางบิล (see sourceDocTypes in
+                            getBillableTaxInvoicesForCustomer) — tagged per row
+                            there so the section's own generic label doesn't
+                            misdescribe a row that's actually the other type. */}
+                        {!taxInvoiceSourceIsBillingNotes && docType !== "receipt" && (
+                          <span className="text-muted-foreground"> ({ti.docType === "invoice" ? "ใบแจ้งหนี้" : "ใบกำกับภาษี"})</span>
+                        )}
                         {ti.jobNo && <span className="text-muted-foreground"> — {ti.jobNo}</span>}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">{new Date(ti.docDate).toLocaleDateString("th-TH")}</p>
