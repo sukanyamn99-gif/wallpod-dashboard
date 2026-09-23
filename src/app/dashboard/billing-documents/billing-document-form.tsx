@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Package, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Package, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -215,6 +215,10 @@ export function BillingDocumentForm({
         applyWht: it.applyWht,
       })),
   );
+  // The user's own reordering of the printed line list (see finalOrder
+  // below) — declared up here, ahead of the edit-mode useEffect, which
+  // seeds it from the saved document's own line order.
+  const [orderOverride, setOrderOverride] = useState<string[]>([]);
   // Which selected invoices/quotations (keyed by paymentId, or quotationId
   // for both the quotations list and the ใบกำกับภาษี-picked-by-tax-invoice
   // list, since both submit as item_quotation_id) count toward the WHT
@@ -286,12 +290,16 @@ export function BillingDocumentForm({
       const [rows, billableQuotations, billableTaxInvoices, billableBillingNoteItems] = await Promise.all([
         fetchUnbilledInvoices(id),
         // The "accepted quotations not yet a real job" picker is hidden in
-        // create mode for every doc type now (previously shown only for
-        // tax_invoice) — per feedback, billing should always go through a
-        // real WALLPOD Project Sales invoice. Edit mode still fetches it
-        // separately (see the effect below) so an already-saved
+        // create mode for ใบกำกับภาษี/ใบวางบิล/ใบเสร็จรับเงิน — per feedback,
+        // billing that carries real tax/legal weight should always go
+        // through a real WALLPOD Project Sales invoice. ใบแจ้งหนี้ is the
+        // exception (per the user's explicit "ไม่ดึงรายการใบเสนอราคาที่ยัง
+        // ไม่ออกใบแจ้งหนี้ให้" report): it's an informal notice, and is
+        // often exactly what's issued BEFORE a deal is formalized as a real
+        // job, so it still needs this source. Edit mode fetches it for
+        // every type regardless (see the effect below) so an already-saved
         // quotation-sourced line doesn't silently disappear on save.
-        Promise.resolve([]),
+        docType === "invoice" ? fetchBillableQuotations(name) : Promise.resolve([]),
         usesTaxInvoiceSource ? fetchBillableTaxInvoices(id, docType as "billing_note" | "receipt" | "tax_invoice") : Promise.resolve([]),
         usesTaxInvoiceSource ? fetchBillableBillingNoteItems(id, docType as "billing_note" | "receipt" | "tax_invoice") : Promise.resolve([]),
       ]);
@@ -389,6 +397,34 @@ export function BillingDocumentForm({
             return next;
           });
         }
+        // Seed the reorder list from the saved document's own line order
+        // (initialData.items already comes back sorted by sort_order — see
+        // getBillingDocumentById) — done here, once every selection set
+        // above has resolved, since a quotation-linked line's real key
+        // depends on whether it resolved to a taxInvoice or stayed a plain
+        // quotation. A manual line's key must match the SAME initial-${i}
+        // scheme the manualItems state initializer above already used,
+        // computed the same way here since both need it independently.
+        let manualIndex = 0;
+        const initialOrder = (initialData.items ?? [])
+          .map((it) => {
+            if (it.paymentId) return `payment:${it.paymentId}`;
+            if (it.quotationId) {
+              const ti = matchedQuotationIds.has(it.quotationId)
+                ? billableTaxInvoices.find((t) => t.quotationId === it.quotationId)
+                : undefined;
+              return ti ? `taxInvoice:${ti.id}` : `quotation:${it.quotationId}`;
+            }
+            // Matches the manualItems state initializer's own filter/index
+            // exactly (it.manualDescription truthy, indexed within just
+            // that subset) — both must agree on the same "initial-${i}" key
+            // for a given saved row, or the two would disagree on which row
+            // is which.
+            if (it.manualDescription) return `manual:initial-${manualIndex++}`;
+            return null;
+          })
+          .filter((key): key is string => key !== null);
+        setOrderOverride(initialOrder);
         setLoadingInvoices(false);
       }
     })();
@@ -569,6 +605,59 @@ export function BillingDocumentForm({
     [selectedItems, discountAmount, whtPercent, retentionPercent],
   );
 
+  // The printed line order (per the user's "อยากให้คุมลำดับเองได้" request —
+  // items previously printed in whatever order Postgres happened to return
+  // them, effectively checkbox click order, which staff had no way to
+  // control). `naturalOrderedKeys` is the default order (same grouping as
+  // selectedItems above); `orderOverride` holds the user's own reordering,
+  // reconciled against whatever's currently selected so a newly-checked
+  // item lands at the end and an unchecked one simply drops out, without
+  // losing the position of everything else.
+  const naturalOrderedKeys = useMemo(
+    () => [
+      ...invoices.filter((inv) => selected.has(inv.paymentId)).map((inv) => `payment:${inv.paymentId}`),
+      ...quotations.filter((q) => selectedQuotations.has(q.id)).map((q) => `quotation:${q.id}`),
+      ...taxInvoices.filter((ti) => selectedTaxInvoices.has(ti.id)).map((ti) => `taxInvoice:${ti.id}`),
+      ...manualItems.filter((row) => row.description.trim()).map((row) => `manual:${row.key}`),
+    ],
+    [invoices, selected, quotations, selectedQuotations, taxInvoices, selectedTaxInvoices, manualItems],
+  );
+  const finalOrder = useMemo(() => {
+    const overrideSet = new Set(orderOverride);
+    const stillSelected = orderOverride.filter((k) => naturalOrderedKeys.includes(k));
+    const newlySelected = naturalOrderedKeys.filter((k) => !overrideSet.has(k));
+    return [...stillSelected, ...newlySelected];
+  }, [naturalOrderedKeys, orderOverride]);
+
+  function moveOrderedItem(key: string, direction: -1 | 1) {
+    const idx = finalOrder.indexOf(key);
+    const newIdx = idx + direction;
+    if (idx === -1 || newIdx < 0 || newIdx >= finalOrder.length) return;
+    const next = [...finalOrder];
+    [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
+    setOrderOverride(next);
+  }
+
+  // Human-readable label for the reorder list — mirrors how each source's
+  // own picker row already describes itself elsewhere in this form.
+  function orderedItemLabel(key: string): string {
+    const [type, id] = key.split(":");
+    if (type === "payment") {
+      const inv = invoices.find((i) => i.paymentId === id);
+      return inv ? `${inv.invoiceNo}${inv.jobNo ? ` — ${inv.jobNo}` : ""}` : key;
+    }
+    if (type === "quotation") {
+      const q = quotations.find((q) => q.id === id);
+      return q ? `${q.docNo} — ${q.projectName}` : key;
+    }
+    if (type === "taxInvoice") {
+      const ti = taxInvoices.find((t) => t.id === id);
+      return ti ? `${ti.docNo}${ti.jobNo ? ` — ${ti.jobNo}` : ""}` : key;
+    }
+    const row = manualItems.find((m) => m.key === id);
+    return row ? row.description : key;
+  }
+
   const dueDate = addDays(docDate, Number(creditDays) || 0);
   const salesRepItems = [
     { value: NONE_VALUE, label: "— ไม่ระบุ —" },
@@ -640,9 +729,19 @@ export function BillingDocumentForm({
         // JOB for any of its own lines that have no job of their own (see
         // getBillingDocumentById).
         if (jobNo) fd.set("job_no_ref", jobNo);
+        // Printed line position — see migration_086. finalOrder is the
+        // user's own (or default) ordering from the "ลำดับรายการที่จะพิมพ์"
+        // list above; each category's *_sort_order field is parallel to its
+        // own *_id/description field, matching parseBillingDocumentForm's
+        // positional zipping on the server.
+        const sortIndexOf = (key: string) => {
+          const idx = finalOrder.indexOf(key);
+          return idx === -1 ? finalOrder.length : idx;
+        };
         for (const paymentId of selected) {
           fd.append("item_payment_id", paymentId);
           fd.append("item_payment_apply_wht", String(!whtExcluded.has(paymentId)));
+          fd.append("item_payment_sort_order", String(sortIndexOf(`payment:${paymentId}`)));
         }
         for (const quotationId of selectedQuotations) {
           fd.append("item_quotation_id", quotationId);
@@ -650,6 +749,7 @@ export function BillingDocumentForm({
           // Partial-billing override — blank/0 means "bill the full amount",
           // the existing default behavior (see quotationAmountOverrides).
           fd.append("item_quotation_amount", quotationAmountOverrides[quotationId] ?? "");
+          fd.append("item_quotation_sort_order", String(sortIndexOf(`quotation:${quotationId}`)));
         }
         // Each selected tax invoice submits as its underlying quotationId —
         // createBillingDocument already knows how to bill from that — plus
@@ -662,6 +762,7 @@ export function BillingDocumentForm({
             fd.append("item_quotation_id", quotationId);
             fd.append("item_quotation_apply_wht", String(!whtExcluded.has(quotationId)));
             fd.append("item_quotation_tax_invoice_ref_id", taxInvoiceId);
+            fd.append("item_quotation_sort_order", String(sortIndexOf(`taxInvoice:${taxInvoiceId}`)));
           }
         }
         for (const row of manualItems) {
@@ -674,6 +775,7 @@ export function BillingDocumentForm({
           fd.append("item_manual_source_id", row.sourceItemId ?? "");
           fd.append("item_manual_date", row.sourceDate ?? "");
           fd.append("item_manual_doc_no", row.sourceDocNo ?? "");
+          fd.append("item_manual_sort_order", String(sortIndexOf(`manual:${row.key}`)));
         }
         if (docType === "tax_invoice") {
           for (const [productId, qty] of Object.entries(finishedGoodQty)) {
@@ -1240,6 +1342,39 @@ export function BillingDocumentForm({
                     value={finishedGoodQty[fg.id] ?? ""}
                     onChange={(v) => setFinishedGoodQty((prev) => ({ ...prev, [fg.id]: v }))}
                   />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {finalOrder.length > 1 && (
+          <div className="space-y-2">
+            <Label>ลำดับรายการที่จะพิมพ์</Label>
+            <p className="text-xs text-muted-foreground">ใช้ลูกศรสลับลำดับรายการก่อน-หลังตามที่ต้องการให้ขึ้นบนเอกสาร</p>
+            <div className="space-y-1.5">
+              {finalOrder.map((key, i) => (
+                <div key={key} className="flex items-center gap-2 rounded-lg border p-2 text-sm">
+                  <span className="w-5 shrink-0 text-center text-muted-foreground">{i + 1}</span>
+                  <span className="min-w-0 flex-1 truncate">{orderedItemLabel(key)}</span>
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="outline"
+                    disabled={i === 0}
+                    onClick={() => moveOrderedItem(key, -1)}
+                  >
+                    <ArrowUp className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="outline"
+                    disabled={i === finalOrder.length - 1}
+                    onClick={() => moveOrderedItem(key, 1)}
+                  >
+                    <ArrowDown className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               ))}
             </div>

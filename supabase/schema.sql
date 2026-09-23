@@ -1502,7 +1502,9 @@ create table billing_note_items (
   -- document's manual line (e.g. an issued ใบวางบิล with no quotation_id/
   -- payment_id to browse by) — marks that source line as already receipted
   -- so it isn't offered again (see getBillableBillingNoteItemsForCustomer).
-  source_item_id uuid references billing_note_items(id) on delete set null
+  source_item_id uuid references billing_note_items(id) on delete set null,
+  -- Controls printed line order — see migration_086.
+  sort_order integer not null default 0
 );
 
 alter table billing_notes enable row level security;

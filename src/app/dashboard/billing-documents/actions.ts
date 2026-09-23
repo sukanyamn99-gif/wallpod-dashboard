@@ -349,6 +349,10 @@ interface ParsedManualItem {
   // invoice_no_snapshot (overriding the description there) so "เลขที่เอกสาร"
   // shows the real document number instead of the free-typed text.
   sourceDocNo: string | null;
+  // Printed line position — see migration_086. Set from the form's own
+  // reorderable preview list (billing-document-form.tsx), not the order
+  // this row happens to appear in the manual-items array.
+  sortOrder: number;
 }
 
 // A third source of line items, alongside existing invoices and
@@ -368,6 +372,7 @@ function parseManualItems(formData: FormData): ParsedManualItem[] {
   const sourceItemIds = formData.getAll("item_manual_source_id").map((v) => String(v));
   const sourceDates = formData.getAll("item_manual_date").map((v) => String(v));
   const sourceDocNos = formData.getAll("item_manual_doc_no").map((v) => String(v));
+  const sortOrders = formData.getAll("item_manual_sort_order").map((v) => num(v));
 
   return descriptions
     .map((description, i) => {
@@ -386,6 +391,7 @@ function parseManualItems(formData: FormData): ParsedManualItem[] {
         sourceItemId: sourceItemIds[i] || null,
         sourceDate: sourceDates[i] || null,
         sourceDocNo: sourceDocNos[i] || null,
+        sortOrder: sortOrders[i] ?? 0,
       };
     })
     .filter((it) => it.description);
@@ -414,8 +420,12 @@ interface ParsedBillingDocument {
   paymentDate: string | null;
   itemPaymentIds: string[];
   itemPaymentApplyWht: boolean[];
+  // Printed line position — see migration_086. Parallel to itemPaymentIds/
+  // itemQuotationIds respectively, from the form's reorderable preview list.
+  itemPaymentSortOrders: number[];
   itemQuotationIds: string[];
   itemQuotationApplyWht: boolean[];
+  itemQuotationSortOrders: number[];
   // ใบกำกับภาษี/ใบแจ้งหนี้ only — a partial-billing override (staff editing
   // the amount down from the quotation's full total), parallel to
   // itemQuotationIds. Empty/non-positive entries mean "no override" (bill
@@ -458,8 +468,10 @@ function parseBillingDocumentForm(formData: FormData): { error: string } | ({ er
 
   const itemPaymentIds = formData.getAll("item_payment_id").map((v) => String(v));
   const itemPaymentApplyWht = formData.getAll("item_payment_apply_wht").map((v) => String(v) !== "false");
+  const itemPaymentSortOrders = formData.getAll("item_payment_sort_order").map((v) => num(v));
   const itemQuotationIds = formData.getAll("item_quotation_id").map((v) => String(v));
   const itemQuotationApplyWht = formData.getAll("item_quotation_apply_wht").map((v) => String(v) !== "false");
+  const itemQuotationSortOrders = formData.getAll("item_quotation_sort_order").map((v) => num(v));
   const itemQuotationAmountOverrides = formData.getAll("item_quotation_amount").map((v) => {
     const n = num(v);
     return n > 0 ? n : null;
@@ -491,8 +503,10 @@ function parseBillingDocumentForm(formData: FormData): { error: string } | ({ er
     paymentDate,
     itemPaymentIds,
     itemPaymentApplyWht,
+    itemPaymentSortOrders,
     itemQuotationIds,
     itemQuotationApplyWht,
+    itemQuotationSortOrders,
     itemQuotationAmountOverrides,
     itemQuotationTaxInvoiceRefIds,
     manualItems,
@@ -523,8 +537,10 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
     paymentDate,
     itemPaymentIds,
     itemPaymentApplyWht,
+    itemPaymentSortOrders,
     itemQuotationIds,
     itemQuotationApplyWht,
+    itemQuotationSortOrders,
     itemQuotationAmountOverrides,
     itemQuotationTaxInvoiceRefIds,
     manualItems,
@@ -534,7 +550,9 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
   // these maps were built from the exact same parallel arrays the form
   // submitted, so they're correct regardless of DB row order.
   const paymentApplyWhtMap = new Map(itemPaymentIds.map((id, i) => [id, itemPaymentApplyWht[i] ?? true]));
+  const paymentSortOrderMap = new Map(itemPaymentIds.map((id, i) => [id, itemPaymentSortOrders[i] ?? 0]));
   const quotationApplyWhtMap = new Map(itemQuotationIds.map((id, i) => [id, itemQuotationApplyWht[i] ?? true]));
+  const quotationSortOrderMap = new Map(itemQuotationIds.map((id, i) => [id, itemQuotationSortOrders[i] ?? 0]));
   const quotationAmountOverrideMap = new Map(itemQuotationIds.map((id, i) => [id, itemQuotationAmountOverrides[i]]));
   const quotationTaxInvoiceRefMap = new Map(itemQuotationIds.map((id, i) => [id, itemQuotationTaxInvoiceRefIds[i]]));
   // ใบกำกับภาษี/ใบแจ้งหนี้ bill a quotation directly and own whichever
@@ -658,6 +676,7 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
       invoice_date_snapshot: p.paid_date,
       amount: p.amount,
       apply_wht: paymentApplyWhtMap.get(p.id) ?? true,
+      sort_order: paymentSortOrderMap.get(p.id) ?? 0,
     })),
     ...liveQuotations.map((q) => ({
       billing_note_id: doc.id,
@@ -666,6 +685,7 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
       invoice_date_snapshot: q.quote_date,
       amount: quotationBilledAmountById[q.id],
       apply_wht: quotationApplyWhtMap.get(q.id) ?? true,
+      sort_order: quotationSortOrderMap.get(q.id) ?? 0,
     })),
     ...manualItems.map((m) => ({
       billing_note_id: doc.id,
@@ -678,6 +698,7 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
       manual_unit_price: m.unitPrice,
       apply_wht: m.applyWht,
       source_item_id: m.sourceItemId,
+      sort_order: m.sortOrder,
     })),
   ]);
   if (itemsErr) return { error: `บันทึกเอกสารสำเร็จ แต่บันทึกรายการไม่สำเร็จ: ${itemsErr.message}`, id: doc.id };
@@ -790,14 +811,18 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
     paymentDate,
     itemPaymentIds,
     itemPaymentApplyWht,
+    itemPaymentSortOrders,
     itemQuotationIds,
     itemQuotationApplyWht,
+    itemQuotationSortOrders,
     itemQuotationAmountOverrides,
     itemQuotationTaxInvoiceRefIds,
     manualItems,
   } = parsed;
   const paymentApplyWhtMap = new Map(itemPaymentIds.map((id, i) => [id, itemPaymentApplyWht[i] ?? true]));
+  const paymentSortOrderMap = new Map(itemPaymentIds.map((id, i) => [id, itemPaymentSortOrders[i] ?? 0]));
   const quotationApplyWhtMap = new Map(itemQuotationIds.map((id, i) => [id, itemQuotationApplyWht[i] ?? true]));
+  const quotationSortOrderMap = new Map(itemQuotationIds.map((id, i) => [id, itemQuotationSortOrders[i] ?? 0]));
   const quotationAmountOverrideMap = new Map(itemQuotationIds.map((id, i) => [id, itemQuotationAmountOverrides[i]]));
   const quotationTaxInvoiceRefMap = new Map(itemQuotationIds.map((id, i) => [id, itemQuotationTaxInvoiceRefIds[i]]));
   // See createBillingDocument's identical logic.
@@ -891,6 +916,7 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
       invoice_date_snapshot: p.paid_date,
       amount: p.amount,
       apply_wht: paymentApplyWhtMap.get(p.id) ?? true,
+      sort_order: paymentSortOrderMap.get(p.id) ?? 0,
     })),
     ...liveQuotations.map((q) => ({
       billing_note_id: id,
@@ -899,6 +925,7 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
       invoice_date_snapshot: q.quote_date,
       amount: quotationBilledAmountById[q.id],
       apply_wht: quotationApplyWhtMap.get(q.id) ?? true,
+      sort_order: quotationSortOrderMap.get(q.id) ?? 0,
     })),
     ...manualItems.map((m) => ({
       billing_note_id: id,
@@ -911,6 +938,7 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
       manual_unit_price: m.unitPrice,
       apply_wht: m.applyWht,
       source_item_id: m.sourceItemId,
+      sort_order: m.sortOrder,
     })),
   ]);
   if (itemsErr) return { error: `แก้ไขรายการไม่สำเร็จ: ${itemsErr.message}` };

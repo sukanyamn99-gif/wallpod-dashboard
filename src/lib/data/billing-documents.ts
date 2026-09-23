@@ -243,12 +243,20 @@ export async function getNetPayableForQuotationIds(
   quotationIds: string[],
 ): Promise<Record<string, { netPayable: number; grossAmount: number }>> {
   if (quotationIds.length === 0) return {};
+  // Only ใบกำกับภาษี/ใบแจ้งหนี้ ever bill a quotation directly (billsQuotationDirectly
+  // in actions.ts) — a ใบวางบิล/ใบเสร็จรับเงิน always just copies an already-net
+  // amount from one of those, never originates one. Including "billing_note"
+  // here was a real bug: creating a NEW ใบวางบิล that references a quotation
+  // makes IT the most recent row referencing that quotation, so this would
+  // then compute "gross"/"net" from the ใบวางบิล's own (already-net, WHT-less)
+  // amount instead of the real originating invoice — silently zeroing out
+  // the WHT that invoice actually applied for every ใบวางบิล created after it.
   const { data, error } = await supabase
     .from("billing_notes")
     .select(
       "discount_amount, wht_percent, retention_percent, created_at, billing_note_items!inner(quotation_id, amount, apply_wht)",
     )
-    .in("doc_type", ["tax_invoice", "billing_note", "invoice"])
+    .in("doc_type", ["tax_invoice", "invoice"])
     .in("billing_note_items.quotation_id", quotationIds)
     .order("created_at", { ascending: false });
   if (error) throw error;
@@ -403,11 +411,12 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
   // items are quotation-sourced (via quotations.job_number) since it bills
   // straight off ใบกำกับภาษี, everything else is payment-sourced (via
   // payments.projects.job_no) — a line can only ever have one of the two.
-  const itemsSelect = `id, payment_id, quotation_id, source_item_id, invoice_no_snapshot, invoice_date_snapshot, amount, apply_wht, ${MANUAL_COLUMNS}, payments(projects(job_no)), quotations(job_number)`;
+  const itemsSelect = `id, payment_id, quotation_id, source_item_id, sort_order, invoice_no_snapshot, invoice_date_snapshot, amount, apply_wht, ${MANUAL_COLUMNS}, payments(projects(job_no)), quotations(job_number)`;
   const { data: items, error: itemsErr } = await supabase
     .from("billing_note_items")
     .select(itemsSelect)
-    .eq("billing_note_id", id);
+    .eq("billing_note_id", id)
+    .order("sort_order", { ascending: true });
   if (itemsErr) throw itemsErr;
 
   type ItemRow = {
@@ -415,6 +424,7 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     payment_id: string | null;
     quotation_id: string | null;
     source_item_id: string | null;
+    sort_order: number;
     invoice_no_snapshot: string;
     invoice_date_snapshot: string | null;
     amount: number;
