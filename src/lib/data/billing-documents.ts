@@ -403,7 +403,7 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
   // items are quotation-sourced (via quotations.job_number) since it bills
   // straight off ใบกำกับภาษี, everything else is payment-sourced (via
   // payments.projects.job_no) — a line can only ever have one of the two.
-  const itemsSelect = `id, payment_id, quotation_id, invoice_no_snapshot, invoice_date_snapshot, amount, apply_wht, ${MANUAL_COLUMNS}, payments(projects(job_no)), quotations(job_number)`;
+  const itemsSelect = `id, payment_id, quotation_id, source_item_id, invoice_no_snapshot, invoice_date_snapshot, amount, apply_wht, ${MANUAL_COLUMNS}, payments(projects(job_no)), quotations(job_number)`;
   const { data: items, error: itemsErr } = await supabase
     .from("billing_note_items")
     .select(itemsSelect)
@@ -414,6 +414,7 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     id: string;
     payment_id: string | null;
     quotation_id: string | null;
+    source_item_id: string | null;
     invoice_no_snapshot: string;
     invoice_date_snapshot: string | null;
     amount: number;
@@ -426,6 +427,30 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     quotations?: { job_number: string | null } | null;
   };
   const itemRows = (items ?? []) as unknown as ItemRow[];
+
+  // ใบเสร็จรับเงิน can bundle typed lines copied from SEVERAL different
+  // ใบกำกับภาษี documents (each covering its own JOB) — a single
+  // document-level job_no fallback can't tell those apart, so a copied
+  // line's own source is resolved first: walk back to the item it was
+  // copied from (billing_note_items.source_item_id, set by
+  // toggleBillingNoteItem in billing-document-form.tsx) and read THAT
+  // item's parent document's job_no.
+  const sourceItemIds = itemRows.map((it) => it.source_item_id).filter((v): v is string => !!v);
+  let jobNoBySourceItemId: Record<string, string | null> = {};
+  if (sourceItemIds.length > 0) {
+    const { data: sourceItems, error: sourceErr } = await supabase
+      .from("billing_note_items")
+      .select("id, billing_notes(job_no)")
+      .in("id", sourceItemIds);
+    if (sourceErr) throw sourceErr;
+    jobNoBySourceItemId = Object.fromEntries(
+      (sourceItems ?? []).map((row) => [
+        row.id,
+        // @ts-expect-error -- Supabase types the joined relation loosely here
+        (row.billing_notes as { job_no: string | null } | null)?.job_no ?? null,
+      ]),
+    );
+  }
 
   let quotationDetailByJobNo: Record<
     string,
@@ -479,15 +504,22 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     ...mapHeader(header),
     jobNo: jobNoFallback,
     items: itemRows.map((it) => {
-      // Falls back to the document's own stored header.job_no (not the
-      // fuller jobNoFallback above, which also guesses from an unrelated
-      // item's own JOB — that would misattribute a job to a manual line
-      // that has nothing to do with it) when this line has no
-      // payment/quotation of its own to derive one from. A manually-typed
-      // line otherwise always printed "—" even when the whole document was
-      // created for one specific JOB (see the ใบเสร็จรับเงิน-only job_no
-      // field in billing-document-form.tsx).
-      const jobNo = it.payments?.projects?.job_no ?? it.quotations?.job_number ?? header.job_no ?? null;
+      // Falls back, in order: (1) the JOB of the specific ใบกำกับภาษี this
+      // line was copied from, when it's a copied typed line (source_item_id
+      // — see jobNoBySourceItemId above) — this is what lets one
+      // ใบเสร็จรับเงิน correctly show several different JOBs across its own
+      // lines, one per line, instead of a single document-wide guess; then
+      // (2) the document's own stored header.job_no for a line with no
+      // source of its own (typed fresh, never copied from anywhere) — not
+      // the fuller jobNoFallback above, which also guesses from an
+      // unrelated item's own JOB and would misattribute one to a line that
+      // has nothing to do with it.
+      const jobNo =
+        it.payments?.projects?.job_no ??
+        it.quotations?.job_number ??
+        (it.source_item_id ? jobNoBySourceItemId[it.source_item_id] : null) ??
+        header.job_no ??
+        null;
       const quotationDetail = it.quotation_id
         ? quotationDetailById[it.quotation_id]
         : jobNo
