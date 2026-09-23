@@ -507,9 +507,11 @@ export function BillingDocumentForm({
   // own finished goods — otherwise every finished good in the system would
   // clutter the list, most of them irrelevant to this invoice. Falls back
   // to showing everything when no JOB is picked (e.g. customer chosen
-  // directly), so staff can still deduct manually in that case.
+  // directly), so staff can still deduct manually in that case. A SKU with
+  // nothing left on hand can't be deducted from anyway, so it's dropped
+  // outright rather than shown as a dead 0-quantity row.
   const relevantFinishedGoods = useMemo(
-    () => (jobNo ? finishedGoods.filter((fg) => fg.jobNo === jobNo) : finishedGoods),
+    () => (jobNo ? finishedGoods.filter((fg) => fg.jobNo === jobNo) : finishedGoods).filter((fg) => fg.quantityOnHand > 0),
     [finishedGoods, jobNo],
   );
 
