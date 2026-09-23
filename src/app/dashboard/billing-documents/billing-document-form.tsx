@@ -164,7 +164,13 @@ export function BillingDocumentForm({
   // ever have one source to begin with).
   const needsSourceKindChoice = (docType === "receipt" || docType === "invoice") && mode === "create";
   const [sourceKind, setSourceKind] = useState<"existing" | "other" | null>(null);
-  const [jobNo, setJobNo] = useState("");
+  // Every doc type but ใบเสร็จรับเงิน only ever sets this via the top JOB
+  // NO. picker at creation time (see job_no_picker below) — starts blank
+  // and is never restored on edit, since that picker doesn't render there.
+  // ใบเสร็จรับเงิน is the exception: it gets its own always-visible field
+  // instead (see the ลูกค้า section below), so its value needs restoring on
+  // edit like any other saved field.
+  const [jobNo, setJobNo] = useState(() => (docType === "receipt" ? (initialData?.jobNo ?? "") : ""));
   const [docNo, setDocNo] = useState(initialData?.docNo ?? "");
   const [customerId, setCustomerId] = useState(initialData?.customerId ?? "");
   const [customerName, setCustomerName] = useState(initialData?.customerName ?? "");
@@ -625,8 +631,12 @@ export function BillingDocumentForm({
         // sentinel literally — overwrite with the real state, which is
         // already "" when no sales rep is picked.
         fd.set("sales_rep_id", salesRepId);
-        // Only meaningful in create mode (edit mode doesn't render the JOB
-        // NO. picker at all) — printed as "เลขที่ Job" on the document.
+        // For every type but ใบเสร็จรับเงิน this only ever has a value in
+        // create mode (edit doesn't render that picker there). ใบเสร็จรับเงิน
+        // renders its own field in both modes — see the ลูกค้า section below.
+        // Printed as "เลขที่ Job" on the document, and used as the fallback
+        // JOB for any of its own lines that have no job of their own (see
+        // getBillingDocumentById).
         if (jobNo) fd.set("job_no_ref", jobNo);
         for (const paymentId of selected) {
           fd.append("item_payment_id", paymentId);
@@ -720,6 +730,23 @@ export function BillingDocumentForm({
             >
               เปลี่ยนประเภท
             </button>
+          </div>
+        )}
+
+        {/* ใบเสร็จรับเงิน gets its own always-visible (create AND edit) field
+            instead of the top job_no_picker above — that one is hidden here
+            since one receipt commonly bundles several different JOBs and
+            picking one there would auto-narrow/auto-fill things in a way
+            that doesn't fit (see that block's own comment). This is a plain
+            reference field instead: no side effects on customer/invoices,
+            just what prints as "เลขที่ Job" and backs any of this
+            document's own lines that have no job of their own (a manually
+            typed line, most commonly). */}
+        {docType === "receipt" && (
+          <div className="space-y-2">
+            <Label htmlFor="job_no_receipt">เลขที่ Job</Label>
+            <JobNoSelect id="job_no_receipt" value={jobNo} onChange={setJobNo} jobNos={jobNoSuggestions} />
+            <p className="text-xs text-muted-foreground">ไม่บังคับ — ใช้พิมพ์อ้างอิงบนเอกสารเท่านั้น ไม่จำกัดรายการที่เลือกได้ด้านล่าง</p>
           </div>
         )}
 
@@ -1099,7 +1126,9 @@ export function BillingDocumentForm({
                     />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">
-                        {item.billingNoteDocNo} <span className="text-muted-foreground">— {item.description}</span>
+                        {item.billingNoteDocNo}
+                        {item.jobNo && <span className="text-muted-foreground"> — {item.jobNo}</span>}
+                        <span className="text-muted-foreground"> — {item.description}</span>
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
                         {new Date(item.billingNoteDate).toLocaleDateString("th-TH")}

@@ -783,6 +783,7 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
     whtPercent,
     retentionPercent,
     note,
+    jobNoRef,
     paymentMethod,
     bankName,
     paymentReferenceNo,
@@ -841,6 +842,13 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
       bank_name: bankName,
       payment_reference_no: paymentReferenceNo,
       payment_date: paymentDate,
+      // ใบเสร็จรับเงิน is the only type whose edit form renders a job_no
+      // field at all (see billing-document-form.tsx) — every other type's
+      // edit form never submits job_no_ref, so unconditionally writing
+      // jobNoRef here would silently null out whatever job_no those types'
+      // create step already set. Scoping this by docType keeps their edit
+      // saves byte-for-byte unaffected.
+      ...(docType === "receipt" ? { job_no: jobNoRef } : {}),
     })
     .eq("id", id);
   if (updateErr?.code === "23505") return { error: "แก้ไขไม่สำเร็จ — เลขที่เอกสารนี้มีอยู่ในระบบแล้ว กรุณาใช้เลขที่อื่น" };

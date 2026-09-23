@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getBillingDocumentById } from "@/lib/data/billing-documents";
-import { getCustomers, getSalesReps } from "@/lib/data/reference";
+import { getCustomers, getDistinctProjectJobNos, getSalesReps } from "@/lib/data/reference";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
 import { BillingDocumentForm } from "../../../billing-document-form";
@@ -38,7 +38,11 @@ export default async function EditReceiptPage({ params }: { params: Promise<{ id
     );
   }
 
-  const [customers, salesReps] = await Promise.all([getCustomers(), getSalesReps()]);
+  const [customers, salesReps, jobNoSuggestions] = await Promise.all([
+    getCustomers(),
+    getSalesReps(),
+    getDistinctProjectJobNos(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -54,6 +58,7 @@ export default async function EditReceiptPage({ params }: { params: Promise<{ id
         docType="receipt"
         customers={customers}
         salesReps={salesReps}
+        jobNoSuggestions={jobNoSuggestions}
         listPath="/dashboard/billing-documents/receipt"
         mode="edit"
         docId={id}

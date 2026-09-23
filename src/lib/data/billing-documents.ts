@@ -479,7 +479,15 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     ...mapHeader(header),
     jobNo: jobNoFallback,
     items: itemRows.map((it) => {
-      const jobNo = it.payments?.projects?.job_no ?? it.quotations?.job_number ?? null;
+      // Falls back to the document's own stored header.job_no (not the
+      // fuller jobNoFallback above, which also guesses from an unrelated
+      // item's own JOB — that would misattribute a job to a manual line
+      // that has nothing to do with it) when this line has no
+      // payment/quotation of its own to derive one from. A manually-typed
+      // line otherwise always printed "—" even when the whole document was
+      // created for one specific JOB (see the ใบเสร็จรับเงิน-only job_no
+      // field in billing-document-form.tsx).
+      const jobNo = it.payments?.projects?.job_no ?? it.quotations?.job_number ?? header.job_no ?? null;
       const quotationDetail = it.quotation_id
         ? quotationDetailById[it.quotation_id]
         : jobNo
