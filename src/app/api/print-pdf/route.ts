@@ -13,7 +13,7 @@ export const maxDuration = 60;
 // Matches the root layout's static <title> (src/app/layout.tsx) — the
 // value every dashboard page starts with before a print view's own
 // useEffect overwrites it with the real doc number.
-const DEFAULT_TITLE = "WALLPOD Owner Dashboard";
+const DEFAULT_TITLE = "Koonway Dashboard";
 
 // One generic route backs every "ดาวน์โหลด PDF" button in the app — each
 // print view's own button just passes its own current pathname, so adding

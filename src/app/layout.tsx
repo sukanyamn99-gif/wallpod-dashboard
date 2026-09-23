@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Noto_Sans_Thai } from "next/font/google";
 import "./globals.css";
 
@@ -20,8 +20,19 @@ const notoSansThai = Noto_Sans_Thai({
 });
 
 export const metadata: Metadata = {
-  title: "WALLPOD Owner Dashboard",
+  title: "Koonway Dashboard",
   description: "คูนเว จำกัด — ระบบติดตามยอดขายและสุขภาพบริษัท",
+  // Lets Chrome/Edge offer "Install app", which puts a desktop/taskbar icon
+  // that opens the dashboard in its own window instead of a browser tab —
+  // see manifest.ts and the icon.tsx/apple-icon.tsx/pwa-icon-* files.
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { title: "Koonway", statusBarStyle: "black-translucent" },
+};
+
+// Matches manifest.ts's background/theme color — colors the installed
+// window's title bar and, on mobile, the browser's address bar.
+export const viewport: Viewport = {
+  themeColor: "#0E1320",
 };
 
 export default function RootLayout({

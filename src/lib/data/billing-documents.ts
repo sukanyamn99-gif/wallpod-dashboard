@@ -69,7 +69,7 @@ export async function getUnbilledInvoicesForCustomer(customerId: string): Promis
 // invoice line had no way to be billed further at all.
 export async function getBillableTaxInvoicesForCustomer(
   customerId: string,
-  targetDocType: "billing_note" | "receipt",
+  targetDocType: "billing_note" | "receipt" | "tax_invoice",
   // When editing an existing document, exclude its own items from the
   // "already claimed" check — otherwise the document being edited would
   // hide the very tax invoice it was created from.
@@ -78,14 +78,24 @@ export async function getBillableTaxInvoicesForCustomer(
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
 
-  // ใบวางบิล is deliberately never a source here (for either target) — per
-  // feedback, ใบเสร็จรับเงิน's "ใบกำกับภาษี/ใบวางบิลที่ยังไม่ได้ออกใบเสร็จ"
-  // picker should only ever surface ใบกำกับภาษี items, not a
+  // ใบวางบิล is deliberately never a source here for billing_note/receipt
+  // targets — per feedback, ใบเสร็จรับเงิน's "ใบกำกับภาษี/ใบวางบิลที่ยังไม่ได้
+  // ออกใบเสร็จ" picker should only ever surface ใบกำกับภาษี items, not a
   // previously-issued ใบวางบิล's own quotation-sourced line. ใบแจ้งหนี้ is
   // also excluded for receipts specifically (a receipt should only ever
   // collect against a real ใบกำกับภาษี), but still a valid source for a new
   // ใบวางบิล, which can be billed straight off an unconverted ใบแจ้งหนี้.
-  const sourceDocTypes = targetDocType === "receipt" ? ["tax_invoice"] : ["tax_invoice", "invoice"];
+  // ใบกำกับภาษี is the one target where ใบวางบิล IS the source — per the
+  // user's explicit "ใบกำกับภาษี ดึงรายการจากใบวางบิลไม่ได้" report: this
+  // company issues ใบวางบิล first (from unbilled invoices, an unconverted
+  // ใบแจ้งหนี้, or typed lines) and only issues ใบกำกับภาษี once payment is
+  // actually in hand, the reverse order from every other target here.
+  const sourceDocTypes =
+    targetDocType === "receipt"
+      ? ["tax_invoice"]
+      : targetDocType === "tax_invoice"
+        ? ["billing_note"]
+        : ["tax_invoice", "invoice"];
   const { data: invoices, error } = await supabase
     .from("billing_notes")
     .select(
@@ -152,18 +162,20 @@ export async function getBillableTaxInvoicesForCustomer(
 // so the same line isn't offered twice.
 export async function getBillableBillingNoteItemsForCustomer(
   customerId: string,
-  targetDocType: "billing_note" | "receipt",
+  targetDocType: "billing_note" | "receipt" | "tax_invoice",
   excludeDocId?: string,
 ): Promise<BillableBillingNoteItem[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
 
-  // ใบวางบิล is deliberately never a source here (for either target) — per
-  // feedback, ใบเสร็จรับเงิน's "ใบกำกับภาษี/ใบวางบิลที่ยังไม่ได้ออกใบเสร็จ"
-  // picker should only ever surface ใบกำกับภาษี items, not a
-  // previously-issued ใบวางบิล's own manual lines. ใบแจ้งหนี้ is also
-  // excluded for receipts specifically — see getBillableTaxInvoicesForCustomer.
-  const sourceDocTypes = targetDocType === "receipt" ? ["tax_invoice"] : ["tax_invoice", "invoice"];
+  // Same source-doc-type rule as getBillableTaxInvoicesForCustomer — see
+  // its comment for why ใบกำกับภาษี is the one target sourced from ใบวางบิล.
+  const sourceDocTypes =
+    targetDocType === "receipt"
+      ? ["tax_invoice"]
+      : targetDocType === "tax_invoice"
+        ? ["billing_note"]
+        : ["tax_invoice", "invoice"];
   const { data: notes, error } = await supabase
     .from("billing_notes")
     .select(

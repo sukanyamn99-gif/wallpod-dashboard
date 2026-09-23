@@ -45,7 +45,7 @@ export async function fetchBillableQuotations(customerName: string): Promise<Bil
 // still receiptable, and vice versa).
 export async function fetchBillableTaxInvoices(
   customerId: string,
-  targetDocType: "billing_note" | "receipt",
+  targetDocType: "billing_note" | "receipt" | "tax_invoice",
   excludeDocId?: string,
 ): Promise<BillableTaxInvoice[]> {
   if (!customerId) return [];
@@ -57,7 +57,7 @@ export async function fetchBillableTaxInvoices(
 // getBillableBillingNoteItemsForCustomer).
 export async function fetchBillableBillingNoteItems(
   customerId: string,
-  targetDocType: "billing_note" | "receipt",
+  targetDocType: "billing_note" | "receipt" | "tax_invoice",
   excludeDocId?: string,
 ): Promise<BillableBillingNoteItem[]> {
   if (!customerId) return [];

@@ -143,10 +143,16 @@ export function BillingDocumentForm({
   const router = useRouter();
   // ใบวางบิล and ใบเสร็จรับเงิน both browse issued ใบกำกับภาษี directly
   // instead of the quotations behind them (per the user's explicit
-  // "ไม่ต้องผ่านใบเสนอราคา" request, extended from ใบวางบิล to ใบเสร็จรับเงิน) —
-  // every other doc type keeps billing from quotations directly, since a
-  // tax invoice may not exist yet for those.
-  const usesTaxInvoiceSource = docType === "billing_note" || docType === "receipt";
+  // "ไม่ต้องผ่านใบเสนอราคา" request, extended from ใบวางบิล to ใบเสร็จรับเงิน).
+  // ใบกำกับภาษี browses issued ใบวางบิล the same way — this company issues
+  // ใบวางบิล first and only issues ใบกำกับภาษี once payment is actually in
+  // hand, per the user's "ดึงรายการสินค้าจากใบวางบิลไม่ได้" report. ใบแจ้งหนี้
+  // is the one type that still only ever bills a quotation/payment directly.
+  const usesTaxInvoiceSource = docType === "billing_note" || docType === "receipt" || docType === "tax_invoice";
+  // The shared picker's own label/help text below reads generically as
+  // "ใบกำกับภาษี" — this is the one doc type where the browsed documents are
+  // ใบวางบิล instead, so its copy needs its own case.
+  const taxInvoiceSourceIsBillingNotes = docType === "tax_invoice";
   // ใบเสร็จรับเงิน and ใบแจ้งหนี้'s create forms both ask up front whether
   // this document is collecting/billing against existing records (can
   // combine several — a tax invoice/ใบวางบิล for a receipt, an unbilled
@@ -280,8 +286,8 @@ export function BillingDocumentForm({
         // separately (see the effect below) so an already-saved
         // quotation-sourced line doesn't silently disappear on save.
         Promise.resolve([]),
-        usesTaxInvoiceSource ? fetchBillableTaxInvoices(id, docType as "billing_note" | "receipt") : Promise.resolve([]),
-        usesTaxInvoiceSource ? fetchBillableBillingNoteItems(id, docType as "billing_note" | "receipt") : Promise.resolve([]),
+        usesTaxInvoiceSource ? fetchBillableTaxInvoices(id, docType as "billing_note" | "receipt" | "tax_invoice") : Promise.resolve([]),
+        usesTaxInvoiceSource ? fetchBillableBillingNoteItems(id, docType as "billing_note" | "receipt" | "tax_invoice") : Promise.resolve([]),
       ]);
       setInvoices(rows);
       setQuotations(billableQuotations);
@@ -343,10 +349,10 @@ export function BillingDocumentForm({
         fetchUnbilledInvoices(initialData.customerId),
         fetchBillableQuotations(initialData.customerName),
         usesTaxInvoiceSource
-          ? fetchBillableTaxInvoices(initialData.customerId, docType as "billing_note" | "receipt", docId)
+          ? fetchBillableTaxInvoices(initialData.customerId, docType as "billing_note" | "receipt" | "tax_invoice", docId)
           : Promise.resolve([]),
         usesTaxInvoiceSource
-          ? fetchBillableBillingNoteItems(initialData.customerId, docType as "billing_note" | "receipt", docId)
+          ? fetchBillableBillingNoteItems(initialData.customerId, docType as "billing_note" | "receipt" | "tax_invoice", docId)
           : Promise.resolve([]),
       ]);
       if (!cancelled) {
@@ -898,7 +904,9 @@ export function BillingDocumentForm({
               <p className="mt-2 text-sm text-muted-foreground">
                 ลูกค้ารายนี้ไม่มีใบแจ้งหนี้ค้างชำระ
                 {quotations.length > 0 && " — เลือกจากใบเสนอราคาด้านล่างแทนได้"}
-                {usesTaxInvoiceSource && taxInvoices.length > 0 && " — เลือกจากใบกำกับภาษีด้านล่างแทนได้"}
+                {usesTaxInvoiceSource &&
+                  taxInvoices.length > 0 &&
+                  (taxInvoiceSourceIsBillingNotes ? " — เลือกจากใบวางบิลด้านล่างแทนได้" : " — เลือกจากใบกำกับภาษีด้านล่างแทนได้")}
               </p>
             </div>
           ) : (
@@ -1005,19 +1013,29 @@ export function BillingDocumentForm({
 
         {usesTaxInvoiceSource && customerId && !loadingInvoices && sourceKind !== "other" && (
           <div className="space-y-2">
-            <Label>{docType === "receipt" ? "ใบกำกับภาษีที่ยังไม่ได้ออกใบเสร็จ" : "ใบกำกับภาษีที่ยังไม่ได้วางบิล"}</Label>
+            <Label>
+              {taxInvoiceSourceIsBillingNotes
+                ? "ใบวางบิลที่ยังไม่ได้ออกใบกำกับภาษี"
+                : docType === "receipt"
+                  ? "ใบกำกับภาษีที่ยังไม่ได้ออกใบเสร็จ"
+                  : "ใบกำกับภาษีที่ยังไม่ได้วางบิล"}
+            </Label>
             <p className="text-xs text-muted-foreground">
-              {docType === "receipt"
-                ? "เลือกใบกำกับภาษีที่ต้องการออกใบเสร็จโดยตรง"
-                : "เลือกใบกำกับภาษีที่ต้องการวางบิลโดยตรง"}
+              {taxInvoiceSourceIsBillingNotes
+                ? "เลือกใบวางบิลที่ต้องการออกใบกำกับภาษีโดยตรง"
+                : docType === "receipt"
+                  ? "เลือกใบกำกับภาษีที่ต้องการออกใบเสร็จโดยตรง"
+                  : "เลือกใบกำกับภาษีที่ต้องการวางบิลโดยตรง"}
             </p>
             {taxInvoices.length === 0 && billingNoteItems.length === 0 ? (
               <div className="rounded-lg border border-dashed p-8 text-center">
                 <Package className="mx-auto h-8 w-8 text-muted-foreground" />
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {docType === "receipt"
-                    ? "ลูกค้ารายนี้ไม่มีใบกำกับภาษีที่ยังไม่ได้ออกใบเสร็จ"
-                    : "ลูกค้ารายนี้ไม่มีใบกำกับภาษีที่ยังไม่ได้วางบิล"}
+                  {taxInvoiceSourceIsBillingNotes
+                    ? "ลูกค้ารายนี้ไม่มีใบวางบิลที่ยังไม่ได้ออกใบกำกับภาษี"
+                    : docType === "receipt"
+                      ? "ลูกค้ารายนี้ไม่มีใบกำกับภาษีที่ยังไม่ได้ออกใบเสร็จ"
+                      : "ลูกค้ารายนี้ไม่มีใบกำกับภาษีที่ยังไม่ได้วางบิล"}
                 </p>
               </div>
             ) : (
