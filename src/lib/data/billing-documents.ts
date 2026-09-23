@@ -179,7 +179,7 @@ export async function getBillableBillingNoteItemsForCustomer(
   const { data: notes, error } = await supabase
     .from("billing_notes")
     .select(
-      "id, doc_no, doc_date, billing_note_items(id, quotation_id, payment_id, manual_description, manual_qty, manual_unit, manual_unit_price, amount, apply_wht)",
+      "id, doc_no, doc_date, job_no, billing_note_items(id, quotation_id, payment_id, manual_description, manual_qty, manual_unit, manual_unit_price, amount, apply_wht)",
     )
     .in("doc_type", sourceDocTypes)
     .eq("customer_id", customerId);
@@ -220,6 +220,7 @@ export async function getBillableBillingNoteItemsForCustomer(
         unitPrice: Number(it.manual_unit_price) || 0,
         amount: Number(it.amount),
         applyWht: it.apply_wht,
+        jobNo: note.job_no,
       });
     }
   }

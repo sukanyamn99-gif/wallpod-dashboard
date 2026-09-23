@@ -507,6 +507,21 @@ export function BillingDocumentForm({
     [finishedGoods, jobNo],
   );
 
+  // Same narrowing as relevantFinishedGoods above, for the "ใบกำกับภาษี/
+  // ใบวางบิลที่ยังไม่ได้..." picker — a customer can have several open
+  // billing documents across different JOBs, and once a specific JOB is
+  // picked only that job's items should be offered (per the user's
+  // explicit "ให้โชว์เฉพาะ job นี้เท่านั้น" report). Falls back to showing
+  // everything when no JOB is picked (customer chosen directly instead).
+  const relevantTaxInvoices = useMemo(
+    () => (jobNo ? taxInvoices.filter((ti) => ti.jobNo === jobNo) : taxInvoices),
+    [taxInvoices, jobNo],
+  );
+  const relevantBillingNoteItems = useMemo(
+    () => (jobNo ? billingNoteItems.filter((it) => it.jobNo === jobNo) : billingNoteItems),
+    [billingNoteItems, jobNo],
+  );
+
   const selectedItems = useMemo(
     () => [
       ...invoices
@@ -905,7 +920,7 @@ export function BillingDocumentForm({
                 ลูกค้ารายนี้ไม่มีใบแจ้งหนี้ค้างชำระ
                 {quotations.length > 0 && " — เลือกจากใบเสนอราคาด้านล่างแทนได้"}
                 {usesTaxInvoiceSource &&
-                  taxInvoices.length > 0 &&
+                  relevantTaxInvoices.length > 0 &&
                   (taxInvoiceSourceIsBillingNotes ? " — เลือกจากใบวางบิลด้านล่างแทนได้" : " — เลือกจากใบกำกับภาษีด้านล่างแทนได้")}
               </p>
             </div>
@@ -1027,20 +1042,22 @@ export function BillingDocumentForm({
                   ? "เลือกใบกำกับภาษีที่ต้องการออกใบเสร็จโดยตรง"
                   : "เลือกใบกำกับภาษีที่ต้องการวางบิลโดยตรง"}
             </p>
-            {taxInvoices.length === 0 && billingNoteItems.length === 0 ? (
+            {relevantTaxInvoices.length === 0 && relevantBillingNoteItems.length === 0 ? (
               <div className="rounded-lg border border-dashed p-8 text-center">
                 <Package className="mx-auto h-8 w-8 text-muted-foreground" />
                 <p className="mt-2 text-sm text-muted-foreground">
-                  {taxInvoiceSourceIsBillingNotes
-                    ? "ลูกค้ารายนี้ไม่มีใบวางบิลที่ยังไม่ได้ออกใบกำกับภาษี"
-                    : docType === "receipt"
-                      ? "ลูกค้ารายนี้ไม่มีใบกำกับภาษีที่ยังไม่ได้ออกใบเสร็จ"
-                      : "ลูกค้ารายนี้ไม่มีใบกำกับภาษีที่ยังไม่ได้วางบิล"}
+                  {jobNo && (taxInvoices.length > 0 || billingNoteItems.length > 0)
+                    ? `ไม่มีรายการสำหรับ JOB ${jobNo} — ลูกค้ารายนี้มีรายการของ JOB อื่นอยู่`
+                    : taxInvoiceSourceIsBillingNotes
+                      ? "ลูกค้ารายนี้ไม่มีใบวางบิลที่ยังไม่ได้ออกใบกำกับภาษี"
+                      : docType === "receipt"
+                        ? "ลูกค้ารายนี้ไม่มีใบกำกับภาษีที่ยังไม่ได้ออกใบเสร็จ"
+                        : "ลูกค้ารายนี้ไม่มีใบกำกับภาษีที่ยังไม่ได้วางบิล"}
                 </p>
               </div>
             ) : (
               <div className="space-y-2">
-                {taxInvoices.map((ti) => (
+                {relevantTaxInvoices.map((ti) => (
                   <label key={ti.id} className="flex cursor-pointer items-center gap-3 rounded-lg border p-2 hover:bg-muted">
                     <input
                       type="checkbox"
@@ -1072,7 +1089,7 @@ export function BillingDocumentForm({
                     <p className="shrink-0 text-sm font-medium">{formatTHB(ti.netPayable)}</p>
                   </label>
                 ))}
-                {billingNoteItems.map((item) => (
+                {relevantBillingNoteItems.map((item) => (
                   <label key={item.id} className="flex cursor-pointer items-center gap-3 rounded-lg border p-2 hover:bg-muted">
                     <input
                       type="checkbox"

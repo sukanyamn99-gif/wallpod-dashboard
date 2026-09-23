@@ -1039,6 +1039,11 @@ export interface BillableBillingNoteItem {
   unitPrice: number;
   amount: number;
   applyWht: boolean;
+  // The parent document's own job_no (set once, at that document's own
+  // creation, from its JobNoSelect) — a manual line has no quotation to
+  // derive a job from otherwise, so this is the only signal available for
+  // narrowing the picker down to one JOB.
+  jobNo: string | null;
 }
 
 // Descriptive product/service detail pulled from the quotation behind an
