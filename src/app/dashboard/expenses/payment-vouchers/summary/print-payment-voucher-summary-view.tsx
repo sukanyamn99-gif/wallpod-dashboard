@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DownloadPdfButton } from "@/components/dashboard/download-pdf-button";
 import { formatTHB } from "@/lib/format";
@@ -18,11 +19,15 @@ export function PrintPaymentVoucherSummaryView({
   toLabel: string;
   preparerName: string;
 }) {
+  const router = useRouter();
   const grandTotal = rows.reduce((sum, v) => sum + v.amount, 0);
 
   return (
     <div className="mx-auto max-w-4xl bg-white p-6 text-black print:p-0">
       <div className="mb-4 flex justify-end gap-2 print:hidden">
+        <Button variant="outline" onClick={() => router.back()}>
+          ปิด
+        </Button>
         <Button onClick={() => window.print()}>พิมพ์</Button>
         <DownloadPdfButton />
       </div>
