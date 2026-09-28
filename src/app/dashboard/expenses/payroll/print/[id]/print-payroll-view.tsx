@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DownloadPdfButton } from "@/components/dashboard/download-pdf-button";
 import { formatTHB } from "@/lib/format";
@@ -34,11 +35,15 @@ function money(value: number): string {
 }
 
 export function PrintPayrollView({ entry, ytd }: { entry: PayrollEntry; ytd: PayrollYtdSummary }) {
+  const router = useRouter();
   const { monthName, beYear } = payPeriodParts(entry.payPeriod);
 
   return (
     <div className="mx-auto max-w-3xl bg-white p-6 text-black print:p-0">
       <div className="mb-4 flex justify-end gap-2 print:hidden">
+        <Button variant="outline" onClick={() => router.back()}>
+          ปิด
+        </Button>
         <Button onClick={() => window.print()}>พิมพ์</Button>
         <DownloadPdfButton />
       </div>
