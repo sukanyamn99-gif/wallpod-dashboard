@@ -1,6 +1,6 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { getQuotationItemsByIds, getQuotationItemsByJobNumbers } from "@/lib/data/quotations";
-import { computeBillingDocumentSummary } from "@/lib/billing-document-summary";
+import { allocateBillingDocumentSummaryByLine } from "@/lib/billing-document-summary";
 import type {
   BillableBillingNoteItem,
   BillableTaxInvoice,
@@ -123,25 +123,34 @@ export async function getBillableTaxInvoicesForCustomer(
       apply_wht: boolean;
       quotations: { job_number: string | null } | null;
     }[];
-    const matched = items.find((it) => it.quotation_id);
-    const quotationId = matched?.quotation_id;
-    if (!quotationId || billedQuotationIds.has(quotationId)) continue;
+    if (items.length === 0) continue;
 
-    const summary = computeBillingDocumentSummary(
+    // A source document can bundle several quotations (e.g. one invoice
+    // billing 2 accepted quotations together) — each still-unclaimed one is
+    // its own separately billable row here, not just the first found.
+    // Amounts are allocated proportionally across ALL of the invoice's own
+    // lines so a row for one quotation reflects only its own fair share of
+    // the invoice's discount/VAT/WHT/retention, not the whole invoice's
+    // combined total (see allocateBillingDocumentSummaryByLine).
+    const allocated = allocateBillingDocumentSummaryByLine(
       items.map((it) => ({ amount: Number(it.amount), applyWht: it.apply_wht })),
       Number(inv.discount_amount),
       Number(inv.wht_percent),
       Number(inv.retention_percent),
     );
-    result.push({
-      id: inv.id,
-      docNo: inv.doc_no,
-      docDate: inv.doc_date,
-      quotationId,
-      jobNo: matched?.quotations?.job_number ?? null,
-      netPayable: summary.netPayable,
-      whtPercent: Number(inv.wht_percent),
-      docType: inv.doc_type as "tax_invoice" | "invoice",
+    items.forEach((it, i) => {
+      if (!it.quotation_id || billedQuotationIds.has(it.quotation_id)) return;
+      result.push({
+        id: `${inv.id}:${it.quotation_id}`,
+        sourceDocId: inv.id,
+        docNo: inv.doc_no,
+        docDate: inv.doc_date,
+        quotationId: it.quotation_id,
+        jobNo: it.quotations?.job_number ?? null,
+        netPayable: allocated[i].netPayable,
+        whtPercent: Number(inv.wht_percent),
+        docType: inv.doc_type as "tax_invoice" | "invoice",
+      });
     });
   }
   return result;
@@ -252,37 +261,64 @@ export async function getNetPayableForQuotationIds(
   // then compute "gross"/"net" from the ใบวางบิล's own (already-net, WHT-less)
   // amount instead of the real originating invoice — silently zeroing out
   // the WHT that invoice actually applied for every ใบวางบิล created after it.
-  const { data, error } = await supabase
+  //
+  // First pass just finds which source documents reference any of these
+  // quotations, most-recent first. Filtering the embedded billing_note_items
+  // here also restricts which of THOSE rows come back (PostgREST filters the
+  // embed, not just the parent) — fine for locating candidate documents, but
+  // wrong for the proration below, which needs every line on the invoice,
+  // not only the ones matching this particular quotationIds query (an
+  // invoice can bundle a quotation nobody asked about here too).
+  const { data: matches, error: matchErr } = await supabase
     .from("billing_notes")
-    .select(
-      "discount_amount, wht_percent, retention_percent, created_at, billing_note_items!inner(quotation_id, amount, apply_wht)",
-    )
+    .select("id, billing_note_items!inner(quotation_id)")
     .in("doc_type", ["tax_invoice", "invoice"])
     .in("billing_note_items.quotation_id", quotationIds)
     .order("created_at", { ascending: false });
+  if (matchErr) throw matchErr;
+  const orderedDocIds = [...new Set((matches ?? []).map((row) => row.id as string))];
+  if (orderedDocIds.length === 0) return {};
+
+  const { data, error } = await supabase
+    .from("billing_notes")
+    .select("id, discount_amount, wht_percent, retention_percent, billing_note_items(quotation_id, amount, apply_wht)")
+    .in("id", orderedDocIds);
   if (error) throw error;
+  const invoiceById = new Map((data ?? []).map((inv) => [inv.id as string, inv]));
 
   const result: Record<string, { netPayable: number; grossAmount: number }> = {};
-  for (const inv of data ?? []) {
+  // Walk in most-recent-first order (from the first pass) so "keep the most
+  // recent only" below still holds once a quotation is found.
+  for (const docId of orderedDocIds) {
+    const inv = invoiceById.get(docId);
+    if (!inv) continue;
     const items = (inv.billing_note_items ?? []) as unknown as {
       quotation_id: string | null;
       amount: number;
       apply_wht: boolean;
     }[];
-    const quotationId = items.find((it) => it.quotation_id && quotationIds.includes(it.quotation_id))?.quotation_id;
-    if (!quotationId || result[quotationId] !== undefined) continue; // keep the most recent only
+    if (items.length === 0) continue;
 
-    const summary = computeBillingDocumentSummary(
+    // A source document can bundle several quotations — allocate its own
+    // discount/VAT/WHT/retention proportionally across ALL of its lines so
+    // each queried quotation gets only its own fair share, not the whole
+    // document's combined total (see allocateBillingDocumentSummaryByLine).
+    const allocated = allocateBillingDocumentSummaryByLine(
       items.map((it) => ({ amount: Number(it.amount), applyWht: it.apply_wht })),
       Number(inv.discount_amount),
       Number(inv.wht_percent),
       Number(inv.retention_percent),
     );
-    // grossAmount = the tax invoice's own total before its WHT/retention
-    // deduction — kept alongside netPayable so a later ใบวางบิล/ใบเสร็จรับเงิน
-    // can bill at (and collect toward) the net-payable amount while still
-    // printing the invoice's real face value in its "ยอดรวมตามเอกสาร" column.
-    result[quotationId] = { netPayable: summary.netPayable, grossAmount: summary.totalAfterVat };
+    items.forEach((it, i) => {
+      if (!it.quotation_id || !quotationIds.includes(it.quotation_id)) return;
+      if (result[it.quotation_id] !== undefined) return; // keep the most recent only
+      // grossAmount = this line's own share of the tax invoice's total
+      // before its WHT/retention deduction — kept alongside netPayable so a
+      // later ใบวางบิล/ใบเสร็จรับเงิน can bill at (and collect toward) the
+      // net-payable amount while still printing the invoice's real face
+      // value in its "ยอดรวมตามเอกสาร" column.
+      result[it.quotation_id] = { netPayable: allocated[i].netPayable, grossAmount: allocated[i].grossAmount };
+    });
   }
   return result;
 }

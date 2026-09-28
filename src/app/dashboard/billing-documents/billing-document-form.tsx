@@ -757,11 +757,14 @@ export function BillingDocumentForm({
         // installment this specific tax invoice owns once a quotation can
         // be split across several partial tax invoices.
         for (const taxInvoiceId of selectedTaxInvoices) {
-          const quotationId = taxInvoices.find((ti) => ti.id === taxInvoiceId)?.quotationId;
-          if (quotationId) {
-            fd.append("item_quotation_id", quotationId);
-            fd.append("item_quotation_apply_wht", String(!whtExcluded.has(quotationId)));
-            fd.append("item_quotation_tax_invoice_ref_id", taxInvoiceId);
+          const ti = taxInvoices.find((t) => t.id === taxInvoiceId);
+          if (ti) {
+            fd.append("item_quotation_id", ti.quotationId);
+            fd.append("item_quotation_apply_wht", String(!whtExcluded.has(ti.quotationId)));
+            // The real billing_notes.id of the source document (ti.id is a
+            // synthetic per-quotation picker key, not a real row id — see
+            // BillableTaxInvoice.sourceDocId).
+            fd.append("item_quotation_tax_invoice_ref_id", ti.sourceDocId);
             fd.append("item_quotation_sort_order", String(sortIndexOf(`taxInvoice:${taxInvoiceId}`)));
           }
         }

@@ -1011,11 +1011,24 @@ export interface BillableQuotation {
 // a quotation), which is what lets the print view's existing
 // tax-invoice-reference lookup resolve it correctly.
 export interface BillableTaxInvoice {
+  // One row per still-unclaimed quotation on the source document, not one
+  // row per document — a source document can bundle several quotations
+  // (see getBillableTaxInvoicesForCustomer), and each is its own separately
+  // billable/claimable unit. Unique per (sourceDocId, quotationId); safe to
+  // use as a picker/selection key but NOT a real billing_notes.id — use
+  // sourceDocId for that.
   id: string;
+  // The real billing_notes.id of the source document — this is what must be
+  // written to payments.source_tax_invoice_id (a real FK), never `id` above.
+  sourceDocId: string;
   docNo: string;
   docDate: string;
   quotationId: string;
   jobNo: string | null;
+  // This row's own prorated share of the source document's net payable —
+  // see allocateBillingDocumentSummaryByLine — not the whole document's
+  // combined total, so bundling just this quotation onto a new document
+  // bills exactly its own fair share.
   netPayable: number;
   // The tax invoice's own WHT rate — used to auto-suggest the bundling
   // document's wht_percent when this invoice is picked, so staff don't have

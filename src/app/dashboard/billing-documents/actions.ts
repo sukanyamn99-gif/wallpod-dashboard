@@ -200,7 +200,8 @@ const SYNC_FIELDS: Record<BillingDocumentType, { no: string; date: string } | nu
 // (1-3, matching the form's 3 fixed slots) on the matching project and
 // write the doc number straight onto it — but only the FIRST time.
 //
-// Correlated by payments.source_tax_invoice_id — the SPECIFIC tax invoice
+// Correlated by BOTH payments.source_tax_invoice_id AND
+// source_quotation_id. source_tax_invoice_id is the SPECIFIC tax invoice
 // that "owns" an installment, not just its quotation. For a tax_invoice/
 // invoice document billing directly from a quotation, that's the document's
 // own id (it creates/owns whichever installment it lands on, and finds that
@@ -211,10 +212,14 @@ const SYNC_FIELDS: Record<BillingDocumentType, { no: string; date: string } | nu
 // This is what lets a quotation be billed via multiple PARTIAL tax invoices
 // (each getting its own installment) without one later document colliding
 // with another's slot — matching on quotation id alone couldn't tell two
-// partial tax invoices for the same quotation apart. Best-effort throughout
-// — a job with no matching project yet, or with all 3 slots already used
-// and no existing match, is skipped silently rather than failing the whole
-// document.
+// partial tax invoices for the same quotation apart. source_quotation_id is
+// ALSO required in the match because the reverse can happen too — a single
+// source tax invoice can bundle several quotations (see
+// getBillableTaxInvoicesForCustomer), so matching on source_tax_invoice_id
+// alone couldn't tell those apart if two of them land on the same project.
+// Best-effort throughout — a job with no matching project yet, or with all
+// 3 slots already used and no existing match, is skipped silently rather
+// than failing the whole document.
 async function syncQuotationSourcedInstallments(
   supabase: Awaited<ReturnType<typeof createClient>>,
   docType: BillingDocumentType,
@@ -255,13 +260,20 @@ async function syncQuotationSourcedInstallments(
 
     const { data: existing, error: existingErr } = await supabase
       .from("payments")
-      .select("id, installment_no, source_tax_invoice_id, receipt_no")
+      .select("id, installment_no, source_tax_invoice_id, source_quotation_id, receipt_no")
       .eq("project_id", project.id);
     if (existingErr) continue;
 
     const netAmount = installmentAmountByQuotationId[q.id] ?? netPayableByQuotationId[q.id]?.netPayable ?? q.total;
     const whtAmount = whtAmountByQuotationId[q.id] ?? 0;
-    const priorRow = (existing ?? []).find((p) => p.source_tax_invoice_id === ownerTaxInvoiceId);
+    // Matched by BOTH source_tax_invoice_id and source_quotation_id — a
+    // single source tax invoice can bundle several quotations, so matching
+    // on source_tax_invoice_id alone could pick up an installment that
+    // actually belongs to a DIFFERENT quotation on that same invoice
+    // (possible when two of its quotations land on the same project/job).
+    const priorRow = (existing ?? []).find(
+      (p) => p.source_tax_invoice_id === ownerTaxInvoiceId && p.source_quotation_id === q.id,
+    );
 
     if (priorRow) {
       // Already-received installments keep their status — a later edit to
