@@ -5,7 +5,16 @@ import Link from "next/link";
 import { Check, Copy, Pencil, Printer, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { DateInput } from "@/components/ui/date-input";
 import { MultiSelectFilter } from "@/components/dashboard/multi-select-filter";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -17,6 +26,10 @@ import {
 import { formatTHB } from "@/lib/format";
 import type { PaymentVoucher, Profile } from "@/lib/types";
 import { deletePaymentVoucher } from "./actions";
+
+// Sentinel for "ทั้งหมด" in the PV-range Selects below — Base UI Select
+// can't use an empty string as a real option value.
+const RANGE_ANY = "__any__";
 
 type VoucherRow = Omit<PaymentVoucher, "ledgerLines">;
 
@@ -96,6 +109,10 @@ export function PaymentVouchersTable({
 }) {
   const [query, setQuery] = useState("");
   const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set());
+  const [docFrom, setDocFrom] = useState(RANGE_ANY);
+  const [docTo, setDocTo] = useState(RANGE_ANY);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const monthOptions = useMemo(() => {
     const keys = new Set(vouchers.map((v) => monthKeyOf(v.voucherDate)));
@@ -103,6 +120,17 @@ export function PaymentVouchersTable({
       .sort((a, b) => b.localeCompare(a))
       .map((key) => ({ value: key, label: monthLabelOf(key) }));
   }, [vouchers]);
+
+  // doc_no (PVyymmnnn) sorts lexicographically the same as chronologically —
+  // ascending here since "จาก PV ... ถึง PV ..." reads earliest-to-latest.
+  const docNoOptions = useMemo(
+    () => Array.from(new Set(vouchers.map((v) => v.docNo))).sort(),
+    [vouchers],
+  );
+  const docNoSelectItems = useMemo(
+    () => [{ value: RANGE_ANY, label: "ทั้งหมด" }, ...docNoOptions.map((docNo) => ({ value: docNo, label: docNo }))],
+    [docNoOptions],
+  );
 
   const searched = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -124,14 +152,19 @@ export function PaymentVouchersTable({
 
   const total = filtered.reduce((sum, v) => sum + v.amount, 0);
 
+  const summaryHref = useMemo(() => {
+    const params = new URLSearchParams();
+    if (docFrom !== RANGE_ANY) params.set("docFrom", docFrom);
+    if (docTo !== RANGE_ANY) params.set("docTo", docTo);
+    if (dateFrom) params.set("dateFrom", dateFrom);
+    if (dateTo) params.set("dateTo", dateTo);
+    const qs = params.toString();
+    return `/dashboard/expenses/payment-vouchers/summary${qs ? `?${qs}` : ""}`;
+  }, [docFrom, docTo, dateFrom, dateTo]);
+
   // Group by calendar month (newest first) with a subtotal per month —
   // same shape as WALLPOD Project Sales' report table, so ค้นหา/ดูแต่ละเดือน
   // works the same way across both.
-  // React Compiler can't auto-memoize this particular shape (tried several
-  // rewrites without resolving it); the manual useMemo below still works
-  // correctly as ordinary React memoization, this only forgoes the
-  // compiler's own additional optimization pass for this one value.
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const monthGroups = useMemo(() => {
     const keys = Array.from(new Set(filtered.map((v) => monthKeyOf(v.voucherDate)))).sort((a, b) =>
       b.localeCompare(a),
@@ -168,6 +201,69 @@ export function PaymentVouchersTable({
           selected={selectedMonths}
           onChange={setSelectedMonths}
         />
+      </div>
+
+      <div className="flex flex-wrap items-end gap-2 rounded-lg border p-3">
+        <p className="w-full text-sm font-medium">พิมพ์รายการจ่าย — เลือกช่วงเลขที่เอกสาร หรือช่วงวันที่</p>
+        <div className="space-y-1">
+          <Label htmlFor="doc_from" className="text-xs text-muted-foreground">
+            จากเลขที่
+          </Label>
+          <Select
+            value={docFrom}
+            onValueChange={(v) => setDocFrom((v as string) ?? RANGE_ANY)}
+            items={docNoSelectItems}
+          >
+            <SelectTrigger id="doc_from" className="w-[160px]">
+              <SelectValue placeholder="ทั้งหมด" />
+            </SelectTrigger>
+            <SelectContent>
+              {docNoSelectItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="doc_to" className="text-xs text-muted-foreground">
+            ถึงเลขที่
+          </Label>
+          <Select
+            value={docTo}
+            onValueChange={(v) => setDocTo((v as string) ?? RANGE_ANY)}
+            items={docNoSelectItems}
+          >
+            <SelectTrigger id="doc_to" className="w-[160px]">
+              <SelectValue placeholder="ทั้งหมด" />
+            </SelectTrigger>
+            <SelectContent>
+              {docNoSelectItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <span className="pb-2 text-sm text-muted-foreground">หรือ</span>
+        <div className="space-y-1">
+          <Label htmlFor="date_from" className="text-xs text-muted-foreground">
+            ตั้งแต่วันที่
+          </Label>
+          <DateInput id="date_from" value={dateFrom} onChange={setDateFrom} className="w-[150px]" />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="date_to" className="text-xs text-muted-foreground">
+            ถึงวันที่
+          </Label>
+          <DateInput id="date_to" value={dateTo} onChange={setDateTo} className="w-[150px]" />
+        </div>
+        <Button variant="outline" nativeButton={false} render={<Link href={summaryHref} target="_blank" />}>
+          <Printer className="h-3.5 w-3.5" />
+          พิมพ์รายการจ่าย
+        </Button>
       </div>
 
       <div className="overflow-x-auto rounded-md border">
