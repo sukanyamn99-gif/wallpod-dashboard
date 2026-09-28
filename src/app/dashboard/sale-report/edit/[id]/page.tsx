@@ -47,6 +47,7 @@ export default async function EditSaleReportPage({
               leadId={report.id}
               initialData={{
                 salesRepId: report.sales_rep_id,
+                visitDate: report.visit_date,
                 customerName: report.customer_name,
                 contactName: report.contact_name ?? "",
                 phone: report.phone ?? "",

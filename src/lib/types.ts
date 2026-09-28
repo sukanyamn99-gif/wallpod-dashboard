@@ -193,6 +193,7 @@ export interface SaleReport {
   contact_name: string | null;
   image_paths: string[];
   created_at: string;
+  visit_date: string;
 }
 
 // One sales rep's ค่าน้ำมัน for one calendar month — see

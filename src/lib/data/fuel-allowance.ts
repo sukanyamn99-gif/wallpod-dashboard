@@ -26,11 +26,10 @@ function pad2(n: number): string {
 // 25th of this month, inclusive both ends — e.g. the figure paid at the end
 // of September counts visits from Aug 25 through Sep 25 (confirmed
 // explicitly by the user; this cutoff does NOT apply to ยอดขาย, which stays
-// on the plain calendar month per project_date). Comparing the "YYYY-MM-DD"
-// prefix of created_at as a string (not a parsed Date) matches this
-// function's existing convention below for sales amount, and sorts
-// correctly since that format is lexicographically ordered the same as
-// chronologically.
+// on the plain calendar month per project_date). Comparing "YYYY-MM-DD"
+// strings (not parsed Dates) matches this function's existing convention
+// below for sales amount, and sorts correctly since that format is
+// lexicographically ordered the same as chronologically.
 function visitPeriodBounds(month: number, year: number): { from: string; to: string } {
   const prevMonth = month === 1 ? 12 : month - 1;
   const prevYear = month === 1 ? year - 1 : year;
@@ -56,7 +55,10 @@ export async function getFuelAllowanceReport(month: number, year: number): Promi
     { customerName: string; date: string; projectName: string | null; estValue: number; stage: string; contactName: string | null; phone: string | null }[]
   >();
   for (const r of reports) {
-    const visitDate = r.created_at.slice(0, 10);
+    // The rep's own chosen date of the visit (staff can enter/backdate this
+    // on the Sale Report form), not created_at — the latter is just when the
+    // row was typed into the system, which can lag the actual visit.
+    const visitDate = r.visit_date;
     if (visitDate < visitBounds.from || visitDate > visitBounds.to) continue;
     const list = visitsByRep.get(r.sales_rep_name) ?? [];
     list.push({

@@ -148,7 +148,8 @@ create table sales_leads (
   contact_name text,
   image_paths text[] not null default '{}',
   created_by uuid references profiles(id),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  visit_date date not null default current_date
 );
 
 -- ============ Helper functions (security definer to avoid RLS recursion) ============

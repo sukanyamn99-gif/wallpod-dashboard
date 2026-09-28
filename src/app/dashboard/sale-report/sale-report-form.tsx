@@ -6,6 +6,7 @@ import { MapPin, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { DateInput } from "@/components/ui/date-input";
 import { NumberInput } from "@/components/ui/number-input";
 import { ImageDropzone } from "@/components/ui/image-dropzone";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,6 +37,7 @@ const MAX_IMAGES = 10;
 
 export interface SaleReportInitialData {
   salesRepId: string;
+  visitDate: string;
   customerName: string;
   contactName: string;
   phone: string;
@@ -209,6 +211,16 @@ export function SaleReportForm({
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="visit_date">วันที่</Label>
+        <DateInput
+          id="visit_date"
+          name="visit_date"
+          defaultValue={initialData?.visitDate ?? new Date().toISOString().slice(0, 10)}
+          required
+        />
       </div>
 
       <div className="space-y-2">

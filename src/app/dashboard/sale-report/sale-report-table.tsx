@@ -159,7 +159,7 @@ function SaleReportCard({
         <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
           <span>{report.sales_rep_name}</span>
           <span>·</span>
-          <span>{new Date(report.created_at).toLocaleDateString("th-TH")}</span>
+          <span>{new Date(report.visit_date).toLocaleDateString("th-TH")}</span>
           {report.est_value > 0 && (
             <>
               <span>·</span>
@@ -218,6 +218,7 @@ function DetailSheet({
 
               <div className="grid grid-cols-2 gap-3">
                 <DetailRow label="เซลล์">{report.sales_rep_name}</DetailRow>
+                <DetailRow label="วันที่">{new Date(report.visit_date).toLocaleDateString("th-TH")}</DetailRow>
                 <DetailRow label="วันที่บันทึก">{new Date(report.created_at).toLocaleString("th-TH")}</DetailRow>
                 <DetailRow label="กลุ่มลูกค้า">{report.customer_type}</DetailRow>
                 <DetailRow label="ประเภทสถานที่">{report.project_type}</DetailRow>
@@ -459,7 +460,7 @@ export function SaleReportTable({
                 >
                   <TableCell className="truncate text-muted-foreground">{index + 1}</TableCell>
                   <TableCell className="truncate">
-                    {new Date(r.created_at).toLocaleDateString("th-TH")}
+                    {new Date(r.visit_date).toLocaleDateString("th-TH")}
                   </TableCell>
                   <TableCell className="truncate font-medium" title={r.sales_rep_name}>
                     {r.sales_rep_name}

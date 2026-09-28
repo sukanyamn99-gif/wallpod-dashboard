@@ -23,6 +23,7 @@ function friendlySaleReportError(message: string): string {
 type ParsedSaleReport = {
   ok: true;
   salesRepId: string;
+  visitDate: string;
   customerName: string;
   projectName: string | null;
   customerType: string;
@@ -38,6 +39,7 @@ type ParsedSaleReport = {
 
 function parseSaleReportForm(formData: FormData): { ok: false; error: string } | ParsedSaleReport {
   const salesRepId = String(formData.get("sales_rep_id") ?? "");
+  const visitDate = String(formData.get("visit_date") ?? "").trim() || new Date().toISOString().slice(0, 10);
   const customerName = String(formData.get("customer_name") ?? "").trim();
   const projectName = String(formData.get("project_name") ?? "").trim() || null;
   const customerType = String(formData.get("customer_type") ?? "");
@@ -61,6 +63,7 @@ function parseSaleReportForm(formData: FormData): { ok: false; error: string } |
   return {
     ok: true,
     salesRepId,
+    visitDate,
     customerName,
     projectName,
     customerType,
@@ -111,6 +114,7 @@ export async function createSaleReport(formData: FormData) {
     .from("sales_leads")
     .insert({
       sales_rep_id: parsed.salesRepId,
+      visit_date: parsed.visitDate,
       customer_name: parsed.customerName,
       project_name: parsed.projectName,
       customer_type: parsed.customerType,
@@ -170,6 +174,7 @@ export async function updateSaleReport(id: string, formData: FormData) {
     .from("sales_leads")
     .update({
       sales_rep_id: parsed.salesRepId,
+      visit_date: parsed.visitDate,
       customer_name: parsed.customerName,
       project_name: parsed.projectName,
       customer_type: parsed.customerType,

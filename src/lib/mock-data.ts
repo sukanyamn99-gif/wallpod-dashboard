@@ -132,6 +132,7 @@ function saleReport(r: {
     contact_name: r.contactName ?? null,
     image_paths: [],
     created_at: created.toISOString(),
+    visit_date: created.toISOString().slice(0, 10),
   };
 }
 
