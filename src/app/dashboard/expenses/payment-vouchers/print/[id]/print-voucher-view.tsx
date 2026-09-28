@@ -35,7 +35,7 @@ const SIGNATURE_BLOCKS = ["ผู้จัดทำ", "ผู้ตรวจส�
 export function PrintVoucherView({ voucher }: { voucher: PaymentVoucher }) {
   const router = useRouter();
   const { dd, mm, yy } = dateParts(voucher.voucherDate);
-  const netPaid = voucher.amount - voucher.whtAmount;
+  const netPaid = voucher.amount - voucher.whtAmount - voucher.socialSecurityAmount;
   const ledgerRows = [...voucher.ledgerLines];
   while (ledgerRows.length < MIN_LEDGER_ROWS) {
     ledgerRows.push({ id: `blank-${ledgerRows.length}`, accountCode: null, description: null, debit: 0, credit: 0 });
@@ -143,7 +143,16 @@ export function PrintVoucherView({ voucher }: { voucher: PaymentVoucher }) {
                 {voucher.bankTransferDate ? new Date(voucher.bankTransferDate).toLocaleDateString("th-TH") : "—"}
               </td>
               <td className="border-r border-t border-black p-1">
-                {voucher.whtAmount > 0 ? formatTHB(voucher.whtAmount) : "-"}
+                {voucher.whtAmount > 0 || voucher.socialSecurityAmount > 0 ? (
+                  <>
+                    {voucher.whtAmount > 0 && <p>{formatTHB(voucher.whtAmount)}</p>}
+                    {voucher.socialSecurityAmount > 0 && (
+                      <p className="text-[11px]">ประกันสังคม {formatTHB(voucher.socialSecurityAmount)}</p>
+                    )}
+                  </>
+                ) : (
+                  "-"
+                )}
               </td>
               <td className="border-t border-black p-1">{formatTHB(netPaid)}</td>
             </tr>

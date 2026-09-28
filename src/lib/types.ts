@@ -594,6 +594,7 @@ export interface PaymentVoucher {
   whtRate: number | null;
   whtFormType: WhtFormType | null;
   whtAmount: number;
+  socialSecurityAmount: number;
   bankName: string | null;
   bankAccountNo: string | null;
   bankTransferDate: string | null;

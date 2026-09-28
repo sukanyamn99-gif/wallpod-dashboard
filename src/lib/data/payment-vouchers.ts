@@ -2,7 +2,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type { PaymentVoucher, PaymentVoucherLedgerLine, WhtFormType, WhtIncomeType } from "@/lib/types";
 
 const COLUMNS =
-  "id, doc_no, voucher_date, payee_name, category, amount, payment_method, reference_no, note, recorded_by, created_at, wht_cert_no, description, wht_rate, wht_form_type, wht_amount, bank_name, bank_account_no, bank_transfer_date, job_no, payee_tax_id, payee_address, income_type, profiles(full_name)";
+  "id, doc_no, voucher_date, payee_name, category, amount, payment_method, reference_no, note, recorded_by, created_at, wht_cert_no, description, wht_rate, wht_form_type, wht_amount, social_security_amount, bank_name, bank_account_no, bank_transfer_date, job_no, payee_tax_id, payee_address, income_type, profiles(full_name)";
 
 type Row = {
   id: string;
@@ -21,6 +21,7 @@ type Row = {
   wht_rate: number | string | null;
   wht_form_type: string | null;
   wht_amount: number | string;
+  social_security_amount: number | string;
   bank_name: string | null;
   bank_account_no: string | null;
   bank_transfer_date: string | null;
@@ -50,6 +51,7 @@ function mapRow(row: Row): Omit<PaymentVoucher, "ledgerLines"> {
     whtRate: row.wht_rate === null ? null : Number(row.wht_rate),
     whtFormType: row.wht_form_type as WhtFormType | null,
     whtAmount: Number(row.wht_amount),
+    socialSecurityAmount: Number(row.social_security_amount),
     bankName: row.bank_name,
     bankAccountNo: row.bank_account_no,
     bankTransferDate: row.bank_transfer_date,

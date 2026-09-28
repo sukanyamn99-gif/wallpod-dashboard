@@ -161,6 +161,18 @@ export function PaymentVoucherForm({
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="social_security_amount">หัก ประกันสังคม</Label>
+        <NumberInput
+          id="social_security_amount"
+          name="social_security_amount"
+          min={0}
+          step={0.01}
+          defaultValue={initialData?.socialSecurityAmount ?? undefined}
+          placeholder="0"
+        />
+      </div>
+
+      <div className="space-y-2">
         <Label htmlFor="description">รายการจ่าย</Label>
         <Textarea
           id="description"

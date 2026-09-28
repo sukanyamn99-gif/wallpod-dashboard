@@ -980,7 +980,8 @@ create table payment_vouchers (
   payee_tax_id text,
   payee_address text,
   income_type text not null default '5'
-    check (income_type in ('1', '2', '3', '4a', '4b', '5', '6'))
+    check (income_type in ('1', '2', '3', '4a', '4b', '5', '6')),
+  social_security_amount numeric(14,2) not null default 0
 );
 
 alter table payment_vouchers enable row level security;
