@@ -99,7 +99,7 @@ export function PrintPayrollView({ entry, ytd }: { entry: PayrollEntry; ytd: Pay
               <th className="border-r border-b border-black p-1 font-medium" rowSpan={2}>
                 เดือน
               </th>
-              <th className="border-r border-b border-black p-1 font-medium" colSpan={4}>
+              <th className="border-r border-b border-black p-1 font-medium" colSpan={5}>
                 รายได้
               </th>
               <th className="border-r border-b border-black p-1 font-medium" colSpan={3}>
@@ -114,6 +114,7 @@ export function PrintPayrollView({ entry, ytd }: { entry: PayrollEntry; ytd: Pay
               <th className="border-r border-b border-black p-1 font-medium">ค่าน้ำมัน</th>
               <th className="border-r border-b border-black p-1 font-medium">ค่าคอมฯ</th>
               <th className="border-r border-b border-black p-1 font-medium">ค่า Incentive</th>
+              <th className="border-r border-b border-black p-1 font-medium">ค่า OT</th>
               <th className="border-r border-b border-black p-1 font-medium">หักประกันสังคม</th>
               <th className="border-r border-b border-black p-1 font-medium">ภ.ง.ด.1</th>
               <th className="border-r border-b border-black p-1 font-medium">หักอื่นๆ</th>
@@ -126,6 +127,7 @@ export function PrintPayrollView({ entry, ytd }: { entry: PayrollEntry; ytd: Pay
               <td className="border-r border-b border-black p-1">{money(entry.fuelAllowance)}</td>
               <td className="border-r border-b border-black p-1">{money(entry.commission)}</td>
               <td className="border-r border-b border-black p-1">{money(entry.incentive)}</td>
+              <td className="border-r border-b border-black p-1">{money(entry.otPay)}</td>
               <td className="border-r border-b border-black p-1">{money(entry.socialSecurity)}</td>
               <td className="border-r border-b border-black p-1">{money(entry.withholdingTax)}</td>
               <td className="border-r border-b border-black p-1">{money(entry.otherDeductions)}</td>
@@ -135,7 +137,7 @@ export function PrintPayrollView({ entry, ytd }: { entry: PayrollEntry; ytd: Pay
               </td>
             </tr>
             <tr>
-              <td className="border-r border-b border-black p-1 font-medium" colSpan={4}>
+              <td className="border-r border-b border-black p-1 font-medium" colSpan={5}>
                 รวมรายได้ {formatTHB(entry.totalIncome)}
               </td>
               <td className="border-r border-b border-black p-1 font-medium" colSpan={3}>

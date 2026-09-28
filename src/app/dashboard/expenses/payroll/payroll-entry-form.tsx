@@ -62,11 +62,13 @@ export function PayrollEntryForm({
   const [fuelAllowance, setFuelAllowance] = useState(initialData ? String(initialData.fuelAllowance) : "");
   const [commission, setCommission] = useState(initialData ? String(initialData.commission) : "");
   const [incentive, setIncentive] = useState(initialData ? String(initialData.incentive) : "");
+  const [otPay, setOtPay] = useState(initialData ? String(initialData.otPay) : "");
   const [socialSecurity, setSocialSecurity] = useState(initialData ? String(initialData.socialSecurity) : "");
   const [withholdingTax, setWithholdingTax] = useState(initialData ? String(initialData.withholdingTax) : "");
   const [otherDeductions, setOtherDeductions] = useState(initialData ? String(initialData.otherDeductions) : "");
 
-  const totalIncome = (Number(baseSalary) || 0) + (Number(fuelAllowance) || 0) + (Number(commission) || 0) + (Number(incentive) || 0);
+  const totalIncome =
+    (Number(baseSalary) || 0) + (Number(fuelAllowance) || 0) + (Number(commission) || 0) + (Number(incentive) || 0) + (Number(otPay) || 0);
   const totalDeductions = (Number(socialSecurity) || 0) + (Number(withholdingTax) || 0) + (Number(otherDeductions) || 0);
   const netSalary = totalIncome - totalDeductions;
 
@@ -142,7 +144,7 @@ export function PayrollEntryForm({
 
       <div className="space-y-2 rounded-lg border p-4">
         <h3 className="font-medium">รายได้</h3>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
           <div className="space-y-2">
             <Label htmlFor="base_salary">เงินเดือน</Label>
             <NumberInput id="base_salary" name="base_salary" min={0} step={0.01} value={baseSalary} onChange={setBaseSalary} placeholder="0" />
@@ -158,6 +160,10 @@ export function PayrollEntryForm({
           <div className="space-y-2">
             <Label htmlFor="incentive">ค่า Incentive</Label>
             <NumberInput id="incentive" name="incentive" min={0} step={0.01} value={incentive} onChange={setIncentive} placeholder="0" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="ot_pay">ค่า OT</Label>
+            <NumberInput id="ot_pay" name="ot_pay" min={0} step={0.01} value={otPay} onChange={setOtPay} placeholder="0" />
           </div>
         </div>
       </div>

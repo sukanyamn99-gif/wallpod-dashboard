@@ -720,6 +720,7 @@ export interface PayrollEntry {
   fuelAllowance: number;
   commission: number;
   incentive: number;
+  otPay: number;
   socialSecurity: number;
   withholdingTax: number;
   otherDeductions: number;

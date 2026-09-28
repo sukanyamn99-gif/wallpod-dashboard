@@ -47,7 +47,7 @@ export async function getEmployeeById(id: string): Promise<Employee | null> {
 }
 
 const ENTRY_COLUMNS =
-  "id, employee_id, pay_period, pay_date, base_salary, fuel_allowance, commission, incentive, " +
+  "id, employee_id, pay_period, pay_date, base_salary, fuel_allowance, commission, incentive, ot_pay, " +
   "social_security, withholding_tax, other_deductions, total_income, total_deductions, net_salary, " +
   "note, created_at, employees(employee_code, full_name, position, id_card_no, start_date), profiles(full_name)";
 
@@ -60,6 +60,7 @@ type EntryRow = {
   fuel_allowance: number;
   commission: number;
   incentive: number;
+  ot_pay: number;
   social_security: number;
   withholding_tax: number;
   other_deductions: number;
@@ -93,6 +94,7 @@ function mapEntry(row: EntryRow): PayrollEntry {
     fuelAllowance: Number(row.fuel_allowance),
     commission: Number(row.commission),
     incentive: Number(row.incentive),
+    otPay: Number(row.ot_pay),
     socialSecurity: Number(row.social_security),
     withholdingTax: Number(row.withholding_tax),
     otherDeductions: Number(row.other_deductions),
