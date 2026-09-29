@@ -139,7 +139,10 @@ export async function createPaymentVoucher(formData: FormData) {
   } = await supabase.auth.getUser();
 
   const docNo = await generateDocNo(supabase);
-  const whtCertNo = parsed.whtAmount > 0 && !parsed.whtCertNo ? await generateWhtCertNo(supabase) : parsed.whtCertNo;
+  // See the same guard in updatePaymentVoucher — a ฿0 WHT amount never
+  // keeps a cert no, even if one was typed/copied into the form.
+  const whtCertNo =
+    parsed.whtAmount > 0 ? parsed.whtCertNo || (await generateWhtCertNo(supabase)) : null;
 
   const { data: created, error } = await supabase
     .from("payment_vouchers")
@@ -187,7 +190,13 @@ export async function updatePaymentVoucher(id: string, formData: FormData) {
   if (!parsed.ok) return { error: parsed.error };
 
   const supabase = await createClient();
-  const whtCertNo = parsed.whtAmount > 0 && !parsed.whtCertNo ? await generateWhtCertNo(supabase) : parsed.whtCertNo;
+  // A ฿0 WHT amount means there's nothing to certify — clear any cert no
+  // (auto-generated earlier, or still sitting in the form) rather than
+  // carrying it over, which would leave a stale number showing on the
+  // voucher for a deduction that no longer exists (e.g. after moving the
+  // deduction to ประกันสังคม instead).
+  const whtCertNo =
+    parsed.whtAmount > 0 ? parsed.whtCertNo || (await generateWhtCertNo(supabase)) : null;
   const { error } = await supabase
     .from("payment_vouchers")
     .update({
