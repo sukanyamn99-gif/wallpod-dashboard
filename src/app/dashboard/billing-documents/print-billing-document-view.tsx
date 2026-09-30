@@ -10,7 +10,7 @@ import { formatTHB } from "@/lib/format";
 import { thaiBahtText } from "@/lib/thai-baht-text";
 import { computeBillingDocumentSummary } from "@/lib/billing-document-summary";
 import { BILLING_DOCUMENT_LABELS } from "@/lib/types";
-import type { BillingDocumentDetail, PaymentMethod } from "@/lib/types";
+import type { BillingDocumentDetail, PaymentMethod, PrimaryBankAccount } from "@/lib/types";
 
 const PAYMENT_METHODS: PaymentMethod[] = ["เงินสด", "เช็ค", "โอนเงิน", "บัตรเครดิต"];
 
@@ -22,7 +22,15 @@ function fmtDate(dateStr: string | null): string {
 // Renders the full document body once, labeled either "ต้นฉบับ" (original)
 // or "สำเนา" (copy) — printed as two consecutive pages (see the two calls
 // below), the standard convention for Thai billing/tax documents.
-function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail; copyLabel: string }) {
+function DocumentBody({
+  document,
+  copyLabel,
+  bankAccount,
+}: {
+  document: BillingDocumentDetail;
+  copyLabel: string;
+  bankAccount?: PrimaryBankAccount | null;
+}) {
   const title = BILLING_DOCUMENT_LABELS[document.docType];
   // ใบวางบิล/ใบเสร็จรับเงิน bundle several already-invoiced documents and
   // need to show each one's own WHT deduction and net collectible amount —
@@ -394,6 +402,19 @@ function DocumentBody({ document, copyLabel }: { document: BillingDocumentDetail
         </div>
       </div>
 
+      {/* ใบแจ้งหนี้/ใบวางบิล ask for payment, not record it — this is
+          KOONWAY's own account for the customer to transfer into, distinct
+          from ใบเสร็จรับเงิน's block below (which records how a payment that
+          already happened came in). Only rendered when the page passed a
+          bankAccount (see invoice/billing-note view pages) — receipt and
+          ใบกำกับภาษี intentionally don't. */}
+      {bankAccount && (document.docType === "invoice" || document.docType === "billing_note") && (
+        <div className="mt-2 border border-black bg-[#e8f2f1] px-2 py-1.5 text-sm">
+          <span className="font-medium">ชื่อบัญชี :</span> {bankAccount.accountName}
+          <span className="ml-6 font-medium">{bankAccount.bankName} :</span> {bankAccount.accountNo}
+        </div>
+      )}
+
       {document.note && (
         <p className="mt-2 text-sm">
           <span className="text-neutral-500">หมายเหตุ:</span> {document.note}
@@ -489,10 +510,12 @@ export function PrintBillingDocumentView({
   document,
   editHref,
   closeHref,
+  bankAccount,
 }: {
   document: BillingDocumentDetail;
   editHref?: string;
   closeHref: string;
+  bankAccount?: PrimaryBankAccount | null;
 }) {
   const router = useRouter();
 
@@ -522,9 +545,9 @@ export function PrintBillingDocumentView({
           kind of document. break-after-page only affects print output; on
           screen both copies simply stack. */}
       <div className="break-after-page">
-        <DocumentBody document={document} copyLabel="ต้นฉบับ" />
+        <DocumentBody document={document} copyLabel="ต้นฉบับ" bankAccount={bankAccount} />
       </div>
-      <DocumentBody document={document} copyLabel="สำเนา" />
+      <DocumentBody document={document} copyLabel="สำเนา" bankAccount={bankAccount} />
     </div>
   );
 }

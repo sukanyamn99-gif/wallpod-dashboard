@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getBillingDocumentById } from "@/lib/data/billing-documents";
+import { getPrimaryBankAccount } from "@/lib/data/bank-accounts";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
 import { PrintBillingDocumentView } from "../../../print-billing-document-view";
@@ -37,12 +38,14 @@ export default async function ViewBillingNotePage({ params }: { params: Promise<
   }
 
   const allowEdit = canEdit(profile.role, document.createdById, profile.id);
+  const bankAccount = await getPrimaryBankAccount();
 
   return (
     <PrintBillingDocumentView
       document={document}
       editHref={allowEdit ? `/dashboard/billing-documents/billing-note/edit/${id}` : undefined}
       closeHref="/dashboard/billing-documents/billing-note"
+      bankAccount={bankAccount}
     />
   );
 }

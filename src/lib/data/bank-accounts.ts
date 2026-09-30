@@ -1,5 +1,5 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import type { BankAccount, BankTransaction } from "@/lib/types";
+import type { BankAccount, BankTransaction, PrimaryBankAccount } from "@/lib/types";
 
 type ReceivedPayment = {
   id: string;
@@ -191,4 +191,25 @@ export async function getBankAccounts(): Promise<BankAccount[]> {
       createdAt: row.created_at,
     };
   });
+}
+
+// The company's own bank account, printed on ใบแจ้งหนี้/ใบวางบิล so the
+// customer knows where to transfer payment — distinct from getBankAccounts()
+// above, which also computes running balances for the internal cash-tracking
+// page and would be wasted work just to print one account's static details.
+// Falls back to the oldest active account if more than one exists someday;
+// today there's exactly one (see schema.sql's seed row).
+export async function getPrimaryBankAccount(): Promise<PrimaryBankAccount | null> {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("bank_accounts")
+    .select("bank_name, account_no, account_name")
+    .eq("active", true)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return { bankName: data.bank_name, accountNo: data.account_no, accountName: data.account_name };
 }

@@ -651,6 +651,15 @@ export interface BankAccount {
   createdAt: string;
 }
 
+// Just the printable identity of a bank account — used on ใบแจ้งหนี้/ใบวางบิล
+// so the customer knows where to pay, without pulling in BankAccount's
+// balance-tracking fields (irrelevant there).
+export interface PrimaryBankAccount {
+  bankName: string;
+  accountNo: string;
+  accountName: string;
+}
+
 // One matched money-in/money-out line feeding a BankAccount's systemBalance
 // — the same underlying rows getVoucherOutflowByBankName/
 // getReceiptInflowByBankName in src/lib/data/bank-accounts.ts sum into a
