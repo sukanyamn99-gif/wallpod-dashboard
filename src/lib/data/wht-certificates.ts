@@ -7,7 +7,12 @@ function fromVoucher(v: Omit<PaymentVoucher, "ledgerLines">): WhtCertificateRow 
     id: v.id,
     source: "payment_voucher",
     docNo: v.docNo,
-    date: v.voucherDate,
+    // The certificate's own "date paid" — the voucher itself is often dated
+    // earlier than the money actually goes out (e.g. prepared on the 24th,
+    // transferred on the 30th), so bankTransferDate is the truer date when
+    // it's on file; voucherDate is only a fallback for vouchers with no
+    // recorded transfer date (e.g. paid in cash).
+    date: v.bankTransferDate || v.voucherDate,
     payeeName: v.payeeName,
     amount: v.amount,
     description: v.description,
