@@ -201,9 +201,13 @@ export function PrintQuotationView({
           <tbody>
             {quotation.items.map((it, i, arr) => {
               const last = i === arr.length - 1;
-              const rowTd = last ? td + " border-b-0" : td;
+              // align-top on every cell individually (not just the <tr>) —
+              // vertical-align inherited from a <tr> is what dropped cell
+              // borders when printed to PDF via the headless-Chrome route,
+              // a known print-engine quirk with border-collapse tables.
+              const rowTd = (last ? td + " border-b-0" : td) + " align-top";
               return (
-                <tr key={it.id} className="print:break-inside-avoid align-top">
+                <tr key={it.id} className="print:break-inside-avoid">
                   <td className={rowTd + " text-center"}>{i + 1}</td>
                   <td className={rowTd + " text-center whitespace-nowrap"}>{it.productCode ?? ""}</td>
                   <td className={rowTd + " text-center"}>
@@ -223,7 +227,7 @@ export function PrintQuotationView({
                     <br />
                     {it.unit}
                   </td>
-                  <td className={(last ? td + " border-b-0" : td) + " border-r-0 text-right whitespace-nowrap font-medium"}>
+                  <td className={(last ? td + " border-b-0" : td) + " align-top border-r-0 text-right whitespace-nowrap font-medium"}>
                     {num(it.totalPrice)}
                   </td>
                 </tr>
