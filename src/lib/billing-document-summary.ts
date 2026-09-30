@@ -10,6 +10,7 @@ export interface BillingDocumentSummary {
   totalAfterVat: number;
   whtAmount: number;
   retentionAmount: number;
+  depositDeductionAmount: number;
   netPayable: number;
 }
 
@@ -31,6 +32,7 @@ export function computeBillingDocumentSummary(
   discountAmount: number,
   whtPercent: number,
   retentionPercent: number,
+  depositDeductionAmount = 0,
 ): BillingDocumentSummary {
   const subtotal = round2(items.reduce((sum, it) => sum + it.amount, 0) / 1.07);
   const afterDiscount = round2(subtotal - discountAmount);
@@ -43,8 +45,18 @@ export function computeBillingDocumentSummary(
   const whtBase = round2(items.filter((it) => it.applyWht).reduce((sum, it) => sum + it.amount, 0) / 1.07);
   const whtAmount = round2(whtBase * (whtPercent / 100));
   const retentionAmount = round2(totalAfterVat * (retentionPercent / 100));
-  const netPayable = round2(totalAfterVat - whtAmount - retentionAmount);
-  return { subtotal, discountAmount, afterDiscount, vat, totalAfterVat, whtAmount, retentionAmount, netPayable };
+  const netPayable = round2(totalAfterVat - whtAmount - retentionAmount - depositDeductionAmount);
+  return {
+    subtotal,
+    discountAmount,
+    afterDiscount,
+    vat,
+    totalAfterVat,
+    whtAmount,
+    retentionAmount,
+    depositDeductionAmount,
+    netPayable,
+  };
 }
 
 export interface AllocatedLineAmount {

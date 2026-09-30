@@ -1162,6 +1162,9 @@ export interface BillingDocument {
   discountAmount: number;
   whtPercent: number;
   retentionPercent: number;
+  // A prior installment/deposit already received, deducted after WHT/
+  // retention on the printed summary — see billing-document-summary.ts.
+  depositDeductionAmount: number;
   note: string | null;
   // Which JOB this document was created for — set from the JobNoSelect
   // picker at creation time, printed as "เลขที่ Job". Null for documents

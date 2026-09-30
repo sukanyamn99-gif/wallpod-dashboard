@@ -353,7 +353,7 @@ async function getTaxInvoiceRefsForQuotationIds(
 }
 
 const HEADER_COLUMNS =
-  "id, doc_no, doc_type, customer_id, doc_date, credit_days, due_date, sales_rep_id, discount_amount, wht_percent, retention_percent, note, job_no, created_by, created_at, payment_method, bank_name, payment_reference_no, payment_date, customers(name, address, phone, tax_id), sales_reps(name), profiles(full_name)";
+  "id, doc_no, doc_type, customer_id, doc_date, credit_days, due_date, sales_rep_id, discount_amount, wht_percent, retention_percent, deposit_deduction_amount, note, job_no, created_by, created_at, payment_method, bank_name, payment_reference_no, payment_date, customers(name, address, phone, tax_id), sales_reps(name), profiles(full_name)";
 
 type HeaderRow = {
   id: string;
@@ -367,6 +367,7 @@ type HeaderRow = {
   discount_amount: number;
   wht_percent: number;
   retention_percent: number;
+  deposit_deduction_amount: number;
   note: string | null;
   job_no: string | null;
   created_by: string | null;
@@ -400,6 +401,7 @@ function mapHeader(row: HeaderRow): BillingDocument {
     discountAmount: Number(row.discount_amount),
     whtPercent: Number(row.wht_percent),
     retentionPercent: Number(row.retention_percent),
+    depositDeductionAmount: Number(row.deposit_deduction_amount),
     note: row.note,
     jobNo: row.job_no,
     createdById: row.created_by,

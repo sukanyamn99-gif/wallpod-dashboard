@@ -252,6 +252,11 @@ export function BillingDocumentForm({
   const [discountAmount, setDiscountAmount] = useState(String(initialData?.discountAmount ?? 0));
   const [whtPercent, setWhtPercent] = useState(String(initialData?.whtPercent ?? 0));
   const [retentionPercent, setRetentionPercent] = useState(String(initialData?.retentionPercent ?? 0));
+  // A prior installment/deposit already received — e.g. a ใบกำกับภาษี for a
+  // later installment shows the full normal item prices, then this deducts
+  // the deposit at the bottom so the printed total is the real remaining
+  // balance due. See billing-document-summary.ts.
+  const [depositDeductionAmount, setDepositDeductionAmount] = useState(String(initialData?.depositDeductionAmount ?? 0));
   // ใบเสร็จรับเงิน-only — printed in its payment-method + bank-details footer.
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">(initialData?.paymentMethod ?? "");
   const [bankName, setBankName] = useState(initialData?.bankName ?? "");
@@ -601,8 +606,15 @@ export function BillingDocumentForm({
     ],
   );
   const summary = useMemo(
-    () => computeBillingDocumentSummary(selectedItems, Number(discountAmount) || 0, Number(whtPercent) || 0, Number(retentionPercent) || 0),
-    [selectedItems, discountAmount, whtPercent, retentionPercent],
+    () =>
+      computeBillingDocumentSummary(
+        selectedItems,
+        Number(discountAmount) || 0,
+        Number(whtPercent) || 0,
+        Number(retentionPercent) || 0,
+        Number(depositDeductionAmount) || 0,
+      ),
+    [selectedItems, discountAmount, whtPercent, retentionPercent, depositDeductionAmount],
   );
 
   // The printed line order (per the user's "อยากให้คุมลำดับเองได้" request —
@@ -940,7 +952,7 @@ export function BillingDocumentForm({
           </Select>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div className="space-y-2">
             <Label htmlFor="discount_amount">ส่วนลด (บาท)</Label>
             <NumberInput
@@ -965,6 +977,17 @@ export function BillingDocumentForm({
               step={0.01}
               value={retentionPercent}
               onChange={setRetentionPercent}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="deposit_deduction_amount">หักเงินมัดจำที่ได้รับ (บาท)</Label>
+            <NumberInput
+              id="deposit_deduction_amount"
+              name="deposit_deduction_amount"
+              min={0}
+              step={0.01}
+              value={depositDeductionAmount}
+              onChange={setDepositDeductionAmount}
             />
           </div>
         </div>
@@ -1427,6 +1450,12 @@ export function BillingDocumentForm({
             <div className="flex justify-between text-destructive">
               <span>หักประกันผลงาน {retentionPercent}%</span>
               <span>{formatTHB(summary.retentionAmount)}</span>
+            </div>
+          )}
+          {summary.depositDeductionAmount > 0 && (
+            <div className="flex justify-between text-destructive">
+              <span>หักเงินมัดจำที่ได้รับ</span>
+              <span>{formatTHB(summary.depositDeductionAmount)}</span>
             </div>
           )}
           <div className="flex justify-between border-t pt-1 text-base font-semibold">

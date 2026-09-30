@@ -71,6 +71,7 @@ function DocumentBody({
     document.discountAmount,
     document.whtPercent,
     document.retentionPercent,
+    document.depositDeductionAmount,
   );
   // Shown once in the header instead of repeated per group inside the
   // items table — manual lines have no real underlying document, so
@@ -382,6 +383,12 @@ function DocumentBody({
               <tr>
                 <td className="py-0.5 text-red-600">หักประกันผลงานทั้งสิ้น</td>
                 <td className="py-0.5 text-right text-red-600">{formatTHB(summary.retentionAmount)}</td>
+              </tr>
+            )}
+            {summary.depositDeductionAmount > 0 && (
+              <tr>
+                <td className="py-0.5 text-red-600">หักเงินมัดจำที่ได้รับ</td>
+                <td className="py-0.5 text-right text-red-600">{formatTHB(summary.depositDeductionAmount)}</td>
               </tr>
             )}
           </tbody>

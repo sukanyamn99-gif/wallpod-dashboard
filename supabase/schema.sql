@@ -1460,6 +1460,12 @@ create table billing_notes (
   discount_amount numeric(14,2) not null default 0,
   wht_percent numeric(5,2) not null default 0,
   retention_percent numeric(5,2) not null default 0,
+  -- A prior installment/deposit already received, deducted after WHT/
+  -- retention (not before VAT like discount_amount — a deposit doesn't
+  -- change the sale price, just how much of it is still owed) — lets a
+  -- ใบกำกับภาษี for a later installment show the full normal item prices
+  -- and still net out to the real remaining balance due.
+  deposit_deduction_amount numeric(14,2) not null default 0,
   note text,
   created_by uuid references profiles(id),
   created_at timestamptz not null default now(),
