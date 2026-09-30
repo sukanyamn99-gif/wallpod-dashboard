@@ -655,7 +655,18 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
     const owner = billsQuotationDirectly ? doc.id : quotationTaxInvoiceRefMap.get(q.id);
     if (owner) ownerTaxInvoiceIdByQuotationId[q.id] = owner;
     const override = billsQuotationDirectly ? quotationAmountOverrideMap.get(q.id) : null;
-    quotationBilledAmountById[q.id] = override ?? netPayableByQuotationId[q.id]?.netPayable ?? q.total;
+    // billsQuotationDirectly must never consult netPayableByQuotationId — on
+    // an EDIT of an already-saved tax_invoice/invoice, that lookup would find
+    // THIS SAME document (its own previously-stored, already-net amount) as
+    // the "prior" invoice for its own quotation and net it down again, a
+    // real bug that compounded the WHT deduction further on every re-save
+    // (confirmed against production: a ฿3,852 gross invoice was found stored
+    // as ฿3,744 after one edit, then a receipt referencing it deducted WHT a
+    // second time on top of that). billsQuotationDirectly always originates
+    // the gross figure itself — override or the quotation's own raw total.
+    quotationBilledAmountById[q.id] = billsQuotationDirectly
+      ? (override ?? q.total)
+      : (netPayableByQuotationId[q.id]?.netPayable ?? q.total);
     // How much of this installment is already settled via a WHT
     // certificate rather than cash — synced onto the installment so
     // Project Sales can tell "still owed" apart from "settled, just not in
@@ -906,7 +917,13 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
     const owner = billsQuotationDirectly ? id : quotationTaxInvoiceRefMap.get(q.id);
     if (owner) ownerTaxInvoiceIdByQuotationId[q.id] = owner;
     const override = billsQuotationDirectly ? quotationAmountOverrideMap.get(q.id) : null;
-    quotationBilledAmountById[q.id] = override ?? netPayableByQuotationId[q.id]?.netPayable ?? q.total;
+    // See createBillingDocument's identical guard — billsQuotationDirectly
+    // must never consult netPayableByQuotationId, which would otherwise find
+    // THIS SAME document as the "prior" invoice for its own quotation on an
+    // edit and net it down again.
+    quotationBilledAmountById[q.id] = billsQuotationDirectly
+      ? (override ?? q.total)
+      : (netPayableByQuotationId[q.id]?.netPayable ?? q.total);
     if (billsQuotationDirectly) {
       const applyWht = quotationApplyWhtMap.get(q.id) ?? true;
       const grossAmount = quotationBilledAmountById[q.id];
