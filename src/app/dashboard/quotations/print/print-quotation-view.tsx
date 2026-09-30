@@ -203,7 +203,7 @@ export function PrintQuotationView({
               const last = i === arr.length - 1;
               const rowTd = last ? td + " border-b-0" : td;
               return (
-                <tr key={it.id} className="print:break-inside-avoid">
+                <tr key={it.id} className="print:break-inside-avoid align-top">
                   <td className={rowTd + " text-center"}>{i + 1}</td>
                   <td className={rowTd + " text-center whitespace-nowrap"}>{it.productCode ?? ""}</td>
                   <td className={rowTd + " text-center"}>
@@ -219,7 +219,9 @@ export function PrintQuotationView({
                   </td>
                   <td className={rowTd + " text-right whitespace-nowrap"}>{num(it.netPrice)}</td>
                   <td className={rowTd + " text-right whitespace-nowrap"}>
-                    {it.qty} {it.unit}
+                    {it.qty}
+                    <br />
+                    {it.unit}
                   </td>
                   <td className={(last ? td + " border-b-0" : td) + " border-r-0 text-right whitespace-nowrap font-medium"}>
                     {num(it.totalPrice)}
