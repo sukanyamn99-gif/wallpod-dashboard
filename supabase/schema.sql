@@ -1466,6 +1466,10 @@ create table billing_notes (
   -- ใบกำกับภาษี for a later installment show the full normal item prices
   -- and still net out to the real remaining balance due.
   deposit_deduction_amount numeric(14,2) not null default 0,
+  -- Which invoice the deposit_deduction_amount above was received against —
+  -- free text, entered alongside the amount, so the printed deduction line
+  -- can show "หักเงินมัดจำที่ได้รับ (เลขที่ ...)" instead of a bare number.
+  deposit_deduction_invoice_no text,
   note text,
   created_by uuid references profiles(id),
   created_at timestamptz not null default now(),

@@ -266,6 +266,12 @@ export function BillingDocumentForm({
   // the deposit at the bottom so the printed total is the real remaining
   // balance due. See billing-document-summary.ts.
   const [depositDeductionAmount, setDepositDeductionAmount] = useState(String(initialData?.depositDeductionAmount ?? 0));
+  // Which invoice the deposit above was received against — free text,
+  // printed next to the deduction line so it reads e.g. "หักเงินมัดจำที่ได้รับ
+  // (เลขที่ INV...)" instead of a bare number.
+  const [depositDeductionInvoiceNo, setDepositDeductionInvoiceNo] = useState(
+    initialData?.depositDeductionInvoiceNo ?? "",
+  );
   // ใบเสร็จรับเงิน-only — printed in its payment-method + bank-details footer.
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">(initialData?.paymentMethod ?? "");
   const [bankName, setBankName] = useState(initialData?.bankName ?? "");
@@ -1009,14 +1015,23 @@ export function BillingDocumentForm({
           </div>
           <div className="space-y-2">
             <Label htmlFor="deposit_deduction_amount">หักเงินมัดจำที่ได้รับ (บาท)</Label>
-            <NumberInput
-              id="deposit_deduction_amount"
-              name="deposit_deduction_amount"
-              min={0}
-              step={0.01}
-              value={depositDeductionAmount}
-              onChange={setDepositDeductionAmount}
-            />
+            <div className="flex gap-2">
+              <NumberInput
+                id="deposit_deduction_amount"
+                name="deposit_deduction_amount"
+                min={0}
+                step={0.01}
+                value={depositDeductionAmount}
+                onChange={setDepositDeductionAmount}
+              />
+              <Input
+                id="deposit_deduction_invoice_no"
+                name="deposit_deduction_invoice_no"
+                placeholder="เลขที่เอกสารมัดจำ"
+                value={depositDeductionInvoiceNo}
+                onChange={(e) => setDepositDeductionInvoiceNo(e.target.value)}
+              />
+            </div>
           </div>
         </div>
 
@@ -1498,7 +1513,7 @@ export function BillingDocumentForm({
           )}
           {summary.depositDeductionAmount > 0 && (
             <div className="flex justify-between text-destructive">
-              <span>หักเงินมัดจำที่ได้รับ</span>
+              <span>หักเงินมัดจำที่ได้รับ{depositDeductionInvoiceNo && ` (เลขที่ ${depositDeductionInvoiceNo})`}</span>
               <span>{formatTHB(summary.depositDeductionAmount)}</span>
             </div>
           )}

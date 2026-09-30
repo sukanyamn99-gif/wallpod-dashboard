@@ -387,7 +387,10 @@ function DocumentBody({
             )}
             {summary.depositDeductionAmount > 0 && (
               <tr>
-                <td className="py-0.5 text-red-600">หักเงินมัดจำที่ได้รับ</td>
+                <td className="py-0.5 text-red-600">
+                  หักเงินมัดจำที่ได้รับ
+                  {document.depositDeductionInvoiceNo && ` (เลขที่ ${document.depositDeductionInvoiceNo})`}
+                </td>
                 <td className="py-0.5 text-right text-red-600">{formatTHB(summary.depositDeductionAmount)}</td>
               </tr>
             )}
