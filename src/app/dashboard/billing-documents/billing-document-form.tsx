@@ -78,6 +78,13 @@ interface ManualItemRow {
   unit: string;
   unitPrice: string;
   applyWht: boolean;
+  // For a line that should reduce the total instead of adding to it (e.g.
+  // "รับเงินมัดจำ..." recording a deposit already received against this
+  // document) — qty/unitPrice stay entered as plain positive numbers (the
+  // shared NumberInput strips a typed "-" outright), and this flag is what
+  // actually negates the row's contribution, all the way through to the
+  // stored manual_qty (see the submit handler and manualItemAmount below).
+  isDeduction: boolean;
   // Set when this row was copied from an issued ใบวางบิล's own manual line
   // (see BillableBillingNoteItem/toggleBillingNoteItem below) — lets the
   // checkbox that added it be un-toggled cleanly, and tells the server
@@ -99,7 +106,8 @@ interface ManualItemRow {
 function manualItemAmount(row: ManualItemRow): number {
   const qty = Number(row.qty) || 0;
   const unitPrice = Number(row.unitPrice) || 0;
-  return Math.round(qty * unitPrice * 100) / 100;
+  const signed = row.isDeduction ? -qty : qty;
+  return Math.round(signed * unitPrice * 100) / 100;
 }
 
 // What actually feeds the running total/summary — computeBillingDocumentSummary
@@ -209,10 +217,11 @@ export function BillingDocumentForm({
       .map((it, i) => ({
         key: `initial-${i}`,
         description: it.manualDescription ?? "",
-        qty: String(it.manualQty ?? 1),
+        qty: String(Math.abs(it.manualQty ?? 1)),
         unit: it.manualUnit ?? "หน่วย",
         unitPrice: String(it.manualUnitPrice ?? 0),
         applyWht: it.applyWht,
+        isDeduction: (it.manualQty ?? 1) < 0,
       })),
   );
   // The user's own reordering of the printed line list (see finalOrder
@@ -493,10 +502,11 @@ export function BillingDocumentForm({
           {
             key: `bn-item-${item.id}`,
             description: item.description,
-            qty: String(item.qty),
+            qty: String(Math.abs(item.qty)),
             unit: item.unit,
             unitPrice: String(item.unitPrice),
             applyWht: item.applyWht,
+            isDeduction: item.qty < 0,
             sourceItemId: item.id,
             sourceDate: item.billingNoteDate,
             sourceDocNo: item.billingNoteDocNo,
@@ -510,16 +520,28 @@ export function BillingDocumentForm({
   function addManualItem() {
     setManualItems((prev) => [
       ...prev,
-      { key: `manual-${Date.now()}-${prev.length}`, description: "", qty: "1", unit: "หน่วย", unitPrice: "0", applyWht: true },
+      {
+        key: `manual-${Date.now()}-${prev.length}`,
+        description: "",
+        qty: "1",
+        unit: "หน่วย",
+        unitPrice: "0",
+        applyWht: true,
+        isDeduction: false,
+      },
     ]);
   }
 
-  function updateManualItem(key: string, field: keyof Omit<ManualItemRow, "key" | "applyWht">, value: string) {
+  function updateManualItem(key: string, field: keyof Omit<ManualItemRow, "key" | "applyWht" | "isDeduction">, value: string) {
     setManualItems((prev) => prev.map((row) => (row.key === key ? { ...row, [field]: value } : row)));
   }
 
   function toggleManualItemWht(key: string) {
     setManualItems((prev) => prev.map((row) => (row.key === key ? { ...row, applyWht: !row.applyWht } : row)));
+  }
+
+  function toggleManualItemDeduction(key: string) {
+    setManualItems((prev) => prev.map((row) => (row.key === key ? { ...row, isDeduction: !row.isDeduction } : row)));
   }
 
   function removeManualItem(key: string) {
@@ -783,7 +805,13 @@ export function BillingDocumentForm({
         for (const row of manualItems) {
           if (!row.description.trim()) continue;
           fd.append("item_manual_description", row.description);
-          fd.append("item_manual_qty", row.qty);
+          // Signed here, not on the server — qty/unitPrice are both always
+          // entered as plain positive numbers (the shared NumberInput
+          // strips a typed "-"), so isDeduction is the only place the sign
+          // lives; folding it into the submitted qty means every place that
+          // later reads manual_qty back out of the DB (the print view's own
+          // self-healing recompute included) sees the negative for free.
+          fd.append("item_manual_qty", String(row.isDeduction ? -(Number(row.qty) || 0) : Number(row.qty) || 1));
           fd.append("item_manual_unit", row.unit);
           fd.append("item_manual_unit_price", row.unitPrice);
           fd.append("item_manual_apply_wht", String(row.applyWht));
@@ -1325,6 +1353,20 @@ export function BillingDocumentForm({
                     />
                   </div>
                   <div className="flex items-center gap-2 pt-2">
+                    {row.description.trim() && (
+                      <label
+                        className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground"
+                        title="ใช้สำหรับรายการที่ต้องหักออกจากยอดรวม เช่น เงินมัดจำที่ได้รับมาแล้ว"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={row.isDeduction}
+                          onChange={() => toggleManualItemDeduction(row.key)}
+                          className="h-3.5 w-3.5"
+                        />
+                        หัก (ลบออกจากยอดรวม)
+                      </label>
+                    )}
                     {row.description.trim() && Number(whtPercent) > 0 && (
                       <label className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
                         <input
@@ -1336,7 +1378,9 @@ export function BillingDocumentForm({
                         หัก {whtPercent}%
                       </label>
                     )}
-                    <span className="w-20 shrink-0 text-right text-sm font-medium">
+                    <span
+                      className={`w-20 shrink-0 text-right text-sm font-medium ${row.isDeduction ? "text-destructive" : ""}`}
+                    >
                       {formatTHB(manualItemAmount(row))}
                     </span>
                     <Button type="button" size="icon-sm" variant="outline" onClick={() => removeManualItem(row.key)}>
