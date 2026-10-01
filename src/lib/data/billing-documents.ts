@@ -121,9 +121,15 @@ export async function getReceivedInvoicesForCustomer(
   // same deposit) — keep the payments-sourced one, since it carries the
   // real jobNo/projectName, and drop the duplicate doc-sourced entry.
   const paymentInvoiceNos = new Set(fromPayments.map((r) => r.invoiceNo));
-  return [...fromPayments, ...fromDocs.filter((r) => !paymentInvoiceNos.has(r.invoiceNo))].sort((a, b) =>
-    (b.invoiceDate ?? "").localeCompare(a.invoiceDate ?? ""),
-  );
+  const combined = [...fromPayments, ...fromDocs.filter((r) => !paymentInvoiceNos.has(r.invoiceNo))];
+  // Per explicit feedback: the older "IV..." numbering (this app's own
+  // doc-no generator uses "INV...") turned out to be stale duplicate
+  // entries of the same real deposit rather than a distinct one — e.g. a
+  // payments row re-numbered at some point, leaving its old "IV..." value
+  // still on file. Only the current "INV..." reference is worth offering.
+  return combined
+    .filter((r) => r.invoiceNo.startsWith("INV"))
+    .sort((a, b) => (b.invoiceDate ?? "").localeCompare(a.invoiceDate ?? ""));
 }
 
 // ใบกำกับภาษี documents for a customer, quotation-sourced (payment-sourced
@@ -421,7 +427,7 @@ async function getTaxInvoiceRefsForQuotationIds(
     .from("billing_note_items")
     .select("quotation_id, billing_notes!inner(doc_no, doc_date, doc_type, created_at)")
     .in("quotation_id", quotationIds)
-    .eq("billing_notes.doc_type", "tax_invoice")
+    .in("billing_notes.doc_type", ["tax_invoice", "invoice"])
     .order("created_at", { ascending: false, referencedTable: "billing_notes" });
   if (error) throw error;
 
@@ -604,10 +610,12 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     ]);
   }
 
-  // ใบวางบิล and ใบเสร็จรับเงิน both bill straight from ใบกำกับภาษี now (see
-  // getBillableTaxInvoicesForCustomer) — a quotation-sourced line on either
-  // should print the tax invoice's doc no. once one exists, not the
-  // quotation's, the same rule already applied to ใบวางบิล alone before.
+  // ใบวางบิล and ใบเสร็จรับเงิน both bill straight from ใบกำกับภาษี/ใบแจ้งหนี้ now
+  // (see getBillableTaxInvoicesForCustomer) — a quotation-sourced line on
+  // either should print that formal document's doc no. once one exists, not
+  // the quotation's — per explicit feedback, this must also cover ใบแจ้งหนี้
+  // (doc_type "invoice"), not just ใบกำกับภาษี, since a quotation is often
+  // billed via a plain ใบแจ้งหนี้ before any ใบกำกับภาษี exists for it at all.
   let taxInvoiceRefsByQuotationId: Record<string, { docNo: string; docDate: string }> = {};
   // The line's stored amount is already the tax invoice's net-payable (after
   // its own WHT/retention — see getNetPayableForQuotationIds), so the
