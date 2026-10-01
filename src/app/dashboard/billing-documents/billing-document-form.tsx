@@ -284,6 +284,11 @@ export function BillingDocumentForm({
   const [depositDeductionInvoiceNo, setDepositDeductionInvoiceNo] = useState(
     initialData?.depositDeductionInvoiceNo ?? "",
   );
+  // WHT already withheld on the deposit(s) above — e.g. a job billed in 2
+  // equal installments with the same WHT% withholds half the job's total
+  // WHT at deposit time, so this document's own WHT line must only cover
+  // the remaining half, not the job's full WHT a second time.
+  const [depositWhtAmount, setDepositWhtAmount] = useState(String(initialData?.depositWhtAmount ?? 0));
   // ใบเสร็จรับเงิน-only — printed in its payment-method + bank-details footer.
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">(initialData?.paymentMethod ?? "");
   const [bankName, setBankName] = useState(initialData?.bankName ?? "");
@@ -479,11 +484,14 @@ export function BillingDocumentForm({
     });
   }
 
-  // Recomputes depositDeductionAmount/InvoiceNo as the sum/joined-list of
-  // whichever received invoices are ticked — runs on every toggle so the
-  // two fields always reflect the current selection; still plain text/number
-  // inputs afterward, so a manual tweak (or an entry with no selection at
-  // all, e.g. a BL/INV doc_no with no `payments` row behind it) still works.
+  // Recomputes depositDeductionAmount/InvoiceNo/WhtAmount as the sum/
+  // joined-list of whichever received invoices are ticked — runs on every
+  // toggle so the fields always reflect the current selection; still plain
+  // text/number inputs afterward, so a manual tweak (or an entry with no
+  // selection at all, e.g. a BL/INV doc_no with no `payments` row behind
+  // it) still works. depositWhtAmount sums each ticked invoice's own
+  // already-withheld WHT, credited against this document's own WHT so a
+  // later installment doesn't withhold the same job's WHT twice.
   function toggleDepositInvoice(paymentId: string) {
     setSelectedDepositInvoices((prev) => {
       const next = new Set(prev);
@@ -492,6 +500,7 @@ export function BillingDocumentForm({
       const picked = receivedInvoices.filter((r) => next.has(r.paymentId));
       setDepositDeductionAmount(String(picked.reduce((sum, r) => sum + r.amount, 0)));
       setDepositDeductionInvoiceNo(picked.map((r) => r.invoiceNo).join(", "));
+      setDepositWhtAmount(String(picked.reduce((sum, r) => sum + (r.whtAmount ?? 0), 0)));
       return next;
     });
   }
@@ -674,8 +683,9 @@ export function BillingDocumentForm({
         Number(whtPercent) || 0,
         Number(retentionPercent) || 0,
         Number(depositDeductionAmount) || 0,
+        Number(depositWhtAmount) || 0,
       ),
-    [selectedItems, discountAmount, whtPercent, retentionPercent, depositDeductionAmount],
+    [selectedItems, discountAmount, whtPercent, retentionPercent, depositDeductionAmount, depositWhtAmount],
   );
 
   // The printed line order (per the user's "อยากให้คุมลำดับเองได้" request —
@@ -1517,7 +1527,7 @@ export function BillingDocumentForm({
               </div>
             </div>
           )}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="space-y-2">
               <Label htmlFor="deposit_deduction_amount" className="text-xs text-muted-foreground">
                 จำนวนเงิน (บาท)
@@ -1541,6 +1551,19 @@ export function BillingDocumentForm({
                 placeholder="เลขที่เอกสารมัดจำ"
                 value={depositDeductionInvoiceNo}
                 onChange={(e) => setDepositDeductionInvoiceNo(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="deposit_wht_amount" className="text-xs text-muted-foreground">
+                หัก ณ ที่จ่ายที่หักไปแล้ว (บาท)
+              </Label>
+              <NumberInput
+                id="deposit_wht_amount"
+                name="deposit_wht_amount"
+                min={0}
+                step={0.01}
+                value={depositWhtAmount}
+                onChange={setDepositWhtAmount}
               />
             </div>
           </div>
