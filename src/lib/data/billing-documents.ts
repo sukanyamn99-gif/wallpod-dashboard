@@ -42,6 +42,38 @@ export async function getUnbilledInvoicesForCustomer(customerId: string): Promis
   });
 }
 
+// The mirror image of getUnbilledInvoicesForCustomer — installments already
+// received (received_date set), offered as the "which invoice was this
+// deposit received against" picker on a later installment's own document, so
+// staff don't have to retype an invoice number and amount they already
+// recorded once in WALLPOD Project Sales. Most recent first, since the
+// deposit being referenced is usually the most recently issued installment.
+export async function getReceivedInvoicesForCustomer(customerId: string): Promise<UnbilledInvoice[]> {
+  if (!isSupabaseConfigured()) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("payments")
+    .select("id, invoice_no, paid_date, amount, projects!inner(job_no, project_name, customer_id)")
+    .eq("projects.customer_id", customerId)
+    .not("invoice_no", "is", null)
+    .not("received_date", "is", null)
+    .order("paid_date", { ascending: false });
+  if (error) throw error;
+
+  return (data ?? []).map((row) => {
+    // @ts-expect-error -- Supabase types the joined relation loosely here
+    const project = row.projects as { job_no: string | null; project_name: string } | null;
+    return {
+      paymentId: row.id,
+      jobNo: project?.job_no ?? null,
+      projectName: project?.project_name ?? "",
+      invoiceNo: row.invoice_no as string,
+      invoiceDate: row.paid_date,
+      amount: Number(row.amount),
+    };
+  });
+}
+
 // ใบกำกับภาษี documents for a customer, quotation-sourced (payment-sourced
 // ones already have a real WALLPOD invoice on file and go through
 // getUnbilledInvoicesForCustomer instead), excluding any whose quotation is

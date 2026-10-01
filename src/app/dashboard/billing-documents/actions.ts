@@ -8,6 +8,7 @@ import {
   getBillableTaxInvoicesForCustomer,
   getBillingDocumentById,
   getNetPayableForQuotationIds,
+  getReceivedInvoicesForCustomer,
   getUnbilledInvoicesForCustomer,
 } from "@/lib/data/billing-documents";
 import { getAcceptedUnconvertedQuotationsForCustomer, normalizeJobNo } from "@/lib/data/quotations";
@@ -28,6 +29,14 @@ import type {
 export async function fetchUnbilledInvoices(customerId: string): Promise<UnbilledInvoice[]> {
   if (!customerId) return [];
   return getUnbilledInvoicesForCustomer(customerId);
+}
+
+// Powers the "เลือกใบแจ้งหนี้มัดจำ" picker — a customer's own already-received
+// installments, offered so the deposit-deduction amount/invoice number can be
+// auto-filled instead of retyped.
+export async function fetchReceivedInvoices(customerId: string): Promise<UnbilledInvoice[]> {
+  if (!customerId) return [];
+  return getReceivedInvoicesForCustomer(customerId);
 }
 
 // Same idea, for the alternative "bill straight from an accepted quotation"

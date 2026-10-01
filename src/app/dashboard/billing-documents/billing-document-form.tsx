@@ -20,6 +20,7 @@ import {
   fetchBillableBillingNoteItems,
   fetchBillableQuotations,
   fetchBillableTaxInvoices,
+  fetchReceivedInvoices,
   fetchUnbilledInvoices,
   updateBillingDocument,
 } from "./actions";
@@ -183,6 +184,9 @@ export function BillingDocumentForm({
   const [customerId, setCustomerId] = useState(initialData?.customerId ?? "");
   const [customerName, setCustomerName] = useState(initialData?.customerName ?? "");
   const [invoices, setInvoices] = useState<UnbilledInvoice[]>([]);
+  // Powers the "เลือกใบแจ้งหนี้มัดจำ" picker next to the deposit-deduction
+  // fields below — this customer's own already-received installments.
+  const [receivedInvoices, setReceivedInvoices] = useState<UnbilledInvoice[]>([]);
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set((initialData?.items ?? []).map((it) => it.paymentId).filter((id): id is string => !!id)),
   );
@@ -307,8 +311,9 @@ export function BillingDocumentForm({
     setSelectedBillingNoteItems(new Set());
     setLoadingInvoices(true);
     try {
-      const [rows, billableQuotations, billableTaxInvoices, billableBillingNoteItems] = await Promise.all([
+      const [rows, receivedRows, billableQuotations, billableTaxInvoices, billableBillingNoteItems] = await Promise.all([
         fetchUnbilledInvoices(id),
+        fetchReceivedInvoices(id),
         // The "accepted quotations not yet a real job" picker is hidden in
         // create mode for ใบกำกับภาษี/ใบวางบิล/ใบเสร็จรับเงิน — per feedback,
         // billing that carries real tax/legal weight should always go
@@ -324,6 +329,7 @@ export function BillingDocumentForm({
         usesTaxInvoiceSource ? fetchBillableBillingNoteItems(id, docType as "billing_note" | "receipt" | "tax_invoice") : Promise.resolve([]),
       ]);
       setInvoices(rows);
+      setReceivedInvoices(receivedRows);
       setQuotations(billableQuotations);
       setTaxInvoices(billableTaxInvoices);
       setBillingNoteItems(billableBillingNoteItems);
@@ -379,8 +385,9 @@ export function BillingDocumentForm({
       // pre-existing item may reference a quotation with no tax invoice
       // issued yet, and that needs somewhere to still show up as selected
       // so saving the form doesn't silently drop it.
-      const [rows, billableQuotations, billableTaxInvoices, billableBillingNoteItems] = await Promise.all([
+      const [rows, receivedRows, billableQuotations, billableTaxInvoices, billableBillingNoteItems] = await Promise.all([
         fetchUnbilledInvoices(initialData.customerId),
+        fetchReceivedInvoices(initialData.customerId),
         fetchBillableQuotations(initialData.customerName),
         usesTaxInvoiceSource
           ? fetchBillableTaxInvoices(initialData.customerId, docType as "billing_note" | "receipt" | "tax_invoice", docId)
@@ -391,6 +398,7 @@ export function BillingDocumentForm({
       ]);
       if (!cancelled) {
         setInvoices(rows);
+        setReceivedInvoices(receivedRows);
         setQuotations(billableQuotations);
         setTaxInvoices(billableTaxInvoices);
         setBillingNoteItems(billableBillingNoteItems);
@@ -703,6 +711,10 @@ export function BillingDocumentForm({
     { value: NONE_VALUE, label: "— ไม่ระบุ —" },
     ...salesReps.map((r) => ({ value: r.id, label: r.name })),
   ];
+  const receivedInvoiceItems = [
+    { value: NONE_VALUE, label: "— เลือกใบแจ้งหนี้ —" },
+    ...receivedInvoices.map((r) => ({ value: r.paymentId, label: `${r.invoiceNo} — ${formatTHB(r.amount)}` })),
+  ];
 
   return (
     <>
@@ -986,7 +998,7 @@ export function BillingDocumentForm({
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="discount_amount">ส่วนลด (บาท)</Label>
             <NumberInput
@@ -1012,26 +1024,6 @@ export function BillingDocumentForm({
               value={retentionPercent}
               onChange={setRetentionPercent}
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="deposit_deduction_amount">หักเงินมัดจำที่ได้รับ (บาท)</Label>
-            <div className="flex gap-2">
-              <NumberInput
-                id="deposit_deduction_amount"
-                name="deposit_deduction_amount"
-                min={0}
-                step={0.01}
-                value={depositDeductionAmount}
-                onChange={setDepositDeductionAmount}
-              />
-              <Input
-                id="deposit_deduction_invoice_no"
-                name="deposit_deduction_invoice_no"
-                placeholder="เลขที่เอกสารมัดจำ"
-                value={depositDeductionInvoiceNo}
-                onChange={(e) => setDepositDeductionInvoiceNo(e.target.value)}
-              />
-            </div>
           </div>
         </div>
 
@@ -1473,6 +1465,61 @@ export function BillingDocumentForm({
             </div>
           </div>
         )}
+
+        <div className="space-y-2 rounded-lg border p-3">
+          <Label htmlFor="deposit_deduction_amount">หักเงินมัดจำที่ได้รับ</Label>
+          {receivedInvoices.length > 0 && (
+            <Select
+              items={receivedInvoiceItems}
+              value={NONE_VALUE}
+              onValueChange={(v) => {
+                if (v === NONE_VALUE) return;
+                const inv = receivedInvoices.find((r) => r.paymentId === v);
+                if (!inv) return;
+                setDepositDeductionAmount(String(inv.amount));
+                setDepositDeductionInvoiceNo(inv.invoiceNo);
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="เลือกใบแจ้งหนี้มัดจำ (ถ้ามี) เพื่อกรอกให้อัตโนมัติ" />
+              </SelectTrigger>
+              <SelectContent>
+                {receivedInvoiceItems.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="deposit_deduction_amount" className="text-xs text-muted-foreground">
+                จำนวนเงิน (บาท)
+              </Label>
+              <NumberInput
+                id="deposit_deduction_amount"
+                name="deposit_deduction_amount"
+                min={0}
+                step={0.01}
+                value={depositDeductionAmount}
+                onChange={setDepositDeductionAmount}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="deposit_deduction_invoice_no" className="text-xs text-muted-foreground">
+                เลขที่เอกสารมัดจำ
+              </Label>
+              <Input
+                id="deposit_deduction_invoice_no"
+                name="deposit_deduction_invoice_no"
+                placeholder="เลขที่เอกสารมัดจำ"
+                value={depositDeductionInvoiceNo}
+                onChange={(e) => setDepositDeductionInvoiceNo(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
 
         <div className="space-y-1 rounded-lg border p-3 text-sm">
           <div className="flex justify-between">
