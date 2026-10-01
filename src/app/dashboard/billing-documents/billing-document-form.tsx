@@ -187,6 +187,14 @@ export function BillingDocumentForm({
   // Powers the "เลือกใบแจ้งหนี้มัดจำ" picker next to the deposit-deduction
   // fields below — this customer's own already-received installments.
   const [receivedInvoices, setReceivedInvoices] = useState<UnbilledInvoice[]>([]);
+  // Which of the above are ticked as "this is a deposit being deducted" —
+  // supports ticking more than one (e.g. 2 prior installments both already
+  // received), summing into depositDeductionAmount/InvoiceNo below. Those
+  // two fields stay independently editable afterward (e.g. for a deposit
+  // that isn't a real `payments` row at all, like one referenced only by a
+  // ใบวางบิล/ใบกำกับภาษี doc_no), so this set is just a convenience, not the
+  // thing actually submitted.
+  const [selectedDepositInvoices, setSelectedDepositInvoices] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set((initialData?.items ?? []).map((it) => it.paymentId).filter((id): id is string => !!id)),
   );
@@ -471,6 +479,23 @@ export function BillingDocumentForm({
     });
   }
 
+  // Recomputes depositDeductionAmount/InvoiceNo as the sum/joined-list of
+  // whichever received invoices are ticked — runs on every toggle so the
+  // two fields always reflect the current selection; still plain text/number
+  // inputs afterward, so a manual tweak (or an entry with no selection at
+  // all, e.g. a BL/INV doc_no with no `payments` row behind it) still works.
+  function toggleDepositInvoice(paymentId: string) {
+    setSelectedDepositInvoices((prev) => {
+      const next = new Set(prev);
+      if (next.has(paymentId)) next.delete(paymentId);
+      else next.add(paymentId);
+      const picked = receivedInvoices.filter((r) => next.has(r.paymentId));
+      setDepositDeductionAmount(String(picked.reduce((sum, r) => sum + r.amount, 0)));
+      setDepositDeductionInvoiceNo(picked.map((r) => r.invoiceNo).join(", "));
+      return next;
+    });
+  }
+
   function toggleQuotation(quotationId: string) {
     setSelectedQuotations((prev) => {
       const next = new Set(prev);
@@ -711,11 +736,6 @@ export function BillingDocumentForm({
     { value: NONE_VALUE, label: "— ไม่ระบุ —" },
     ...salesReps.map((r) => ({ value: r.id, label: r.name })),
   ];
-  const receivedInvoiceItems = [
-    { value: NONE_VALUE, label: "— เลือกใบแจ้งหนี้ —" },
-    ...receivedInvoices.map((r) => ({ value: r.paymentId, label: `${r.invoiceNo} — ${formatTHB(r.amount)}` })),
-  ];
-
   return (
     <>
       {needsSourceKindChoice && sourceKind === null && (
@@ -1469,28 +1489,33 @@ export function BillingDocumentForm({
         <div className="space-y-2 rounded-lg border p-3">
           <Label htmlFor="deposit_deduction_amount">หักเงินมัดจำที่ได้รับ</Label>
           {receivedInvoices.length > 0 && (
-            <Select
-              items={receivedInvoiceItems}
-              value={NONE_VALUE}
-              onValueChange={(v) => {
-                if (v === NONE_VALUE) return;
-                const inv = receivedInvoices.find((r) => r.paymentId === v);
-                if (!inv) return;
-                setDepositDeductionAmount(String(inv.amount));
-                setDepositDeductionInvoiceNo(inv.invoiceNo);
-              }}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="เลือกใบแจ้งหนี้มัดจำ (ถ้ามี) เพื่อกรอกให้อัตโนมัติ" />
-              </SelectTrigger>
-              <SelectContent>
-                {receivedInvoiceItems.map((item) => (
-                  <SelectItem key={item.value} value={item.value}>
-                    {item.label}
-                  </SelectItem>
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">ติ๊กเลือกงวดที่รับมัดจำมาแล้ว (เลือกได้มากกว่า 1 งวด) เพื่อกรอกยอด/เลขที่ให้อัตโนมัติ</p>
+              <div className="space-y-1.5">
+                {receivedInvoices.map((inv) => (
+                  <label
+                    key={inv.paymentId}
+                    className="flex cursor-pointer items-center gap-3 rounded-lg border p-2 hover:bg-muted"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedDepositInvoices.has(inv.paymentId)}
+                      onChange={() => toggleDepositInvoice(inv.paymentId)}
+                      className="h-4 w-4"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        {inv.invoiceNo} {inv.jobNo && <span className="text-muted-foreground">— {inv.jobNo}</span>}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {inv.projectName} {inv.invoiceDate && `• ${new Date(inv.invoiceDate).toLocaleDateString("th-TH")}`}
+                      </p>
+                    </div>
+                    <p className="shrink-0 text-sm font-medium">{formatTHB(inv.amount)}</p>
+                  </label>
                 ))}
-              </SelectContent>
-            </Select>
+              </div>
+            </div>
           )}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
