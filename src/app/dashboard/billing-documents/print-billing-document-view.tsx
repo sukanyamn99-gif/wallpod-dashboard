@@ -312,8 +312,7 @@ function DocumentBody({
                   <td className="border-r border-t border-black p-1.5">{fmtDate(document.dueDate)}</td>
                   <td className="border-r border-t border-black p-1.5 text-right">{formatTHB(preVat)}</td>
                   <td className="border-r border-t border-black p-1.5 text-right">
-                    {formatTHB(rowWht)}
-                    {rowWht > 0 && <div className="text-xs text-neutral-500">{document.whtPercent}%</div>}
+                    {rowWht > 0 ? `${document.whtPercent}%` : formatTHB(0)}
                   </td>
                   <td className="border-t border-black p-1.5 text-right">{formatTHB(it.amount)}</td>
                 </tr>
