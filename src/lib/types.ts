@@ -1002,10 +1002,6 @@ export interface UnbilledInvoice {
   invoiceNo: string;
   invoiceDate: string | null;
   amount: number;
-  // Only populated by getReceivedInvoicesForCustomer's deposit-invoice
-  // picker — how much WHT that source document itself already withheld,
-  // so ticking it can credit that WHT against the current document's own.
-  whtAmount?: number;
 }
 
 // An accepted quotation not yet recorded as a WALLPOD Project Sales job
@@ -1172,10 +1168,6 @@ export interface BillingDocument {
   // Free-text invoice number the deposit above was received against —
   // printed alongside the deduction line, not looked up automatically.
   depositDeductionInvoiceNo: string | null;
-  // WHT already withheld on the deposit(s) above — see
-  // computeBillingDocumentSummary for why this is subtracted from this
-  // document's own WHT instead of withholding the full job's WHT again.
-  depositWhtAmount: number;
   note: string | null;
   // Which JOB this document was created for — set from the JobNoSelect
   // picker at creation time, printed as "เลขที่ Job". Null for documents

@@ -1470,11 +1470,6 @@ create table billing_notes (
   -- free text, entered alongside the amount, so the printed deduction line
   -- can show "หักเงินมัดจำที่ได้รับ (เลขที่ ...)" instead of a bare number.
   deposit_deduction_invoice_no text,
-  -- WHT already withheld on the deposit(s) referenced above — subtracted
-  -- from this document's own WHT so a later installment doesn't withhold
-  -- the full job's WHT a second time on value already taxed at deposit
-  -- time (see computeBillingDocumentSummary).
-  deposit_wht_amount numeric(14,2) not null default 0,
   note text,
   created_by uuid references profiles(id),
   created_at timestamptz not null default now(),

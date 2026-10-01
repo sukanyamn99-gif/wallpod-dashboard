@@ -143,7 +143,6 @@ async function insertBillingNoteHeader(
     retentionPercent: number;
     depositDeductionAmount: number;
     depositDeductionInvoiceNo: string | null;
-    depositWhtAmount: number;
     note: string | null;
     jobNo: string | null;
     paymentMethod: PaymentMethod | null;
@@ -170,7 +169,6 @@ async function insertBillingNoteHeader(
         retention_percent: fields.retentionPercent,
         deposit_deduction_amount: fields.depositDeductionAmount,
         deposit_deduction_invoice_no: fields.depositDeductionInvoiceNo,
-        deposit_wht_amount: fields.depositWhtAmount,
         note: fields.note,
         job_no: fields.jobNo,
         payment_method: fields.paymentMethod,
@@ -435,7 +433,6 @@ interface ParsedBillingDocument {
   retentionPercent: number;
   depositDeductionAmount: number;
   depositDeductionInvoiceNo: string | null;
-  depositWhtAmount: number;
   note: string | null;
   // Set only in create mode, from whatever JOB the JobNoSelect picker had
   // selected — printed as "เลขที่ Job" on the document. Never present on
@@ -489,7 +486,6 @@ function parseBillingDocumentForm(formData: FormData): { error: string } | ({ er
   const retentionPercent = Math.max(0, num(formData.get("retention_percent")));
   const depositDeductionAmount = Math.max(0, num(formData.get("deposit_deduction_amount")));
   const depositDeductionInvoiceNo = str(formData.get("deposit_deduction_invoice_no"));
-  const depositWhtAmount = Math.max(0, num(formData.get("deposit_wht_amount")));
   const note = str(formData.get("note"));
   const jobNoRef = str(formData.get("job_no_ref"));
 
@@ -530,7 +526,6 @@ function parseBillingDocumentForm(formData: FormData): { error: string } | ({ er
     retentionPercent,
     depositDeductionAmount,
     depositDeductionInvoiceNo,
-    depositWhtAmount,
     note,
     jobNoRef,
     paymentMethod,
@@ -567,7 +562,6 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
     retentionPercent,
     depositDeductionAmount,
     depositDeductionInvoiceNo,
-    depositWhtAmount,
     note,
     jobNoRef,
     paymentMethod,
@@ -648,7 +642,6 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
     retentionPercent,
     depositDeductionAmount,
     depositDeductionInvoiceNo,
-    depositWhtAmount,
     note,
     jobNo: jobNoRef,
     paymentMethod,
@@ -858,7 +851,6 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
     retentionPercent,
     depositDeductionAmount,
     depositDeductionInvoiceNo,
-    depositWhtAmount,
     note,
     jobNoRef,
     paymentMethod,
@@ -920,7 +912,6 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
       retention_percent: retentionPercent,
       deposit_deduction_amount: depositDeductionAmount,
       deposit_deduction_invoice_no: depositDeductionInvoiceNo,
-      deposit_wht_amount: depositWhtAmount,
       note,
       payment_method: paymentMethod,
       bank_name: bankName,
