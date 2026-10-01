@@ -101,8 +101,9 @@ export async function getReceivedInvoicesForCustomer(
       const items = (doc.billing_note_items ?? []) as unknown as { amount: number; apply_wht: boolean }[];
       // Recursive by construction: if THIS document is itself a later
       // installment of an earlier deposit, its own deposit_wht_amount
-      // already nets that out, so summary.whtAmount is always "WHT withheld
-      // by this specific document," safe to chain across 3+ installments.
+      // already nets that out, so whtAmountThisRound is always "WHT
+      // actually withheld by this specific document" (not the whole job's
+      // WHT), safe to chain across 3+ installments.
       const summary = computeBillingDocumentSummary(
         items.map((it) => ({ amount: Number(it.amount), applyWht: it.apply_wht })),
         Number(doc.discount_amount),
@@ -118,7 +119,7 @@ export async function getReceivedInvoicesForCustomer(
         invoiceNo: doc.doc_no,
         invoiceDate: doc.doc_date,
         amount: summary.netPayable,
-        whtAmount: summary.whtAmount,
+        whtAmount: summary.whtAmountThisRound,
       };
     });
 

@@ -365,7 +365,7 @@ function DocumentBody({
             {!isCollectionDoc && document.whtPercent > 0 && (
               <tr>
                 <td className="py-0.5 text-red-600">หัก ณ ที่จ่าย {document.whtPercent}%</td>
-                <td className="py-0.5 text-right text-red-600">{formatTHB(summary.whtAmount)}</td>
+                <td className="py-0.5 text-right text-red-600">{formatTHB(summary.whtAmountThisRound)}</td>
               </tr>
             )}
             {!isCollectionDoc && document.retentionPercent > 0 && (
@@ -374,10 +374,10 @@ function DocumentBody({
                 <td className="py-0.5 text-right text-red-600">{formatTHB(summary.retentionAmount)}</td>
               </tr>
             )}
-            {isCollectionDoc && summary.whtAmount > 0 && (
+            {isCollectionDoc && summary.whtAmountThisRound > 0 && (
               <tr>
                 <td className="py-0.5 text-red-600">หักภาษี ณ ที่จ่ายทั้งสิ้น</td>
-                <td className="py-0.5 text-right text-red-600">{formatTHB(summary.whtAmount)}</td>
+                <td className="py-0.5 text-right text-red-600">{formatTHB(summary.whtAmountThisRound)}</td>
               </tr>
             )}
             {isCollectionDoc && summary.retentionAmount > 0 && (

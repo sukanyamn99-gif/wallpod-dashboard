@@ -9,6 +9,14 @@ export interface BillingDocumentSummary {
   vat: number;
   totalAfterVat: number;
   whtAmount: number;
+  // What to print on the "หัก ณ ที่จ่าย" line/WHT certificate — the portion
+  // of whtAmount withheld THIS round, net of whatever a bundled deposit
+  // already withheld. Deliberately NOT used in netPayable (see below): the
+  // deposit figure being subtracted is already net of its own WHT, so
+  // netPayable must still subtract the FULL whtAmount to balance — reducing
+  // both would credit the deposit's WHT twice. Equals whtAmount when there's
+  // no depositWhtAmount.
+  whtAmountThisRound: number;
   retentionAmount: number;
   depositDeductionAmount: number;
   netPayable: number;
@@ -36,10 +44,10 @@ export function computeBillingDocumentSummary(
   // WHT already withheld on the deposit(s) that depositDeductionAmount
   // bundles — e.g. a job billed 50% deposit then 50% final both carry the
   // same 3% WHT, so the deposit invoice already withheld half the job's
-  // total WHT. Subtracting it here is what makes this document's own WHT
-  // line read as "withheld this round" instead of double-withholding the
-  // whole job's WHT a second time (per explicit feedback, worked out
-  // against two real linked documents to confirm the exact figures).
+  // total WHT. Only affects whtAmountThisRound (the printed/certificate
+  // figure) below, never whtAmount or netPayable — verified against a real
+  // linked pair that crediting it into netPayable directly double-counts
+  // the deposit's own WHT (depositDeductionAmount is already net of it).
   depositWhtAmount = 0,
 ): BillingDocumentSummary {
   const subtotal = round2(items.reduce((sum, it) => sum + it.amount, 0) / 1.07);
@@ -51,7 +59,8 @@ export function computeBillingDocumentSummary(
   // document-level discount — that discount already only ever applies to
   // small manual adjustments in practice.
   const whtBase = round2(items.filter((it) => it.applyWht).reduce((sum, it) => sum + it.amount, 0) / 1.07);
-  const whtAmount = round2(Math.max(0, whtBase * (whtPercent / 100) - depositWhtAmount));
+  const whtAmount = round2(whtBase * (whtPercent / 100));
+  const whtAmountThisRound = round2(Math.max(0, whtAmount - depositWhtAmount));
   const retentionAmount = round2(totalAfterVat * (retentionPercent / 100));
   const netPayable = round2(totalAfterVat - whtAmount - retentionAmount - depositDeductionAmount);
   return {
@@ -61,6 +70,7 @@ export function computeBillingDocumentSummary(
     vat,
     totalAfterVat,
     whtAmount,
+    whtAmountThisRound,
     retentionAmount,
     depositDeductionAmount,
     netPayable,

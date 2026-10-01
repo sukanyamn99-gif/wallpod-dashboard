@@ -1597,7 +1597,7 @@ export function BillingDocumentForm({
           {Number(whtPercent) > 0 && (
             <div className="flex justify-between text-destructive">
               <span>หัก ณ ที่จ่าย {whtPercent}%</span>
-              <span>{formatTHB(summary.whtAmount)}</span>
+              <span>{formatTHB(summary.whtAmountThisRound)}</span>
             </div>
           )}
           {Number(retentionPercent) > 0 && (
