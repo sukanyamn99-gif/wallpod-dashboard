@@ -1,6 +1,6 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { getQuotationItemsByIds, getQuotationItemsByJobNumbers } from "@/lib/data/quotations";
-import { allocateBillingDocumentSummaryByLine } from "@/lib/billing-document-summary";
+import { allocateBillingDocumentSummaryByLine, computeBillingDocumentSummary } from "@/lib/billing-document-summary";
 import type {
   BillableBillingNoteItem,
   BillableTaxInvoice,
@@ -43,15 +43,26 @@ export async function getUnbilledInvoicesForCustomer(customerId: string): Promis
 }
 
 // The mirror image of getUnbilledInvoicesForCustomer — installments already
-// received (received_date set), offered as the "which invoice was this
-// deposit received against" picker on a later installment's own document, so
-// staff don't have to retype an invoice number and amount they already
-// recorded once in WALLPOD Project Sales. Most recent first, since the
-// deposit being referenced is usually the most recently issued installment.
-export async function getReceivedInvoicesForCustomer(customerId: string): Promise<UnbilledInvoice[]> {
+// received, offered as the "which invoice was this deposit received
+// against" picker on a later installment's own document, so staff don't
+// have to retype an invoice number and amount they already recorded once.
+// Two source shapes, both real in this data: (1) a WALLPOD Project Sales
+// payment row with its own invoice_no + received_date (the older, imported
+// pattern), and (2) a tax_invoice/invoice document issued straight from a
+// quotation with no `payments` row behind it at all (e.g. a manually-typed
+// "รับเงินมัดจำ..." line) — relying on (1) alone silently hid every deposit
+// of the second kind, which turned out to be the more common case for new
+// documents. (2)'s own net payable is computed the same way the print view
+// computes it, not read from a raw item sum, so a document with its own
+// discount/WHT/retention still offers the correct final amount. Most recent
+// first, since the deposit being referenced is usually the latest one.
+export async function getReceivedInvoicesForCustomer(
+  customerId: string,
+  excludeDocId?: string,
+): Promise<UnbilledInvoice[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const { data: payments, error } = await supabase
     .from("payments")
     .select("id, invoice_no, paid_date, amount, projects!inner(job_no, project_name, customer_id)")
     .eq("projects.customer_id", customerId)
@@ -60,7 +71,7 @@ export async function getReceivedInvoicesForCustomer(customerId: string): Promis
     .order("paid_date", { ascending: false });
   if (error) throw error;
 
-  return (data ?? []).map((row) => {
+  const fromPayments: UnbilledInvoice[] = (payments ?? []).map((row) => {
     // @ts-expect-error -- Supabase types the joined relation loosely here
     const project = row.projects as { job_no: string | null; project_name: string } | null;
     return {
@@ -72,6 +83,47 @@ export async function getReceivedInvoicesForCustomer(customerId: string): Promis
       amount: Number(row.amount),
     };
   });
+
+  let docsQuery = supabase
+    .from("billing_notes")
+    .select(
+      "id, doc_no, doc_date, job_no, discount_amount, wht_percent, retention_percent, deposit_deduction_amount, billing_note_items(amount, apply_wht)",
+    )
+    .eq("customer_id", customerId)
+    .in("doc_type", ["tax_invoice", "invoice"]);
+  if (excludeDocId) docsQuery = docsQuery.neq("id", excludeDocId);
+  const { data: docs, error: docsErr } = await docsQuery;
+  if (docsErr) throw docsErr;
+
+  const fromDocs: UnbilledInvoice[] = (docs ?? [])
+    .filter((doc) => (doc.billing_note_items ?? []).length > 0)
+    .map((doc) => {
+      const items = (doc.billing_note_items ?? []) as unknown as { amount: number; apply_wht: boolean }[];
+      const summary = computeBillingDocumentSummary(
+        items.map((it) => ({ amount: Number(it.amount), applyWht: it.apply_wht })),
+        Number(doc.discount_amount),
+        Number(doc.wht_percent),
+        Number(doc.retention_percent),
+        Number(doc.deposit_deduction_amount),
+      );
+      return {
+        paymentId: `doc:${doc.id}`,
+        jobNo: doc.job_no,
+        projectName: "",
+        invoiceNo: doc.doc_no,
+        invoiceDate: doc.doc_date,
+        amount: summary.netPayable,
+      };
+    });
+
+  // A payment-table row's own invoiceNo can collide with a billing_notes
+  // doc_no referencing the same real-world document (both sides of the
+  // same deposit) — keep the payments-sourced one, since it carries the
+  // real jobNo/projectName, and drop the duplicate doc-sourced entry.
+  const paymentInvoiceNos = new Set(fromPayments.map((r) => r.invoiceNo));
+  return [...fromPayments, ...fromDocs.filter((r) => !paymentInvoiceNos.has(r.invoiceNo))].sort((a, b) =>
+    (b.invoiceDate ?? "").localeCompare(a.invoiceDate ?? ""),
+  );
 }
 
 // ใบกำกับภาษี documents for a customer, quotation-sourced (payment-sourced

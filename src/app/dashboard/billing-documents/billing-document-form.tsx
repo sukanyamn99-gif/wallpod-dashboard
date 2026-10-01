@@ -395,7 +395,7 @@ export function BillingDocumentForm({
       // so saving the form doesn't silently drop it.
       const [rows, receivedRows, billableQuotations, billableTaxInvoices, billableBillingNoteItems] = await Promise.all([
         fetchUnbilledInvoices(initialData.customerId),
-        fetchReceivedInvoices(initialData.customerId),
+        fetchReceivedInvoices(initialData.customerId, docId),
         fetchBillableQuotations(initialData.customerName),
         usesTaxInvoiceSource
           ? fetchBillableTaxInvoices(initialData.customerId, docType as "billing_note" | "receipt" | "tax_invoice", docId)
