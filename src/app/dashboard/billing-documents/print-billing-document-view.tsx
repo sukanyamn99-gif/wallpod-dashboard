@@ -337,6 +337,20 @@ function DocumentBody({
               <td className="py-0.5 text-neutral-600">รวมเป็นเงิน</td>
               <td className="py-0.5 text-right">{formatTHB(summary.subtotal)}</td>
             </tr>
+            {/* Shown here for readability (per explicit feedback — staff
+                want to see the deposit right away, next to the subtotal it
+                relates to) but still only SUBTRACTED at the very end, after
+                VAT/WHT — moving this row never changes netPayable's own
+                arithmetic, which still subtracts it last. */}
+            {summary.depositDeductionAmount > 0 && (
+              <tr>
+                <td className="py-0.5 text-red-600">
+                  หักเงินมัดจำที่ได้รับ
+                  {document.depositDeductionInvoiceNo && ` (เลขที่ ${document.depositDeductionInvoiceNo})`}
+                </td>
+                <td className="py-0.5 text-right text-red-600">{formatTHB(summary.depositDeductionAmount)}</td>
+              </tr>
+            )}
             {summary.discountAmount > 0 && (
               <>
                 <tr>
@@ -425,15 +439,6 @@ function DocumentBody({
               <tr>
                 <td className="py-0.5 text-red-600">หักประกันผลงานทั้งสิ้น</td>
                 <td className="py-0.5 text-right text-red-600">{formatTHB(summary.retentionAmount)}</td>
-              </tr>
-            )}
-            {summary.depositDeductionAmount > 0 && (
-              <tr>
-                <td className="py-0.5 text-red-600">
-                  หักเงินมัดจำที่ได้รับ
-                  {document.depositDeductionInvoiceNo && ` (เลขที่ ${document.depositDeductionInvoiceNo})`}
-                </td>
-                <td className="py-0.5 text-right text-red-600">{formatTHB(summary.depositDeductionAmount)}</td>
               </tr>
             )}
           </tbody>
