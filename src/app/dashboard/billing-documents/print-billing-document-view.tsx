@@ -72,6 +72,7 @@ function DocumentBody({
     document.whtPercent,
     document.retentionPercent,
     document.depositDeductionAmount,
+    document.depositWhtAmount,
   );
   // Shown once in the header instead of repeated per group inside the
   // items table — manual lines have no real underlying document, so

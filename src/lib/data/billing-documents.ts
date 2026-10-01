@@ -87,7 +87,7 @@ export async function getReceivedInvoicesForCustomer(
   let docsQuery = supabase
     .from("billing_notes")
     .select(
-      "id, doc_no, doc_date, job_no, discount_amount, wht_percent, retention_percent, deposit_deduction_amount, billing_note_items(amount, apply_wht)",
+      "id, doc_no, doc_date, job_no, discount_amount, wht_percent, retention_percent, deposit_deduction_amount, deposit_wht_amount, billing_note_items(amount, apply_wht)",
     )
     .eq("customer_id", customerId)
     .in("doc_type", ["tax_invoice", "invoice"]);
@@ -99,12 +99,17 @@ export async function getReceivedInvoicesForCustomer(
     .filter((doc) => (doc.billing_note_items ?? []).length > 0)
     .map((doc) => {
       const items = (doc.billing_note_items ?? []) as unknown as { amount: number; apply_wht: boolean }[];
+      // Recursive by construction: if THIS document is itself a later
+      // installment of an earlier deposit, its own deposit_wht_amount
+      // already nets that out, so summary.whtAmount is always "WHT withheld
+      // by this specific document," safe to chain across 3+ installments.
       const summary = computeBillingDocumentSummary(
         items.map((it) => ({ amount: Number(it.amount), applyWht: it.apply_wht })),
         Number(doc.discount_amount),
         Number(doc.wht_percent),
         Number(doc.retention_percent),
         Number(doc.deposit_deduction_amount),
+        Number(doc.deposit_wht_amount),
       );
       return {
         paymentId: `doc:${doc.id}`,
@@ -113,6 +118,7 @@ export async function getReceivedInvoicesForCustomer(
         invoiceNo: doc.doc_no,
         invoiceDate: doc.doc_date,
         amount: summary.netPayable,
+        whtAmount: summary.whtAmount,
       };
     });
 
@@ -443,7 +449,7 @@ async function getTaxInvoiceRefsForQuotationIds(
 }
 
 const HEADER_COLUMNS =
-  "id, doc_no, doc_type, customer_id, doc_date, credit_days, due_date, sales_rep_id, discount_amount, wht_percent, retention_percent, deposit_deduction_amount, deposit_deduction_invoice_no, note, job_no, created_by, created_at, payment_method, bank_name, payment_reference_no, payment_date, customers(name, address, phone, tax_id), sales_reps(name), profiles(full_name)";
+  "id, doc_no, doc_type, customer_id, doc_date, credit_days, due_date, sales_rep_id, discount_amount, wht_percent, retention_percent, deposit_deduction_amount, deposit_deduction_invoice_no, deposit_wht_amount, note, job_no, created_by, created_at, payment_method, bank_name, payment_reference_no, payment_date, customers(name, address, phone, tax_id), sales_reps(name), profiles(full_name)";
 
 type HeaderRow = {
   id: string;
@@ -459,6 +465,7 @@ type HeaderRow = {
   retention_percent: number;
   deposit_deduction_amount: number;
   deposit_deduction_invoice_no: string | null;
+  deposit_wht_amount: number;
   note: string | null;
   job_no: string | null;
   created_by: string | null;
@@ -494,6 +501,7 @@ function mapHeader(row: HeaderRow): BillingDocument {
     retentionPercent: Number(row.retention_percent),
     depositDeductionAmount: Number(row.deposit_deduction_amount),
     depositDeductionInvoiceNo: row.deposit_deduction_invoice_no,
+    depositWhtAmount: Number(row.deposit_wht_amount),
     note: row.note,
     jobNo: row.job_no,
     createdById: row.created_by,
