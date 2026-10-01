@@ -1140,7 +1140,9 @@ export function BillingDocumentForm({
               <Package className="mx-auto h-8 w-8 text-muted-foreground" />
               <p className="mt-2 text-sm text-muted-foreground">
                 ลูกค้ารายนี้ไม่มีใบแจ้งหนี้ค้างชำระ
-                {quotations.length > 0 && " — เลือกจากใบเสนอราคาด้านล่างแทนได้"}
+                {quotations.length > 0 &&
+                  (docType === "invoice" || selectedQuotations.size > 0) &&
+                  " — เลือกจากใบเสนอราคาด้านล่างแทนได้"}
                 {usesTaxInvoiceSource &&
                   relevantTaxInvoices.length > 0 &&
                   (taxInvoiceSourceIsBillingNotes ? " — เลือกจากใบวางบิลด้านล่างแทนได้" : " — เลือกจากใบกำกับภาษีด้านล่างแทนได้")}
@@ -1189,7 +1191,18 @@ export function BillingDocumentForm({
         </div>
         )}
 
-        {customerId && !loadingInvoices && quotations.length > 0 && (
+        {/* Edit mode fetches this list for every docType regardless (see the
+            effect above) so a pre-existing raw-quotation-sourced item still
+            shows up as selected instead of silently dropping on save — but
+            per explicit feedback, ใบวางบิล/ใบเสร็จรับเงิน shouldn't surface
+            this picker when nothing on the document actually needs it
+            (today, bills straight from an issued ใบกำกับภาษี/ใบแจ้งหนี้
+            instead — see the section below). Showing it only when there's
+            a real selected quotation to preserve keeps both true. */}
+        {customerId &&
+          !loadingInvoices &&
+          quotations.length > 0 &&
+          (docType === "invoice" || selectedQuotations.size > 0) && (
           <div className="space-y-2">
             <Label>ใบเสนอราคาที่ลูกค้าตอบตกลง (ยังไม่บันทึกเป็นงานจริง)</Label>
             <p className="text-xs text-muted-foreground">
