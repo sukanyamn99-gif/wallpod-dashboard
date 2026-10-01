@@ -438,13 +438,24 @@ async function getTaxInvoiceRefsForQuotationIds(
     .order("created_at", { ascending: false, referencedTable: "billing_notes" });
   if (error) throw error;
 
+  type Row = { quotation_id: string | null; billing_notes: { doc_no: string; doc_date: string; doc_type: string } | null };
+  const rows = (data ?? []) as unknown as Row[];
+  // ใบกำกับภาษี always wins over ใบแจ้งหนี้ when both exist for the same
+  // quotation, regardless of which was issued more recently — per explicit
+  // feedback, a later-dated ใบแจ้งหนี้ must never outrank an earlier ใบกำกับ
+  // ภาษี that's the real document being collected on. Two passes over the
+  // same (already most-recent-first) rows: tax_invoice first, then invoice
+  // only for whichever quotations still have no tax_invoice at all.
   const result: Record<string, { docNo: string; docDate: string }> = {};
-  for (const row of data ?? []) {
-    const quotationId = row.quotation_id as string | null;
-    // @ts-expect-error -- Supabase types the joined relation loosely here
-    const note = row.billing_notes as { doc_no: string; doc_date: string } | null;
-    if (!quotationId || !note || result[quotationId]) continue; // keep the most recent only
-    result[quotationId] = { docNo: note.doc_no, docDate: note.doc_date };
+  for (const row of rows) {
+    if (row.quotation_id && row.billing_notes?.doc_type === "tax_invoice" && !result[row.quotation_id]) {
+      result[row.quotation_id] = { docNo: row.billing_notes.doc_no, docDate: row.billing_notes.doc_date };
+    }
+  }
+  for (const row of rows) {
+    if (row.quotation_id && row.billing_notes?.doc_type === "invoice" && !result[row.quotation_id]) {
+      result[row.quotation_id] = { docNo: row.billing_notes.doc_no, docDate: row.billing_notes.doc_date };
+    }
   }
   return result;
 }
