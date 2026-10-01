@@ -288,12 +288,16 @@ function DocumentBody({
               // it's the document actually being collected on.
               const docNo = it.taxInvoiceDocNo ?? it.invoiceNo;
               const docDate = it.taxInvoiceDocNo ? (it.taxInvoiceDocDate ?? null) : it.invoiceDate;
-              // "ยอดรวมตามเอกสาร" shows the document's real face value
-              // (grossAmount); the WHT column is simply the gap between that
-              // and the already-net amount actually being collected — the
-              // real deduction already applied at the source tax invoice,
-              // not a fresh recompute from this document's own WHT%.
-              const rowWht = Math.round((it.grossAmount - it.amount) * 100) / 100;
+              // "ยอดรวมตามเอกสาร" shows the line's own pre-VAT face value —
+              // per explicit feedback, matching how every other table in
+              // this app itemizes pre-VAT and breaks VAT/WHT out separately
+              // rather than showing a VAT-inclusive face value here. The WHT
+              // column is this document's own apply_wht/whtPercent applied
+              // to that pre-VAT amount (not the embedded source-document gap
+              // this used to show), with the % printed alongside so a row
+              // with no WHT reads as plainly 0.00, not "0.00 at some rate."
+              const preVat = Math.round((it.amount / 1.07) * 100) / 100;
+              const rowWht = it.applyWht ? Math.round(preVat * (document.whtPercent / 100) * 100) / 100 : 0;
               return (
                 <tr key={it.id}>
                   <td className="border-r border-t border-black p-1.5">{i + 1}</td>
@@ -306,8 +310,11 @@ function DocumentBody({
                   <td className="border-r border-t border-black p-1.5">{it.jobNo ?? "—"}</td>
                   <td className="border-r border-t border-black p-1.5">{fmtDate(docDate)}</td>
                   <td className="border-r border-t border-black p-1.5">{fmtDate(document.dueDate)}</td>
-                  <td className="border-r border-t border-black p-1.5 text-right">{formatTHB(it.grossAmount)}</td>
-                  <td className="border-r border-t border-black p-1.5 text-right">{formatTHB(rowWht)}</td>
+                  <td className="border-r border-t border-black p-1.5 text-right">{formatTHB(preVat)}</td>
+                  <td className="border-r border-t border-black p-1.5 text-right">
+                    {formatTHB(rowWht)}
+                    {rowWht > 0 && <div className="text-xs text-neutral-500">{document.whtPercent}%</div>}
+                  </td>
                   <td className="border-t border-black p-1.5 text-right">{formatTHB(it.amount)}</td>
                 </tr>
               );
