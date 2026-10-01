@@ -636,10 +636,16 @@ export function BillingDocumentForm({
     () => (jobNo ? taxInvoices.filter((ti) => ti.jobNo === jobNo) : taxInvoices),
     [taxInvoices, jobNo],
   );
-  const relevantBillingNoteItems = useMemo(
-    () => (jobNo ? billingNoteItems.filter((it) => it.jobNo === jobNo) : billingNoteItems),
-    [billingNoteItems, jobNo],
-  );
+  const relevantBillingNoteItems = useMemo(() => {
+    // Excludes a manual line that's really a deposit receipt (its own
+    // doc_no already appears in the "หักเงินมัดจำที่ได้รับ" picker below) —
+    // per explicit feedback, a deposit already received shouldn't also be
+    // offered here as a separate billable item to add to the total; it's
+    // credited instead, not billed again.
+    const depositDocNos = new Set(receivedInvoices.map((r) => r.invoiceNo));
+    const base = billingNoteItems.filter((it) => !depositDocNos.has(it.billingNoteDocNo));
+    return jobNo ? base.filter((it) => it.jobNo === jobNo) : base;
+  }, [billingNoteItems, jobNo, receivedInvoices]);
 
   const selectedItems = useMemo(
     () => [
