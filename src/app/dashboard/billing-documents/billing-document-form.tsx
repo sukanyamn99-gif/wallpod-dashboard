@@ -1125,7 +1125,12 @@ export function BillingDocumentForm({
             directly against a raw ใบแจ้งหนี้/unbilled payment record.
             ใบแจ้งหนี้ itself hides this when its own create-form choice is
             "other" (a one-off charge, not against any existing record). */}
-        {docType !== "receipt" && sourceKind !== "other" && (
+        {/* Per explicit feedback: once a customer is picked and this source
+            turns up empty, showing an empty placeholder box is just noise —
+            the other picker(s) below (quotations/tax invoices) already say
+            where to look instead, so this section skips rendering entirely
+            rather than showing a dead-end "nothing here" state. */}
+        {docType !== "receipt" && sourceKind !== "other" && !(customerId && !loadingInvoices && invoices.length === 0) && (
         <div className="space-y-2">
           <Label>รายการใบแจ้งหนี้ที่ยังไม่ได้ชำระ</Label>
           {!customerId ? (
@@ -1135,19 +1140,6 @@ export function BillingDocumentForm({
             </div>
           ) : loadingInvoices ? (
             <p className="text-sm text-muted-foreground">กำลังโหลด...</p>
-          ) : invoices.length === 0 ? (
-            <div className="rounded-lg border border-dashed p-8 text-center">
-              <Package className="mx-auto h-8 w-8 text-muted-foreground" />
-              <p className="mt-2 text-sm text-muted-foreground">
-                ลูกค้ารายนี้ไม่มีใบแจ้งหนี้ค้างชำระ
-                {quotations.length > 0 &&
-                  (docType === "invoice" || selectedQuotations.size > 0) &&
-                  " — เลือกจากใบเสนอราคาด้านล่างแทนได้"}
-                {usesTaxInvoiceSource &&
-                  relevantTaxInvoices.length > 0 &&
-                  (taxInvoiceSourceIsBillingNotes ? " — เลือกจากใบวางบิลด้านล่างแทนได้" : " — เลือกจากใบกำกับภาษีด้านล่างแทนได้")}
-              </p>
-            </div>
           ) : (
             <div className="space-y-2">
               {invoices.map((inv) => (
@@ -1476,7 +1468,11 @@ export function BillingDocumentForm({
           </div>
         )}
 
-        {finalOrder.length > 1 && (
+        {/* Hidden per explicit feedback (taxInvoice:-sourced keys weren't
+            resolving to a readable label here) — the ordering state/
+            submission itself stays wired up unchanged, just not shown/
+            editable in this UI for now. */}
+        {false && finalOrder.length > 1 && (
           <div className="space-y-2">
             <Label>ลำดับรายการที่จะพิมพ์</Label>
             <p className="text-xs text-muted-foreground">ใช้ลูกศรสลับลำดับรายการก่อน-หลังตามที่ต้องการให้ขึ้นบนเอกสาร</p>
