@@ -82,7 +82,7 @@ function DocumentBody({
   ).join(", ");
 
   return (
-    <div className="flex min-h-[277mm] flex-col text-[13px] leading-tight">
+    <div className="flex min-h-[250mm] flex-col text-[13px] leading-tight">
       {/* Header */}
       <div className="flex items-start justify-between border-b-2 border-black pb-3">
         <div>
