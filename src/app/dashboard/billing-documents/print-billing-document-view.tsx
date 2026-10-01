@@ -363,10 +363,27 @@ function DocumentBody({
               <td className="py-0.5 text-right font-medium">{formatTHB(summary.totalAfterVat)}</td>
             </tr>
             {!isCollectionDoc && document.whtPercent > 0 && (
-              <tr>
-                <td className="py-0.5 text-red-600">หัก ณ ที่จ่าย {document.whtPercent}%</td>
-                <td className="py-0.5 text-right text-red-600">{formatTHB(summary.whtAmountThisRound)}</td>
-              </tr>
+              <>
+                <tr>
+                  <td className="py-0.5 text-red-600">หัก ณ ที่จ่ายทั้งสิ้น {document.whtPercent}%</td>
+                  <td className="py-0.5 text-right text-red-600">{formatTHB(summary.whtAmount)}</td>
+                </tr>
+                {document.depositWhtAmount > 0 && (
+                  <>
+                    <tr>
+                      <td className="py-0.5 text-red-600">
+                        หัก ณ ที่จ่ายมัดจำ
+                        {document.depositDeductionInvoiceNo && ` ${document.depositDeductionInvoiceNo}`}
+                      </td>
+                      <td className="py-0.5 text-right text-red-600">{formatTHB(document.depositWhtAmount)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-0.5 text-red-600">หัก ณ ที่จ่ายหลังหักมัดจำ</td>
+                      <td className="py-0.5 text-right text-red-600">{formatTHB(summary.whtAmountThisRound)}</td>
+                    </tr>
+                  </>
+                )}
+              </>
             )}
             {!isCollectionDoc && document.retentionPercent > 0 && (
               <tr>
@@ -374,11 +391,28 @@ function DocumentBody({
                 <td className="py-0.5 text-right text-red-600">{formatTHB(summary.retentionAmount)}</td>
               </tr>
             )}
-            {isCollectionDoc && summary.whtAmountThisRound > 0 && (
-              <tr>
-                <td className="py-0.5 text-red-600">หักภาษี ณ ที่จ่ายทั้งสิ้น</td>
-                <td className="py-0.5 text-right text-red-600">{formatTHB(summary.whtAmountThisRound)}</td>
-              </tr>
+            {isCollectionDoc && summary.whtAmount > 0 && (
+              <>
+                <tr>
+                  <td className="py-0.5 text-red-600">หักภาษี ณ ที่จ่ายทั้งสิ้น</td>
+                  <td className="py-0.5 text-right text-red-600">{formatTHB(summary.whtAmount)}</td>
+                </tr>
+                {document.depositWhtAmount > 0 && (
+                  <>
+                    <tr>
+                      <td className="py-0.5 text-red-600">
+                        หักภาษี ณ ที่จ่ายมัดจำ
+                        {document.depositDeductionInvoiceNo && ` ${document.depositDeductionInvoiceNo}`}
+                      </td>
+                      <td className="py-0.5 text-right text-red-600">{formatTHB(document.depositWhtAmount)}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-0.5 text-red-600">หักภาษี ณ ที่จ่ายหลังหักมัดจำ</td>
+                      <td className="py-0.5 text-right text-red-600">{formatTHB(summary.whtAmountThisRound)}</td>
+                    </tr>
+                  </>
+                )}
+              </>
             )}
             {isCollectionDoc && summary.retentionAmount > 0 && (
               <tr>
