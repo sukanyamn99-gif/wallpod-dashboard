@@ -20,7 +20,7 @@ import { formatTHB } from "@/lib/format";
 import type { PettyCashTransaction } from "@/lib/types";
 import { deletePettyCashTransaction } from "./actions";
 
-const TOTAL_COLUMNS_BASE = 8;
+const TOTAL_COLUMNS_BASE = 9;
 
 function DeleteButton({ transaction }: { transaction: PettyCashTransaction }) {
   const [pending, startTransition] = useTransition();
@@ -89,7 +89,8 @@ export function PettyCashTable({
       return (
         t.docNo.toLowerCase().includes(q) ||
         t.description.toLowerCase().includes(q) ||
-        (t.category ?? "").toLowerCase().includes(q)
+        (t.category ?? "").toLowerCase().includes(q) ||
+        (t.jobNo ?? "").toLowerCase().includes(q)
       );
     });
   }, [transactions, query, fromDate, toDate]);
@@ -104,7 +105,7 @@ export function PettyCashTable({
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="ค้นหาเลขที่เอกสาร, รายละเอียด, หมวดหมู่..."
+          placeholder="ค้นหาเลขที่เอกสาร, รายละเอียด, หมวดหมู่, เลขที่ Job..."
           className="max-w-sm"
         />
         <div className="space-y-1">
@@ -133,6 +134,7 @@ export function PettyCashTable({
               <TableHead className="whitespace-nowrap">วันที่</TableHead>
               <TableHead className="whitespace-nowrap">ประเภท</TableHead>
               <TableHead className="whitespace-nowrap">หมวดหมู่</TableHead>
+              <TableHead className="whitespace-nowrap">เลขที่ Job</TableHead>
               <TableHead className="whitespace-nowrap">รายละเอียด</TableHead>
               <TableHead className="text-right whitespace-nowrap">จำนวนเงิน</TableHead>
               <TableHead className="text-right whitespace-nowrap">คงเหลือ</TableHead>
@@ -162,6 +164,7 @@ export function PettyCashTable({
                   )}
                 </TableCell>
                 <TableCell className="whitespace-nowrap">{t.category ?? "—"}</TableCell>
+                <TableCell className="whitespace-nowrap">{t.jobNo ?? "—"}</TableCell>
                 <TableCell className="whitespace-nowrap">{t.description}</TableCell>
                 <TableCell className="text-right whitespace-nowrap">
                   {t.transactionType === "topup" ? "+" : "-"}
