@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
 import { getAcceptedQuotationsForProduction } from "@/lib/data/quotations";
+import { getExistingProjectJobNos } from "@/lib/data/project-sales";
 import { ProductionOrdersTable } from "./production-orders-table";
 
 export default async function ProductionOrdersPage() {
@@ -9,7 +10,10 @@ export default async function ProductionOrdersPage() {
   if (!profile) redirect("/login");
   if (!canAccessPage(profile.role, "/dashboard/quotations/production-orders")) redirect("/dashboard/sales");
 
-  const orders = await getAcceptedQuotationsForProduction();
+  const [orders, existingProjectJobNos] = await Promise.all([
+    getAcceptedQuotationsForProduction(),
+    getExistingProjectJobNos(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -19,7 +23,7 @@ export default async function ProductionOrdersPage() {
           ใบเสนอราคาที่ลูกค้าตอบตกลงแล้ว — กรอกเลขที่ Job และรหัสสินค้าที่นี่แทน (ข้อมูลอื่นในใบเสนอราคายังคงเดิม)
         </p>
       </div>
-      <ProductionOrdersTable orders={orders} />
+      <ProductionOrdersTable orders={orders} existingProjectJobNos={[...existingProjectJobNos]} />
     </div>
   );
 }

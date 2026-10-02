@@ -77,8 +77,19 @@ function CancelButton({ order }: { order: ProductionOrder }) {
   );
 }
 
-export function ProductionOrdersTable({ orders }: { orders: ProductionOrder[] }) {
+export function ProductionOrdersTable({
+  orders,
+  existingProjectJobNos,
+}: {
+  orders: ProductionOrder[];
+  // Which accepted quotations already have a real WALLPOD Project Sales
+  // entry recorded — per explicit feedback, staff must record that first
+  // before being let into ใบลงผลิต, so a job missing from this set gets
+  // flagged here and routed to record the Project instead of editing.
+  existingProjectJobNos: string[];
+}) {
   const [query, setQuery] = useState("");
+  const projectJobNoSet = useMemo(() => new Set(existingProjectJobNos), [existingProjectJobNos]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -124,7 +135,9 @@ export function ProductionOrdersTable({ orders }: { orders: ProductionOrder[] })
                 </TableCell>
               </TableRow>
             )}
-            {filtered.map((o) => (
+            {filtered.map((o) => {
+              const needsProjectFirst = !o.isCancelled && !!o.jobNumber && !projectJobNoSet.has(o.jobNumber);
+              return (
               <TableRow key={o.id} className={o.isCancelled ? "opacity-60" : undefined}>
                 <TableCell className="font-medium whitespace-nowrap">{o.jobNumber ?? "—"}</TableCell>
                 <TableCell className="whitespace-nowrap">{new Date(o.quoteDate).toLocaleDateString("th-TH")}</TableCell>
@@ -135,6 +148,10 @@ export function ProductionOrdersTable({ orders }: { orders: ProductionOrder[] })
                 <TableCell>
                   {o.isCancelled ? (
                     <Badge variant="destructive">ยกเลิกแล้ว</Badge>
+                  ) : needsProjectFirst ? (
+                    <Badge variant="outline" className="border-amber-500 text-amber-600">
+                      ยังไม่ได้บันทึก Project
+                    </Badge>
                   ) : (
                     <Badge variant="secondary">ลูกค้าตอบตกลง</Badge>
                   )}
@@ -150,20 +167,34 @@ export function ProductionOrdersTable({ orders }: { orders: ProductionOrder[] })
                     >
                       <Eye className="h-3.5 w-3.5" />
                     </Button>
-                    <Button
-                      size="icon-sm"
-                      variant="outline"
-                      nativeButton={false}
-                      render={<Link href={`/dashboard/quotations/production-orders/${o.id}`} />}
-                      title="กรอกเลขที่ Job / รหัสสินค้า"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
+                    {needsProjectFirst ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-amber-500 text-amber-600"
+                        nativeButton={false}
+                        render={<Link href={`/dashboard/project-sales/new?fromQuotation=${o.id}`} />}
+                        title="บันทึก Project ก่อนลงผลิต"
+                      >
+                        บันทึก Project
+                      </Button>
+                    ) : (
+                      <Button
+                        size="icon-sm"
+                        variant="outline"
+                        nativeButton={false}
+                        render={<Link href={`/dashboard/quotations/production-orders/${o.id}`} />}
+                        title="กรอกเลขที่ Job / รหัสสินค้า"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                     <CancelButton order={o} />
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+              );
+            })}
           </TableBody>
         </Table>
       </div>

@@ -484,6 +484,21 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
   };
 }
 
+// Powers the ใบลงผลิต list/detail pages' "บันทึก Project ก่อน" gate — a
+// quotation gets its job_number the moment it's accepted (see
+// updateQuotationStatus), long before anyone necessarily records the real
+// WALLPOD Project Sales entry for it, so job_number alone can't say whether
+// that's happened yet. One lightweight query of every recorded job_no
+// instead of a per-row existence check, since the list page needs this for
+// every accepted quotation at once.
+export async function getExistingProjectJobNos(): Promise<Set<string>> {
+  if (!isSupabaseConfigured()) return new Set();
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("projects").select("job_no").not("job_no", "is", null);
+  if (error) throw error;
+  return new Set((data ?? []).map((row) => row.job_no as string));
+}
+
 export interface AdjacentJobNos {
   prevJobNo: string | null;
   nextJobNo: string | null;
