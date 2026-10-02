@@ -460,6 +460,38 @@ async function getTaxInvoiceRefsForQuotationIds(
   return result;
 }
 
+// Matches a quotation doc no. embedded in free text (e.g. "...ของใบเสนอราคา
+// เลขที่ QT6909-013 ..."). Real quotation doc_nos in this app are "QT" +
+// digits/dashes, e.g. QT6909-013. Used only as a DISPLAY fallback for a
+// hand-typed line with no structured payment_id/quotation_id link — see
+// resolveJobNosByQuotationText, which only ever trusts a match once it's
+// confirmed against a real row in `quotations`; a string shaped like a
+// quotation number that doesn't match anything real just falls through,
+// never guessed, same as createBillingDocument's own refusal to
+// auto-sync this same kind of line for the financial side (see
+// resolvePaymentIdsFromManualItemChain in actions.ts).
+const QUOTATION_DOC_NO_PATTERN = /QT[\d-]{5,}/gi;
+
+function extractQuotationDocNos(text: string | null): string[] {
+  if (!text) return [];
+  return [...text.matchAll(QUOTATION_DOC_NO_PATTERN)].map((m) => m[0]);
+}
+
+// One batched lookup for every quotation-shaped string found across a set
+// of texts, rather than one query per text — callers extract matches from
+// each piece of text themselves (via extractQuotationDocNos) and look them
+// up in the returned map.
+async function resolveJobNosByQuotationText(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  texts: (string | null)[],
+): Promise<Record<string, string | null>> {
+  const docNos = new Set<string>();
+  for (const text of texts) for (const docNo of extractQuotationDocNos(text)) docNos.add(docNo);
+  if (docNos.size === 0) return {};
+  const { data } = await supabase.from("quotations").select("doc_no, job_number").in("doc_no", [...docNos]);
+  return Object.fromEntries((data ?? []).map((q) => [q.doc_no, q.job_number]));
+}
+
 const HEADER_COLUMNS =
   "id, doc_no, doc_type, customer_id, doc_date, credit_days, due_date, sales_rep_id, discount_amount, wht_percent, retention_percent, deposit_deduction_amount, deposit_deduction_invoice_no, deposit_wht_amount, note, job_no, created_by, created_at, payment_method, bank_name, payment_reference_no, payment_date, customers(name, address, phone, tax_id), sales_reps(name), profiles(full_name)";
 
@@ -493,9 +525,10 @@ type HeaderRow = {
   profiles: { full_name: string } | null;
 };
 
-// amount isn't derivable from the header row alone (needs items) — every
-// caller computes it separately and spreads it in on top of this.
-function mapHeader(row: HeaderRow): Omit<BillingDocument, "amount"> {
+// amount/jobNos aren't derivable from the header row alone (both need
+// items) — every caller computes them separately and spreads them in on
+// top of this.
+function mapHeader(row: HeaderRow): Omit<BillingDocument, "amount" | "jobNos"> {
   return {
     id: row.id,
     docNo: row.doc_no,
@@ -538,7 +571,7 @@ export async function getBillingDocuments(docType: BillingDocumentType): Promise
   const { data, error } = await supabase
     .from("billing_notes")
     .select(
-      `${HEADER_COLUMNS}, billing_note_items(amount, apply_wht, payments(projects(job_no)), quotations(job_number))`,
+      `${HEADER_COLUMNS}, billing_note_items(amount, apply_wht, invoice_no_snapshot, manual_description, payments(projects(job_no)), quotations(job_number))`,
     )
     .eq("doc_type", docType)
     .order("created_at", { ascending: false });
@@ -547,11 +580,21 @@ export async function getBillingDocuments(docType: BillingDocumentType): Promise
   type ListItemRow = {
     amount: number;
     apply_wht: boolean;
+    invoice_no_snapshot: string | null;
+    manual_description: string | null;
     payments?: { projects: { job_no: string | null } | null } | null;
     quotations?: { job_number: string | null } | null;
   };
-  // @ts-expect-error -- Supabase types the joined relation loosely here
-  return (data ?? []).map((row: HeaderRow & { billing_note_items: ListItemRow[] }) => {
+  const rows = (data ?? []) as unknown as (HeaderRow & { billing_note_items: ListItemRow[] })[];
+
+  // One batched lookup across every row's items, rather than one query per
+  // document — see resolveJobNosByQuotationText.
+  const jobNoByQuotationDocNo = await resolveJobNosByQuotationText(
+    supabase,
+    rows.flatMap((row) => (row.billing_note_items ?? []).flatMap((it) => [it.invoice_no_snapshot, it.manual_description])),
+  );
+
+  return rows.map((row) => {
     const items = row.billing_note_items ?? [];
     const summary = computeBillingDocumentSummary(
       items.map((it) => ({ amount: Number(it.amount), applyWht: it.apply_wht })),
@@ -561,9 +604,28 @@ export async function getBillingDocuments(docType: BillingDocumentType): Promise
       Number(row.deposit_deduction_amount),
       Number(row.deposit_wht_amount),
     );
-    const itemJobNo = items.find((it) => it.payments?.projects?.job_no || it.quotations?.job_number);
-    const jobNo = row.job_no ?? itemJobNo?.payments?.projects?.job_no ?? itemJobNo?.quotations?.job_number ?? null;
-    return { ...mapHeader(row), jobNo, amount: summary.netPayable };
+    // Every DISTINCT job this document actually covers — a ใบวางบิล/
+    // ใบเสร็จรับเงิน can legitimately bundle several different JOBs' invoices
+    // into one document (see BL202609250001), so the list's JOB column
+    // shows all of them instead of just one. Falls back, per item, to a
+    // quotation number extracted from its own text (see
+    // resolveJobNosByQuotationText) for a hand-typed line with no
+    // structured link at all.
+    const jobNoSet = new Set<string>();
+    if (row.job_no) jobNoSet.add(row.job_no);
+    for (const it of items) {
+      const structured = it.payments?.projects?.job_no ?? it.quotations?.job_number;
+      if (structured) {
+        jobNoSet.add(structured);
+        continue;
+      }
+      for (const docNo of [...extractQuotationDocNos(it.invoice_no_snapshot), ...extractQuotationDocNos(it.manual_description)]) {
+        const jobNo = jobNoByQuotationDocNo[docNo];
+        if (jobNo) jobNoSet.add(jobNo);
+      }
+    }
+    const jobNos = [...jobNoSet];
+    return { ...mapHeader(row), jobNo: jobNos[0] ?? null, jobNos, amount: summary.netPayable };
   });
 }
 
@@ -683,6 +745,24 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     );
   }
 
+  // Last-resort DISPLAY-ONLY fallback for a hand-typed line with no
+  // structured link at all (no payment_id/quotation_id anywhere in its own
+  // copy chain — e.g. a "รับเงินมัดจำ ของใบเสนอราคาเลขที่ QT6909-013 ..." line
+  // typed straight into the description, which is what left several real
+  // documents permanently unable to show their JOB) — see
+  // resolveJobNosByQuotationText.
+  const jobNoByQuotationDocNo = await resolveJobNosByQuotationText(
+    supabase,
+    itemRows.flatMap((it) => [it.invoice_no_snapshot, it.manual_description]),
+  );
+  function jobNoFromText(text: string | null): string | null {
+    for (const docNo of extractQuotationDocNos(text)) {
+      const jobNo = jobNoByQuotationDocNo[docNo];
+      if (jobNo) return jobNo;
+    }
+    return null;
+  }
+
   // Fallback for documents created before job_no was stored on the header
   // itself — derive it from the first item's own payment-sourced JOB (only
   // available when showsItemizedDetail selected payments(projects(job_no))).
@@ -702,22 +782,27 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     // @ts-expect-error -- Supabase types the joined relation loosely here
     ...mapHeader(header),
     jobNo: jobNoFallback,
+    jobNos: [],
     amount: docSummary.netPayable,
     items: itemRows.map((it) => {
-      // Falls back, in order: (1) the JOB of the specific ใบกำกับภาษี this
-      // line was copied from, when it's a copied typed line (source_item_id
-      // — see jobNoBySourceItemId above) — this is what lets one
-      // ใบเสร็จรับเงิน correctly show several different JOBs across its own
-      // lines, one per line, instead of a single document-wide guess; then
-      // (2) the document's own stored header.job_no for a line with no
-      // source of its own (typed fresh, never copied from anywhere) — not
-      // the fuller jobNoFallback above, which also guesses from an
-      // unrelated item's own JOB and would misattribute one to a line that
-      // has nothing to do with it.
+      // Falls back, in order: (1) the item's own payment/quotation link;
+      // (2) the JOB of the specific ใบกำกับภาษี this line was copied from,
+      // when it's a copied typed line (source_item_id — see
+      // jobNoBySourceItemId above); (3) a quotation doc no. extracted from
+      // THIS line's own text, matched against a real quotations row (see
+      // jobNoFromText above) — the last structured signal before giving up
+      // on this specific line; then (4) the document's own stored
+      // header.job_no for a line with no source of its own (typed fresh,
+      // never copied from anywhere, no quotation number in its text
+      // either) — not the fuller jobNoFallback above, which also guesses
+      // from an unrelated item's own JOB and would misattribute one to a
+      // line that has nothing to do with it.
       const jobNo =
         it.payments?.projects?.job_no ??
         it.quotations?.job_number ??
         (it.source_item_id ? jobNoBySourceItemId[it.source_item_id] : null) ??
+        jobNoFromText(it.manual_description) ??
+        jobNoFromText(it.invoice_no_snapshot) ??
         header.job_no ??
         null;
       const quotationDetail = it.quotation_id

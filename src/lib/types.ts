@@ -1182,6 +1182,12 @@ export interface BillingDocument {
   // created before this field existed, or created via a plain customer
   // search rather than the JOB picker.
   jobNo: string | null;
+  // Every DISTINCT job this document covers — a ใบวางบิล/ใบเสร็จรับเงิน can
+  // legitimately bundle several JOBs' invoices into one document, in which
+  // case jobNo alone can't represent it; list views show this instead.
+  // Always [] on BillingDocumentDetail (the view page shows each item's own
+  // job directly, so computing a document-wide set serves no purpose there).
+  jobNos: string[];
   // The document's own net payable total (after discount/VAT/WHT/
   // retention/deposit deduction — see computeBillingDocumentSummary),
   // computed server-side from its items so list views can show an amount

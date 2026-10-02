@@ -180,6 +180,15 @@ export function BillingDocumentForm({
   // instead (see the ลูกค้า section below), so its value needs restoring on
   // edit like any other saved field.
   const [jobNo, setJobNo] = useState(() => (docType === "receipt" ? (initialData?.jobNo ?? "") : ""));
+  // Blocks submit when a freshly hand-typed line (no sourceItemId — i.e.
+  // not copied forward from an already-tracked document, which already
+  // resolves its own JOB via the server's chain lookup) has no Job
+  // reference anywhere on the document. Per explicit feedback: staff
+  // typing e.g. "รับเงินมัดจำ ของใบเสนอราคาเลขที่ QT..." by hand instead of
+  // using the เลขที่ Job picker is exactly what left several real documents
+  // with no way to ever find their JOB again — see the SQL fixes this
+  // session applied to JB2609191's billing/tax invoice documents.
+  const [clientError, setClientError] = useState<string | null>(null);
   const [docNo, setDocNo] = useState(initialData?.docNo ?? "");
   const [customerId, setCustomerId] = useState(initialData?.customerId ?? "");
   const [customerName, setCustomerName] = useState(initialData?.customerName ?? "");
@@ -820,6 +829,18 @@ export function BillingDocumentForm({
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
+        setClientError(null);
+        // The เลขที่ Job picker only exists on this document in create mode
+        // (non-receipt) or always (receipt) — see its own render guards
+        // below. A freshly-typed manual line with no job anywhere on the
+        // document can never be found again by JOB later, so this blocks
+        // submit rather than silently saving another unlinkable row.
+        const jobPickerAvailable = mode === "create" || docType === "receipt";
+        const hasUnlinkedManualItem = manualItems.some((row) => row.description.trim() && !row.sourceItemId);
+        if (jobPickerAvailable && hasUnlinkedManualItem && !jobNo) {
+          setClientError("กรุณาเลือกเลขที่ Job ก่อนบันทึก — มีรายการที่พิมพ์เองโดยไม่ได้ผูกกับเอกสารหรือ Job ใดๆ");
+          return;
+        }
         const fd = new FormData(e.currentTarget);
         // The Select's own hidden input mirrors its displayed value
         // (NONE_VALUE when unset), so new FormData(form) would submit that
@@ -909,7 +930,9 @@ export function BillingDocumentForm({
           </div>
         )}
 
-        {state.error && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>}
+        {(clientError ?? state.error) && (
+          <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{clientError ?? state.error}</p>
+        )}
 
         {/* ใบเสร็จรับเงิน is deliberately excluded — per feedback, its
             document picker should always start from the customer, since
@@ -963,7 +986,9 @@ export function BillingDocumentForm({
           <div className="space-y-2">
             <Label htmlFor="job_no_receipt">เลขที่ Job</Label>
             <JobNoSelect id="job_no_receipt" value={jobNo} onChange={setJobNo} jobNos={jobNoSuggestions} />
-            <p className="text-xs text-muted-foreground">ไม่บังคับ — ใช้พิมพ์อ้างอิงบนเอกสารเท่านั้น ไม่จำกัดรายการที่เลือกได้ด้านล่าง</p>
+            <p className="text-xs text-muted-foreground">
+              ใช้พิมพ์อ้างอิงบนเอกสารเท่านั้น ไม่จำกัดรายการที่เลือกได้ด้านล่าง — บังคับกรอกเฉพาะเมื่อมีรายการที่พิมพ์เอง
+            </p>
           </div>
         )}
 

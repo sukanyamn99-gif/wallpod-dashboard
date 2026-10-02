@@ -83,7 +83,7 @@ export function BillingDocumentTable({
       (d) =>
         d.docNo.toLowerCase().includes(q) ||
         d.customerName.toLowerCase().includes(q) ||
-        (d.jobNo ?? "").toLowerCase().includes(q),
+        d.jobNos.some((j) => j.toLowerCase().includes(q)),
     );
   }, [documents, query]);
 
@@ -131,7 +131,7 @@ export function BillingDocumentTable({
                 onClick={() => router.push(`/dashboard/billing-documents/${routeSegment}/view/${doc.id}`)}
               >
                 <TableCell className="font-medium whitespace-nowrap">{doc.docNo}</TableCell>
-                <TableCell className="whitespace-nowrap">{doc.jobNo ?? "—"}</TableCell>
+                <TableCell className="whitespace-nowrap">{doc.jobNos.length > 0 ? doc.jobNos.join(", ") : "—"}</TableCell>
                 <TableCell className="whitespace-nowrap">{doc.customerName}</TableCell>
                 <TableCell className="whitespace-nowrap">{new Date(doc.docDate).toLocaleDateString("th-TH")}</TableCell>
                 <TableCell className="whitespace-nowrap">{new Date(doc.dueDate).toLocaleDateString("th-TH")}</TableCell>
