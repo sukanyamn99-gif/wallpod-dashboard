@@ -16,9 +16,10 @@ import {
 } from "@/components/ui/table";
 import { BILLING_DOCUMENT_LABELS } from "@/lib/types";
 import type { BillingDocument, BillingDocumentType, Profile } from "@/lib/types";
+import { formatTHB } from "@/lib/format";
 import { deleteBillingDocument } from "./actions";
 
-const TOTAL_COLUMNS = 6;
+const TOTAL_COLUMNS = 8;
 
 // Same blanket rule as each doc type's own canEdit (view/edit pages) —
 // owner/manager/account can edit or delete any document, anyone else only
@@ -79,7 +80,10 @@ export function BillingDocumentTable({
     const q = query.trim().toLowerCase();
     if (!q) return documents;
     return documents.filter(
-      (d) => d.docNo.toLowerCase().includes(q) || d.customerName.toLowerCase().includes(q),
+      (d) =>
+        d.docNo.toLowerCase().includes(q) ||
+        d.customerName.toLowerCase().includes(q) ||
+        (d.jobNo ?? "").toLowerCase().includes(q),
     );
   }, [documents, query]);
 
@@ -89,7 +93,7 @@ export function BillingDocumentTable({
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="ค้นหาเลขที่เอกสาร, ลูกค้า..."
+          placeholder="ค้นหาเลขที่เอกสาร, ลูกค้า, เลขที่ Job..."
           className="max-w-sm"
         />
         <Button nativeButton={false} render={<Link href={`/dashboard/billing-documents/${routeSegment}/new`} />}>
@@ -103,10 +107,12 @@ export function BillingDocumentTable({
           <TableHeader>
             <TableRow>
               <TableHead className="whitespace-nowrap">เลขที่เอกสาร</TableHead>
+              <TableHead className="whitespace-nowrap">JOB</TableHead>
               <TableHead className="whitespace-nowrap">ลูกค้า</TableHead>
               <TableHead className="whitespace-nowrap">วันที่</TableHead>
               <TableHead className="whitespace-nowrap">ครบกำหนด</TableHead>
               <TableHead className="whitespace-nowrap">ผู้ขาย</TableHead>
+              <TableHead className="text-right whitespace-nowrap">จำนวนเงิน</TableHead>
               <TableHead className="whitespace-nowrap">จัดการ</TableHead>
             </TableRow>
           </TableHeader>
@@ -125,10 +131,12 @@ export function BillingDocumentTable({
                 onClick={() => router.push(`/dashboard/billing-documents/${routeSegment}/view/${doc.id}`)}
               >
                 <TableCell className="font-medium whitespace-nowrap">{doc.docNo}</TableCell>
+                <TableCell className="whitespace-nowrap">{doc.jobNo ?? "—"}</TableCell>
                 <TableCell className="whitespace-nowrap">{doc.customerName}</TableCell>
                 <TableCell className="whitespace-nowrap">{new Date(doc.docDate).toLocaleDateString("th-TH")}</TableCell>
                 <TableCell className="whitespace-nowrap">{new Date(doc.dueDate).toLocaleDateString("th-TH")}</TableCell>
                 <TableCell className="whitespace-nowrap">{doc.salesRepName ?? "—"}</TableCell>
+                <TableCell className="text-right whitespace-nowrap">{formatTHB(doc.amount)}</TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <div className="flex items-center gap-1">
                     <Button

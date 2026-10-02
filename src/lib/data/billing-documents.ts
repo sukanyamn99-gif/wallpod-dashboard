@@ -493,7 +493,9 @@ type HeaderRow = {
   profiles: { full_name: string } | null;
 };
 
-function mapHeader(row: HeaderRow): BillingDocument {
+// amount isn't derivable from the header row alone (needs items) — every
+// caller computes it separately and spreads it in on top of this.
+function mapHeader(row: HeaderRow): Omit<BillingDocument, "amount"> {
   return {
     id: row.id,
     docNo: row.doc_no,
@@ -529,14 +531,40 @@ function mapHeader(row: HeaderRow): BillingDocument {
 export async function getBillingDocuments(docType: BillingDocumentType): Promise<BillingDocument[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
+  // Items pulled alongside the header — just enough to compute each row's
+  // net payable total and, for the documents created before job_no was
+  // stored on the header itself (see getBillingDocumentById's identical
+  // fallback), to resolve a JOB number for the list's JOB column.
   const { data, error } = await supabase
     .from("billing_notes")
-    .select(HEADER_COLUMNS)
+    .select(
+      `${HEADER_COLUMNS}, billing_note_items(amount, apply_wht, payments(projects(job_no)), quotations(job_number))`,
+    )
     .eq("doc_type", docType)
     .order("created_at", { ascending: false });
   if (error) throw error;
+
+  type ListItemRow = {
+    amount: number;
+    apply_wht: boolean;
+    payments?: { projects: { job_no: string | null } | null } | null;
+    quotations?: { job_number: string | null } | null;
+  };
   // @ts-expect-error -- Supabase types the joined relation loosely here
-  return (data ?? []).map(mapHeader);
+  return (data ?? []).map((row: HeaderRow & { billing_note_items: ListItemRow[] }) => {
+    const items = row.billing_note_items ?? [];
+    const summary = computeBillingDocumentSummary(
+      items.map((it) => ({ amount: Number(it.amount), applyWht: it.apply_wht })),
+      Number(row.discount_amount),
+      Number(row.wht_percent),
+      Number(row.retention_percent),
+      Number(row.deposit_deduction_amount),
+      Number(row.deposit_wht_amount),
+    );
+    const itemJobNo = items.find((it) => it.payments?.projects?.job_no || it.quotations?.job_number);
+    const jobNo = row.job_no ?? itemJobNo?.payments?.projects?.job_no ?? itemJobNo?.quotations?.job_number ?? null;
+    return { ...mapHeader(row), jobNo, amount: summary.netPayable };
+  });
 }
 
 export async function getBillingDocumentById(id: string): Promise<BillingDocumentDetail | null> {
@@ -661,11 +689,20 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
   // A quotation-sourced or manual-only document with no stored job_no
   // simply prints blank rather than guessing among a customer's other JOBs.
   const jobNoFallback = header.job_no ?? itemRows.find((it) => it.payments?.projects?.job_no)?.payments?.projects?.job_no ?? null;
+  const docSummary = computeBillingDocumentSummary(
+    itemRows.map((it) => ({ amount: Number(it.amount), applyWht: it.apply_wht })),
+    Number(header.discount_amount),
+    Number(header.wht_percent),
+    Number(header.retention_percent),
+    Number(header.deposit_deduction_amount),
+    Number(header.deposit_wht_amount),
+  );
 
   return {
     // @ts-expect-error -- Supabase types the joined relation loosely here
     ...mapHeader(header),
     jobNo: jobNoFallback,
+    amount: docSummary.netPayable,
     items: itemRows.map((it) => {
       // Falls back, in order: (1) the JOB of the specific ใบกำกับภาษี this
       // line was copied from, when it's a copied typed line (source_item_id
