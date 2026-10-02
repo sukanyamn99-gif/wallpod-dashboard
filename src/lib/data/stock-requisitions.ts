@@ -20,7 +20,9 @@ type HeaderRow = {
   customers: { name: string } | null;
 };
 
-function mapHeader(row: HeaderRow): Omit<StockRequisition, "items"> {
+// totalValue isn't derivable from the header row alone (needs items) —
+// every caller computes it separately and spreads it in on top of this.
+function mapHeader(row: HeaderRow): Omit<StockRequisition, "items" | "totalValue"> {
   return {
     id: row.id,
     docNo: row.doc_no,
@@ -44,12 +46,28 @@ export async function getStockRequisitions(): Promise<Omit<StockRequisition, "it
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("stock_requisitions")
-    .select(HEADER_COLUMNS)
+    .select(
+      `${HEADER_COLUMNS}, stock_requisition_items(quantity, unit_cost, stock_products(unit_cost))`,
+    )
     .order("created_at", { ascending: false });
   if (error) throw error;
 
-  // @ts-expect-error -- Supabase types the joined relation loosely here
-  return (data ?? []).map(mapHeader);
+  type ListItemRow = {
+    quantity: number;
+    unit_cost: number;
+    stock_products?: { unit_cost: number } | null;
+  };
+  const rows = data as unknown as (HeaderRow & { stock_requisition_items: ListItemRow[] })[];
+
+  return rows.map((row) => {
+    // Same snapshot-or-live-fallback rule as getStockRequisitionById, just
+    // without isEstimatedCost (the list only needs the number, not the flag).
+    const totalValue = (row.stock_requisition_items ?? []).reduce((sum, it) => {
+      const unitCost = Number(it.unit_cost) > 0 ? Number(it.unit_cost) : Number(it.stock_products?.unit_cost ?? 0);
+      return sum + Number(it.quantity) * unitCost;
+    }, 0);
+    return { ...mapHeader(row), totalValue };
+  });
 }
 
 export async function getStockRequisitionById(id: string): Promise<StockRequisition | null> {
@@ -98,6 +116,7 @@ export async function getStockRequisitionById(id: string): Promise<StockRequisit
   return {
     // @ts-expect-error -- Supabase types the joined relation loosely here
     ...mapHeader(header),
+    totalValue: mappedItems.reduce((sum, it) => sum + it.quantity * it.unitCost, 0),
     items: mappedItems,
   };
 }

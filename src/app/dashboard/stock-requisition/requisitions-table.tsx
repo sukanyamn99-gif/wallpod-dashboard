@@ -17,9 +17,10 @@ import {
 } from "@/components/ui/table";
 import { REQUISITION_PURPOSE_LABELS } from "@/lib/types";
 import type { Profile, StockRequisition } from "@/lib/types";
+import { formatTHB } from "@/lib/format";
 import { deleteStockRequisition } from "./actions";
 
-const TOTAL_COLUMNS = 8;
+const TOTAL_COLUMNS = 10;
 
 function canDelete(profile: Profile, requisition: Omit<StockRequisition, "items">) {
   return profile.role === "owner" || profile.role === "manager" || requisition.requestedById === profile.id;
@@ -89,7 +90,8 @@ export function RequisitionsTable({
         r.docNo.toLowerCase().includes(q) ||
         (r.departmentName ?? "").toLowerCase().includes(q) ||
         r.requestedByName.toLowerCase().includes(q) ||
-        (r.projectName ?? "").toLowerCase().includes(q),
+        (r.projectName ?? "").toLowerCase().includes(q) ||
+        (r.jobNo ?? "").toLowerCase().includes(q),
     );
   }, [requisitions, query]);
 
@@ -98,7 +100,7 @@ export function RequisitionsTable({
       <Input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="ค้นหาเลขที่เอกสาร, แผนก, ผู้เบิก..."
+        placeholder="ค้นหาเลขที่เอกสาร, แผนก, ผู้เบิก, เลขที่ Job..."
         className="max-w-sm"
       />
 
@@ -110,8 +112,10 @@ export function RequisitionsTable({
               <TableHead className="whitespace-nowrap">แผนก</TableHead>
               <TableHead className="whitespace-nowrap">ผู้เบิก</TableHead>
               <TableHead className="whitespace-nowrap">ชื่องาน</TableHead>
+              <TableHead className="whitespace-nowrap">เลขที่ Job</TableHead>
               <TableHead className="whitespace-nowrap">ลูกค้า</TableHead>
               <TableHead className="whitespace-nowrap">สถานะ</TableHead>
+              <TableHead className="text-right whitespace-nowrap">มูลค่า</TableHead>
               <TableHead className="whitespace-nowrap">วันที่</TableHead>
               <TableHead className="whitespace-nowrap">จัดการ</TableHead>
             </TableRow>
@@ -139,10 +143,12 @@ export function RequisitionsTable({
                     ({REQUISITION_PURPOSE_LABELS[r.purpose]})
                   </span>
                 </TableCell>
+                <TableCell className="whitespace-nowrap">{r.jobNo ?? "—"}</TableCell>
                 <TableCell className="whitespace-nowrap">{r.customerName ?? "—"}</TableCell>
                 <TableCell className="whitespace-nowrap">
                   <Badge variant="secondary">{r.status}</Badge>
                 </TableCell>
+                <TableCell className="text-right whitespace-nowrap">{formatTHB(r.totalValue)}</TableCell>
                 <TableCell className="whitespace-nowrap">
                   {new Date(r.createdAt).toLocaleString("th-TH")}
                 </TableCell>

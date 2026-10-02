@@ -402,6 +402,10 @@ export interface StockRequisition {
   note: string | null;
   status: string;
   createdAt: string;
+  // Sum of quantity × unitCost across every item — same formula the detail/
+  // print views already compute client-side from `items`, precomputed
+  // server-side here so the list can show it without fetching every item.
+  totalValue: number;
   items: StockRequisitionItem[];
 }
 
