@@ -417,12 +417,28 @@ export function BillingDocumentForm({
         setBillingNoteItems(billableBillingNoteItems);
         // The item only stores quotationId — match it back to whichever
         // tax invoice shares that same quotation so its checkbox starts
-        // checked, since a tax invoice isn't itself what's persisted.
-        const existingQuotationIds = new Set(
-          (initialData.items ?? []).map((it) => it.quotationId).filter((id): id is string => !!id),
+        // checked, since a tax invoice isn't itself what's persisted. Also
+        // requires the candidate's own net payable to match what's actually
+        // stored on this line — a quotation can legitimately be referenced
+        // by more than one document (e.g. billed directly via a tax invoice
+        // AND separately bundled on an unrelated ใบวางบิล), and matching on
+        // quotationId alone picked up the wrong candidate's amount in that
+        // case, silently replacing this document's own stored total with a
+        // different document's when the page loaded (caught via a real
+        // mismatch: this line's own ฿3,852 vs a same-quotation ใบวางบิล's
+        // ฿3,744 — see JB2609208's incident).
+        const existingAmountByQuotationId = new Map(
+          (initialData.items ?? [])
+            .filter((it): it is typeof it & { quotationId: string } => !!it.quotationId)
+            .map((it) => [it.quotationId, it.amount]),
         );
         const matchedQuotationIds = new Set(
-          billableTaxInvoices.filter((ti) => existingQuotationIds.has(ti.quotationId)).map((ti) => ti.quotationId),
+          billableTaxInvoices
+            .filter((ti) => {
+              const existingAmount = existingAmountByQuotationId.get(ti.quotationId);
+              return existingAmount !== undefined && Math.abs(existingAmount - ti.netPayable) < 0.01;
+            })
+            .map((ti) => ti.quotationId),
         );
         setSelectedTaxInvoices(
           new Set(billableTaxInvoices.filter((ti) => matchedQuotationIds.has(ti.quotationId)).map((ti) => ti.id)),
