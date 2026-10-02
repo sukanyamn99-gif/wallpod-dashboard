@@ -664,12 +664,13 @@ export function ProjectSaleForm({
         <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">งวดที่ 1</p>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-7">
-            {/* เลขที่ใบวางบิล/เลขที่ใบกำกับภาษี are pure auto-fill, never
-                typed by staff (see SYNC_FIELDS in billing-documents/actions.ts)
-                — hidden while empty instead of showing an input staff can't
-                meaningfully use, and appearing once a real document syncs
-                the value in. เลขที่ใบเสร็จ stays always visible below since
-                staff do type into it directly. */}
+            {/* เลขที่ใบวางบิล is pure auto-fill, never typed by staff (see
+                SYNC_FIELDS in billing-documents/actions.ts) — hidden while
+                empty instead of showing an input staff can't meaningfully
+                use, and appearing once a real document syncs the value in.
+                เลขที่ใบกำกับภาษี/เลขที่ใบเสร็จ stay always visible below since
+                staff do sometimes need to type them in directly (e.g. a
+                document issued outside the normal sync flow). */}
             {billingNoteNo1 && (
               <>
                 <div className="space-y-2">
@@ -718,24 +719,20 @@ export function ProjectSaleForm({
                 <DateInput id="paid_date_1" name="paid_date_1" value={paidDate1} onChange={setPaidDate1} />
               </div>
             )}
-            {taxInvoiceNo1 && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="tax_invoice_no_1">เลขที่ใบกำกับภาษี</Label>
-                  <Input
-                    id="tax_invoice_no_1"
-                    name="tax_invoice_no_1"
-                    value={taxInvoiceNo1}
-                    onChange={(e) => setTaxInvoiceNo1(e.target.value)}
-                    placeholder="INV..."
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tax_invoice_date_1">วันที่ออกใบกำกับภาษี</Label>
-                  <DateInput id="tax_invoice_date_1" name="tax_invoice_date_1" value={taxInvoiceDate1} onChange={setTaxInvoiceDate1} />
-                </div>
-              </>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="tax_invoice_no_1">เลขที่ใบกำกับภาษี</Label>
+              <Input
+                id="tax_invoice_no_1"
+                name="tax_invoice_no_1"
+                value={taxInvoiceNo1}
+                onChange={(e) => setTaxInvoiceNo1(e.target.value)}
+                placeholder="INV..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tax_invoice_date_1">วันที่ออกใบกำกับภาษี</Label>
+              <DateInput id="tax_invoice_date_1" name="tax_invoice_date_1" value={taxInvoiceDate1} onChange={setTaxInvoiceDate1} />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="receipt_no_1">เลขที่ใบเสร็จ</Label>
               <Input

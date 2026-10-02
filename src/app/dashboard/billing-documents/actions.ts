@@ -357,6 +357,58 @@ async function clearQuotationSourcedSyncFields(
     .not("source_tax_invoice_id", "is", null);
 }
 
+// A manual item (see ParsedManualItem) can be a straight copy of a line
+// that appeared on an earlier billing document — "เครดิตมัดจำ"/"ติ๊กเลือกใบที่
+// เคยออกไปแล้ว" style flows chain these forward via source_item_id, possibly
+// several documents deep (e.g. a receipt crediting a tax invoice that itself
+// credited a billing note). When that chain bottoms out in a line that was
+// originally selected by a direct payments.id reference (a real foreign key,
+// not inferred from text), this document can sync its doc no./date back onto
+// that SAME payments row exactly like a direct itemPaymentIds selection —
+// closing the gap that otherwise leaves every document downstream of that
+// first one permanently unable to link back to WALLPOD Project Sales.
+// A chain that bottoms out in a line with no payment_id (a hand-typed
+// "รับเงินมัดจำ..." deposit note written before any payments row existed,
+// referencing a quotation only as free text) has no reliable FK to resolve
+// — walking stops there and that item is left unsynced, same as before this
+// function existed. Returns a map keyed by the manual item's OWN
+// sourceItemId (what the caller already has) -> the resolved payments.id.
+async function resolvePaymentIdsFromManualItemChain(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  manualItems: { sourceItemId: string | null }[],
+): Promise<Map<string, string>> {
+  const result = new Map<string, string>();
+  let frontier = manualItems.map((m) => m.sourceItemId).filter((id): id is string => !!id);
+  // Tracks, for each id currently being looked up, which of the CALLER's
+  // own sourceItemId values it descended from — so a resolution found
+  // several hops down still maps back to the right caller-facing key.
+  let originById = new Map(frontier.map((id) => [id, id]));
+
+  for (let hop = 0; hop < 6 && frontier.length > 0; hop++) {
+    const { data: rows, error } = await supabase
+      .from("billing_note_items")
+      .select("id, payment_id, source_item_id")
+      .in("id", frontier);
+    if (error || !rows) break;
+    const nextFrontier: string[] = [];
+    const nextOriginById = new Map<string, string>();
+    for (const row of rows) {
+      const origin = originById.get(row.id);
+      if (!origin) continue;
+      if (row.payment_id) {
+        result.set(origin, row.payment_id);
+      } else if (row.source_item_id) {
+        nextFrontier.push(row.source_item_id);
+        nextOriginById.set(row.source_item_id, origin);
+      }
+      // else: dead end (manual, no further source) — origin stays unresolved.
+    }
+    frontier = nextFrontier;
+    originById = nextOriginById;
+  }
+  return result;
+}
+
 interface ParsedManualItem {
   description: string;
   qty: number;
@@ -810,6 +862,37 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
   // invoice: no field to sync — eligibility already requires invoice_no to
   // already be set on the payment, so this document just formalizes/prints it.
 
+  // Manual items copied forward from an earlier document (see
+  // resolvePaymentIdsFromManualItemChain) that chain back to a real
+  // payments.id get the exact same sync treatment as a direct itemPaymentIds
+  // selection above — just resolved indirectly instead of ticked directly.
+  if (syncFields && manualItems.length > 0) {
+    const manualLinks = await resolvePaymentIdsFromManualItemChain(supabase, manualItems);
+    const applyWhtByPaymentId = new Map<string, boolean>();
+    for (const m of manualItems) {
+      const paymentId = m.sourceItemId ? manualLinks.get(m.sourceItemId) : undefined;
+      if (paymentId && !itemPaymentIds.includes(paymentId)) applyWhtByPaymentId.set(paymentId, m.applyWht);
+    }
+    if (applyWhtByPaymentId.size > 0) {
+      const { data: chainPayments } = await supabase
+        .from("payments")
+        .select("id, amount, projects(job_no)")
+        .in("id", [...applyWhtByPaymentId.keys()]);
+      for (const p of chainPayments ?? []) {
+        const applyWht = applyWhtByPaymentId.get(p.id) ?? true;
+        const whtAmount = applyWht ? Math.round(((p.amount / 1.07) * (whtPercent / 100)) * 100) / 100 : 0;
+        const { error: syncErr } = await supabase
+          .from("payments")
+          .update({ [syncFields.no]: docNo, [syncFields.date]: docDate, wht_amount: whtAmount })
+          .eq("id", p.id);
+        if (syncErr) continue; // best-effort — this is a secondary, indirectly-resolved link
+        // @ts-expect-error -- Supabase types the joined relation loosely here
+        const jobNo = (p.projects as { job_no: string | null } | null)?.job_no;
+        if (jobNo) paymentJobNos.push(jobNo);
+      }
+    }
+  }
+
   // Quotation-sourced items (JOB billed directly from an accepted
   // quotation, no payment installment recorded yet) get a brand-new
   // installment auto-created on the matching JOB instead — see
@@ -1043,6 +1126,37 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
       // @ts-expect-error -- Supabase types the joined relation loosely here
       const jobNo = (p.projects as { job_no: string | null } | null)?.job_no;
       if (jobNo) paymentJobNos.push(jobNo);
+    }
+  }
+
+  // Same manual-item chain resolution as createBillingDocument — see
+  // resolvePaymentIdsFromManualItemChain. Re-run on every edit (not just
+  // create) so a re-save after the underlying payments row gained the
+  // ability to be matched (e.g. the project was recorded later) picks it up.
+  if (syncFields && manualItems.length > 0) {
+    const manualLinks = await resolvePaymentIdsFromManualItemChain(supabase, manualItems);
+    const applyWhtByPaymentId = new Map<string, boolean>();
+    for (const m of manualItems) {
+      const paymentId = m.sourceItemId ? manualLinks.get(m.sourceItemId) : undefined;
+      if (paymentId && !itemPaymentIds.includes(paymentId)) applyWhtByPaymentId.set(paymentId, m.applyWht);
+    }
+    if (applyWhtByPaymentId.size > 0) {
+      const { data: chainPayments } = await supabase
+        .from("payments")
+        .select("id, amount, projects(job_no)")
+        .in("id", [...applyWhtByPaymentId.keys()]);
+      for (const p of chainPayments ?? []) {
+        const applyWht = applyWhtByPaymentId.get(p.id) ?? true;
+        const whtAmount = applyWht ? Math.round(((p.amount / 1.07) * (whtPercent / 100)) * 100) / 100 : 0;
+        const { error: syncErr } = await supabase
+          .from("payments")
+          .update({ [syncFields.no]: newDocNo, [syncFields.date]: docDate, wht_amount: whtAmount })
+          .eq("id", p.id);
+        if (syncErr) continue; // best-effort — this is a secondary, indirectly-resolved link
+        // @ts-expect-error -- Supabase types the joined relation loosely here
+        const jobNo = (p.projects as { job_no: string | null } | null)?.job_no;
+        if (jobNo) paymentJobNos.push(jobNo);
+      }
     }
   }
 
