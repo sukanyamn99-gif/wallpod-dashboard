@@ -1100,6 +1100,10 @@ export interface QuotationItemDetail {
   qty: number;
   unit: string;
   unitPrice: number;
+  // Per-line discount off unitPrice (%), as set on the quotation — totalPrice
+  // is already qty × unitPrice after this discount, so the printed table
+  // shows it explicitly instead of leaving unit price × qty ≠ line total.
+  discountPercent: number;
   totalPrice: number;
 }
 

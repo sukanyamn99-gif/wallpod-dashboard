@@ -360,7 +360,7 @@ async function fetchQuotationItemDetailsByIds(
   if (quotationIds.length === 0) return new Map();
   const { data: items, error } = await supabase
     .from("quotation_items")
-    .select("quotation_id, sort_order, product_code, product_name, thickness, size, color, unit_price, qty, unit, total_price")
+    .select("quotation_id, sort_order, product_code, product_name, thickness, size, color, unit_price, discount_percent, qty, unit, total_price")
     .in("quotation_id", quotationIds)
     .order("sort_order", { ascending: true });
   if (error) throw error;
@@ -377,6 +377,7 @@ async function fetchQuotationItemDetailsByIds(
       qty: Number(row.qty),
       unit: row.unit,
       unitPrice: Number(row.unit_price),
+      discountPercent: Number(row.discount_percent),
       totalPrice: Number(row.total_price),
     });
     itemsByQuotationId.set(row.quotation_id, list);

@@ -74,6 +74,11 @@ function DocumentBody({
     document.depositDeductionAmount,
     document.depositWhtAmount,
   );
+  // A ส่วนลด column appears only when at least one quotation line actually
+  // has a discount — otherwise unit price × qty wouldn't match the line
+  // total and the customer can't tell why. Documents with no discounted
+  // line print exactly as before.
+  const hasLineDiscount = document.items.some((it) => it.quotationItems?.some((qi) => qi.discountPercent > 0));
   // Shown once in the header instead of repeated per group inside the
   // items table — manual lines have no real underlying document, so
   // they're excluded. Just the reference number(s), no date.
@@ -166,6 +171,7 @@ function DocumentBody({
               <th className="border-r border-black p-1.5 font-medium">รายละเอียด</th>
               <th className="w-16 border-r border-black p-1.5 font-medium">จำนวน</th>
               <th className="w-24 border-r border-black p-1.5 font-medium">ราคาต่อหน่วย</th>
+              {hasLineDiscount && <th className="w-16 border-r border-black p-1.5 font-medium">ส่วนลด</th>}
               <th className="w-28 p-1.5 font-medium">จำนวนเงิน</th>
             </tr>
           </thead>
@@ -193,6 +199,7 @@ function DocumentBody({
                       <td className="border-r border-t border-black p-1.5 text-right">
                         {formatTHB(it.manualUnitPrice ?? 0)}
                       </td>
+                      {hasLineDiscount && <td className="border-r border-t border-black p-1.5"></td>}
                       {/* Pre-VAT line total (qty × unit price), not the
                           stored VAT-inclusive it.amount — matches the
                           create form's own per-row display and standard
@@ -221,6 +228,7 @@ function DocumentBody({
                       </td>
                       <td className="border-r border-t border-black p-1.5"></td>
                       <td className="border-r border-t border-black p-1.5 text-right"></td>
+                      {hasLineDiscount && <td className="border-r border-t border-black p-1.5"></td>}
                       <td className="border-t border-black p-1.5 text-right">{formatTHB(it.amount)}</td>
                     </tr>
                   );
@@ -257,6 +265,11 @@ function DocumentBody({
                             {qi.qty} {qi.unit}
                           </td>
                           <td className="border-r border-t border-black p-1.5 text-right">{formatTHB(qi.unitPrice)}</td>
+                          {hasLineDiscount && (
+                            <td className="border-r border-t border-black p-1.5">
+                              {qi.discountPercent > 0 ? `${qi.discountPercent}%` : ""}
+                            </td>
+                          )}
                           <td className="border-t border-black p-1.5 text-right">{formatTHB(qi.totalPrice)}</td>
                         </tr>
                       );
