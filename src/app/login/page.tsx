@@ -8,9 +8,9 @@ import { isSupabaseConfigured } from "@/lib/supabase/server";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, next } = await searchParams;
   const configured = isSupabaseConfigured();
 
   return (
@@ -32,6 +32,7 @@ export default async function LoginPage({
             </p>
           )}
           <form action={signIn} className="space-y-4">
+            {next && <input type="hidden" name="next" value={next} />}
             <div className="space-y-2">
               <Label htmlFor="email">อีเมล</Label>
               <Input id="email" name="email" type="email" required disabled={!configured} />

@@ -5,9 +5,19 @@ export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   // The AI read-only API authenticates with its own API key (see
-  // src/lib/ai-api.ts), not a browser login session — redirecting it to
-  // /login would make it unreachable for ChatGPT/other tools.
-  if (request.nextUrl.pathname.startsWith("/api/ai")) {
+  // src/lib/ai-api.ts), and the MCP endpoint + its OAuth machinery (/mcp,
+  // /.well-known, /oauth/register, /oauth/token) authenticate with OAuth
+  // tokens — none use a browser login session, so redirecting them to
+  // /login would make them unreachable for ChatGPT/other tools.
+  // (/oauth/authorize is NOT listed: it needs the logged-in session.)
+  const path = request.nextUrl.pathname;
+  if (
+    path.startsWith("/api/ai") ||
+    path === "/mcp" ||
+    path.startsWith("/.well-known/") ||
+    path === "/oauth/register" ||
+    path === "/oauth/token"
+  ) {
     return response;
   }
 
@@ -44,6 +54,11 @@ export async function updateSession(request: NextRequest) {
   if (!user && !isLoginPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
+    // Only the OAuth consent page comes back after login (so connecting
+    // ChatGPT can continue); every other page keeps its existing behavior.
+    const returnTo = path.startsWith("/oauth/") ? `${path}${request.nextUrl.search}` : null;
+    url.search = "";
+    if (returnTo) url.searchParams.set("next", returnTo);
     return NextResponse.redirect(url);
   }
 

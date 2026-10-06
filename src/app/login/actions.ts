@@ -7,11 +7,17 @@ export async function signIn(formData: FormData) {
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
 
+  // Only the OAuth consent page (see middleware) may be returned to — a
+  // relative path under /oauth/, never an arbitrary or external URL.
+  const next = String(formData.get("next") ?? "");
+  const safeNext = next.startsWith("/oauth/") && !next.includes("\\") && !next.startsWith("//") ? next : null;
+
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+    const nextParam = safeNext ? `&next=${encodeURIComponent(safeNext)}` : "";
+    redirect(`/login?error=${encodeURIComponent(error.message)}${nextParam}`);
   }
 
   // Best-effort activity log — a failure here must never block a
@@ -34,7 +40,7 @@ export async function signIn(formData: FormData) {
     }
   }
 
-  redirect("/dashboard/sales");
+  redirect(safeNext ?? "/dashboard/sales");
 }
 
 export async function signOut() {

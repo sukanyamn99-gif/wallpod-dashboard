@@ -81,3 +81,96 @@ export function checkAiApiKey(request: Request): Response | null {
   }
   return null;
 }
+
+export const AI_DEFAULT_LIMIT = 500;
+export const AI_MAX_LIMIT = 5000;
+
+export interface AiViewQuery {
+  from?: string | null;
+  to?: string | null;
+  limit?: number;
+  offset?: number;
+}
+
+// Shared by the REST route and the MCP getView tool. `from`/`to` must already
+// be validated as YYYY-MM-DD by the caller; the view name is allowlisted by
+// type, and every value is passed as a bound parameter.
+export async function queryAiView(pool: Pool, view: AiViewName, query: AiViewQuery) {
+  const config = AI_VIEWS[view];
+  const limit = Math.min(Math.max(query.limit ?? AI_DEFAULT_LIMIT, 1), AI_MAX_LIMIT);
+  const offset = Math.max(query.offset ?? 0, 0);
+
+  const where: string[] = [];
+  const values: unknown[] = [];
+  if (config.dateColumn) {
+    if (query.from) {
+      values.push(query.from);
+      where.push(`${config.dateColumn} >= $${values.length}`);
+    }
+    if (query.to) {
+      values.push(query.to);
+      where.push(`${config.dateColumn} <= $${values.length}`);
+    }
+  }
+  const whereSql = where.length > 0 ? `where ${where.join(" and ")}` : "";
+
+  const [countResult, rowsResult] = await Promise.all([
+    pool.query(`select count(*) as total from ai.${view} ${whereSql}`, values),
+    pool.query(
+      `select * from ai.${view} ${whereSql} order by ${config.orderBy} limit ${limit} offset ${offset}`,
+      values,
+    ),
+  ]);
+  const total = Number(countResult.rows[0].total);
+  return {
+    view,
+    total,
+    count: rowsResult.rows.length,
+    limit,
+    offset,
+    hasMore: offset + rowsResult.rows.length < total,
+    dateFilterColumn: config.dateColumn,
+    rows: rowsResult.rows,
+  };
+}
+
+export interface AiCatalogView {
+  description: string | null;
+  dateFilterColumn: string | null;
+  columns: { name: string; type: string; description: string | null }[];
+}
+
+// Every view the AI can read, with its meaning and columns — taken from the
+// database's own comments so it can't drift from what actually exists. A view
+// that exists in the schema but isn't allowlisted in AI_VIEWS stays hidden.
+export async function loadAiCatalog(pool: Pool): Promise<Record<string, AiCatalogView>> {
+  const { rows } = await pool.query(`
+    select c.relname as view_name,
+           obj_description(c.oid, 'pg_class') as description,
+           a.attname as column_name,
+           format_type(a.atttypid, a.atttypmod) as data_type,
+           col_description(c.oid, a.attnum) as column_description
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    join pg_attribute a on a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
+    where n.nspname = 'ai' and c.relkind = 'v'
+    order by c.relname, a.attnum
+  `);
+
+  const views: Record<string, AiCatalogView> = {};
+  for (const row of rows) {
+    const name: string = row.view_name;
+    if (!isAiViewName(name)) continue;
+    views[name] ??= {
+      description: row.description,
+      dateFilterColumn: AI_VIEWS[name].dateColumn,
+      columns: [],
+    };
+    views[name].columns.push({
+      name: row.column_name,
+      type: row.data_type,
+      description: row.column_description,
+    });
+  }
+  return views;
+}
