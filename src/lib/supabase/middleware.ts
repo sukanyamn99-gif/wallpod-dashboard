@@ -4,6 +4,13 @@ import { NextResponse, type NextRequest } from "next/server";
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
+  // The AI read-only API authenticates with its own API key (see
+  // src/lib/ai-api.ts), not a browser login session — redirecting it to
+  // /login would make it unreachable for ChatGPT/other tools.
+  if (request.nextUrl.pathname.startsWith("/api/ai")) {
+    return response;
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
