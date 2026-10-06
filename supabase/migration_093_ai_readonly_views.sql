@@ -8,7 +8,9 @@
 --
 -- Deliberately left out of every view: customer tax IDs/phones/addresses,
 -- payee tax IDs/bank accounts, user emails, free-text notes, image paths,
--- salary/social-security vouchers, payroll and commission tables.
+-- individual payment vouchers and petty cash rows (an earlier ai.expenses
+-- view was removed — see migration_094; ai.gp only exposes per-job cost
+-- TOTALS), payroll and commission tables.
 
 create schema if not exists ai;
 revoke all on schema ai from public, anon, authenticated;
@@ -210,45 +212,6 @@ comment on column ai.gp.requisition_cost is 'ต้นทุนจากใบ�
 comment on column ai.gp.voucher_cost is 'ต้นทุนจากใบสำคัญจ่ายที่ผูก JOB นี้';
 comment on column ai.gp.petty_cash_cost is 'ต้นทุนจากเงินสดย่อย (ใช้จ่าย) ที่ผูก JOB นี้';
 comment on column ai.gp.margin_percent is '% กำไร = profit / pre_vat × 100';
-
--- ============ ai.expenses — payment vouchers + petty cash spending ============
--- Salary and social-security vouchers are excluded: each row is one
--- employee's pay.
-
-create or replace view ai.expenses as
-select
-  'payment_voucher'::text as source,
-  doc_no,
-  voucher_date as expense_date,
-  to_char(voucher_date, 'YYYY-MM') as month,
-  payee_name,
-  category,
-  description,
-  job_no,
-  amount,
-  wht_amount,
-  payment_method
-from payment_vouchers
-where coalesce(category, '') not in ('เงินเดือน', 'ค่าประกันสังคม')
-union all
-select
-  'petty_cash'::text,
-  doc_no,
-  transaction_date,
-  to_char(transaction_date, 'YYYY-MM'),
-  biller_name,
-  category,
-  description,
-  job_no,
-  amount,
-  wht_amount,
-  'เงินสดย่อย'::text
-from petty_cash_transactions
-where transaction_type = 'expense';
-
-comment on view ai.expenses is 'ค่าใช้จ่าย: ใบสำคัญจ่าย + เงินสดย่อย (เฉพาะรายการใช้จ่าย) — ไม่รวมเงินเดือนและประกันสังคม';
-comment on column ai.expenses.source is 'payment_voucher = ใบสำคัญจ่าย, petty_cash = เงินสดย่อย';
-comment on column ai.expenses.job_no is 'JOB ที่ผูกค่าใช้จ่ายนี้ (ถ้ามี)';
 
 -- ============ ai.inventory — current stock ============
 

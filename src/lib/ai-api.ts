@@ -10,7 +10,6 @@ export const AI_VIEWS = {
   projects: { dateColumn: "project_date", orderBy: "project_date desc, job_no" },
   gp: { dateColumn: "project_date", orderBy: "project_date desc, job_no" },
   ar: { dateColumn: "project_date", orderBy: "project_date, job_no" },
-  expenses: { dateColumn: "expense_date", orderBy: "expense_date desc, doc_no" },
   inventory: { dateColumn: null, orderBy: "sku, name" },
   stock_movement: { dateColumn: "movement_date", orderBy: "moved_at desc" },
   sales_activity: { dateColumn: "visit_date", orderBy: "visit_date desc, created_at desc" },
