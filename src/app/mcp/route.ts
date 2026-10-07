@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { registerKoonwayTools } from "@/lib/mcp/tools";
+import { diag } from "@/lib/mcp/diag";
 import { CORS_HEADERS, MCP_SCOPE, corsPreflight, getOauthSecret, publicOrigin, verifyJwt } from "@/lib/mcp/oauth";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +33,12 @@ function unauthorized(origin: string, message: string) {
 // app's own authorization server after an owner/manager approved it.
 export async function POST(request: Request) {
   const origin = publicOrigin(request.headers);
+  // What the client is asking for (JSON-RPC method / tool name only).
+  const rpc = await request
+    .clone()
+    .json()
+    .then((b: { method?: string; params?: { name?: string } }) => ({ rpcMethod: b?.method, tool: b?.params?.name }))
+    .catch(() => ({ rpcMethod: undefined, tool: undefined }));
 
   if (!getOauthSecret()) {
     return withCors(
@@ -45,8 +52,15 @@ export async function POST(request: Request) {
   const authHeader = request.headers.get("authorization") ?? "";
   const token = authHeader.toLowerCase().startsWith("bearer ") ? authHeader.slice(7).trim() : "";
   const claims = token ? verifyJwt(token, "access") : null;
-  if (!claims) return unauthorized(origin, "ต้องมี access token ที่ถูกต้อง");
-  if (claims.aud !== `${origin}/mcp`) return unauthorized(origin, "token นี้ไม่ได้ออกให้ endpoint นี้");
+  if (!claims) {
+    diag("mcp.unauthorized", request, { ...rpc, reason: token ? "invalid-or-expired-token" : "no-token" });
+    return unauthorized(origin, "ต้องมี access token ที่ถูกต้อง");
+  }
+  if (claims.aud !== `${origin}/mcp`) {
+    diag("mcp.unauthorized", request, { ...rpc, reason: "wrong-audience", derivedOrigin: origin });
+    return unauthorized(origin, "token นี้ไม่ได้ออกให้ endpoint นี้");
+  }
+  diag("mcp.request", request, rpc);
 
   const server = new McpServer({ name: "koonway-os", version: "1.0.0" });
   registerKoonwayTools(server);
@@ -73,7 +87,8 @@ function methodNotAllowed() {
   );
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  diag("mcp.get-not-allowed", request);
   return methodNotAllowed();
 }
 

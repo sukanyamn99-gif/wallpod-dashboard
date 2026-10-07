@@ -1,3 +1,4 @@
+import { diag } from "@/lib/mcp/diag";
 import {
   ACCESS_TOKEN_TTL,
   MCP_SCOPE,
@@ -48,8 +49,10 @@ export async function POST(request: Request) {
   const grantType = params.get("grant_type");
   const clientId = params.get("client_id") ?? "";
   const origin = publicOrigin(request.headers);
+  diag("token.request", request, { grantType });
 
   if (!verifyJwt(clientId, "client")) {
+    diag("token.rejected", request, { grantType, reason: "invalid-client" });
     return oauthError("invalid_client", "client_id ไม่ถูกต้องหรือหมดอายุ", 401);
   }
 

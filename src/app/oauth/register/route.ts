@@ -1,3 +1,4 @@
+import { diag } from "@/lib/mcp/diag";
 import { MCP_SCOPE, corsPreflight, getOauthSecret, isAllowedRedirectUri, oauthError, oauthJson, signClient } from "@/lib/mcp/oauth";
 
 export const dynamic = "force-dynamic";
@@ -19,10 +20,14 @@ export async function POST(request: Request) {
   const data = (body ?? {}) as { redirect_uris?: unknown; client_name?: unknown };
 
   const redirectUris = data.redirect_uris;
+  // redirect URIs and the client name are public, non-secret registration
+  // metadata — logged so a rejected ChatGPT redirect host can be allowlisted.
+  diag("register.request", request, { redirectUris, clientName: data.client_name });
   if (!Array.isArray(redirectUris) || redirectUris.length === 0 || redirectUris.length > 5) {
     return oauthError("invalid_redirect_uri", "ต้องระบุ redirect_uris 1-5 รายการ");
   }
   if (!redirectUris.every((u) => typeof u === "string" && isAllowedRedirectUri(u))) {
+    diag("register.rejected", request, { reason: "redirect-uri-not-allowlisted", redirectUris });
     return oauthError("invalid_redirect_uri", "redirect_uri ไม่อยู่ในรายการที่อนุญาต");
   }
 

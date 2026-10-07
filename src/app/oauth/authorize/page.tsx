@@ -11,6 +11,7 @@ import {
   signJwt,
   verifyJwt,
 } from "@/lib/mcp/oauth";
+import { diag } from "@/lib/mcp/diag";
 import { decideAuthorization } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -66,6 +67,17 @@ export default async function AuthorizePage({
           : first(sp.code_challenge_method) !== "S256" || !CODE_CHALLENGE_PATTERN.test(codeChallenge)
             ? "ต้องใช้ PKCE แบบ S256"
             : null;
+
+  // Non-secret request metadata only (never the client_id token or PKCE
+  // challenge) — lets us see in Runtime Logs whether ChatGPT reached this
+  // page and whether its redirect_uri was accepted.
+  diag("authorize.page", null, {
+    problem,
+    redirectUri,
+    responseType: first(sp.response_type),
+    codeChallengeMethod: first(sp.code_challenge_method),
+    hasState: !!first(sp.state),
+  });
 
   if (problem || !client) {
     return (

@@ -1,4 +1,5 @@
 import { MCP_SCOPE, corsPreflight, oauthJson, publicOrigin } from "@/lib/mcp/oauth";
+import { diag } from "@/lib/mcp/diag";
 
 export const dynamic = "force-dynamic";
 
@@ -8,6 +9,7 @@ export const dynamic = "force-dynamic";
 // /.well-known/oauth-protected-resource/mcp.
 export async function GET(request: Request) {
   const origin = publicOrigin(request.headers);
+  diag("discovery.protected-resource", request, { derivedOrigin: origin });
   return oauthJson({
     resource: `${origin}/mcp`,
     authorization_servers: [origin],

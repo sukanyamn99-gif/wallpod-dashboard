@@ -1,4 +1,5 @@
 import { MCP_SCOPE, corsPreflight, oauthJson, publicOrigin } from "@/lib/mcp/oauth";
+import { diag } from "@/lib/mcp/diag";
 
 export const dynamic = "force-dynamic";
 
@@ -6,6 +7,7 @@ export const dynamic = "force-dynamic";
 // S256 is mandatory, no client secret).
 export async function GET(request: Request) {
   const origin = publicOrigin(request.headers);
+  diag("discovery.authorization-server", request, { derivedOrigin: origin });
   return oauthJson({
     issuer: origin,
     authorization_endpoint: `${origin}/oauth/authorize`,
