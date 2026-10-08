@@ -123,7 +123,10 @@ async function getJobLinkedCosts(
     supabase
       .from("stock_requisition_items")
       .select("quantity, unit_cost, stock_product_id, stock_products(unit_cost), stock_requisitions(job_no)"),
-    supabase.from("payment_vouchers").select("job_no, amount").not("job_no", "is", null),
+    // One voucher can be split across several JOBs — each JOB's cost is its
+    // own allocated share (payment_voucher_job_allocations), not the whole
+    // voucher amount against a single job_no.
+    supabase.from("payment_voucher_job_allocations").select("job_no, amount"),
     supabase
       .from("petty_cash_transactions")
       .select("job_no, amount")
@@ -337,7 +340,10 @@ export async function getJobLinkedCostSummary(jobNo: string): Promise<JobLinkedC
       .from("stock_requisitions")
       .select("doc_no, stock_requisition_items(quantity, unit_cost, stock_product_id, stock_products(unit_cost))")
       .eq("job_no", trimmed),
-    supabase.from("payment_vouchers").select("doc_no, amount").eq("job_no", trimmed),
+    supabase
+      .from("payment_voucher_job_allocations")
+      .select("amount, payment_vouchers(doc_no)")
+      .eq("job_no", trimmed),
     supabase
       .from("petty_cash_transactions")
       .select("doc_no, amount")
@@ -363,7 +369,8 @@ export async function getJobLinkedCostSummary(jobNo: string): Promise<JobLinkedC
     return { docNo: req.doc_no, amount };
   });
   const vouchers: JobLinkedCostDocument[] = (vouchersRes.data ?? []).map((v) => ({
-    docNo: v.doc_no,
+    // @ts-expect-error -- Supabase types the joined relation loosely here
+    docNo: (v.payment_vouchers as { doc_no: string } | null)?.doc_no ?? "",
     amount: Number(v.amount),
   }));
   const pettyCash: JobLinkedCostDocument[] = (pettyCashRes.data ?? []).map((t) => ({

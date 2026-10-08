@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DownloadPdfButton } from "@/components/dashboard/download-pdf-button";
 import { formatTHB } from "@/lib/format";
+import { voucherJobNos } from "@/lib/payment-voucher-jobs";
 import type { PaymentVoucher } from "@/lib/types";
 
 type VoucherRow = Omit<PaymentVoucher, "ledgerLines">;
@@ -87,7 +88,7 @@ export function PrintPaymentVoucherSummaryView({
               <td className="border border-black p-1">{new Date(v.voucherDate).toLocaleDateString("th-TH")}</td>
               <td className="border border-black p-1 text-left">{v.payeeName}</td>
               <td className="border border-black p-1 text-left">{v.category ?? "—"}</td>
-              <td className="border border-black p-1">{v.jobNo ?? "—"}</td>
+              <td className="border border-black p-1">{voucherJobNos(v).join(", ") || "—"}</td>
               <td className="border border-black p-1 text-right">{formatTHB(v.amount)}</td>
             </tr>
           ))}

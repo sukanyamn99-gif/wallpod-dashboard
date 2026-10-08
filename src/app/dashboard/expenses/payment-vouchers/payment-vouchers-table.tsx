@@ -24,6 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatTHB } from "@/lib/format";
+import { voucherJobNos } from "@/lib/payment-voucher-jobs";
 import type { PaymentVoucher, Profile } from "@/lib/types";
 import { deletePaymentVoucher } from "./actions";
 
@@ -141,7 +142,7 @@ export function PaymentVouchersTable({
         v.payeeName.toLowerCase().includes(q) ||
         (v.category ?? "").toLowerCase().includes(q) ||
         (v.description ?? "").toLowerCase().includes(q) ||
-        (v.jobNo ?? "").toLowerCase().includes(q),
+        voucherJobNos(v).some((j) => j.toLowerCase().includes(q)),
     );
   }, [vouchers, query]);
 
@@ -303,7 +304,7 @@ export function PaymentVouchersTable({
                     </TableCell>
                     <TableCell className="whitespace-nowrap">{v.payeeName}</TableCell>
                     <TableCell className="whitespace-nowrap">{v.category ?? "—"}</TableCell>
-                    <TableCell className="whitespace-nowrap">{v.jobNo ?? "—"}</TableCell>
+                    <TableCell className="whitespace-nowrap">{voucherJobNos(v).join(", ") || "—"}</TableCell>
                     <TableCell className="text-right whitespace-nowrap">{formatTHB(v.amount)}</TableCell>
                     <TableCell className="whitespace-nowrap">{v.recordedByName || "—"}</TableCell>
                     <TableCell>

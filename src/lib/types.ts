@@ -581,6 +581,14 @@ export interface PaymentVoucherLedgerLine {
   credit: number;
 }
 
+// One JOB's share of a payment voucher's amount — a voucher can be split
+// across several JOBs, and job cost reports follow these rows (not the
+// voucher's single jobNo, which is just the first/primary job for display).
+export interface PaymentVoucherJobAllocation {
+  jobNo: string;
+  amount: number;
+}
+
 export interface PaymentVoucher {
   id: string;
   docNo: string;
@@ -604,6 +612,9 @@ export interface PaymentVoucher {
   bankAccountNo: string | null;
   bankTransferDate: string | null;
   jobNo: string | null;
+  // Cost attribution per JOB; amounts sum to `amount`. Empty = not tied to
+  // any JOB.
+  jobAllocations: PaymentVoucherJobAllocation[];
   payeeTaxId: string | null;
   payeeAddress: string | null;
   incomeType: WhtIncomeType;

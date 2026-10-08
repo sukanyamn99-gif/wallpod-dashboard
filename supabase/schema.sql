@@ -1029,6 +1029,35 @@ create policy payment_voucher_ledger_lines_write on payment_voucher_ledger_lines
       and (my_role() in ('owner', 'manager', 'account') or v.recorded_by = auth.uid())
   ));
 
+-- One voucher split across several JOBs (see migration_095): each row is that
+-- JOB's share of the voucher's amount. Job cost reports sum this table.
+create table payment_voucher_job_allocations (
+  id uuid primary key default gen_random_uuid(),
+  voucher_id uuid not null references payment_vouchers(id) on delete cascade,
+  job_no text not null,
+  amount numeric(14,2) not null check (amount > 0),
+  sort_order int not null default 0
+);
+
+create index payment_voucher_job_allocations_voucher_idx on payment_voucher_job_allocations (voucher_id);
+create index payment_voucher_job_allocations_job_idx on payment_voucher_job_allocations (job_no);
+
+alter table payment_voucher_job_allocations enable row level security;
+
+create policy payment_voucher_job_allocations_select on payment_voucher_job_allocations for select
+  using (exists (select 1 from payment_vouchers v where v.id = voucher_id and my_role() <> 'sales'));
+create policy payment_voucher_job_allocations_write on payment_voucher_job_allocations for all
+  using (exists (
+    select 1 from payment_vouchers v
+    where v.id = voucher_id
+      and (my_role() in ('owner', 'manager', 'account') or v.recorded_by = auth.uid())
+  ))
+  with check (exists (
+    select 1 from payment_vouchers v
+    where v.id = voucher_id
+      and (my_role() in ('owner', 'manager', 'account') or v.recorded_by = auth.uid())
+  ));
+
 -- ---------- เงินสดย่อย (Petty Cash) ----------
 -- Append-only ledger with a running balance — deliberately no edit/delete
 -- policy. A running-balance chain can't be edited or deleted in the middle

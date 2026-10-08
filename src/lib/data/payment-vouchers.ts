@@ -2,7 +2,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type { PaymentVoucher, PaymentVoucherLedgerLine, WhtFormType, WhtIncomeType } from "@/lib/types";
 
 const COLUMNS =
-  "id, doc_no, voucher_date, payee_name, category, amount, payment_method, reference_no, note, recorded_by, created_at, wht_cert_no, description, wht_rate, wht_form_type, wht_amount, social_security_amount, bank_name, bank_account_no, bank_transfer_date, job_no, payee_tax_id, payee_address, income_type, profiles(full_name)";
+  "id, doc_no, voucher_date, payee_name, category, amount, payment_method, reference_no, note, recorded_by, created_at, wht_cert_no, description, wht_rate, wht_form_type, wht_amount, social_security_amount, bank_name, bank_account_no, bank_transfer_date, job_no, payee_tax_id, payee_address, income_type, profiles(full_name), payment_voucher_job_allocations(job_no, amount, sort_order)";
 
 type Row = {
   id: string;
@@ -30,6 +30,7 @@ type Row = {
   payee_address: string | null;
   income_type: string;
   profiles: { full_name: string } | null;
+  payment_voucher_job_allocations: { job_no: string; amount: number | string; sort_order: number }[] | null;
 };
 
 function mapRow(row: Row): Omit<PaymentVoucher, "ledgerLines"> {
@@ -56,6 +57,9 @@ function mapRow(row: Row): Omit<PaymentVoucher, "ledgerLines"> {
     bankAccountNo: row.bank_account_no,
     bankTransferDate: row.bank_transfer_date,
     jobNo: row.job_no,
+    jobAllocations: [...(row.payment_voucher_job_allocations ?? [])]
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((a) => ({ jobNo: a.job_no, amount: Number(a.amount) })),
     payeeTaxId: row.payee_tax_id,
     payeeAddress: row.payee_address,
     incomeType: row.income_type as WhtIncomeType,

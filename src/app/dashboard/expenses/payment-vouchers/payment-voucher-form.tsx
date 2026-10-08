@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -48,9 +48,18 @@ interface LedgerLineDraft {
   credit: string;
 }
 
+interface AllocationDraft {
+  key: number;
+  jobNo: string;
+  amount: string;
+}
+
 let nextKey = 0;
 function emptyLine(): LedgerLineDraft {
   return { key: nextKey++, accountCode: "", description: "", debit: "", credit: "" };
+}
+function emptyAllocation(): AllocationDraft {
+  return { key: nextKey++, jobNo: "", amount: "" };
 }
 
 export function PaymentVoucherForm({
@@ -67,7 +76,16 @@ export function PaymentVoucherForm({
   const router = useRouter();
   const [whtFormType, setWhtFormType] = useState<string>(initialData?.whtFormType ?? "");
   const [incomeType, setIncomeType] = useState<string>(initialData?.incomeType ?? "5");
-  const [jobNo, setJobNo] = useState(initialData?.jobNo ?? "");
+  // Controlled (not defaultValue) because the per-JOB split below is
+  // checked against it as the user types.
+  const [amount, setAmount] = useState(initialData?.amount ? String(initialData.amount) : "");
+  const [allocations, setAllocations] = useState<AllocationDraft[]>(() => {
+    if (initialData?.jobAllocations && initialData.jobAllocations.length > 0) {
+      return initialData.jobAllocations.map((a) => ({ key: nextKey++, jobNo: a.jobNo, amount: String(a.amount) }));
+    }
+    if (initialData?.jobNo) return [{ key: nextKey++, jobNo: initialData.jobNo, amount: "" }];
+    return [emptyAllocation()];
+  });
   const [lines, setLines] = useState<LedgerLineDraft[]>(() => {
     if (initialData?.ledgerLines && initialData.ledgerLines.length > 0) {
       return initialData.ledgerLines.map((l) => ({
@@ -95,6 +113,26 @@ export function PaymentVoucherForm({
   const lineTotalDebit = lines.reduce((sum, l) => sum + (Number(l.debit) || 0), 0);
   const lineTotalCredit = lines.reduce((sum, l) => sum + (Number(l.credit) || 0), 0);
 
+  const voucherAmount = Number(amount) || 0;
+  const filledAllocations = allocations.filter((a) => a.jobNo);
+  // One job with no amount means "the whole voucher" — the common case.
+  const allocatedTotal =
+    filledAllocations.length === 1 && !Number(filledAllocations[0].amount)
+      ? voucherAmount
+      : filledAllocations.reduce((sum, a) => sum + (Number(a.amount) || 0), 0);
+  const allocationDiff = Math.round((voucherAmount - allocatedTotal) * 100) / 100;
+
+  function updateAllocation(key: number, patch: Partial<AllocationDraft>) {
+    setAllocations((prev) => prev.map((a) => (a.key === key ? { ...a, ...patch } : a)));
+  }
+
+  function removeAllocation(key: number) {
+    setAllocations((prev) => {
+      const next = prev.filter((a) => a.key !== key);
+      return next.length > 0 ? next : [emptyAllocation()];
+    });
+  }
+
   function updateLine(key: number, patch: Partial<LedgerLineDraft>) {
     setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   }
@@ -108,7 +146,19 @@ export function PaymentVoucherForm({
   }
 
   return (
-    <form action={formAction} className="max-w-3xl space-y-6" noValidate>
+    <form
+      // Submitted via onSubmit (not action={formAction}) so React doesn't
+      // reset the uncontrolled fields when the server rejects the form —
+      // otherwise a validation error (e.g. the per-JOB split not matching
+      // the amount) would wipe everything typed into them.
+      onSubmit={(e) => {
+        e.preventDefault();
+        const formData = new FormData(e.currentTarget);
+        startTransition(() => formAction(formData));
+      }}
+      className="max-w-3xl space-y-6"
+      noValidate
+    >
       {state.error && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>}
 
       {mode === "edit" && initialData && (
@@ -150,14 +200,7 @@ export function PaymentVoucherForm({
 
       <div className="space-y-2">
         <Label htmlFor="amount">จำนวนเงิน</Label>
-        <NumberInput
-          id="amount"
-          name="amount"
-          min={0}
-          step={0.01}
-          defaultValue={initialData?.amount}
-          required
-        />
+        <NumberInput id="amount" name="amount" min={0} step={0.01} value={amount} onChange={setAmount} required />
       </div>
 
       <div className="space-y-2">
@@ -182,7 +225,7 @@ export function PaymentVoucherForm({
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="category">หมวดหมู่ค่าใช้จ่าย</Label>
           <Input
@@ -196,11 +239,59 @@ export function PaymentVoucherForm({
           <Label htmlFor="reference_no">เลขที่เอกสารแนบ</Label>
           <Input id="reference_no" name="reference_no" defaultValue={initialData?.referenceNo ?? undefined} />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="job_no">เลขที่ Job</Label>
-          <input type="hidden" name="job_no" value={jobNo} />
-          <JobNoSelect id="job_no" value={jobNo} onChange={setJobNo} jobNos={jobNoSuggestions} />
+      </div>
+
+      {/* One voucher can cover several JOBs: each row is that JOB's share of
+          the amount above, and each JOB's cost report counts only its own
+          share. The voucher's total, WHT and payment are unaffected. */}
+      <div className="space-y-3 rounded-lg border p-4">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold">ต้นทุนตามเลขที่ Job</p>
+            <p className="text-xs text-muted-foreground">
+              ใส่ Job เดียวโดยไม่กรอกยอด = ทั้งใบเป็นต้นทุนของ Job นั้น หรือแบ่งหลาย Job ได้โดยยอดรวมต้องเท่ากับจำนวนเงินด้านบน
+            </p>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={() => setAllocations((prev) => [...prev, emptyAllocation()])}>
+            <Plus className="h-3.5 w-3.5" />
+            เพิ่ม Job
+          </Button>
         </div>
+        <div className="space-y-2">
+          {allocations.map((a, index) => (
+            <div key={a.key} className="grid grid-cols-[2fr_1fr_auto] items-center gap-2">
+              <input type="hidden" name="alloc_job_no" value={a.jobNo} />
+              <JobNoSelect
+                id={`alloc_job_${a.key}`}
+                value={a.jobNo}
+                onChange={(v) => updateAllocation(a.key, { jobNo: v })}
+                jobNos={jobNoSuggestions}
+              />
+              <NumberInput
+                name="alloc_amount"
+                min={0}
+                step={0.01}
+                placeholder={allocations.length === 1 ? "ทั้งใบ" : "ยอดของ Job นี้"}
+                value={a.amount}
+                onChange={(v) => updateAllocation(a.key, { amount: v })}
+                aria-label={`ยอดของ Job แถวที่ ${index + 1}`}
+              />
+              <Button type="button" variant="outline" size="icon-sm" onClick={() => removeAllocation(a.key)}>
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ))}
+        </div>
+        {filledAllocations.length > 0 && (
+          <p className="text-sm text-muted-foreground">
+            แบ่งแล้ว {formatTHB(allocatedTotal)} จาก {formatTHB(voucherAmount)}
+            {allocationDiff !== 0 && (
+              <span className="text-destructive">
+                {allocationDiff > 0 ? ` — ยังเหลือ ${formatTHB(allocationDiff)}` : ` — เกินมา ${formatTHB(-allocationDiff)}`}
+              </span>
+            )}
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">

@@ -90,6 +90,21 @@ export function PrintVoucherView({ voucher }: { voucher: PaymentVoucher }) {
         <Field label="จำนวนเงิน (ตัวเลข)" value={formatTHB(voucher.amount)} />
         <Field label="จำนวนเงิน (ตัวอักษร)" value={thaiBahtText(voucher.amount)} />
         <Field label="รายการจ่าย" value={voucher.description} />
+        {/* Which JOB(s) this payment is costed to — one line per JOB with its
+            own share when the voucher is split. */}
+        {voucher.jobAllocations.length > 0 && (
+          <div className="flex border-b border-black">
+            <span className="w-48 shrink-0 border-r border-black p-2 font-medium">ต้นทุนตามเลขที่ Job</span>
+            <div className="flex-1 p-2">
+              {voucher.jobAllocations.map((a) => (
+                <div key={a.jobNo} className="flex justify-between gap-4">
+                  <span>{a.jobNo}</span>
+                  {voucher.jobAllocations.length > 1 && <span>{formatTHB(a.amount)}</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         <Field label="ทำจ่าย" value={voucher.note} />
         <Field label="เลขที่เอกสารแนบ" value={voucher.referenceNo} />
 

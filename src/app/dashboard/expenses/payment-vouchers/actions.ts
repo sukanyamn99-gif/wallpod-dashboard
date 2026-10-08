@@ -22,6 +22,7 @@ function str(v: FormDataEntryValue | null): string | null {
 function revalidateConsumers() {
   revalidatePath("/dashboard/expenses/payment-vouchers");
   revalidatePath("/dashboard/expenses");
+  revalidatePath("/dashboard/project-sales");
 }
 
 async function generateDocNo(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string> {
@@ -62,6 +63,34 @@ function parseVoucherForm(formData: FormData) {
     return { ok: false as const, error: "ประเภทเงินได้ไม่ถูกต้อง" };
   }
 
+  // Cost attribution: one or more (JOB, amount) rows. A single row with no
+  // amount means "the whole voucher" (the common case, same as the old single
+  // JOB field); with several rows every amount is required and together they
+  // must equal the voucher amount, so job cost totals stay exact.
+  const allocJobNos = formData.getAll("alloc_job_no").map((v) => String(v).trim());
+  const allocAmounts = formData.getAll("alloc_amount").map((v) => num(v));
+  const rawAllocations = allocJobNos
+    .map((jobNo, i) => ({ jobNo, amount: allocAmounts[i] ?? 0 }))
+    .filter((row) => row.jobNo || row.amount > 0);
+  if (rawAllocations.some((row) => !row.jobNo)) {
+    return { ok: false as const, error: "กรุณาเลือกเลขที่ Job ให้ครบทุกแถวที่แบ่งต้นทุน" };
+  }
+  if (rawAllocations.length === 1 && rawAllocations[0].amount <= 0) rawAllocations[0].amount = amount;
+  if (rawAllocations.some((row) => row.amount <= 0)) {
+    return { ok: false as const, error: "กรุณากรอกยอดที่แบ่งให้แต่ละ Job" };
+  }
+  // The same JOB listed twice is just one allocation.
+  const merged = new Map<string, number>();
+  for (const row of rawAllocations) merged.set(row.jobNo, Math.round(((merged.get(row.jobNo) ?? 0) + row.amount) * 100) / 100);
+  const jobAllocations = [...merged].map(([jobNo, allocAmount]) => ({ jobNo, amount: allocAmount }));
+  const allocatedTotal = jobAllocations.reduce((sum, a) => sum + a.amount, 0);
+  if (jobAllocations.length > 0 && Math.abs(allocatedTotal - amount) > 0.005) {
+    return {
+      ok: false as const,
+      error: `ยอดที่แบ่งให้แต่ละ Job รวม ${allocatedTotal.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท ต้องเท่ากับจำนวนเงิน ${amount.toLocaleString("th-TH", { minimumFractionDigits: 2 })} บาท`,
+    };
+  }
+
   const itemAccountCodes = formData.getAll("line_account_code");
   const itemDescriptions = formData.getAll("line_description");
   const itemDebits = formData.getAll("line_debit");
@@ -93,7 +122,9 @@ function parseVoucherForm(formData: FormData) {
     bankName: str(formData.get("bank_name")),
     bankAccountNo: str(formData.get("bank_account_no")),
     bankTransferDate: str(formData.get("bank_transfer_date")),
-    jobNo: str(formData.get("job_no")),
+    // First allocated JOB doubles as the voucher's primary job for display.
+    jobNo: jobAllocations[0]?.jobNo ?? null,
+    jobAllocations,
     payeeTaxId: str(formData.get("payee_tax_id")),
     payeeAddress: str(formData.get("payee_address")),
     incomeType: incomeType as WhtIncomeType,
@@ -119,6 +150,23 @@ async function replaceLedgerLines(
         credit: line.credit,
         sort_order: i,
       })),
+    );
+    if (insertErr) return insertErr.message;
+  }
+  return null;
+}
+
+async function replaceJobAllocations(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  voucherId: string,
+  allocations: { jobNo: string; amount: number }[],
+) {
+  const { error: deleteErr } = await supabase.from("payment_voucher_job_allocations").delete().eq("voucher_id", voucherId);
+  if (deleteErr) return deleteErr.message;
+
+  if (allocations.length > 0) {
+    const { error: insertErr } = await supabase.from("payment_voucher_job_allocations").insert(
+      allocations.map((a, i) => ({ voucher_id: voucherId, job_no: a.jobNo, amount: a.amount, sort_order: i })),
     );
     if (insertErr) return insertErr.message;
   }
@@ -177,6 +225,9 @@ export async function createPaymentVoucher(formData: FormData) {
   const ledgerError = await replaceLedgerLines(supabase, created.id, parsed.ledgerLines);
   if (ledgerError) return { error: `บันทึกใบสำคัญจ่ายสำเร็จ แต่บันทึกรายการบัญชีไม่สำเร็จ: ${ledgerError}` };
 
+  const allocError = await replaceJobAllocations(supabase, created.id, parsed.jobAllocations);
+  if (allocError) return { error: `บันทึกใบสำคัญจ่ายสำเร็จ แต่บันทึกการแบ่งต้นทุนตาม Job ไม่สำเร็จ: ${allocError}` };
+
   revalidateConsumers();
   return { error: null, docNo, id: created.id };
 }
@@ -226,6 +277,9 @@ export async function updatePaymentVoucher(id: string, formData: FormData) {
 
   const ledgerError = await replaceLedgerLines(supabase, id, parsed.ledgerLines);
   if (ledgerError) return { error: `บันทึกใบสำคัญจ่ายสำเร็จ แต่บันทึกรายการบัญชีไม่สำเร็จ: ${ledgerError}` };
+
+  const allocError = await replaceJobAllocations(supabase, id, parsed.jobAllocations);
+  if (allocError) return { error: `บันทึกใบสำคัญจ่ายสำเร็จ แต่บันทึกการแบ่งต้นทุนตาม Job ไม่สำเร็จ: ${allocError}` };
 
   revalidateConsumers();
   return { error: null };
