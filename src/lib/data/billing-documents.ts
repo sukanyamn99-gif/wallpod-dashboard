@@ -484,12 +484,72 @@ function extractQuotationDocNos(text: string | null): string[] {
 async function resolveJobNosByQuotationText(
   supabase: Awaited<ReturnType<typeof createClient>>,
   texts: (string | null)[],
-): Promise<Record<string, string | null>> {
+): Promise<Record<string, { jobNo: string | null; customerName: string }>> {
   const docNos = new Set<string>();
   for (const text of texts) for (const docNo of extractQuotationDocNos(text)) docNos.add(docNo);
   if (docNos.size === 0) return {};
-  const { data } = await supabase.from("quotations").select("doc_no, job_number").in("doc_no", [...docNos]);
-  return Object.fromEntries((data ?? []).map((q) => [q.doc_no, q.job_number]));
+  const { data } = await supabase.from("quotations").select("doc_no, job_number, customer_name").in("doc_no", [...docNos]);
+  return Object.fromEntries(
+    (data ?? []).map((q) => [q.doc_no, { jobNo: q.job_number as string | null, customerName: String(q.customer_name ?? "") }]),
+  );
+}
+
+function sameCustomerName(a: string | null | undefined, b: string | null | undefined): boolean {
+  const normalize = (v: string | null | undefined) => (v ?? "").trim().replace(/\s+/g, " ");
+  return !!normalize(a) && normalize(a) === normalize(b);
+}
+
+// A quotation number found in a line's own text is only trusted when that
+// quotation belongs to THIS document's customer — a mistyped number can land
+// on a real quotation of a different customer (seen in production: QT6909-016
+// typed for QT6910-016), which would otherwise show another customer's JOB.
+function jobNoFromQuotationText(
+  texts: (string | null)[],
+  lookup: Record<string, { jobNo: string | null; customerName: string }>,
+  documentCustomerName: string | null | undefined,
+): string | null {
+  for (const text of texts) {
+    for (const docNo of extractQuotationDocNos(text)) {
+      const match = lookup[docNo];
+      if (match?.jobNo && sameCustomerName(match.customerName, documentCustomerName)) return match.jobNo;
+    }
+  }
+  return null;
+}
+
+// A line copied forward from another document (source_item_id) is JOB-less
+// itself when the copy was made from a document that carries no job_no — but
+// that document's own line was in turn copied from an earlier one, which may
+// (e.g. the original ใบแจ้งหนี้ with its JOB picked). Walks the copy chain
+// upward, a hop at a time, until some document on it has a job_no. Returns
+// startingSourceItemId -> job_no (null when the whole chain has none).
+async function resolveJobNosBySourceChain(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sourceItemIds: string[],
+): Promise<Record<string, string | null>> {
+  const result: Record<string, string | null> = {};
+  let originById = new Map(sourceItemIds.map((id) => [id, id]));
+  for (const id of sourceItemIds) result[id] = null;
+
+  for (let hop = 0; hop < 6 && originById.size > 0; hop++) {
+    const { data, error } = await supabase
+      .from("billing_note_items")
+      .select("id, source_item_id, billing_notes(job_no)")
+      .in("id", [...originById.keys()]);
+    if (error) throw error;
+
+    const next = new Map<string, string>();
+    for (const row of data ?? []) {
+      const origin = originById.get(row.id);
+      if (!origin) continue;
+      // @ts-expect-error -- Supabase types the joined relation loosely here
+      const jobNo = (row.billing_notes as { job_no: string | null } | null)?.job_no ?? null;
+      if (jobNo) result[origin] = jobNo;
+      else if (row.source_item_id) next.set(row.source_item_id as string, origin);
+    }
+    originById = next;
+  }
+  return result;
 }
 
 const HEADER_COLUMNS =
@@ -571,7 +631,7 @@ export async function getBillingDocuments(docType: BillingDocumentType): Promise
   const { data, error } = await supabase
     .from("billing_notes")
     .select(
-      `${HEADER_COLUMNS}, billing_note_items(amount, apply_wht, invoice_no_snapshot, manual_description, payments(projects(job_no)), quotations(job_number))`,
+      `${HEADER_COLUMNS}, billing_note_items(amount, apply_wht, source_item_id, invoice_no_snapshot, manual_description, payments(projects(job_no)), quotations(job_number))`,
     )
     .eq("doc_type", docType)
     .order("created_at", { ascending: false });
@@ -580,12 +640,20 @@ export async function getBillingDocuments(docType: BillingDocumentType): Promise
   type ListItemRow = {
     amount: number;
     apply_wht: boolean;
+    source_item_id: string | null;
     invoice_no_snapshot: string | null;
     manual_description: string | null;
     payments?: { projects: { job_no: string | null } | null } | null;
     quotations?: { job_number: string | null } | null;
   };
   const rows = (data ?? []) as unknown as (HeaderRow & { billing_note_items: ListItemRow[] })[];
+
+  // Lines copied forward from another document resolve their JOB up that
+  // copy chain — one batched walk for the whole list.
+  const jobNoBySourceItemId = await resolveJobNosBySourceChain(
+    supabase,
+    [...new Set(rows.flatMap((row) => (row.billing_note_items ?? []).map((it) => it.source_item_id)).filter((v): v is string => !!v))],
+  );
 
   // One batched lookup across every row's items, rather than one query per
   // document — see resolveJobNosByQuotationText.
@@ -607,7 +675,8 @@ export async function getBillingDocuments(docType: BillingDocumentType): Promise
     // Every DISTINCT job this document actually covers — a ใบวางบิล/
     // ใบเสร็จรับเงิน can legitimately bundle several different JOBs' invoices
     // into one document (see BL202609250001), so the list's JOB column
-    // shows all of them instead of just one. Falls back, per item, to a
+    // shows all of them instead of just one. Falls back, per item, to the
+    // JOB found up its copy chain (resolveJobNosBySourceChain), then to a
     // quotation number extracted from its own text (see
     // resolveJobNosByQuotationText) for a hand-typed line with no
     // structured link at all.
@@ -619,10 +688,17 @@ export async function getBillingDocuments(docType: BillingDocumentType): Promise
         jobNoSet.add(structured);
         continue;
       }
-      for (const docNo of [...extractQuotationDocNos(it.invoice_no_snapshot), ...extractQuotationDocNos(it.manual_description)]) {
-        const jobNo = jobNoByQuotationDocNo[docNo];
-        if (jobNo) jobNoSet.add(jobNo);
+      const chainJob = it.source_item_id ? jobNoBySourceItemId[it.source_item_id] : null;
+      if (chainJob) {
+        jobNoSet.add(chainJob);
+        continue;
       }
+      const textJob = jobNoFromQuotationText(
+        [it.invoice_no_snapshot, it.manual_description],
+        jobNoByQuotationDocNo,
+        row.customers?.name,
+      );
+      if (textJob) jobNoSet.add(textJob);
     }
     const jobNos = [...jobNoSet];
     return { ...mapHeader(row), jobNo: jobNos[0] ?? null, jobNos, amount: summary.netPayable };
@@ -687,21 +763,7 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
   // toggleBillingNoteItem in billing-document-form.tsx) and read THAT
   // item's parent document's job_no.
   const sourceItemIds = itemRows.map((it) => it.source_item_id).filter((v): v is string => !!v);
-  let jobNoBySourceItemId: Record<string, string | null> = {};
-  if (sourceItemIds.length > 0) {
-    const { data: sourceItems, error: sourceErr } = await supabase
-      .from("billing_note_items")
-      .select("id, billing_notes(job_no)")
-      .in("id", sourceItemIds);
-    if (sourceErr) throw sourceErr;
-    jobNoBySourceItemId = Object.fromEntries(
-      (sourceItems ?? []).map((row) => [
-        row.id,
-        // @ts-expect-error -- Supabase types the joined relation loosely here
-        (row.billing_notes as { job_no: string | null } | null)?.job_no ?? null,
-      ]),
-    );
-  }
+  const jobNoBySourceItemId = await resolveJobNosBySourceChain(supabase, [...new Set(sourceItemIds)]);
 
   let quotationDetailByJobNo: Record<
     string,
@@ -755,12 +817,9 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     supabase,
     itemRows.flatMap((it) => [it.invoice_no_snapshot, it.manual_description]),
   );
+  const documentCustomerName = (header as unknown as HeaderRow).customers?.name ?? null;
   function jobNoFromText(text: string | null): string | null {
-    for (const docNo of extractQuotationDocNos(text)) {
-      const jobNo = jobNoByQuotationDocNo[docNo];
-      if (jobNo) return jobNo;
-    }
-    return null;
+    return jobNoFromQuotationText([text], jobNoByQuotationDocNo, documentCustomerName);
   }
 
   // Fallback for documents created before job_no was stored on the header
