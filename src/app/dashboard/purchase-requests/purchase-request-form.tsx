@@ -26,8 +26,8 @@ import {
 } from "@/components/ui/table";
 import { JobNoSelect } from "@/components/dashboard/job-no-select";
 import { formatTHB } from "@/lib/format";
-import { createPurchaseRequest } from "./actions";
-import type { Department, StockProduct, Supplier } from "@/lib/types";
+import { createPurchaseRequest, updatePurchaseRequest } from "./actions";
+import type { Department, PurchaseRequest, StockProduct, Supplier } from "@/lib/types";
 import type { JobLookupEntry } from "@/lib/data/reference";
 
 const NONE_SUPPLIER = "__none__";
@@ -48,6 +48,11 @@ interface SelectedItem {
   unit: string;
   quantity: number;
   unitPrice: number;
+  // Not editable in this form, but carried through unchanged so editing a
+  // request never drops a line's own note or per-line supplier (older
+  // requests may have them).
+  note: string | null;
+  supplierId: string | null;
 }
 
 let nextKey = 1;
@@ -132,21 +137,44 @@ export function PurchaseRequestForm({
   suppliers,
   jobNoSuggestions,
   jobNoLookup,
+  mode = "create",
+  requestId,
+  initialData,
 }: {
   departments: Department[];
   stockProducts: StockProduct[];
   suppliers: Supplier[];
   jobNoSuggestions: string[];
   jobNoLookup: Record<string, JobLookupEntry>;
+  mode?: "create" | "edit";
+  requestId?: string;
+  initialData?: PurchaseRequest;
 }) {
   const router = useRouter();
-  const [jobNo, setJobNo] = useState("");
-  const [projectName, setProjectName] = useState("");
-  const [supplierId, setSupplierId] = useState("");
-  const [items, setItems] = useState<SelectedItem[]>([]);
+  const [jobNo, setJobNo] = useState(initialData?.jobNo ?? "");
+  const [projectName, setProjectName] = useState(initialData?.projectName ?? "");
+  const [supplierId, setSupplierId] = useState(initialData?.supplierId ?? "");
+  const [items, setItems] = useState<SelectedItem[]>(() =>
+    (initialData?.items ?? []).map((it) => ({
+      key: nextKey++,
+      stockProductId: it.stockProductId,
+      sku: it.productSku ?? "",
+      name: it.productName,
+      unit: it.unit,
+      quantity: it.quantity,
+      unitPrice: it.unitPrice,
+      note: it.note,
+      supplierId: it.supplierId,
+    })),
+  );
   const [, startTransition] = useTransition();
 
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
+    if (mode === "edit" && requestId) {
+      const result = await updatePurchaseRequest(requestId, formData);
+      if (!result.error) router.push(`/dashboard/purchase-requests/view/${requestId}`);
+      return { error: result.error, id: requestId };
+    }
     const result = await createPurchaseRequest(formData);
     if (!result.error && result.id) {
       router.push(`/dashboard/purchase-requests/view/${result.id}`);
@@ -167,7 +195,7 @@ export function PurchaseRequestForm({
   function addBlankItem() {
     setItems((prev) => [
       ...prev,
-      { key: nextKey++, stockProductId: null, sku: "", name: "", unit: "ชิ้น", quantity: 1, unitPrice: 0 },
+      { key: nextKey++, stockProductId: null, sku: "", name: "", unit: "ชิ้น", quantity: 1, unitPrice: 0, note: null, supplierId: null },
     ]);
   }
 
@@ -195,6 +223,8 @@ export function PurchaseRequestForm({
           fd.append("item_unit", it.unit);
           fd.append("item_quantity", String(it.quantity));
           fd.append("item_unit_price", String(it.unitPrice));
+          fd.append("item_note", it.note ?? "");
+          fd.append("item_supplier_id", it.supplierId ?? "");
         }
         startTransition(() => formAction(fd));
       }}
@@ -203,6 +233,12 @@ export function PurchaseRequestForm({
       {/* Left column */}
       <div className="space-y-4">
         {state.error && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>}
+
+        {mode === "edit" && initialData && initialData.status !== "รออนุมัติ" && (
+          <p className="rounded-md bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
+            ใบนี้อยู่ในสถานะ &quot;{initialData.status}&quot; — เมื่อบันทึกการแก้ไข จะกลับไปเป็น &quot;รออนุมัติ&quot; และต้องอนุมัติใหม่อีกครั้ง
+          </p>
+        )}
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -215,7 +251,12 @@ export function PurchaseRequestForm({
               จัดการ
             </Link>
           </div>
-          <Select name="department_id" required items={departments.map((d) => ({ value: d.id, label: d.name }))}>
+          <Select
+            name="department_id"
+            required
+            defaultValue={initialData?.departmentId ?? undefined}
+            items={departments.map((d) => ({ value: d.id, label: d.name }))}
+          >
             <SelectTrigger id="department_id" className="w-full">
               <SelectValue placeholder="— เลือกแผนก —" />
             </SelectTrigger>
@@ -282,12 +323,17 @@ export function PurchaseRequestForm({
 
         <div className="space-y-2">
           <Label htmlFor="purpose">เหตุผล / วัตถุประสงค์การขอซื้อ</Label>
-          <Textarea id="purpose" name="purpose" placeholder="เช่น สต็อกใกล้หมด, งานลูกค้าด่วน..." />
+          <Textarea
+            id="purpose"
+            name="purpose"
+            placeholder="เช่น สต็อกใกล้หมด, งานลูกค้าด่วน..."
+            defaultValue={initialData?.purpose ?? undefined}
+          />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="note">หมายเหตุ / รายละเอียดส่วนประกอบอื่นๆ</Label>
-          <Textarea id="note" name="note" placeholder="ข้อมูลเพิ่มเติม..." />
+          <Textarea id="note" name="note" placeholder="ข้อมูลเพิ่มเติม..." defaultValue={initialData?.note ?? undefined} />
         </div>
       </div>
 
@@ -404,11 +450,15 @@ export function PurchaseRequestForm({
         )}
 
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => router.push("/dashboard/purchase-requests")}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push(mode === "edit" && requestId ? `/dashboard/purchase-requests/view/${requestId}` : "/dashboard/purchase-requests")}
+          >
             ยกเลิก
           </Button>
           <Button type="submit" disabled={pending}>
-            {pending ? "กำลังบันทึก..." : "ส่งใบขอซื้อ"}
+            {pending ? "กำลังบันทึก..." : mode === "edit" ? "บันทึกการแก้ไข" : "ส่งใบขอซื้อ"}
           </Button>
         </div>
       </div>

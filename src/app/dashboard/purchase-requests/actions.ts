@@ -3,6 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activity-log";
+import { getCurrentProfile } from "@/lib/data/profile";
+import { getPurchaseRequestById } from "@/lib/data/purchase-requests";
+import { canEditPurchaseRequest } from "@/lib/purchase-request-edit";
 
 function num(v: FormDataEntryValue | null): number {
   const n = Number(v);
@@ -36,13 +39,10 @@ async function generateDocNo(supabase: Awaited<ReturnType<typeof createClient>>)
   return `${prefix}${seq}`;
 }
 
-export async function createPurchaseRequest(formData: FormData) {
-  if (!isSupabaseConfigured()) {
-    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
-  }
-
+// Shared by create and update — both validate and parse the same fields.
+function parseRequestForm(formData: FormData) {
   const departmentId = str(formData.get("department_id"));
-  if (!departmentId) return { error: "กรุณาเลือกแผนก" };
+  if (!departmentId) return { ok: false as const, error: "กรุณาเลือกแผนก" };
 
   const purpose = str(formData.get("purpose"));
   const note = str(formData.get("note"));
@@ -75,7 +75,35 @@ export async function createPurchaseRequest(formData: FormData) {
     }))
     .filter((it) => it.name && it.quantity > 0);
 
-  if (items.length === 0) return { error: "กรุณาเพิ่มรายการสินค้าอย่างน้อย 1 รายการ" };
+  if (items.length === 0) return { ok: false as const, error: "กรุณาเพิ่มรายการสินค้าอย่างน้อย 1 รายการ" };
+
+  return { ok: true as const, departmentId, purpose, note, jobNo, projectName, supplierId, items };
+}
+
+type ParsedItems = Extract<ReturnType<typeof parseRequestForm>, { ok: true }>["items"];
+
+function itemRows(requestId: string, items: ParsedItems) {
+  return items.map((it) => ({
+    request_id: requestId,
+    stock_product_id: it.stockProductId,
+    product_name_snapshot: it.name,
+    product_sku_snapshot: it.sku,
+    unit_snapshot: it.unit,
+    quantity: it.quantity,
+    note: it.note,
+    supplier_id: it.supplierId,
+    unit_price: it.unitPrice,
+  }));
+}
+
+export async function createPurchaseRequest(formData: FormData) {
+  if (!isSupabaseConfigured()) {
+    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
+  }
+
+  const parsed = parseRequestForm(formData);
+  if (!parsed.ok) return { error: parsed.error };
+  const { departmentId, purpose, note, jobNo, projectName, supplierId, items } = parsed;
 
   const supabase = await createClient();
   const {
@@ -100,23 +128,71 @@ export async function createPurchaseRequest(formData: FormData) {
     .single();
   if (insertErr) return { error: insertErr.message };
 
-  const { error: itemsErr } = await supabase.from("purchase_request_items").insert(
-    items.map((it) => ({
-      request_id: request.id,
-      stock_product_id: it.stockProductId,
-      product_name_snapshot: it.name,
-      product_sku_snapshot: it.sku,
-      unit_snapshot: it.unit,
-      quantity: it.quantity,
-      note: it.note,
-      supplier_id: it.supplierId,
-      unit_price: it.unitPrice,
-    })),
-  );
+  const { error: itemsErr } = await supabase.from("purchase_request_items").insert(itemRows(request.id, items));
   if (itemsErr) return { error: `บันทึกใบขอซื้อสำเร็จ แต่บันทึกรายการสินค้าไม่สำเร็จ: ${itemsErr.message}` };
 
   revalidateConsumers();
   return { error: null, id: request.id as string };
+}
+
+export async function updatePurchaseRequest(id: string, formData: FormData) {
+  if (!isSupabaseConfigured()) {
+    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
+  }
+
+  // Re-checked here, not just by hiding the button: a fresh read of who may
+  // edit this request right now (status can have changed since the form
+  // opened, e.g. it was approved or a ใบสั่งซื้อ was created from it).
+  const profile = await getCurrentProfile();
+  if (!profile) return { error: "กรุณาเข้าสู่ระบบ" };
+  const existing = await getPurchaseRequestById(id);
+  if (!existing) return { error: "ไม่พบใบขอซื้อนี้ในระบบ" };
+  if (existing.hasPurchaseOrder) return { error: "แก้ไขไม่ได้ — ได้ออกใบสั่งซื้อจากใบขอซื้อนี้ไปแล้ว" };
+  if (!canEditPurchaseRequest(profile, existing)) return { error: "ไม่มีสิทธิ์แก้ไขใบขอซื้อนี้" };
+
+  const parsed = parseRequestForm(formData);
+  if (!parsed.ok) return { error: parsed.error };
+  const { departmentId, purpose, note, jobNo, projectName, supplierId, items } = parsed;
+
+  const supabase = await createClient();
+
+  // Changing an already-decided request means the decision no longer applies
+  // to what it now says — back to pending, to be approved again.
+  const resetsApproval = existing.status !== "รออนุมัติ";
+  const { error: updateErr } = await supabase
+    .from("purchase_requests")
+    .update({
+      department_id: departmentId,
+      purpose,
+      note,
+      job_no: jobNo,
+      project_name: projectName,
+      supplier_id: supplierId,
+      ...(resetsApproval ? { status: "รออนุมัติ", approved_by: null, approved_at: null } : {}),
+    })
+    .eq("id", id);
+  if (updateErr) return { error: updateErr.message };
+
+  // Items are replaced: the new rows go in FIRST and the old ones are removed
+  // after, so a failure part-way leaves duplicated lines the user can see and
+  // fix rather than a request with its items silently gone.
+  const oldItemIds = existing.items.map((it) => it.id);
+  const { error: insertErr } = await supabase.from("purchase_request_items").insert(itemRows(id, items));
+  if (insertErr) return { error: `บันทึกข้อมูลทั่วไปสำเร็จ แต่บันทึกรายการสินค้าไม่สำเร็จ: ${insertErr.message}` };
+  if (oldItemIds.length > 0) {
+    const { error: deleteErr } = await supabase.from("purchase_request_items").delete().in("id", oldItemIds);
+    if (deleteErr) {
+      return { error: `บันทึกรายการใหม่แล้ว แต่ลบรายการเก่าไม่สำเร็จ (อาจเห็นรายการซ้ำ): ${deleteErr.message}` };
+    }
+  }
+
+  await logActivity(
+    resetsApproval ? "แก้ไขใบขอซื้อ (กลับไปรออนุมัติ)" : "แก้ไขใบขอซื้อ",
+    existing.docNo,
+  );
+  revalidateConsumers();
+  revalidatePath(`/dashboard/purchase-requests/view/${id}`);
+  return { error: null };
 }
 
 export async function deletePurchaseRequest(id: string) {

@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Eye, Printer, Trash2, X } from "lucide-react";
+import { Check, Eye, Pencil, Printer, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { canEditPurchaseRequest } from "@/lib/purchase-request-edit";
 import type { Profile, PurchaseRequest } from "@/lib/types";
 import { deletePurchaseRequest } from "./actions";
 
@@ -140,6 +141,17 @@ export function PurchaseRequestsTable({
                     >
                       <Printer className="h-3.5 w-3.5" />
                     </Button>
+                    {canEditPurchaseRequest(currentProfile, r) && (
+                      <Button
+                        size="icon-sm"
+                        variant="outline"
+                        nativeButton={false}
+                        render={<Link href={`/dashboard/purchase-requests/edit/${r.id}`} />}
+                        title="แก้ไข"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                     {canDelete(currentProfile, r) && <DeleteButton request={r} />}
                   </div>
                 </TableCell>

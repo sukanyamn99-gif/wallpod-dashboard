@@ -1741,15 +1741,31 @@ alter table purchase_request_items enable row level security;
 create policy purchase_requests_select on purchase_requests for select using (my_role() <> 'sales');
 create policy purchase_requests_insert on purchase_requests for insert
   with check (my_role() in ('owner', 'manager', 'production', 'support_sale', 'account'));
+-- Requester may edit while still pending; owner/manager anytime (see migration_096).
 create policy purchase_requests_update on purchase_requests for update
-  using (my_role() in ('owner', 'manager'))
-  with check (my_role() in ('owner', 'manager'));
+  using (
+    my_role() in ('owner', 'manager')
+    or (requested_by = auth.uid() and status = 'รออนุมัติ')
+  )
+  with check (
+    my_role() in ('owner', 'manager')
+    or (requested_by = auth.uid() and status = 'รออนุมัติ')
+  );
 create policy purchase_requests_delete on purchase_requests for delete
   using (my_role() in ('owner', 'manager') or requested_by = auth.uid());
 
 create policy purchase_request_items_select on purchase_request_items for select using (my_role() <> 'sales');
 create policy purchase_request_items_insert on purchase_request_items for insert
   with check (my_role() in ('owner', 'manager', 'production', 'support_sale', 'account'));
+create policy purchase_request_items_delete on purchase_request_items for delete
+  using (exists (
+    select 1 from purchase_requests r
+    where r.id = request_id
+      and (
+        my_role() in ('owner', 'manager')
+        or (r.requested_by = auth.uid() and r.status = 'รออนุมัติ')
+      )
+  ));
 
 create table purchase_orders (
   id uuid primary key default gen_random_uuid(),

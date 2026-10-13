@@ -14,6 +14,7 @@ import {
 import { getPurchaseRequestById } from "@/lib/data/purchase-requests";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage, canSeeCosts } from "@/lib/permissions";
+import { canEditPurchaseRequest } from "@/lib/purchase-request-edit";
 import { formatTHB } from "@/lib/format";
 import { RequestApprovalActions } from "../../request-approval-actions";
 
@@ -55,6 +56,11 @@ export default async function PurchaseRequestDetailPage({ params }: { params: Pr
             >
               พิมพ์
             </Button>
+            {canEditPurchaseRequest(profile, request) && (
+              <Button size="sm" variant="outline" nativeButton={false} render={<Link href={`/dashboard/purchase-requests/edit/${id}`} />}>
+                แก้ไข
+              </Button>
+            )}
             {canApprove && request.status === "รออนุมัติ" && <RequestApprovalActions requestId={id} />}
             {request.status === "อนุมัติ" && (
               <Button size="sm" nativeButton={false} render={<Link href={`/dashboard/purchase-orders/new?requestId=${id}`} />}>

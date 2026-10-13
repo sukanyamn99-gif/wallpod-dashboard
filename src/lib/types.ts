@@ -492,6 +492,9 @@ export interface PurchaseRequest {
   // from each PurchaseRequestItem's own per-line supplierId/supplierName.
   supplierId: string | null;
   supplierName: string | null;
+  // True once a ใบสั่งซื้อ has been created from this request — that PO copied
+  // the items, so the request can no longer be edited.
+  hasPurchaseOrder: boolean;
   items: PurchaseRequestItem[];
 }
 

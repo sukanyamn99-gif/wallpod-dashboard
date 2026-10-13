@@ -32,7 +32,7 @@ type HeaderRow = {
   approver: { full_name: string } | null;
 };
 
-function mapHeader(row: HeaderRow): Omit<PurchaseRequest, "items"> {
+function mapHeader(row: HeaderRow, requestIdsWithOrder: Set<string>): Omit<PurchaseRequest, "items"> {
   return {
     id: row.id,
     docNo: row.doc_no,
@@ -51,7 +51,19 @@ function mapHeader(row: HeaderRow): Omit<PurchaseRequest, "items"> {
     projectName: row.project_name,
     supplierId: row.supplier_id,
     supplierName: row.suppliers?.name ?? null,
+    hasPurchaseOrder: requestIdsWithOrder.has(row.id),
   };
+}
+
+// Which of the given requests already have a ใบสั่งซื้อ created from them.
+async function getRequestIdsWithOrder(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  requestIds: string[],
+): Promise<Set<string>> {
+  if (requestIds.length === 0) return new Set();
+  const { data, error } = await supabase.from("purchase_orders").select("request_id").in("request_id", requestIds);
+  if (error) throw error;
+  return new Set((data ?? []).map((row) => row.request_id as string));
 }
 
 export async function getPurchaseRequests(): Promise<Omit<PurchaseRequest, "items">[]> {
@@ -64,8 +76,12 @@ export async function getPurchaseRequests(): Promise<Omit<PurchaseRequest, "item
     .order("created_at", { ascending: false });
   if (error) throw error;
 
-  // @ts-expect-error -- Supabase types the joined relation loosely here
-  return (data ?? []).map(mapHeader);
+  const headers = (data ?? []) as unknown as HeaderRow[];
+  const withOrder = await getRequestIdsWithOrder(
+    supabase,
+    headers.map((h) => h.id),
+  );
+  return headers.map((h) => mapHeader(h, withOrder));
 }
 
 async function getItemsByRequestIds(supabase: Awaited<ReturnType<typeof createClient>>, requestIds: string[]) {
@@ -114,11 +130,13 @@ export async function getPurchaseRequestById(id: string): Promise<PurchaseReques
   if (headerErr) throw headerErr;
   if (!header) return null;
 
-  const itemsByRequest = await getItemsByRequestIds(supabase, [id]);
+  const [itemsByRequest, withOrder] = await Promise.all([
+    getItemsByRequestIds(supabase, [id]),
+    getRequestIdsWithOrder(supabase, [id]),
+  ]);
 
   return {
-    // @ts-expect-error -- Supabase types the joined relation loosely here
-    ...mapHeader(header),
+    ...mapHeader(header as unknown as HeaderRow, withOrder),
     items: itemsByRequest.get(id) ?? [],
   };
 }
@@ -137,10 +155,16 @@ export async function getApprovedPurchaseRequests(): Promise<PurchaseRequest[]> 
   if (error) throw error;
 
   const headers = (data ?? []) as unknown as HeaderRow[];
-  const itemsByRequest = await getItemsByRequestIds(
-    supabase,
-    headers.map((h) => h.id),
-  );
+  const [itemsByRequest, withOrder] = await Promise.all([
+    getItemsByRequestIds(
+      supabase,
+      headers.map((h) => h.id),
+    ),
+    getRequestIdsWithOrder(
+      supabase,
+      headers.map((h) => h.id),
+    ),
+  ]);
 
-  return headers.map((h) => ({ ...mapHeader(h), items: itemsByRequest.get(h.id) ?? [] }));
+  return headers.map((h) => ({ ...mapHeader(h, withOrder), items: itemsByRequest.get(h.id) ?? [] }));
 }
