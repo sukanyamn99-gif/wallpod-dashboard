@@ -667,10 +667,17 @@ export function BillingDocumentForm({
     // per explicit feedback, a deposit already received shouldn't also be
     // offered here as a separate billable item to add to the total; it's
     // credited instead, not billed again.
+    //
+    // Not for ใบเสร็จรับเงิน: there the deposit's own ใบกำกับภาษี IS the thing
+    // being receipted (รับเงินจากใบกำกับภาษี), so hiding it left a deposit
+    // invoice with no way to be paid off. A line already receipted is hidden
+    // regardless, by getBillableBillingNoteItemsForCustomer's own
+    // source_item_id check, so nothing is offered twice.
     const depositDocNos = new Set(receivedInvoices.map((r) => r.invoiceNo));
-    const base = billingNoteItems.filter((it) => !depositDocNos.has(it.billingNoteDocNo));
+    const base =
+      docType === "receipt" ? billingNoteItems : billingNoteItems.filter((it) => !depositDocNos.has(it.billingNoteDocNo));
     return jobNo ? base.filter((it) => it.jobNo === jobNo) : base;
-  }, [billingNoteItems, jobNo, receivedInvoices]);
+  }, [billingNoteItems, jobNo, receivedInvoices, docType]);
 
   const selectedItems = useMemo(
     () => [
