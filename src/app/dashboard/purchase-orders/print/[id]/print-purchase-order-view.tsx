@@ -113,10 +113,9 @@ function DocumentBody({ order, copyLabel }: { order: PurchaseOrder; copyLabel: s
       <table className="mt-2 w-full table-fixed border-collapse border border-black text-center">
         <colgroup>
           <col className="w-[6%]" />
-          <col className="w-[38%]" />
+          <col className="w-[46%]" />
           <col className="w-[12%]" />
           <col className="w-[15%]" />
-          <col className="w-[8%]" />
           <col className="w-[8%]" />
           <col className="w-[13%]" />
         </colgroup>
@@ -126,7 +125,6 @@ function DocumentBody({ order, copyLabel }: { order: PurchaseOrder; copyLabel: s
             <th className="border border-black p-1 font-medium">รายละเอียด</th>
             <th className="border border-black p-1 font-medium">จำนวน</th>
             <th className="border border-black p-1 font-medium">ราคาต่อหน่วย</th>
-            <th className="border border-black p-1 font-medium">ภาษี</th>
             <th className="border border-black p-1 font-medium">หัก ณ ที่จ่าย</th>
             <th className="border border-black p-1 font-medium">มูลค่า</th>
           </tr>
@@ -149,7 +147,6 @@ function DocumentBody({ order, copyLabel }: { order: PurchaseOrder; copyLabel: s
               <td className="border-r border-black p-1 text-right">
                 {item.productName ? formatTHB(item.unitPrice) : ""}
               </td>
-              <td className="border-r border-black p-1">{item.productName ? "7%" : ""}</td>
               <td className="border-r border-black p-1">
                 {item.productName ? (order.whtPercent > 0 ? `${order.whtPercent}%` : "ไม่มี") : ""}
               </td>
