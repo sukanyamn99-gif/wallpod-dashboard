@@ -215,7 +215,7 @@ export function PrintCommissionView({
         )}
 
         {isSupportTeam && (
-          <div className="mt-6 grid max-w-xl grid-cols-[auto_1fr_auto] items-baseline gap-x-4 gap-y-2">
+          <div className="mt-4 grid max-w-xl grid-cols-[auto_1fr_auto] items-baseline gap-x-4 gap-y-2">
             <span>สรุปยอดจ่ายค่าคอมมิชชั่นทีม Support</span>
             <span>จำนวนเงิน</span>
             <span className="font-medium">{formatTHB(totalCommission)} บาท</span>
@@ -245,18 +245,34 @@ export function PrintCommissionView({
           </div>
         )}
 
-        <div className="mt-16 flex items-baseline justify-end gap-2">
-          <span className="w-56 border-b border-dotted border-black" />
-          <span className="w-20 whitespace-nowrap">ผู้จัดทำ</span>
-        </div>
-        <div className="mt-10 flex items-baseline justify-end gap-2">
-          <span className="w-56 border-b border-dotted border-black" />
-          <span className="w-20 whitespace-nowrap">ผู้ตรวจสอบ</span>
-        </div>
-        <div className="mt-10 flex items-baseline justify-end gap-2">
-          <span className="w-56 border-b border-dotted border-black" />
-          <span className="w-20 whitespace-nowrap">ผู้อนุมัติ</span>
-        </div>
+        {isSupportTeam ? (
+          // The Support page already carries the extra payout summary, so
+          // stacking three signature lines pushed them onto a second,
+          // otherwise-empty page — one compact row keeps them on page 1.
+          <div className="mt-10 flex break-inside-avoid items-baseline justify-end gap-6">
+            {["ผู้จัดทำ", "ผู้ตรวจสอบ", "ผู้อนุมัติ"].map((label) => (
+              <div key={label} className="flex items-baseline gap-2">
+                <span className="w-40 border-b border-dotted border-black" />
+                <span className="whitespace-nowrap">{label}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <>
+            <div className="mt-16 flex items-baseline justify-end gap-2">
+              <span className="w-56 border-b border-dotted border-black" />
+              <span className="w-20 whitespace-nowrap">ผู้จัดทำ</span>
+            </div>
+            <div className="mt-10 flex items-baseline justify-end gap-2">
+              <span className="w-56 border-b border-dotted border-black" />
+              <span className="w-20 whitespace-nowrap">ผู้ตรวจสอบ</span>
+            </div>
+            <div className="mt-10 flex items-baseline justify-end gap-2">
+              <span className="w-56 border-b border-dotted border-black" />
+              <span className="w-20 whitespace-nowrap">ผู้อนุมัติ</span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

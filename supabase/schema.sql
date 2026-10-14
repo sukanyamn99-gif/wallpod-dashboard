@@ -1900,3 +1900,8 @@ create policy data_documents_files_insert on storage.objects for insert with che
 create policy data_documents_files_delete on storage.objects for delete using (
   bucket_id = 'data-documents' and my_role() in ('owner', 'manager', 'support_sale')
 );
+
+-- migration_097: "ไม่มีเซลล์" option for the sales-rep dropdowns (see migration_097_no_sales_rep_option.sql)
+insert into sales_reps (name, active)
+select 'ไม่มีเซลล์', true
+where not exists (select 1 from sales_reps where name = 'ไม่มีเซลล์');

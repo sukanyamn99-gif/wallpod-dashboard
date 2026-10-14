@@ -2,6 +2,11 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { buildPaymentInstallments, getFullProjectReport } from "@/lib/data/project-sales";
 import type { CommissionRateTier, CommissionableProject } from "@/lib/types";
 
+// The "ไม่มีเซลล์" choice on the sales-rep dropdown (migration 097) — a job
+// with no salesperson has no one to pay commission to, so it never appears in
+// the commission calculation/report.
+export const NO_SALES_REP_NAME = "ไม่มีเซลล์";
+
 export async function getCommissionRateTiers(): Promise<CommissionRateTier[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
@@ -51,6 +56,7 @@ export async function getCommissionableProjects(): Promise<CommissionableProject
   const results: CommissionableProject[] = [];
   for (const row of rows) {
     if (row.isCancelled || row.status !== "เก็บเงินเรียบร้อย") continue;
+    if (row.salesRepName === NO_SALES_REP_NAME) continue;
 
     const receivedDates = [row.receivedDate1, row.receivedDate2, row.receivedDate3].filter(
       (d): d is string => !!d,

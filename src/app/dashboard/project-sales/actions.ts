@@ -419,11 +419,32 @@ export async function updateProjectSale(projectId: string, formData: FormData) {
     if (costErr) return { error: `บันทึกต้นทุนไม่สำเร็จ: ${costErr.message}` };
   }
 
-  const { error: deletePaymentsErr } = await supabase.from("payments").delete().eq("project_id", projectId);
-  if (deletePaymentsErr) return { error: `ลบข้อมูลการชำระเงินเดิมไม่สำเร็จ: ${deletePaymentsErr.message}` };
+  // Installments are updated in place by slot, NOT deleted and re-inserted:
+  // a payments row carries links this form knows nothing about —
+  // source_quotation_id/source_tax_invoice_id (how a later edit of the
+  // ใบกำกับภาษี/ใบเสร็จ finds the installment it owns) and the FK that
+  // billing_note_items.payment_id points at (set null on delete). Recreating
+  // the rows dropped all of that, so the next edit of such a document found
+  // no installment of its own and added a duplicate งวด.
+  const { data: existingPayments, error: existingPaymentsErr } = await supabase
+    .from("payments")
+    .select("id, installment_no")
+    .eq("project_id", projectId);
+  if (existingPaymentsErr) return { error: `ดึงข้อมูลการชำระเงินเดิมไม่สำเร็จ: ${existingPaymentsErr.message}` };
+  const existingIdBySlot = new Map((existingPayments ?? []).map((p) => [p.installment_no as number, p.id as string]));
+
   const payments = buildPayments(projectId, parsed);
-  if (payments.length > 0) {
-    const { error: payErr } = await supabase.from("payments").insert(payments);
+  const keptSlots = new Set(payments.map((p) => p.installment_no));
+  const removedIds = (existingPayments ?? []).filter((p) => !keptSlots.has(p.installment_no)).map((p) => p.id as string);
+  if (removedIds.length > 0) {
+    const { error: deletePaymentsErr } = await supabase.from("payments").delete().in("id", removedIds);
+    if (deletePaymentsErr) return { error: `ลบข้อมูลการชำระเงินเดิมไม่สำเร็จ: ${deletePaymentsErr.message}` };
+  }
+  for (const payment of payments) {
+    const existingId = existingIdBySlot.get(payment.installment_no);
+    const { error: payErr } = existingId
+      ? await supabase.from("payments").update(payment).eq("id", existingId)
+      : await supabase.from("payments").insert(payment);
     if (payErr) return { error: `บันทึกการชำระเงินไม่สำเร็จ: ${payErr.message}` };
   }
 
