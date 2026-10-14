@@ -108,16 +108,16 @@ export function PrintCommissionView({
             <col className="w-[3%]" />
             <col className="w-[5%]" />
             <col className="w-[6%]" />
-            <col className="w-[12%]" />
             <col className="w-[10%]" />
-            <col className="w-[5%]" />
-            <col className="w-[6%]" />
+            <col className="w-[9%]" />
+            <col className="w-[7%]" />
+            <col className="w-[8%]" />
             <col className="w-[4%]" />
             <col className="w-[5%]" />
             <col className="w-[4%]" />
             <col className="w-[7%]" />
             <col className="w-[11%]" />
-            <col className="w-[11%]" />
+            <col className="w-[10%]" />
             <col className="w-[5%]" />
             <col className="w-[6%]" />
           </colgroup>
