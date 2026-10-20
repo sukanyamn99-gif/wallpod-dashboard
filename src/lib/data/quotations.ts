@@ -419,25 +419,38 @@ export async function getQuotationItemsByIds(
 // to be billed directly, ahead of the formal invoice. Matched by customer
 // name (quotations has no customer_id FK), same convention already used
 // by syncCustomerContactInfo/getCustomerByName.
+//
+// The name is compared with whitespace collapsed and case ignored, not as an
+// exact ilike: the same company is often typed with a stray double space on
+// one document and not on another ("...จำกัด  (สำนักงานใหญ่)" vs "...จำกัด
+// (สำนักงานใหญ่)"), and an exact match silently dropped such a quotation from
+// the picker — its amount then never showed up on the new ใบแจ้งหนี้.
+function normalizeCustomerName(name: string): string {
+  return name.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
 export async function getAcceptedUnconvertedQuotationsForCustomer(customerName: string): Promise<BillableQuotation[]> {
   if (!customerName || !isSupabaseConfigured()) return [];
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("quotations")
-    .select("id, doc_no, quote_date, project_name, total")
-    .ilike("customer_name", customerName)
+    .select("id, doc_no, quote_date, project_name, total, customer_name, job_number")
     .eq("status", "ลูกค้าตอบตกลง")
     .is("converted_project_id", null)
     .order("quote_date", { ascending: false });
   if (error) throw error;
 
-  return (data ?? []).map((row) => ({
-    id: row.id,
-    docNo: row.doc_no,
-    quoteDate: row.quote_date,
-    projectName: row.project_name,
-    total: Number(row.total),
-  }));
+  const wanted = normalizeCustomerName(customerName);
+  return (data ?? [])
+    .filter((row) => normalizeCustomerName(row.customer_name ?? "") === wanted)
+    .map((row) => ({
+      id: row.id,
+      docNo: row.doc_no,
+      quoteDate: row.quote_date,
+      projectName: row.project_name,
+      total: Number(row.total),
+      jobNumber: row.job_number ?? null,
+    }));
 }
 
 // One quotation item's descriptive/pricing fields, kept as raw separate

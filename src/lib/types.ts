@@ -1035,6 +1035,7 @@ export interface BillableQuotation {
   quoteDate: string;
   projectName: string;
   total: number;
+  jobNumber: string | null;
 }
 
 // A ใบกำกับภาษี, quotation-sourced, not yet referenced by any ใบวางบิล —

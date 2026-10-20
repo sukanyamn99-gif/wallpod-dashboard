@@ -356,7 +356,17 @@ export function BillingDocumentForm({
       setTaxInvoices(billableTaxInvoices);
       setBillingNoteItems(billableBillingNoteItems);
       if (preselectJobNo) {
-        setSelected(new Set(rows.filter((r) => r.jobNo === preselectJobNo).map((r) => r.paymentId)));
+        const jobRows = rows.filter((r) => r.jobNo === preselectJobNo);
+        setSelected(new Set(jobRows.map((r) => r.paymentId)));
+        // A job with no recorded installment yet is billed from its own
+        // accepted quotation instead — pre-check it too so the amount shows
+        // up without having to hunt for it among the customer's other quotes.
+        if (jobRows.length === 0) {
+          const wanted = preselectJobNo.trim().toUpperCase();
+          setSelectedQuotations(
+            new Set(billableQuotations.filter((q) => q.jobNumber?.trim().toUpperCase() === wanted).map((q) => q.id)),
+          );
+        }
       }
     } finally {
       setLoadingInvoices(false);
@@ -1264,7 +1274,10 @@ export function BillingDocumentForm({
                     className="h-4 w-4"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{q.docNo}</p>
+                    <p className="truncate text-sm font-medium">
+                      {q.docNo}
+                      {q.jobNumber && <span className="text-muted-foreground"> — {q.jobNumber}</span>}
+                    </p>
                     <p className="truncate text-xs text-muted-foreground">
                       {q.projectName} • {new Date(q.quoteDate).toLocaleDateString("th-TH")}
                     </p>
