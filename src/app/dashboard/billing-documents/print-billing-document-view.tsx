@@ -73,6 +73,7 @@ function DocumentBody({
     document.retentionPercent,
     document.depositDeductionAmount,
     document.depositWhtAmount,
+    document.roundingAmount,
   );
   // A ส่วนลด column appears only when at least one quotation line actually
   // has a discount — otherwise unit price × qty wouldn't match the line
@@ -451,6 +452,12 @@ function DocumentBody({
               <tr>
                 <td className="py-0.5 text-red-600">หักประกันผลงานทั้งสิ้น</td>
                 <td className="py-0.5 text-right text-red-600">{formatTHB(summary.retentionAmount)}</td>
+              </tr>
+            )}
+            {summary.roundingAmount !== 0 && (
+              <tr>
+                <td className="py-0.5 text-neutral-600">ปัดเศษ</td>
+                <td className="py-0.5 text-right">{formatTHB(summary.roundingAmount)}</td>
               </tr>
             )}
           </tbody>

@@ -1905,3 +1905,7 @@ create policy data_documents_files_delete on storage.objects for delete using (
 insert into sales_reps (name, active)
 select 'ไม่มีเซลล์', true
 where not exists (select 1 from sales_reps where name = 'ไม่มีเซลล์');
+
+-- migration_098: stored satang rounding on billing documents (see migration_098_billing_document_rounding.sql)
+alter table billing_notes
+  add column if not exists rounding_amount numeric(14,2) not null default 0;

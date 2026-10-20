@@ -144,6 +144,7 @@ async function insertBillingNoteHeader(
     depositDeductionAmount: number;
     depositDeductionInvoiceNo: string | null;
     depositWhtAmount: number;
+    roundingAmount: number;
     note: string | null;
     jobNo: string | null;
     paymentMethod: PaymentMethod | null;
@@ -171,6 +172,7 @@ async function insertBillingNoteHeader(
         deposit_deduction_amount: fields.depositDeductionAmount,
         deposit_deduction_invoice_no: fields.depositDeductionInvoiceNo,
         deposit_wht_amount: fields.depositWhtAmount,
+        rounding_amount: fields.roundingAmount,
         note: fields.note,
         job_no: fields.jobNo,
         payment_method: fields.paymentMethod,
@@ -488,6 +490,7 @@ interface ParsedBillingDocument {
   depositDeductionAmount: number;
   depositDeductionInvoiceNo: string | null;
   depositWhtAmount: number;
+  roundingAmount: number;
   note: string | null;
   // Set only in create mode, from whatever JOB the JobNoSelect picker had
   // selected — printed as "เลขที่ Job" on the document. Never present on
@@ -542,6 +545,9 @@ function parseBillingDocumentForm(formData: FormData): { error: string } | ({ er
   const depositDeductionAmount = Math.max(0, num(formData.get("deposit_deduction_amount")));
   const depositDeductionInvoiceNo = str(formData.get("deposit_deduction_invoice_no"));
   const depositWhtAmount = Math.max(0, num(formData.get("deposit_wht_amount")));
+  // Satang rounding decided by the form's own summary (withSatangRounding) —
+  // bounded to a couple of satang so a tampered value can't move real money.
+  const roundingAmount = Math.min(0.02, Math.max(-0.02, num(formData.get("rounding_amount"))));
   const note = str(formData.get("note"));
   const jobNoRef = str(formData.get("job_no_ref"));
 
@@ -583,6 +589,7 @@ function parseBillingDocumentForm(formData: FormData): { error: string } | ({ er
     depositDeductionAmount,
     depositDeductionInvoiceNo,
     depositWhtAmount,
+    roundingAmount,
     note,
     jobNoRef,
     paymentMethod,
@@ -620,6 +627,7 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
     depositDeductionAmount,
     depositDeductionInvoiceNo,
     depositWhtAmount,
+    roundingAmount,
     note,
     jobNoRef,
     paymentMethod,
@@ -701,6 +709,7 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
     depositDeductionAmount,
     depositDeductionInvoiceNo,
     depositWhtAmount,
+    roundingAmount,
     note,
     jobNo: jobNoRef,
     paymentMethod,
@@ -942,6 +951,7 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
     depositDeductionAmount,
     depositDeductionInvoiceNo,
     depositWhtAmount,
+    roundingAmount,
     note,
     jobNoRef,
     paymentMethod,
@@ -1004,6 +1014,7 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
       deposit_deduction_amount: depositDeductionAmount,
       deposit_deduction_invoice_no: depositDeductionInvoiceNo,
       deposit_wht_amount: depositWhtAmount,
+      rounding_amount: roundingAmount,
       note,
       payment_method: paymentMethod,
       bank_name: bankName,

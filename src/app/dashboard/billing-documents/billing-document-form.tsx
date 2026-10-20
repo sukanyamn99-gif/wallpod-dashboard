@@ -14,7 +14,7 @@ import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "@/
 import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomplete";
 import { JobNoSelect } from "@/components/dashboard/job-no-select";
 import { formatTHB } from "@/lib/format";
-import { computeBillingDocumentSummary } from "@/lib/billing-document-summary";
+import { computeBillingDocumentSummary, withSatangRounding } from "@/lib/billing-document-summary";
 import {
   createBillingDocument,
   fetchBillableBillingNoteItems,
@@ -725,13 +725,15 @@ export function BillingDocumentForm({
   );
   const summary = useMemo(
     () =>
-      computeBillingDocumentSummary(
-        selectedItems,
-        Number(discountAmount) || 0,
-        Number(whtPercent) || 0,
-        Number(retentionPercent) || 0,
-        Number(depositDeductionAmount) || 0,
-        Number(depositWhtAmount) || 0,
+      withSatangRounding(
+        computeBillingDocumentSummary(
+          selectedItems,
+          Number(discountAmount) || 0,
+          Number(whtPercent) || 0,
+          Number(retentionPercent) || 0,
+          Number(depositDeductionAmount) || 0,
+          Number(depositWhtAmount) || 0,
+        ),
       ),
     [selectedItems, discountAmount, whtPercent, retentionPercent, depositDeductionAmount, depositWhtAmount],
   );
@@ -864,6 +866,7 @@ export function BillingDocumentForm({
         // sentinel literally — overwrite with the real state, which is
         // already "" when no sales rep is picked.
         fd.set("sales_rep_id", salesRepId);
+        fd.set("rounding_amount", String(summary.roundingAmount));
         // For every type but ใบเสร็จรับเงิน this only ever has a value in
         // create mode (edit doesn't render that picker there). ใบเสร็จรับเงิน
         // renders its own field in both modes — see the ลูกค้า section below.

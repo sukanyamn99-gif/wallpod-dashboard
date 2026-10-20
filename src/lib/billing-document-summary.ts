@@ -19,6 +19,10 @@ export interface BillingDocumentSummary {
   whtAmountThisRound: number;
   retentionAmount: number;
   depositDeductionAmount: number;
+  // Satang rounding included in netPayable — the document's own stored
+  // value (billing_notes.rounding_amount), 0 for anything issued before it
+  // existed. See withSatangRounding for how a new document gets its value.
+  roundingAmount: number;
   netPayable: number;
 }
 
@@ -49,6 +53,7 @@ export function computeBillingDocumentSummary(
   // linked pair that crediting it into netPayable directly double-counts
   // the deposit's own WHT (depositDeductionAmount is already net of it).
   depositWhtAmount = 0,
+  roundingAmount = 0,
 ): BillingDocumentSummary {
   const subtotal = round2(items.reduce((sum, it) => sum + it.amount, 0) / 1.07);
   const afterDiscount = round2(subtotal - discountAmount);
@@ -62,7 +67,7 @@ export function computeBillingDocumentSummary(
   const whtAmount = round2(whtBase * (whtPercent / 100));
   const whtAmountThisRound = round2(Math.max(0, whtAmount - depositWhtAmount));
   const retentionAmount = round2(totalAfterVat * (retentionPercent / 100));
-  const netPayable = round2(totalAfterVat - whtAmount - retentionAmount - depositDeductionAmount);
+  const netPayable = round2(totalAfterVat - whtAmount - retentionAmount - depositDeductionAmount + roundingAmount);
   return {
     subtotal,
     discountAmount,
@@ -73,8 +78,24 @@ export function computeBillingDocumentSummary(
     whtAmountThisRound,
     retentionAmount,
     depositDeductionAmount,
+    roundingAmount,
     netPayable,
   };
+}
+
+// A balance billed after a deposit lands on stray satang — the deposit itself
+// was rounded half-up from an odd-satang half of the job total, so the
+// remainder is often 1 satang off the figure staff expect. For a document
+// being created/edited (the form's live preview, which is also what gets
+// saved), round the net to the nearest 5 satang and show the difference as
+// its own "ปัดเศษ" line so the printed arithmetic still adds up. Only when a
+// deposit is deducted. Stored with the document — never recomputed on read,
+// so older documents are untouched.
+export function withSatangRounding(summary: BillingDocumentSummary): BillingDocumentSummary {
+  if (summary.depositDeductionAmount <= 0) return summary;
+  const exact = round2(summary.netPayable - summary.roundingAmount);
+  const rounding = round2(Math.round(exact * 20) / 20 - exact);
+  return { ...summary, roundingAmount: rounding, netPayable: round2(exact + rounding) };
 }
 
 export interface AllocatedLineAmount {

@@ -1199,6 +1199,9 @@ export interface BillingDocument {
   // computeBillingDocumentSummary for why this is subtracted from this
   // document's own WHT instead of withholding the full job's WHT again.
   depositWhtAmount: number;
+  // Satang rounding folded into the net total (see withSatangRounding) —
+  // stored per document, 0 for anything issued before it existed.
+  roundingAmount: number;
   note: string | null;
   // Which JOB this document was created for — set from the JobNoSelect
   // picker at creation time, printed as "เลขที่ Job". Null for documents

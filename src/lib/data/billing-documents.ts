@@ -87,7 +87,7 @@ export async function getReceivedInvoicesForCustomer(
   let docsQuery = supabase
     .from("billing_notes")
     .select(
-      "id, doc_no, doc_date, job_no, discount_amount, wht_percent, retention_percent, deposit_deduction_amount, deposit_wht_amount, billing_note_items(amount, apply_wht)",
+      "id, doc_no, doc_date, job_no, discount_amount, wht_percent, retention_percent, deposit_deduction_amount, deposit_wht_amount, rounding_amount, billing_note_items(amount, apply_wht)",
     )
     .eq("customer_id", customerId)
     .in("doc_type", ["tax_invoice", "invoice"]);
@@ -111,6 +111,7 @@ export async function getReceivedInvoicesForCustomer(
         Number(doc.retention_percent),
         Number(doc.deposit_deduction_amount),
         Number(doc.deposit_wht_amount),
+        Number(doc.rounding_amount),
       );
       return {
         paymentId: `doc:${doc.id}`,
@@ -553,7 +554,7 @@ async function resolveJobNosBySourceChain(
 }
 
 const HEADER_COLUMNS =
-  "id, doc_no, doc_type, customer_id, doc_date, credit_days, due_date, sales_rep_id, discount_amount, wht_percent, retention_percent, deposit_deduction_amount, deposit_deduction_invoice_no, deposit_wht_amount, note, job_no, created_by, created_at, payment_method, bank_name, payment_reference_no, payment_date, customers(name, address, phone, tax_id), sales_reps(name), profiles(full_name)";
+  "id, doc_no, doc_type, customer_id, doc_date, credit_days, due_date, sales_rep_id, discount_amount, wht_percent, retention_percent, deposit_deduction_amount, deposit_deduction_invoice_no, deposit_wht_amount, rounding_amount, note, job_no, created_by, created_at, payment_method, bank_name, payment_reference_no, payment_date, customers(name, address, phone, tax_id), sales_reps(name), profiles(full_name)";
 
 type HeaderRow = {
   id: string;
@@ -570,6 +571,7 @@ type HeaderRow = {
   deposit_deduction_amount: number;
   deposit_deduction_invoice_no: string | null;
   deposit_wht_amount: number;
+  rounding_amount: number;
   note: string | null;
   job_no: string | null;
   created_by: string | null;
@@ -609,6 +611,7 @@ function mapHeader(row: HeaderRow): Omit<BillingDocument, "amount" | "jobNos"> {
     depositDeductionAmount: Number(row.deposit_deduction_amount),
     depositDeductionInvoiceNo: row.deposit_deduction_invoice_no,
     depositWhtAmount: Number(row.deposit_wht_amount),
+    roundingAmount: Number(row.rounding_amount),
     note: row.note,
     jobNo: row.job_no,
     createdById: row.created_by,
@@ -671,6 +674,7 @@ export async function getBillingDocuments(docType: BillingDocumentType): Promise
       Number(row.retention_percent),
       Number(row.deposit_deduction_amount),
       Number(row.deposit_wht_amount),
+      Number(row.rounding_amount),
     );
     // Every DISTINCT job this document actually covers — a ใบวางบิล/
     // ใบเสร็จรับเงิน can legitimately bundle several different JOBs' invoices
@@ -835,6 +839,7 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     Number(header.retention_percent),
     Number(header.deposit_deduction_amount),
     Number(header.deposit_wht_amount),
+    Number(header.rounding_amount),
   );
 
   return {
