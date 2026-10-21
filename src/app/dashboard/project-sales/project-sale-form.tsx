@@ -603,13 +603,14 @@ export function ProjectSaleForm({
                 </p>
               </div>
             )}
-            {/* ค่าตัด is always shown/editable — every other cost field only
+            {/* ค่าตัด and ค่าวัสดุ are always shown/editable — ค่าวัสดุ so an
+                older JOB whose materials were never put through a ใบเบิก can
+                still have it keyed in by hand. Every other cost field only
                 shows when a JOB already has a nonzero value saved for it
                 (older jobs entered before this field was trimmed down), so
                 past data stays visible instead of silently hiding real
                 numbers. A newly-created JOB has no initialData at all, so
-                every one of these starts at 0 and stays hidden — only
-                ค่าตัด shows, per the user's explicit request. Hidden fields
+                those start at 0 and stay hidden. Hidden fields
                 stay in the form (not deleted) so their existing values keep
                 submitting unchanged on save. */}
             <div className="grid grid-cols-3 gap-4">
@@ -617,7 +618,7 @@ export function ProjectSaleForm({
                 <Label htmlFor="cutting_cost">ค่าตัด</Label>
                 <NumberInput id="cutting_cost" name="cutting_cost" min={0} step={0.01} defaultValue={initialData?.costs.cutting_cost} placeholder="0" />
               </div>
-              <div className="space-y-2" hidden={!(Number(initialData?.costs.material_cost) > 0)}>
+              <div className="space-y-2">
                 <Label htmlFor="material_cost">ค่าวัสดุ</Label>
                 <NumberInput
                   id="material_cost"
@@ -628,6 +629,9 @@ export function ProjectSaleForm({
                   onChange={setMaterialCost}
                   placeholder="0"
                 />
+                <p className="text-[11px] text-muted-foreground">
+                  ใช้กับ JOB เก่าที่ยังไม่ได้ทำใบเบิก — JOB ที่มีใบเบิกแล้วไม่ต้องกรอกซ้ำ
+                </p>
               </div>
               <div className="space-y-2" hidden={!(Number(initialData?.costs.glue_cost) > 0)}>
                 <Label htmlFor="glue_cost">ค่ากาว</Label>
