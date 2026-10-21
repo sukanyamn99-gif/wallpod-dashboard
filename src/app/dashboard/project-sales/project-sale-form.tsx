@@ -190,6 +190,18 @@ export function ProjectSaleForm({
   // next job; the prop value would otherwise get reused and collide.
   const [nextJobNoSuggestion, setNextJobNoSuggestion] = useState(suggestedJobNo);
   const [materialCost, setMaterialCost] = useState(initialData?.costs.material_cost ?? "");
+  // The less-used cost fields stay folded away until asked for (or until the
+  // JOB already has a value in one of them, so saved numbers never hide).
+  const [showOtherCosts, setShowOtherCosts] = useState(
+    () =>
+      [
+        initialData?.costs.material_cost,
+        initialData?.costs.glue_cost,
+        initialData?.costs.install_cost,
+        initialData?.costs.parking_cost,
+        initialData?.costs.shipping_cost,
+      ].some((v) => Number(v) > 0),
+  );
   const [jobCostSummary, setJobCostSummary] = useState<JobLinkedCostSummary | null>(null);
   const [jobCostError, setJobCostError] = useState<string | null>(null);
   const [fetchingJobCost, startJobCostFetch] = useTransition();
@@ -603,14 +615,12 @@ export function ProjectSaleForm({
                 </p>
               </div>
             )}
-            {/* ค่าตัด and ค่าวัสดุ are always shown/editable — ค่าวัสดุ so an
-                older JOB whose materials were never put through a ใบเบิก can
-                still have it keyed in by hand. Every other cost field only
-                shows when a JOB already has a nonzero value saved for it
-                (older jobs entered before this field was trimmed down), so
-                past data stays visible instead of silently hiding real
-                numbers. A newly-created JOB has no initialData at all, so
-                those start at 0 and stay hidden. Hidden fields
+            {/* ค่าตัด is always shown/editable. The other cost fields (ค่าวัสดุ
+                etc.) are folded away behind the "เพิ่มต้นทุนอื่น" toggle below
+                — materials now normally come from ใบเบิก — but open by
+                themselves when the JOB already has a nonzero value in one of
+                them, so saved numbers never hide; staff can open them by
+                hand to key an older JOB's costs. Hidden fields
                 stay in the form (not deleted) so their existing values keep
                 submitting unchanged on save. */}
             <div className="grid grid-cols-3 gap-4">
@@ -618,7 +628,7 @@ export function ProjectSaleForm({
                 <Label htmlFor="cutting_cost">ค่าตัด</Label>
                 <NumberInput id="cutting_cost" name="cutting_cost" min={0} step={0.01} defaultValue={initialData?.costs.cutting_cost} placeholder="0" />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" hidden={!showOtherCosts}>
                 <Label htmlFor="material_cost">ค่าวัสดุ</Label>
                 <NumberInput
                   id="material_cost"
@@ -630,26 +640,33 @@ export function ProjectSaleForm({
                   placeholder="0"
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  ใช้กับ JOB เก่าที่ยังไม่ได้ทำใบเบิก — JOB ที่มีใบเบิกแล้วไม่ต้องกรอกซ้ำ
+                  ใช้กับ JOB ที่ไม่ได้ทำใบเบิก — JOB ที่มีใบเบิกแล้วไม่ต้องกรอกซ้ำ
                 </p>
               </div>
-              <div className="space-y-2" hidden={!(Number(initialData?.costs.glue_cost) > 0)}>
+              <div className="space-y-2" hidden={!showOtherCosts}>
                 <Label htmlFor="glue_cost">ค่ากาว</Label>
                 <NumberInput id="glue_cost" name="glue_cost" min={0} step={0.01} defaultValue={initialData?.costs.glue_cost} placeholder="0" />
               </div>
-              <div className="space-y-2" hidden={!(Number(initialData?.costs.install_cost) > 0)}>
+              <div className="space-y-2" hidden={!showOtherCosts}>
                 <Label htmlFor="install_cost">ค่าติดตั้งผู้รับเหมา</Label>
                 <NumberInput id="install_cost" name="install_cost" min={0} step={0.01} defaultValue={initialData?.costs.install_cost} placeholder="0" />
               </div>
-              <div className="space-y-2" hidden={!(Number(initialData?.costs.parking_cost) > 0)}>
+              <div className="space-y-2" hidden={!showOtherCosts}>
                 <Label htmlFor="parking_cost">ค่าเดินทาง+ค่าที่จอดรถ</Label>
                 <NumberInput id="parking_cost" name="parking_cost" min={0} step={0.01} defaultValue={initialData?.costs.parking_cost} placeholder="0" />
               </div>
-              <div className="space-y-2" hidden={!(Number(initialData?.costs.shipping_cost) > 0)}>
+              <div className="space-y-2" hidden={!showOtherCosts}>
                 <Label htmlFor="shipping_cost">ค่าขนส่ง</Label>
                 <NumberInput id="shipping_cost" name="shipping_cost" min={0} step={0.01} defaultValue={initialData?.costs.shipping_cost} placeholder="0" />
               </div>
             </div>
+            <button
+              type="button"
+              onClick={() => setShowOtherCosts((v) => !v)}
+              className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            >
+              {showOtherCosts ? "ซ่อนต้นทุนอื่น" : "+ เพิ่มต้นทุนอื่น (ค่าวัสดุ, ค่ากาว, ค่าติดตั้ง, ค่าเดินทาง, ค่าขนส่ง)"}
+            </button>
           </div>
         </>
       )}
