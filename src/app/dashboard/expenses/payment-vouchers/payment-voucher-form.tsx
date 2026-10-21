@@ -282,6 +282,13 @@ export function PaymentVoucherForm({
             </div>
           ))}
         </div>
+        <label className="flex cursor-pointer items-center gap-2 text-sm">
+          <input type="checkbox" name="vat_included" defaultChecked={initialData?.vatIncluded ?? false} className="h-4 w-4" />
+          <span>
+            ยอดนี้รวม VAT 7%
+            <span className="text-xs text-muted-foreground"> — ต้นทุนของ Job จะนับเป็นยอดก่อน VAT (ยอด ÷ 1.07)</span>
+          </span>
+        </label>
         {filledAllocations.length > 0 && (
           <p className="text-sm text-muted-foreground">
             แบ่งแล้ว {formatTHB(allocatedTotal)} จาก {formatTHB(voucherAmount)}

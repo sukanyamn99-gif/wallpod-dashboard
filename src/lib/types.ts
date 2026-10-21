@@ -618,6 +618,9 @@ export interface PaymentVoucher {
   // Cost attribution per JOB; amounts sum to `amount`. Empty = not tied to
   // any JOB.
   jobAllocations: PaymentVoucherJobAllocation[];
+  // The voucher amount includes 7% VAT — job cost then counts each
+  // allocation divided by 1.07 (see jobCostAmount in lib/payment-voucher-jobs).
+  vatIncluded: boolean;
   payeeTaxId: string | null;
   payeeAddress: string | null;
   incomeType: WhtIncomeType;

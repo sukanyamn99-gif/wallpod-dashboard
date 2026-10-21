@@ -125,6 +125,7 @@ function parseVoucherForm(formData: FormData) {
     // First allocated JOB doubles as the voucher's primary job for display.
     jobNo: jobAllocations[0]?.jobNo ?? null,
     jobAllocations,
+    vatIncluded: formData.get("vat_included") === "on",
     payeeTaxId: str(formData.get("payee_tax_id")),
     payeeAddress: str(formData.get("payee_address")),
     incomeType: incomeType as WhtIncomeType,
@@ -214,6 +215,7 @@ export async function createPaymentVoucher(formData: FormData) {
       bank_account_no: parsed.bankAccountNo,
       bank_transfer_date: parsed.bankTransferDate,
       job_no: parsed.jobNo,
+      vat_included: parsed.vatIncluded,
       payee_tax_id: parsed.payeeTaxId,
       payee_address: parsed.payeeAddress,
       income_type: parsed.incomeType,
@@ -268,6 +270,7 @@ export async function updatePaymentVoucher(id: string, formData: FormData) {
       bank_account_no: parsed.bankAccountNo,
       bank_transfer_date: parsed.bankTransferDate,
       job_no: parsed.jobNo,
+      vat_included: parsed.vatIncluded,
       payee_tax_id: parsed.payeeTaxId,
       payee_address: parsed.payeeAddress,
       income_type: parsed.incomeType,

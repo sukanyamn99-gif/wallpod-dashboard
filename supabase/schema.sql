@@ -1909,3 +1909,7 @@ where not exists (select 1 from sales_reps where name = 'ไม่มีเซ�
 -- migration_098: stored satang rounding on billing documents (see migration_098_billing_document_rounding.sql)
 alter table billing_notes
   add column if not exists rounding_amount numeric(14,2) not null default 0;
+
+-- migration_099: payment_vouchers.vat_included (job cost counts the pre-VAT amount) — see migration_099_payment_voucher_vat_included.sql
+alter table payment_vouchers
+  add column if not exists vat_included boolean not null default false;

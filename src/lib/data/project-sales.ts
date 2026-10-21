@@ -1,5 +1,6 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { getProductCategories } from "@/lib/data/reference";
+import { jobCostAmount } from "@/lib/payment-voucher-jobs";
 import type { ProjectSaleInitialData } from "@/app/dashboard/project-sales/project-sale-form";
 import type { IncentiveInstallment, ProductCategory } from "@/lib/types";
 
@@ -126,7 +127,8 @@ async function getJobLinkedCosts(
     // One voucher can be split across several JOBs — each JOB's cost is its
     // own allocated share (payment_voucher_job_allocations), not the whole
     // voucher amount against a single job_no.
-    supabase.from("payment_voucher_job_allocations").select("job_no, amount"),
+    // A VAT-inclusive voucher counts its pre-VAT amount (jobCostAmount).
+    supabase.from("payment_voucher_job_allocations").select("job_no, amount, payment_vouchers(vat_included)"),
     supabase
       .from("petty_cash_transactions")
       .select("job_no, amount")
@@ -153,7 +155,11 @@ async function getJobLinkedCosts(
     if (unitCost == null) continue;
     add(jobNo, Number(row.quantity) * Number(unitCost));
   }
-  for (const row of vouchers.data ?? []) add(row.job_no, Number(row.amount));
+  for (const row of vouchers.data ?? []) {
+    // @ts-expect-error -- Supabase types the joined relation loosely here
+    const vatIncluded = !!(row.payment_vouchers as { vat_included: boolean } | null)?.vat_included;
+    add(row.job_no, jobCostAmount(Number(row.amount), vatIncluded));
+  }
   for (const row of pettyCash.data ?? []) add(row.job_no, Number(row.amount));
 
   return totals;
@@ -342,7 +348,7 @@ export async function getJobLinkedCostSummary(jobNo: string): Promise<JobLinkedC
       .eq("job_no", trimmed),
     supabase
       .from("payment_voucher_job_allocations")
-      .select("amount, payment_vouchers(doc_no)")
+      .select("amount, payment_vouchers(doc_no, vat_included)")
       .eq("job_no", trimmed),
     supabase
       .from("petty_cash_transactions")
@@ -371,7 +377,8 @@ export async function getJobLinkedCostSummary(jobNo: string): Promise<JobLinkedC
   const vouchers: JobLinkedCostDocument[] = (vouchersRes.data ?? []).map((v) => ({
     // @ts-expect-error -- Supabase types the joined relation loosely here
     docNo: (v.payment_vouchers as { doc_no: string } | null)?.doc_no ?? "",
-    amount: Number(v.amount),
+    // @ts-expect-error -- Supabase types the joined relation loosely here
+    amount: jobCostAmount(Number(v.amount), !!(v.payment_vouchers as { vat_included: boolean } | null)?.vat_included),
   }));
   const pettyCash: JobLinkedCostDocument[] = (pettyCashRes.data ?? []).map((t) => ({
     docNo: t.doc_no,
