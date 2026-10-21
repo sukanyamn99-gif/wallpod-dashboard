@@ -289,6 +289,11 @@ function monthLabelOf(key: string) {
   return THAI_MONTHS[month - 1];
 }
 
+// Page indexes count months oldest → newest; this clamps (see clampedPageIndex
+// below) to the newest month, which is where the table opens and where every
+// filter change lands — the latest month is the one staff are working in.
+const LATEST_PAGE = Number.POSITIVE_INFINITY;
+
 export function ProjectsTable({
   projects,
   categories,
@@ -301,22 +306,22 @@ export function ProjectsTable({
   const [query, setQuery] = useState("");
   const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set());
   const [selectedSalesReps, setSelectedSalesReps] = useState<Set<string>>(new Set());
-  const [pageIndex, setPageIndex] = useState(0);
+  const [pageIndex, setPageIndex] = useState(LATEST_PAGE);
 
   // Any filter change can shrink/reshuffle monthGroups, so a page index left
   // over from before could point at the wrong month (or past the end) —
-  // reset to the first page whenever what's being filtered changes.
+  // reset to the newest month whenever what's being filtered changes.
   function updateQuery(v: string) {
     setQuery(v);
-    setPageIndex(0);
+    setPageIndex(LATEST_PAGE);
   }
   function updateSelectedMonths(v: Set<string>) {
     setSelectedMonths(v);
-    setPageIndex(0);
+    setPageIndex(LATEST_PAGE);
   }
   function updateSelectedSalesReps(v: Set<string>) {
     setSelectedSalesReps(v);
-    setPageIndex(0);
+    setPageIndex(LATEST_PAGE);
   }
   const totalColumns =
     BASE_COLUMNS + categories.length + TAIL_COLUMNS - (canSeeCosts ? 0 : COST_COLUMNS);
@@ -385,8 +390,8 @@ export function ProjectsTable({
 
   // One month per page — clamp rather than reset-on-every-render so a page
   // index that's briefly out of range (e.g. mid-filter-change) never throws,
-  // it just falls back to the last available page until the reset above
-  // (triggered by the filter change itself) puts it back to 0.
+  // it just falls back to the last available page, which is also what
+  // LATEST_PAGE (the reset value above) resolves to.
   const clampedPageIndex =
     monthGroups.length === 0 ? 0 : Math.min(pageIndex, monthGroups.length - 1);
   const currentGroup = monthGroups[clampedPageIndex] as (typeof monthGroups)[number] | undefined;
@@ -484,7 +489,7 @@ export function ProjectsTable({
             variant="outline"
             size="sm"
             disabled={clampedPageIndex === 0}
-            onClick={() => setPageIndex((i) => Math.max(0, i - 1))}
+            onClick={() => setPageIndex(Math.max(0, clampedPageIndex - 1))}
           >
             <ChevronLeft className="h-3.5 w-3.5" />
             ย้อนกลับ
@@ -496,7 +501,7 @@ export function ProjectsTable({
             variant="outline"
             size="sm"
             disabled={clampedPageIndex >= monthGroups.length - 1}
-            onClick={() => setPageIndex((i) => Math.min(monthGroups.length - 1, i + 1))}
+            onClick={() => setPageIndex(Math.min(monthGroups.length - 1, clampedPageIndex + 1))}
           >
             หน้าถัดไป
             <ChevronRight className="h-3.5 w-3.5" />
