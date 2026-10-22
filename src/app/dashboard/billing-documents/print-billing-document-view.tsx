@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { DownloadPdfButton } from "@/components/dashboard/download-pdf-button";
 import { formatTHB } from "@/lib/format";
 import { thaiBahtText } from "@/lib/thai-baht-text";
-import { computeBillingDocumentSummary } from "@/lib/billing-document-summary";
+import { computeBillingDocumentSummary, round2 } from "@/lib/billing-document-summary";
 import { BILLING_DOCUMENT_LABELS } from "@/lib/types";
 import type { BillingDocumentDetail, PaymentMethod, PrimaryBankAccount } from "@/lib/types";
 
@@ -75,6 +75,25 @@ function DocumentBody({
     document.depositWhtAmount,
     document.roundingAmount,
   );
+  // ใบกำกับภาษี for a later installment (a deposit already received) prints
+  // the deposit deduction BEFORE VAT — หักมัดจำ → ยอดคงเหลือหลังหักมัดจำ →
+  // VAT on that remainder → total — instead of VAT on the full amount with
+  // the VAT-inclusive deposit subtracted at the very end. The stored deposit
+  // amount is VAT-inclusive and net of its own WHT, so its gross is
+  // amount + WHT. The deposit's VAT share is taken out of the document's own
+  // VAT (not recomputed from the remainder), so remaining + VAT always lands
+  // exactly on the same total the other doc types reach, to the satang.
+  const isDepositTaxInvoice = document.docType === "tax_invoice" && summary.depositDeductionAmount > 0;
+  const depositGross = round2(summary.depositDeductionAmount + document.depositWhtAmount);
+  const depositPreVat = round2(depositGross / 1.07);
+  const remainingPreVat = round2(summary.afterDiscount - depositPreVat);
+  const remainingVat = round2(summary.vat - (depositGross - depositPreVat));
+  const remainingTotal = round2(remainingPreVat + remainingVat);
+  const depositPercent = summary.subtotal > 0 ? parseFloat(((depositPreVat / summary.subtotal) * 100).toFixed(2)) : 0;
+  // The shaded "จำนวนเงินรวม" row would only repeat the final total bar below
+  // when nothing is deducted after VAT.
+  const hasDeductionAfterVat =
+    document.whtPercent > 0 || document.retentionPercent > 0 || summary.roundingAmount !== 0;
   // A ส่วนลด column appears only when at least one quotation line actually
   // has a discount — otherwise unit price × qty wouldn't match the line
   // total and the customer can't tell why. Documents with no discounted
@@ -355,7 +374,7 @@ function DocumentBody({
                 relates to) but still only SUBTRACTED at the very end, after
                 VAT/WHT — moving this row never changes netPayable's own
                 arithmetic, which still subtracts it last. */}
-            {summary.depositDeductionAmount > 0 && (
+            {summary.depositDeductionAmount > 0 && !isDepositTaxInvoice && (
               <tr>
                 <td className="py-0.5 text-red-600">
                   หักเงินมัดจำที่ได้รับ
@@ -376,6 +395,21 @@ function DocumentBody({
                 </tr>
               </>
             )}
+            {isDepositTaxInvoice && (
+              <>
+                <tr>
+                  <td className="py-0.5 text-red-600">
+                    หักมัดจำ {depositPercent}%
+                    {document.depositDeductionInvoiceNo && ` (เลขที่ ${document.depositDeductionInvoiceNo})`}
+                  </td>
+                  <td className="py-0.5 text-right text-red-600">{formatTHB(depositPreVat)}</td>
+                </tr>
+                <tr>
+                  <td className="py-0.5 text-neutral-600">ยอดคงเหลือหลังหักมัดจำ</td>
+                  <td className="py-0.5 text-right">{formatTHB(remainingPreVat)}</td>
+                </tr>
+              </>
+            )}
             {isCollectionDoc && (
               <>
                 <tr>
@@ -390,13 +424,25 @@ function DocumentBody({
             )}
             <tr>
               <td className="py-0.5 text-neutral-600">ภาษีมูลค่าเพิ่ม 7%</td>
-              <td className="py-0.5 text-right">{formatTHB(summary.vat)}</td>
+              <td className="py-0.5 text-right">{formatTHB(isDepositTaxInvoice ? remainingVat : summary.vat)}</td>
             </tr>
-            <tr style={{ backgroundColor: "#d8eceb" }}>
-              <td className="py-0.5 font-medium">{isCollectionDoc ? "จำนวนเงินรวมทั้งสิ้น" : "จำนวนเงินรวม"}</td>
-              <td className="py-0.5 text-right font-medium">{formatTHB(summary.totalAfterVat)}</td>
-            </tr>
-            {!isCollectionDoc && document.whtPercent > 0 && (
+            {(!isDepositTaxInvoice || hasDeductionAfterVat) && (
+              <tr style={{ backgroundColor: "#d8eceb" }}>
+                <td className="py-0.5 font-medium">{isCollectionDoc ? "จำนวนเงินรวมทั้งสิ้น" : "จำนวนเงินรวม"}</td>
+                <td className="py-0.5 text-right font-medium">
+                  {formatTHB(isDepositTaxInvoice ? remainingTotal : summary.totalAfterVat)}
+                </td>
+              </tr>
+            )}
+            {isDepositTaxInvoice && document.whtPercent > 0 && (
+              <tr>
+                <td className="py-0.5 text-red-600">หัก ณ ที่จ่าย {document.whtPercent}%</td>
+                <td className="py-0.5 text-right text-red-600">
+                  {formatTHB(round2(summary.whtAmount - document.depositWhtAmount))}
+                </td>
+              </tr>
+            )}
+            {!isCollectionDoc && !isDepositTaxInvoice && document.whtPercent > 0 && (
               <>
                 <tr>
                   <td className="py-0.5 text-red-600">หัก ณ ที่จ่ายทั้งสิ้น {document.whtPercent}%</td>
