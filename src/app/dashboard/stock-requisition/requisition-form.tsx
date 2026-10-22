@@ -33,6 +33,7 @@ interface SelectedItem {
   unit: string;
   quantity: number;
   unitCost: number;
+  costBucket: "material" | "glue";
 }
 
 export function RequisitionForm({
@@ -85,6 +86,7 @@ export function RequisitionForm({
         unit: it.unit,
         quantity: it.quantity,
         unitCost: it.unitCost,
+        costBucket: it.costBucket,
       })),
   );
   const [query, setQuery] = useState("");
@@ -131,6 +133,7 @@ export function RequisitionForm({
           unit: product.unit,
           quantity: qty,
           unitCost: product.unitCost,
+          costBucket: "material",
         },
       ];
     });
@@ -140,6 +143,9 @@ export function RequisitionForm({
     setItems((prev) => prev.map((it) => (it.stockProductId === id ? { ...it, quantity } : it)));
   }
 
+  function updateCostBucket(id: string, costBucket: "material" | "glue") {
+    setItems((prev) => prev.map((it) => (it.stockProductId === id ? { ...it, costBucket } : it)));
+  }
   function updateUnitCost(id: string, unitCost: number) {
     setItems((prev) => prev.map((it) => (it.stockProductId === id ? { ...it, unitCost } : it)));
   }
@@ -162,6 +168,7 @@ export function RequisitionForm({
           fd.append("item_unit", it.unit);
           fd.append("item_quantity", String(it.quantity));
           fd.append("item_unit_cost", String(it.unitCost));
+          fd.append("item_cost_bucket", it.costBucket);
         }
         startTransition(() => formAction(fd));
       }}
@@ -374,6 +381,18 @@ export function RequisitionForm({
                     className="w-20"
                   />
                   <span className="text-xs text-muted-foreground">{it.unit}</span>
+                  <div className="flex flex-col items-center gap-0.5">
+                    <select
+                      value={it.costBucket}
+                      onChange={(e) => updateCostBucket(it.stockProductId, e.target.value === "glue" ? "glue" : "material")}
+                      className="h-8 rounded-md border bg-background px-2 text-sm"
+                      aria-label="ประเภทต้นทุน"
+                    >
+                      <option value="material">ค่าวัสดุ</option>
+                      <option value="glue">ค่ากาว</option>
+                    </select>
+                    <span className="text-[10px] text-muted-foreground">ประเภทต้นทุน</span>
+                  </div>
                   {showCosts && (
                     <div className="flex flex-col items-center gap-0.5">
                       <NumberInput

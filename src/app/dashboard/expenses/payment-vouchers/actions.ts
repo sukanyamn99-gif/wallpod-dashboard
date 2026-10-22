@@ -5,6 +5,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activity-log";
 import { generateWhtCertNo } from "@/lib/wht-cert-no";
 import type { WhtFormType, WhtIncomeType } from "@/lib/types";
+import { isCostBucket, type CostBucket } from "@/lib/job-cost-buckets";
 
 const WHT_FORM_TYPES: WhtFormType[] = ["ภ.ง.ด.1", "ภ.ง.ด.2", "ภ.ง.ด.3", "ภ.ง.ด.53"];
 const WHT_INCOME_TYPES: WhtIncomeType[] = ["1", "2", "3", "4a", "4b", "5", "6"];
@@ -126,6 +127,7 @@ function parseVoucherForm(formData: FormData) {
     jobNo: jobAllocations[0]?.jobNo ?? null,
     jobAllocations,
     vatIncluded: formData.get("vat_included") === "on",
+    costBucket: isCostBucket(formData.get("cost_bucket")) ? (formData.get("cost_bucket") as CostBucket) : null,
     payeeTaxId: str(formData.get("payee_tax_id")),
     payeeAddress: str(formData.get("payee_address")),
     incomeType: incomeType as WhtIncomeType,
@@ -216,6 +218,7 @@ export async function createPaymentVoucher(formData: FormData) {
       bank_transfer_date: parsed.bankTransferDate,
       job_no: parsed.jobNo,
       vat_included: parsed.vatIncluded,
+      cost_bucket: parsed.costBucket,
       payee_tax_id: parsed.payeeTaxId,
       payee_address: parsed.payeeAddress,
       income_type: parsed.incomeType,
@@ -271,6 +274,7 @@ export async function updatePaymentVoucher(id: string, formData: FormData) {
       bank_transfer_date: parsed.bankTransferDate,
       job_no: parsed.jobNo,
       vat_included: parsed.vatIncluded,
+      cost_bucket: parsed.costBucket,
       payee_tax_id: parsed.payeeTaxId,
       payee_address: parsed.payeeAddress,
       income_type: parsed.incomeType,

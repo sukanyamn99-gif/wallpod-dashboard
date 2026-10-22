@@ -1,8 +1,9 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type { PaymentVoucher, PaymentVoucherLedgerLine, WhtFormType, WhtIncomeType } from "@/lib/types";
+import { isCostBucket } from "@/lib/job-cost-buckets";
 
 const COLUMNS =
-  "id, doc_no, voucher_date, payee_name, category, amount, payment_method, reference_no, note, recorded_by, created_at, wht_cert_no, description, wht_rate, wht_form_type, wht_amount, social_security_amount, bank_name, bank_account_no, bank_transfer_date, job_no, payee_tax_id, payee_address, income_type, vat_included, profiles(full_name), payment_voucher_job_allocations(job_no, amount, sort_order)";
+  "id, doc_no, voucher_date, payee_name, category, amount, payment_method, reference_no, note, recorded_by, created_at, wht_cert_no, description, wht_rate, wht_form_type, wht_amount, social_security_amount, bank_name, bank_account_no, bank_transfer_date, job_no, payee_tax_id, payee_address, income_type, vat_included, cost_bucket, profiles(full_name), payment_voucher_job_allocations(job_no, amount, sort_order)";
 
 type Row = {
   id: string;
@@ -31,6 +32,7 @@ type Row = {
   income_type: string;
   profiles: { full_name: string } | null;
   vat_included: boolean;
+  cost_bucket: string | null;
   payment_voucher_job_allocations: { job_no: string; amount: number | string; sort_order: number }[] | null;
 };
 
@@ -62,6 +64,7 @@ function mapRow(row: Row): Omit<PaymentVoucher, "ledgerLines"> {
       .sort((a, b) => a.sort_order - b.sort_order)
       .map((a) => ({ jobNo: a.job_no, amount: Number(a.amount) })),
     vatIncluded: !!row.vat_included,
+    costBucket: isCostBucket(row.cost_bucket) ? row.cost_bucket : null,
     payeeTaxId: row.payee_tax_id,
     payeeAddress: row.payee_address,
     incomeType: row.income_type as WhtIncomeType,

@@ -1,3 +1,5 @@
+import type { CostBucket } from "@/lib/job-cost-buckets";
+
 export type CustomerType =
   | "Owner"
   | "Designer"
@@ -382,6 +384,8 @@ export interface StockRequisitionItem {
   quantity: number;
   unit: string;
   unitCost: number;
+  // Which Project Sales cost column this line counts toward.
+  costBucket: "material" | "glue";
   // True when unitCost is a live fallback (the product's current cost)
   // rather than the real snapshot taken at withdrawal time — requisitions
   // submitted before that snapshot existed (migration_038).
@@ -618,6 +622,9 @@ export interface PaymentVoucher {
   // Cost attribution per JOB; amounts sum to `amount`. Empty = not tied to
   // any JOB.
   jobAllocations: PaymentVoucherJobAllocation[];
+  // Which Project Sales cost column the voucher's job cost counts toward;
+  // null = sort by the free-text category (vouchers saved before this).
+  costBucket: CostBucket | null;
   // The voucher amount includes 7% VAT — job cost then counts each
   // allocation divided by 1.07 (see jobCostAmount in lib/payment-voucher-jobs).
   vatIncluded: boolean;
@@ -711,6 +718,9 @@ export interface PettyCashTransaction {
   category: string | null;
   billerName: string | null;
   jobNo: string | null;
+  // Which Project Sales cost column this expense counts toward (when tied to
+  // a JOB); null = sort by the free-text category (rows saved before this).
+  costBucket: CostBucket | null;
   vatAmount: number;
   whtAmount: number;
   // Base VAT/WHT were computed on. null on rows saved before this existed —

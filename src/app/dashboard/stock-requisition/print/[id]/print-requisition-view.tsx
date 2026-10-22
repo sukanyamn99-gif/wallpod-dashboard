@@ -38,6 +38,7 @@ export function PrintRequisitionView({
       quantity: 0,
       unit: "",
       unitCost: 0,
+      costBucket: "material",
       isEstimatedCost: false,
     });
   }

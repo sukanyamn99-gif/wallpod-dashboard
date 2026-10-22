@@ -52,6 +52,7 @@ interface ParsedRequisitionItem {
   unit: string;
   quantity: number;
   unitCost: number;
+  costBucket: "material" | "glue";
 }
 
 type ParsedRequisitionForm =
@@ -90,6 +91,7 @@ function parseRequisitionForm(formData: FormData): ParsedRequisitionForm {
   const itemUnits = formData.getAll("item_unit");
   const itemQuantities = formData.getAll("item_quantity");
   const itemUnitCosts = formData.getAll("item_unit_cost");
+  const itemCostBuckets = formData.getAll("item_cost_bucket");
   const items = itemIds
     .map((id, i) => ({
       stockProductId: String(id),
@@ -98,6 +100,8 @@ function parseRequisitionForm(formData: FormData): ParsedRequisitionForm {
       unit: String(itemUnits[i] ?? "ชิ้น"),
       quantity: num(itemQuantities[i]),
       unitCost: num(itemUnitCosts[i]),
+      // ค่าวัสดุ unless the line is marked ค่ากาว
+      costBucket: itemCostBuckets[i] === "glue" ? ("glue" as const) : ("material" as const),
     }))
     .filter((it) => it.stockProductId && it.quantity > 0);
 
@@ -167,6 +171,7 @@ export async function createStockRequisition(formData: FormData) {
       unit_snapshot: it.unit,
       quantity: it.quantity,
       unit_cost: it.unitCost,
+      cost_bucket: it.costBucket,
     })),
   );
   if (itemsErr) return { error: `บันทึกใบเบิกสำเร็จ แต่บันทึกรายการสินค้าไม่สำเร็จ: ${itemsErr.message}` };
@@ -233,6 +238,7 @@ export async function updateStockRequisition(id: string, formData: FormData) {
       unit_snapshot: it.unit,
       quantity: it.quantity,
       unit_cost: it.unitCost,
+      cost_bucket: it.costBucket,
     })),
   );
   if (insertItemsErr) return { error: `แก้ไขรายการสินค้าไม่สำเร็จ: ${insertItemsErr.message}` };

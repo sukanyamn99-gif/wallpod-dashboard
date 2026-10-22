@@ -1,6 +1,7 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { getProductCategories } from "@/lib/data/reference";
 import { jobCostAmount } from "@/lib/payment-voucher-jobs";
+import { bucketForCategory, COST_BUCKET_ORDER, isCostBucket, type CostBucket, type CostEntry } from "@/lib/job-cost-buckets";
 import type { ProjectSaleInitialData } from "@/app/dashboard/project-sales/project-sale-form";
 import type { IncentiveInstallment, ProductCategory } from "@/lib/types";
 
@@ -38,6 +39,10 @@ export interface FullProjectRow {
     // without a sync step. See getJobLinkedCosts() below.
     linked: number;
     totalCost: number;
+    // Everything behind each column above (and "other", which has no column
+    // but still counts in totalCost): the hand-keyed amount plus each
+    // pulled-in document, so the report can show WHY a figure is what it is.
+    breakdown: Record<CostBucket, CostEntry[]>;
   } | null;
   profit: number | null;
   billingNoteNo1: string | null;
@@ -115,7 +120,7 @@ export function buildPaymentInstallments(row: FullProjectRow): IncentiveInstallm
 // database view for a 3-table sum.
 async function getJobLinkedCosts(
   supabase: Awaited<ReturnType<typeof createClient>>,
-): Promise<Map<string, number>> {
+): Promise<Map<string, (CostEntry & { bucket: CostBucket })[]>> {
   const [requisitionItems, vouchers, pettyCash] = await Promise.all([
     // Requisitions submitted before unit_cost was snapshotted at withdrawal
     // time default to 0 — those fall back to the product's CURRENT
@@ -123,15 +128,15 @@ async function getJobLinkedCosts(
     // under-counted, same convention as elsewhere in this app.
     supabase
       .from("stock_requisition_items")
-      .select("quantity, unit_cost, stock_product_id, stock_products(unit_cost), stock_requisitions(job_no)"),
+      .select("quantity, unit_cost, cost_bucket, stock_product_id, stock_products(unit_cost), stock_requisitions(job_no, doc_no)"),
     // One voucher can be split across several JOBs — each JOB's cost is its
     // own allocated share (payment_voucher_job_allocations), not the whole
     // voucher amount against a single job_no.
     // A VAT-inclusive voucher counts its pre-VAT amount (jobCostAmount).
-    supabase.from("payment_voucher_job_allocations").select("job_no, amount, payment_vouchers(vat_included)"),
+    supabase.from("payment_voucher_job_allocations").select("job_no, amount, payment_vouchers(doc_no, category, vat_included, cost_bucket)"),
     supabase
       .from("petty_cash_transactions")
-      .select("job_no, amount")
+      .select("job_no, doc_no, amount, category, cost_bucket")
       .eq("transaction_type", "expense")
       .not("job_no", "is", null),
   ]);
@@ -139,30 +144,60 @@ async function getJobLinkedCosts(
   if (vouchers.error) throw vouchers.error;
   if (pettyCash.error) throw pettyCash.error;
 
-  const totals = new Map<string, number>();
-  const add = (jobNo: string | null | undefined, amount: number) => {
+  // One entry per document (a requisition's items are summed into one
+  // entry) with the cost bucket it belongs to — see job-cost-buckets.ts.
+  const entries = new Map<string, (CostEntry & { bucket: CostBucket })[]>();
+  const add = (jobNo: string | null | undefined, entry: CostEntry & { bucket: CostBucket }) => {
     const key = jobNo?.trim();
     if (!key) return;
-    totals.set(key, (totals.get(key) ?? 0) + amount);
+    const list = entries.get(key) ?? [];
+    list.push(entry);
+    entries.set(key, list);
   };
 
+  const requisitionTotals = new Map<string, { jobNo: string | null; docNo: string; bucket: CostBucket; amount: number }>();
   for (const row of requisitionItems.data ?? []) {
-    const jobNo = (row.stock_requisitions as unknown as { job_no: string | null } | null)?.job_no;
+    const header = row.stock_requisitions as unknown as { job_no: string | null; doc_no: string } | null;
     const snapshotCost = Number(row.unit_cost);
     // @ts-expect-error -- Supabase types the joined relation loosely here
     const liveCost = row.stock_products?.unit_cost;
     const unitCost = snapshotCost > 0 ? snapshotCost : liveCost;
-    if (unitCost == null) continue;
-    add(jobNo, Number(row.quantity) * Number(unitCost));
+    if (unitCost == null || !header) continue;
+    // One entry per requisition AND bucket — a requisition can carry both
+    // ค่าวัสดุ and ค่ากาว lines.
+    const bucket: CostBucket = row.cost_bucket === "glue" ? "glue" : "material";
+    const key = `${header.job_no ?? ""}|${header.doc_no}|${bucket}`;
+    const prior = requisitionTotals.get(key) ?? { jobNo: header.job_no, docNo: header.doc_no, bucket, amount: 0 };
+    prior.amount += Number(row.quantity) * Number(unitCost);
+    requisitionTotals.set(key, prior);
+  }
+  for (const r of requisitionTotals.values()) {
+    add(r.jobNo, { source: "requisition", docNo: r.docNo, detail: null, amount: r.amount, bucket: r.bucket });
   }
   for (const row of vouchers.data ?? []) {
     // @ts-expect-error -- Supabase types the joined relation loosely here
-    const vatIncluded = !!(row.payment_vouchers as { vat_included: boolean } | null)?.vat_included;
-    add(row.job_no, jobCostAmount(Number(row.amount), vatIncluded));
+    const voucher = row.payment_vouchers as { doc_no: string; category: string | null; vat_included: boolean; cost_bucket: string | null } | null;
+    add(row.job_no, {
+      source: "voucher",
+      docNo: voucher?.doc_no ?? null,
+      detail: voucher?.category ?? null,
+      amount: jobCostAmount(Number(row.amount), !!voucher?.vat_included),
+      // The explicit ประเภทต้นทุน wins; rows saved before it existed fall
+      // back to the keyword match on the free-text category.
+      bucket: isCostBucket(voucher?.cost_bucket) ? voucher.cost_bucket : bucketForCategory(voucher?.category),
+    });
   }
-  for (const row of pettyCash.data ?? []) add(row.job_no, Number(row.amount));
+  for (const row of pettyCash.data ?? []) {
+    add(row.job_no, {
+      source: "pettyCash",
+      docNo: row.doc_no,
+      detail: row.category,
+      amount: Number(row.amount),
+      bucket: isCostBucket(row.cost_bucket) ? row.cost_bucket : bucketForCategory(row.category),
+    });
+  }
 
-  return totals;
+  return entries;
 }
 
 /**
@@ -244,22 +279,40 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
       ]),
     ) as Record<ProductCategory, number>;
 
-    const linkedCost = jobLinkedCosts.get((p.job_no ?? "").trim()) ?? 0;
+    const linkedEntries = jobLinkedCosts.get((p.job_no ?? "").trim()) ?? [];
+    const linkedCost = linkedEntries.reduce((sum, e) => sum + e.amount, 0);
     // A job with linked costs but no manually-entered project_costs row
     // still counts as "costed" — otherwise tagging a requisition/voucher to
     // a job would silently do nothing until someone also fills the manual
     // cost form, which defeats the point of tagging it in the first place.
+    // Each column = the hand-keyed amount + every pulled-in document of that
+    // bucket, with the pieces kept in `breakdown` for the click-to-see detail.
+    const breakdown = Object.fromEntries(COST_BUCKET_ORDER.map((b) => [b, [] as CostEntry[]])) as Record<CostBucket, CostEntry[]>;
+    const manualByBucket: Partial<Record<CostBucket, number>> = {
+      material: Number(projectCosts?.material_cost ?? 0),
+      glue: Number(projectCosts?.glue_cost ?? 0),
+      cutting: Number(projectCosts?.cutting_cost ?? 0),
+      install: Number(projectCosts?.install_cost ?? 0),
+      parking: Number(projectCosts?.parking_cost ?? 0),
+      shipping: Number(projectCosts?.shipping_cost ?? 0),
+    };
+    for (const [bucket, amount] of Object.entries(manualByBucket) as [CostBucket, number][]) {
+      if (amount > 0) breakdown[bucket].push({ source: "manual", docNo: null, detail: null, amount });
+    }
+    for (const e of linkedEntries) breakdown[e.bucket].push({ source: e.source, docNo: e.docNo, detail: e.detail, amount: e.amount });
+    const bucketTotal = (b: CostBucket) => breakdown[b].reduce((sum, e) => sum + e.amount, 0);
     const costs2 =
       projectCosts || linkedCost > 0
         ? {
-            material: Number(projectCosts?.material_cost ?? 0),
-            glue: Number(projectCosts?.glue_cost ?? 0),
-            cutting: Number(projectCosts?.cutting_cost ?? 0),
-            install: Number(projectCosts?.install_cost ?? 0),
-            parking: Number(projectCosts?.parking_cost ?? 0),
-            shipping: Number(projectCosts?.shipping_cost ?? 0),
+            material: bucketTotal("material"),
+            glue: bucketTotal("glue"),
+            cutting: bucketTotal("cutting"),
+            install: bucketTotal("install"),
+            parking: bucketTotal("parking"),
+            shipping: bucketTotal("shipping"),
             linked: linkedCost,
             totalCost: Number(projectCosts?.total_cost ?? 0) + linkedCost,
+            breakdown,
           }
         : null;
 

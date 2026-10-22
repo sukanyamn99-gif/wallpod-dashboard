@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { JobNoSelect } from "@/components/dashboard/job-no-select";
 import { formatTHB } from "@/lib/format";
+import { VOUCHER_COST_BUCKETS, costBucketOptionLabel } from "@/lib/job-cost-buckets";
 import { createPaymentVoucher, updatePaymentVoucher } from "./actions";
 import type { PaymentVoucher, WhtFormType, WhtIncomeType } from "@/lib/types";
 
@@ -281,6 +282,23 @@ export function PaymentVoucherForm({
               </Button>
             </div>
           ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <Label htmlFor="cost_bucket" className="shrink-0">ประเภทต้นทุน</Label>
+          <select
+            id="cost_bucket"
+            name="cost_bucket"
+            defaultValue={initialData?.costBucket ?? ""}
+            className="h-8 rounded-md border bg-background px-2 text-sm"
+          >
+            <option value="">ตามหมวดหมู่ค่าใช้จ่าย (อัตโนมัติ)</option>
+            {VOUCHER_COST_BUCKETS.map((b) => (
+              <option key={b} value={b}>
+                {costBucketOptionLabel(b)}
+              </option>
+            ))}
+          </select>
+          <span className="text-xs text-muted-foreground">— ช่องต้นทุนที่ยอดนี้ไปลงใน Project Sales</span>
         </div>
         <label className="flex cursor-pointer items-center gap-2 text-sm">
           <input type="checkbox" name="vat_included" defaultChecked={initialData?.vatIncluded ?? false} className="h-4 w-4" />

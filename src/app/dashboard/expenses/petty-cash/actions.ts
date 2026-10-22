@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { generateWhtCertNo } from "@/lib/wht-cert-no";
 import type { PettyCashTransactionType, WhtFormType, WhtIncomeType } from "@/lib/types";
+import { isCostBucket } from "@/lib/job-cost-buckets";
 
 const WHT_FORM_TYPES: WhtFormType[] = ["ภ.ง.ด.1", "ภ.ง.ด.2", "ภ.ง.ด.3", "ภ.ง.ด.53"];
 const WHT_INCOME_TYPES: WhtIncomeType[] = ["1", "2", "3", "4a", "4b", "5", "6"];
@@ -61,6 +62,25 @@ async function savePreVatAmount(
   return null;
 }
 
+// Same out-of-RPC pattern as savePreVatAmount above. Only an expense tied to a
+// JOB feeds job cost, but the choice is stored whenever one is made.
+async function saveCostBucket(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  match: { column: "id" | "doc_no"; value: string },
+  formData: FormData,
+): Promise<string | null> {
+  const raw = formData.get("cost_bucket");
+  const costBucket = isCostBucket(raw) ? raw : null;
+  const { data, error } = await supabase
+    .from("petty_cash_transactions")
+    .update({ cost_bucket: costBucket })
+    .eq(match.column, match.value)
+    .select("id");
+  if (error) return error.message;
+  if (!data || data.length === 0) return "ไม่มีสิทธิ์บันทึกประเภทต้นทุน";
+  return null;
+}
+
 export async function createPettyCashTransaction(formData: FormData) {
   if (!isSupabaseConfigured()) {
     return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
@@ -112,6 +132,11 @@ export async function createPettyCashTransaction(formData: FormData) {
   if (str(formData.get("pre_vat_amount")) !== null) {
     const preVatError = await savePreVatAmount(supabase, { column: "doc_no", value: docNo }, formData);
     if (preVatError) return { error: `บันทึกรายการสำเร็จ แต่บันทึกราคาก่อนภาษีไม่สำเร็จ: ${preVatError}` };
+  }
+
+  if (isCostBucket(formData.get("cost_bucket"))) {
+    const bucketError = await saveCostBucket(supabase, { column: "doc_no", value: docNo }, formData);
+    if (bucketError) return { error: `บันทึกรายการสำเร็จ แต่บันทึกประเภทต้นทุนไม่สำเร็จ: ${bucketError}` };
   }
 
   revalidatePath("/dashboard/expenses/petty-cash");
@@ -170,6 +195,9 @@ export async function updatePettyCashTransaction(id: string, formData: FormData)
   // ใช้จ่าย to เติมเงิน doesn't leave a stale base behind.
   const preVatError = await savePreVatAmount(supabase, { column: "id", value: id }, formData);
   if (preVatError) return { error: `บันทึกรายการสำเร็จ แต่บันทึกราคาก่อนภาษีไม่สำเร็จ: ${preVatError}` };
+
+  const bucketError = await saveCostBucket(supabase, { column: "id", value: id }, formData);
+  if (bucketError) return { error: `บันทึกรายการสำเร็จ แต่บันทึกประเภทต้นทุนไม่สำเร็จ: ${bucketError}` };
 
   revalidatePath("/dashboard/expenses/petty-cash");
   revalidatePath("/dashboard/expenses");

@@ -85,7 +85,7 @@ export async function getStockRequisitionById(id: string): Promise<StockRequisit
   const { data: items, error: itemsErr } = await supabase
     .from("stock_requisition_items")
     .select(
-      "id, stock_product_id, product_name_snapshot, product_sku_snapshot, unit_snapshot, quantity, unit_cost, stock_products(unit_cost)",
+      "id, stock_product_id, product_name_snapshot, product_sku_snapshot, unit_snapshot, quantity, unit_cost, cost_bucket, stock_products(unit_cost)",
     )
     .eq("requisition_id", id);
   if (itemsErr) throw itemsErr;
@@ -109,6 +109,7 @@ export async function getStockRequisitionById(id: string): Promise<StockRequisit
       quantity: Number(row.quantity),
       unit: row.unit_snapshot,
       unitCost: Number(unitCost),
+      costBucket: row.cost_bucket === "glue" ? "glue" : "material",
       isEstimatedCost,
     };
   });

@@ -15,7 +15,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { formatTHB } from "@/lib/format";
+import {
+  COST_BUCKET_LABELS,
+  COST_BUCKET_ORDER,
+  COST_SOURCE_LABELS,
+  type CostBucket,
+} from "@/lib/job-cost-buckets";
 import { cn } from "@/lib/utils";
 import type { FullProjectRow } from "@/lib/data/project-sales";
 
@@ -42,6 +49,92 @@ function Money({ value, className }: { value: number | null | undefined; classNa
 function marginPercent(profit: number | null | undefined, preVat: number | null | undefined): number | null {
   if (profit == null || !preVat) return null;
   return (profit / preVat) * 100;
+}
+
+// A cost figure that can be clicked to see what it is made of (hand-keyed
+// amount + each ใบเบิก / PV / เงินสดย่อย that landed in this column). A cell
+// with nothing in it stays a plain "—".
+function CostCell({
+  p,
+  bucket,
+  onOpen,
+  className,
+}: {
+  p: FullProjectRow;
+  bucket: CostBucket | "all";
+  onOpen: (p: FullProjectRow, bucket: CostBucket | "all") => void;
+  className?: string;
+}) {
+  const value = bucket === "all" ? p.costs?.totalCost : p.costs?.[bucket as Exclude<CostBucket, "other">];
+  if (!value) return <Money value={value} className={className} />;
+  return (
+    <TableCell className={cn("text-right whitespace-nowrap", className)}>
+      <button
+        type="button"
+        onClick={() => onOpen(p, bucket)}
+        className="underline decoration-dotted underline-offset-2 hover:text-foreground"
+        title="คลิกเพื่อดูว่าต้นทุนนี้มาจากอะไรบ้าง"
+      >
+        {formatTHB(value)}
+      </button>
+    </TableCell>
+  );
+}
+
+function CostDetailDialog({
+  detail,
+  onClose,
+}: {
+  detail: { p: FullProjectRow; bucket: CostBucket | "all" } | null;
+  onClose: () => void;
+}) {
+  const costs = detail?.p.costs;
+  const buckets = detail ? (detail.bucket === "all" ? COST_BUCKET_ORDER : [detail.bucket]) : [];
+  const sections = costs
+    ? buckets
+        .map((b) => ({ bucket: b, entries: costs.breakdown[b] }))
+        .filter((s) => s.entries.length > 0)
+    : [];
+  const total = sections.reduce((sum, s) => sum + s.entries.reduce((a, e) => a + e.amount, 0), 0);
+  return (
+    <Dialog open={!!detail} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>
+            ต้นทุน {detail?.p.jobNo ?? ""} — {detail?.bucket === "all" ? "รวมต้นทุน" : detail ? COST_BUCKET_LABELS[detail.bucket] : ""}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogBody className="space-y-4 pb-4 text-sm">
+          {sections.map(({ bucket, entries }) => (
+            <div key={bucket} className="space-y-1">
+              {detail?.bucket === "all" && (
+                <p className="flex justify-between font-medium">
+                  <span>{COST_BUCKET_LABELS[bucket]}</span>
+                  <span>{formatTHB(entries.reduce((a, e) => a + e.amount, 0))}</span>
+                </p>
+              )}
+              <ul className="space-y-1 text-muted-foreground">
+                {entries.map((e, i) => (
+                  <li key={i} className="flex justify-between gap-3">
+                    <span>
+                      {COST_SOURCE_LABELS[e.source]}
+                      {e.docNo && <span className="text-foreground"> {e.docNo}</span>}
+                      {e.detail && <span> ({e.detail})</span>}
+                    </span>
+                    <span className="shrink-0 text-foreground">{formatTHB(e.amount)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+          <p className="flex justify-between border-t pt-2 font-medium">
+            <span>รวม</span>
+            <span>{formatTHB(total)}</span>
+          </p>
+        </DialogBody>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function Percent({ value, className }: { value: number | null; className?: string }) {
@@ -192,10 +285,12 @@ function ProjectRow({
   p,
   categories,
   canSeeCosts,
+  onOpenCost,
 }: {
   p: FullProjectRow;
   categories: string[];
   canSeeCosts: boolean;
+  onOpenCost: (p: FullProjectRow, bucket: CostBucket | "all") => void;
 }) {
   return (
     <TableRow className={p.isCancelled ? "opacity-60" : undefined}>
@@ -253,13 +348,13 @@ function ProjectRow({
       <Money value={p.total} className={VAT_GROUP_CLASS} />
       {canSeeCosts && (
         <>
-          <Money value={p.costs?.material} className={COST_GROUP_CLASS} />
-          <Money value={p.costs?.glue} className={COST_GROUP_CLASS} />
-          <Money value={p.costs?.cutting} className={COST_GROUP_CLASS} />
-          <Money value={p.costs?.install} className={COST_GROUP_CLASS} />
-          <Money value={p.costs?.parking} className={COST_GROUP_CLASS} />
-          <Money value={p.costs?.shipping} className={COST_GROUP_CLASS} />
-          <Money value={p.costs?.totalCost} className={COST_GROUP_CLASS} />
+          <CostCell p={p} bucket="material" onOpen={onOpenCost} className={COST_GROUP_CLASS} />
+          <CostCell p={p} bucket="glue" onOpen={onOpenCost} className={COST_GROUP_CLASS} />
+          <CostCell p={p} bucket="cutting" onOpen={onOpenCost} className={COST_GROUP_CLASS} />
+          <CostCell p={p} bucket="install" onOpen={onOpenCost} className={COST_GROUP_CLASS} />
+          <CostCell p={p} bucket="parking" onOpen={onOpenCost} className={COST_GROUP_CLASS} />
+          <CostCell p={p} bucket="shipping" onOpen={onOpenCost} className={COST_GROUP_CLASS} />
+          <CostCell p={p} bucket="all" onOpen={onOpenCost} className={COST_GROUP_CLASS} />
           <Money value={p.profit} className={COST_GROUP_CLASS} />
           <Percent value={marginPercent(p.profit, p.preVat)} className={COST_GROUP_CLASS} />
         </>
@@ -307,6 +402,7 @@ export function ProjectsTable({
   const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set());
   const [selectedSalesReps, setSelectedSalesReps] = useState<Set<string>>(new Set());
   const [pageIndex, setPageIndex] = useState(LATEST_PAGE);
+  const [costDetail, setCostDetail] = useState<{ p: FullProjectRow; bucket: CostBucket | "all" } | null>(null);
 
   // Any filter change can shrink/reshuffle monthGroups, so a page index left
   // over from before could point at the wrong month (or past the end) —
@@ -590,7 +686,13 @@ export function ProjectsTable({
                   </TableCell>
                 </TableRow>
                 {currentGroup.rows.map((p) => (
-                  <ProjectRow key={p.id} p={p} categories={categories} canSeeCosts={canSeeCosts} />
+                  <ProjectRow
+                    key={p.id}
+                    p={p}
+                    categories={categories}
+                    canSeeCosts={canSeeCosts}
+                    onOpenCost={(row, bucket) => setCostDetail({ p: row, bucket })}
+                  />
                 ))}
                 <TableRow className="bg-muted/50 hover:bg-muted/50">
                   <TableCell colSpan={totalColumns} className="py-3">
@@ -618,6 +720,7 @@ export function ProjectsTable({
       <p className="text-sm text-muted-foreground">
         แสดง {currentGroup?.rows.length ?? 0} งานในหน้านี้ — {filtered.length} งานทั้งหมดตามตัวกรอง
       </p>
+      <CostDetailDialog detail={costDetail} onClose={() => setCostDetail(null)} />
     </div>
   );
 }

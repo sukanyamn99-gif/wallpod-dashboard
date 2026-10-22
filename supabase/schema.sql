@@ -1913,3 +1913,14 @@ alter table billing_notes
 -- migration_099: payment_vouchers.vat_included (job cost counts the pre-VAT amount) — see migration_099_payment_voucher_vat_included.sql
 alter table payment_vouchers
   add column if not exists vat_included boolean not null default false;
+
+-- migration_100: cost_bucket on requisition lines / payment vouchers / petty cash (see migration_100_cost_bucket.sql)
+alter table stock_requisition_items
+  add column if not exists cost_bucket text not null default 'material'
+    check (cost_bucket in ('material', 'glue'));
+alter table payment_vouchers
+  add column if not exists cost_bucket text
+    check (cost_bucket in ('material', 'cutting', 'install', 'shipping', 'parking', 'other'));
+alter table petty_cash_transactions
+  add column if not exists cost_bucket text
+    check (cost_bucket in ('material', 'cutting', 'install', 'shipping', 'parking', 'other'));

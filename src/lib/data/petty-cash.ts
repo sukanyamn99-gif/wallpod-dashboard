@@ -1,8 +1,9 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type { PettyCashTransaction, PettyCashTransactionType, WhtFormType, WhtIncomeType } from "@/lib/types";
+import { isCostBucket } from "@/lib/job-cost-buckets";
 
 const COLUMNS =
-  "id, doc_no, transaction_date, transaction_type, amount, description, balance_after, recorded_by, created_at, category, biller_name, job_no, vat_amount, wht_amount, pre_vat_amount, wht_cert_no, wht_rate, wht_form_type, payee_tax_id, payee_address, income_type, profiles(full_name)";
+  "id, doc_no, transaction_date, transaction_type, amount, description, balance_after, recorded_by, created_at, category, biller_name, job_no, vat_amount, wht_amount, pre_vat_amount, cost_bucket, wht_cert_no, wht_rate, wht_form_type, payee_tax_id, payee_address, income_type, profiles(full_name)";
 
 type Row = {
   id: string;
@@ -20,6 +21,7 @@ type Row = {
   vat_amount: number | string;
   wht_amount: number | string;
   pre_vat_amount: number | string | null;
+  cost_bucket: string | null;
   wht_cert_no: string | null;
   wht_rate: number | string | null;
   wht_form_type: string | null;
@@ -44,6 +46,7 @@ function mapRow(row: Row): PettyCashTransaction {
     category: row.category,
     billerName: row.biller_name,
     jobNo: row.job_no,
+    costBucket: isCostBucket(row.cost_bucket) ? row.cost_bucket : null,
     vatAmount: Number(row.vat_amount),
     whtAmount: Number(row.wht_amount),
     preVatAmount: row.pre_vat_amount === null ? null : Number(row.pre_vat_amount),

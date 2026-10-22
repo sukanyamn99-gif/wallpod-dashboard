@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { JobNoSelect } from "@/components/dashboard/job-no-select";
 import { cn } from "@/lib/utils";
+import { VOUCHER_COST_BUCKETS, costBucketOptionLabel } from "@/lib/job-cost-buckets";
 import { createPettyCashTransaction, updatePettyCashTransaction } from "./actions";
 import type { PettyCashTransaction, PettyCashTransactionType, WhtFormType, WhtIncomeType } from "@/lib/types";
 
@@ -338,6 +339,24 @@ export function PettyCashForm({
               <input type="hidden" name="job_no" value={jobNo} />
               <JobNoSelect id="job_no" value={jobNo} onChange={setJobNo} jobNos={jobNoSuggestions} />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="cost_bucket">ประเภทต้นทุน (ใช้เมื่อผูก Job)</Label>
+            <select
+              id="cost_bucket"
+              name="cost_bucket"
+              defaultValue={initialData?.costBucket ?? ""}
+              className="h-9 w-full rounded-md border bg-background px-3 text-sm"
+            >
+              <option value="">ตามหมวดหมู่ (อัตโนมัติ)</option>
+              {VOUCHER_COST_BUCKETS.map((b) => (
+                <option key={b} value={b}>
+                  {costBucketOptionLabel(b)}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">ช่องต้นทุนที่ยอดนี้ไปลงใน Project Sales</p>
           </div>
 
           <div className="space-y-2">
