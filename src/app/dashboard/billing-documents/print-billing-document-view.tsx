@@ -60,7 +60,7 @@ function DocumentBody({
       // isn't silently over-billed once it's referenced by an itemized
       // invoice/tax invoice.
       const netPreVatSum = Math.max(0, preVatSum - (it.quotationExtraDiscountAmount ?? 0));
-      return { amount: Math.round(netPreVatSum * 1.07 * 100) / 100, applyWht: it.applyWht };
+      return { amount: round2(netPreVatSum * 1.07), applyWht: it.applyWht };
     }
     // No itemized detail available (e.g. no matching quotation found) —
     // amount is the best figure left to fall back to.

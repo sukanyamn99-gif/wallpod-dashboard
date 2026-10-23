@@ -434,7 +434,7 @@ export async function getAcceptedUnconvertedQuotationsForCustomer(customerName: 
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("quotations")
-    .select("id, doc_no, quote_date, project_name, total, customer_name, job_number")
+    .select("id, doc_no, quote_date, project_name, total, customer_name, job_number, payment_terms")
     .eq("status", "ลูกค้าตอบตกลง")
     .is("converted_project_id", null)
     .order("quote_date", { ascending: false });
@@ -450,6 +450,7 @@ export async function getAcceptedUnconvertedQuotationsForCustomer(customerName: 
       projectName: row.project_name,
       total: Number(row.total),
       jobNumber: row.job_number ?? null,
+      paymentTerms: (row.payment_terms as QuotationPaymentTerm[] | null) ?? [],
     }));
 }
 

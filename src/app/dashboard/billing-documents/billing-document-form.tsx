@@ -14,7 +14,7 @@ import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "@/
 import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomplete";
 import { JobNoSelect } from "@/components/dashboard/job-no-select";
 import { formatTHB } from "@/lib/format";
-import { computeBillingDocumentSummary, withSatangRounding } from "@/lib/billing-document-summary";
+import { computeBillingDocumentSummary, round2, withSatangRounding } from "@/lib/billing-document-summary";
 import {
   createBillingDocument,
   fetchBillableBillingNoteItems,
@@ -86,6 +86,11 @@ interface ManualItemRow {
   // actually negates the row's contribution, all the way through to the
   // stored manual_qty (see the submit handler and manualItemAmount below).
   isDeduction: boolean;
+  // Typing aid only, never sent: the VAT-inclusive amount already quoted to
+  // the customer (e.g. a deposit from the quotation's payment terms). Entering
+  // it fills unitPrice with the pre-VAT price that reproduces that exact
+  // total — adding VAT back (see manualItemVatInclusiveAmount) lands on it.
+  grossTotal?: string;
   // Set when this row was copied from an issued ใบวางบิล's own manual line
   // (see BillableBillingNoteItem/toggleBillingNoteItem below) — lets the
   // checkbox that added it be un-toggled cleanly, and tells the server
@@ -108,7 +113,7 @@ function manualItemAmount(row: ManualItemRow): number {
   const qty = Number(row.qty) || 0;
   const unitPrice = Number(row.unitPrice) || 0;
   const signed = row.isDeduction ? -qty : qty;
-  return Math.round(signed * unitPrice * 100) / 100;
+  return round2(signed * unitPrice);
 }
 
 // What actually feeds the running total/summary — computeBillingDocumentSummary
@@ -116,7 +121,19 @@ function manualItemAmount(row: ManualItemRow): number {
 // `amount` as VAT-inclusive, so the pre-VAT row total above needs VAT added
 // on top here before it's bundled in alongside them.
 function manualItemVatInclusiveAmount(row: ManualItemRow): number {
-  return Math.round(manualItemAmount(row) * 1.07 * 100) / 100;
+  return round2(manualItemAmount(row) * 1.07);
+}
+
+// The document total this row alone would produce, through the same summary
+// math the document uses — what a quoted VAT-inclusive amount has to match.
+function manualItemTotalAfterVat(row: ManualItemRow): number {
+  const summary = computeBillingDocumentSummary(
+    [{ amount: manualItemVatInclusiveAmount(row), applyWht: false }],
+    0,
+    0,
+    0,
+  );
+  return summary.totalAfterVat;
 }
 
 export function BillingDocumentForm({
@@ -615,8 +632,40 @@ export function BillingDocumentForm({
     ]);
   }
 
-  function updateManualItem(key: string, field: keyof Omit<ManualItemRow, "key" | "applyWht" | "isDeduction">, value: string) {
-    setManualItems((prev) => prev.map((row) => (row.key === key ? { ...row, [field]: value } : row)));
+  function updateManualItem(
+    key: string,
+    field: keyof Omit<ManualItemRow, "key" | "applyWht" | "isDeduction" | "grossTotal">,
+    value: string,
+  ) {
+    setManualItems((prev) =>
+      prev.map((row) => {
+        if (row.key !== key) return row;
+        // Hand-editing qty/price makes the quoted total stale — drop it.
+        const stale = field === "qty" || field === "unitPrice";
+        return { ...row, [field]: value, ...(stale && { grossTotal: undefined }) };
+      }),
+    );
+  }
+
+  function setManualItemGrossTotal(key: string, value: string) {
+    setManualItems((prev) =>
+      prev.map((row) => {
+        if (row.key !== key) return row;
+        const gross = Number(value) || 0;
+        const qty = Number(row.qty) || 0;
+        if (gross <= 0 || qty <= 0) return { ...row, grossTotal: value };
+        // The price whose document total (pre-VAT + 7% VAT, as the summary
+        // computes it) lands on `gross` — usually round2(gross / 1.07), nudged
+        // by a satang or two when that lands off. A few totals (about 1 in 15)
+        // can't be hit exactly at all; then the closest one wins and the row
+        // shows a note (see manualItemQuotedTotalGap).
+        const base = round2(gross / 1.07 / qty);
+        const candidates = [0, 0.01, -0.01, 0.02, -0.02].map((d) => round2(base + d));
+        const gap = (p: string) => Math.abs(manualItemTotalAfterVat({ ...row, unitPrice: p }) - gross);
+        const best = candidates.map(String).reduce((a, b) => (gap(b) < gap(a) ? b : a));
+        return { ...row, grossTotal: value, unitPrice: best };
+      }),
+    );
   }
 
   function toggleManualItemWht(key: string) {
@@ -1310,6 +1359,21 @@ export function BillingDocumentForm({
                         onChange={(v) => setQuotationAmountOverrides((prev) => ({ ...prev, [q.id]: v }))}
                       />
                       <span className="text-xs text-muted-foreground">/ {formatTHB(q.total)}</span>
+                      {q.paymentTerms.map((term, i) => (
+                        <Button
+                          key={i}
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          title={`${term.label} — ${formatTHB(term.amount)}`}
+                          onClick={() =>
+                            setQuotationAmountOverrides((prev) => ({ ...prev, [q.id]: String(term.amount) }))
+                          }
+                        >
+                          {term.percent}%
+                        </Button>
+                      ))}
                     </span>
                   ) : (
                     <p className="shrink-0 text-sm font-medium">{formatTHB(q.total)}</p>
@@ -1463,6 +1527,23 @@ export function BillingDocumentForm({
                       value={row.unitPrice}
                       onChange={(v) => updateManualItem(row.key, "unitPrice", v)}
                     />
+                    <div className="col-span-4 flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="shrink-0">หรือกรอกยอดรวม VAT ที่แจ้งลูกค้า (เช่น งวดมัดจำในใบเสนอราคา)</span>
+                      <NumberInput
+                        className="w-36"
+                        placeholder="ยอดรวม VAT"
+                        min={0}
+                        step={0.01}
+                        value={row.grossTotal ?? ""}
+                        onChange={(v) => setManualItemGrossTotal(row.key, v)}
+                      />
+                      <span className="shrink-0">ระบบคำนวณราคาต่อหน่วยให้</span>
+                      {Number(row.grossTotal) > 0 && manualItemTotalAfterVat(row) !== round2(Number(row.grossTotal)) && (
+                        <span className="text-destructive">
+                          ยอดนี้ทำให้ตรงเป๊ะไม่ได้ ใกล้สุดคือ {formatTHB(manualItemTotalAfterVat(row))}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 pt-2">
                     {row.description.trim() && (

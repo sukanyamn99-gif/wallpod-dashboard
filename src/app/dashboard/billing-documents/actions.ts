@@ -12,7 +12,7 @@ import {
   getUnbilledInvoicesForCustomer,
 } from "@/lib/data/billing-documents";
 import { getAcceptedUnconvertedQuotationsForCustomer, normalizeJobNo } from "@/lib/data/quotations";
-import { computeBillingDocumentSummary } from "@/lib/billing-document-summary";
+import { computeBillingDocumentSummary, round2 } from "@/lib/billing-document-summary";
 import { BILLING_DOCUMENT_LABELS, BILLING_DOCUMENT_LIST_PATH } from "@/lib/types";
 import type {
   BillableBillingNoteItem,
@@ -467,7 +467,7 @@ function parseManualItems(formData: FormData): ParsedManualItem[] {
         // ราคาต่อหน่วย is entered pre-VAT — stored amount is VAT-inclusive,
         // matching every other item source and computeBillingDocumentSummary
         // (mirrors manualItemAmount in billing-document-form.tsx).
-        amount: Math.round(qty * unitPrice * 1.07 * 100) / 100,
+        amount: round2(qty * unitPrice * 1.07),
         applyWht: applyWhts[i] !== "false",
         sourceItemId: sourceItemIds[i] || null,
         sourceDate: sourceDates[i] || null,

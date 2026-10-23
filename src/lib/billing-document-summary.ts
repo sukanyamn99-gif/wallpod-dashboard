@@ -35,8 +35,12 @@ export interface BillingDocumentLineAmount {
   applyWht: boolean;
 }
 
+// Half-up to the satang: a 3rd decimal of 5 or more rounds up (37,162.385 →
+// 37,162.39). toPrecision(15) first strips float noise so an exact half like
+// 1.005 (stored as 1.00499999…) isn't rounded down.
 export function round2(n: number): number {
-  return Math.round(n * 100) / 100;
+  const scaled = Number((Math.abs(n) * 100).toPrecision(15));
+  return (Math.sign(n) * Math.round(scaled)) / 100;
 }
 
 export function computeBillingDocumentSummary(

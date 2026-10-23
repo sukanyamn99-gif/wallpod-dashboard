@@ -1049,6 +1049,9 @@ export interface BillableQuotation {
   projectName: string;
   total: number;
   jobNumber: string | null;
+  // The quotation's own เงื่อนไขการชำระเงิน — each term's amount is the figure
+  // already quoted to the customer, so a deposit invoice can reuse it as-is.
+  paymentTerms: QuotationPaymentTerm[];
 }
 
 // A ใบกำกับภาษี, quotation-sourced, not yet referenced by any ใบวางบิล —
