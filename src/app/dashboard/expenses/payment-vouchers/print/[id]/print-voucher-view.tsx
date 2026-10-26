@@ -44,7 +44,10 @@ export function PrintVoucherView({ voucher }: { voucher: PaymentVoucher }) {
   return (
     <div className="mx-auto max-w-3xl bg-white p-6 text-black print:p-0">
       <div className="mb-4 flex justify-end gap-2 print:hidden">
-        <Button variant="outline" onClick={() => router.back()}>
+        {/* router.back() did nothing whenever this page had no history to go
+            back to (opened from a direct link, a refresh, or a fresh tab) —
+            go to the voucher list explicitly instead. */}
+        <Button variant="outline" onClick={() => router.push("/dashboard/expenses/payment-vouchers")}>
           ปิด
         </Button>
         <Button onClick={() => window.print()}>พิมพ์</Button>
