@@ -68,8 +68,17 @@ export function computeBillingDocumentSummary(
   // document-level discount — that discount already only ever applies to
   // small manual adjustments in practice.
   const whtBase = round2(items.filter((it) => it.applyWht).reduce((sum, it) => sum + it.amount, 0) / 1.07);
-  const whtAmount = round2(whtBase * (whtPercent / 100));
-  const whtAmountThisRound = round2(Math.max(0, whtAmount - depositWhtAmount));
+  let whtAmount = round2(whtBase * (whtPercent / 100));
+  let whtAmountThisRound = round2(Math.max(0, whtAmount - depositWhtAmount));
+  // Two equal installments split an odd-satang total WHT a satang apart
+  // (334.91 -> 167.45 withheld at the deposit, 167.46 now). Each installment
+  // carries its own WHT certificate, so keep the two rounds identical: this
+  // round repeats the deposit's figure and the document's total WHT becomes
+  // their sum (334.90), which also keeps the printed lines adding up.
+  if (depositWhtAmount > 0 && whtAmountThisRound !== depositWhtAmount && round2(Math.abs(whtAmountThisRound - depositWhtAmount)) <= 0.01) {
+    whtAmountThisRound = depositWhtAmount;
+    whtAmount = round2(depositWhtAmount + whtAmountThisRound);
+  }
   const retentionAmount = round2(totalAfterVat * (retentionPercent / 100));
   const netPayable = round2(totalAfterVat - whtAmount - retentionAmount - depositDeductionAmount + roundingAmount);
   return {

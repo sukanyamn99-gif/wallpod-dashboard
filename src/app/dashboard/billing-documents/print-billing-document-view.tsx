@@ -75,7 +75,7 @@ function DocumentBody({
     document.depositWhtAmount,
     document.roundingAmount,
   );
-  // ใบกำกับภาษี for a later installment (a deposit already received) prints
+  // ใบกำกับภาษี / ใบแจ้งหนี้ for a later installment (a deposit already received) prints
   // the deposit deduction BEFORE VAT — หักมัดจำ → ยอดคงเหลือหลังหักมัดจำ →
   // VAT on that remainder → total — instead of VAT on the full amount with
   // the VAT-inclusive deposit subtracted at the very end. The stored deposit
@@ -83,7 +83,8 @@ function DocumentBody({
   // amount + WHT. The deposit's VAT share is taken out of the document's own
   // VAT (not recomputed from the remainder), so remaining + VAT always lands
   // exactly on the same total the other doc types reach, to the satang.
-  const isDepositTaxInvoice = document.docType === "tax_invoice" && summary.depositDeductionAmount > 0;
+  const isDepositTaxInvoice =
+    (document.docType === "tax_invoice" || document.docType === "invoice") && summary.depositDeductionAmount > 0;
   const depositGross = round2(summary.depositDeductionAmount + document.depositWhtAmount);
   const depositPreVat = round2(depositGross / 1.07);
   const remainingPreVat = round2(summary.afterDiscount - depositPreVat);
