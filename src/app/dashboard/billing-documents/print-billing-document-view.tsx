@@ -413,7 +413,7 @@ function DocumentBody({
                 </tr>
                 <tr>
                   <td className="py-0.5 text-neutral-600">ยอดคงเหลือหลังหักมัดจำ</td>
-                  <td className="py-0.5 text-right">{formatTHB(remainingPreVat)}</td>
+                  <td className="py-0.5 text-right">{formatTHB(isSplitInstallment ? (summary.installmentPreVat ?? 0) : remainingPreVat)}</td>
                 </tr>
               </>
             )}

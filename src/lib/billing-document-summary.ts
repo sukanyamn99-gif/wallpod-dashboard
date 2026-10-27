@@ -27,6 +27,10 @@ export interface BillingDocumentSummary {
   // THIS installment's own pre-VAT base, VAT and total — VAT 7% worked out on
   // that base by itself, not as "whole job's VAT minus the deposit's".
   installmentPreVat: number | null;
+  // Satang the remainder was nudged by so it matches the deposit's own pre-VAT
+  // (0 when none) — not printed as a line of its own (staff asked for no
+  // "ปัดเศษ" wording), so the printed lines can differ from the sum by it.
+  installmentAdjustment: number;
   installmentVat: number | null;
   installmentTotal: number | null;
   netPayable: number;
@@ -107,6 +111,7 @@ export function computeBillingDocumentSummary(
   }
   const retentionAmount = round2(totalAfterVat * (retentionPercent / 100));
   let installmentPreVat: number | null = null;
+  let installmentAdjustment = 0;
   let installmentVat: number | null = null;
   let installmentTotal: number | null = null;
   let netPayable = round2(totalAfterVat - whtAmount - retentionAmount - depositDeductionAmount + roundingAmount);
@@ -114,11 +119,23 @@ export function computeBillingDocumentSummary(
   if (splitRounds && depositDeductionAmount > 0) {
     // The stored deposit is VAT-inclusive and net of its own WHT.
     const depositGross = round2(depositDeductionAmount + depositWhtAmount);
-    installmentPreVat = round2(afterDiscount - round2(depositGross / 1.07));
+    const depositPreVat = round2(depositGross / 1.07);
+    installmentPreVat = round2(afterDiscount - depositPreVat);
+    // Two equal installments of an odd-satang total land a satang or two
+    // apart (the deposit, quoted VAT-inclusive, rounds up; the remainder
+    // takes what's left). The balance is billed at the same amount as the
+    // deposit, the difference shown as ปัดเศษ.
+    const gap = round2(depositPreVat - installmentPreVat);
+    if (gap !== 0 && Math.abs(gap) <= 0.02) {
+      installmentAdjustment = gap;
+      installmentPreVat = depositPreVat;
+    }
     installmentVat = round2(installmentPreVat * 0.07);
     installmentTotal = round2(installmentPreVat + installmentVat);
     retention = round2(installmentTotal * (retentionPercent / 100));
-    netPayable = round2(installmentTotal - whtAmountThisRound - retention + roundingAmount);
+    // A round-by-round document ignores any stored satang rounding (written
+    // by the earlier whole-job rounding) — its own rounding is the line above.
+    netPayable = round2(installmentTotal - whtAmountThisRound - retention);
   }
   return {
     subtotal,
@@ -130,8 +147,9 @@ export function computeBillingDocumentSummary(
     whtAmountThisRound,
     retentionAmount: retention,
     depositDeductionAmount,
-    roundingAmount,
+    roundingAmount: installmentTotal !== null ? 0 : roundingAmount,
     installmentPreVat,
+    installmentAdjustment,
     installmentVat,
     installmentTotal,
     netPayable,
