@@ -1742,7 +1742,7 @@ export function BillingDocumentForm({
             </div>
             <div className="flex justify-between text-destructive">
               <span>หักมัดจำ{depositDeductionInvoiceNo && ` (เลขที่ ${depositDeductionInvoiceNo})`}</span>
-              <span>{formatTHB(round2(summary.afterDiscount - summary.installmentPreVat + summary.installmentAdjustment))}</span>
+              <span>{formatTHB(round2(summary.afterDiscount - summary.installmentPreVat))}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">ยอดคงเหลือหลังหักมัดจำ</span>

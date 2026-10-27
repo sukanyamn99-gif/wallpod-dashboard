@@ -121,7 +121,7 @@ function parseItems(formData: FormData): ParsedItem[] {
 function parsePaymentTerms(formData: FormData, grandTotal: number): QuotationPaymentTerm[] {
   const labels = formData.getAll("term_label");
   const percents = formData.getAll("term_percent");
-  return labels
+  const terms = labels
     .map((label, i) => {
       const percent = num(percents[i]);
       return {
@@ -131,6 +131,16 @@ function parsePaymentTerms(formData: FormData, grandTotal: number): QuotationPay
       };
     })
     .filter((t) => t.label && t.percent > 0);
+  // Each term rounds on its own, so two 50% terms of 74,324.77 both round UP
+  // to 37,162.39 and add to 74,324.78 — a satang over the quotation. When the
+  // terms cover the whole price (100%) the last one takes what is left
+  // (37,162.38), so the terms always add up to the grand total exactly.
+  const totalPercent = terms.reduce((sum, t) => sum + t.percent, 0);
+  if (terms.length > 1 && Math.abs(totalPercent - 100) < 0.001) {
+    const beforeLast = terms.slice(0, -1).reduce((sum, t) => sum + t.amount, 0);
+    terms[terms.length - 1].amount = Math.round((grandTotal - beforeLast) * 100) / 100;
+  }
+  return terms;
 }
 
 function parseHeader(formData: FormData) {
