@@ -116,14 +116,27 @@ export function computeBillingDocumentSummary(
     // The stored deposit is VAT-inclusive and net of its own WHT.
     const depositGross = round2(depositDeductionAmount + depositWhtAmount);
     const depositPreVat = round2(depositGross / 1.07);
-    installmentPreVat = round2(afterDiscount - depositPreVat);
     // The last installment takes what is left, as is standard practice: its
-    // VAT is the document's VAT minus the deposit's share (NOT 7% recomputed
-    // on the remainder) and its total is the document's total minus the
-    // deposit. Deposit + balance then add up to the whole exactly, with no
-    // rounding line — two equal halves of an odd-satang total can't both be
-    // rounded up without exceeding it.
-    installmentVat = round2(vat - (depositGross - depositPreVat));
+    // total is the document's total minus the deposit, so deposit + balance
+    // add up to the whole exactly (two equal halves of an odd-satang total
+    // can't both be rounded up without exceeding it). Its VAT must still be
+    // 7% of the pre-VAT amount printed on it, so the pre-VAT amount is the
+    // one that gives that VAT and that total — usually the plain
+    // "whole − deposit" figure, a satang off it when the deposit's own
+    // rounding forces it.
+    const remainingTotal = round2(totalAfterVat - depositGross);
+    const plainPreVat = round2(afterDiscount - depositPreVat);
+    let preVat = plainPreVat;
+    let bestGap = Infinity;
+    for (let step = -3; step <= 3; step++) {
+      const candidate = round2(plainPreVat + step * 0.01);
+      if (round2(candidate + round2(candidate * 0.07)) === remainingTotal && Math.abs(step) < bestGap) {
+        preVat = candidate;
+        bestGap = Math.abs(step);
+      }
+    }
+    installmentPreVat = preVat;
+    installmentVat = bestGap === Infinity ? round2(remainingTotal - preVat) : round2(preVat * 0.07);
     installmentTotal = round2(installmentPreVat + installmentVat);
     retention = round2(installmentTotal * (retentionPercent / 100));
     // A round-by-round document ignores any stored satang rounding (written
