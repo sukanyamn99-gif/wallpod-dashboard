@@ -14,7 +14,7 @@ import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "@/
 import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomplete";
 import { JobNoSelect } from "@/components/dashboard/job-no-select";
 import { formatTHB } from "@/lib/format";
-import { computeBillingDocumentSummary, round2, withSatangRounding } from "@/lib/billing-document-summary";
+import { computeBillingDocumentSummary, round2, usesSplitRounds, withSatangRounding } from "@/lib/billing-document-summary";
 import {
   createBillingDocument,
   fetchBillableBillingNoteItems,
@@ -772,20 +772,23 @@ export function BillingDocumentForm({
       whtExcluded,
     ],
   );
-  const summary = useMemo(
-    () =>
-      withSatangRounding(
-        computeBillingDocumentSummary(
-          selectedItems,
-          Number(discountAmount) || 0,
-          Number(whtPercent) || 0,
-          Number(retentionPercent) || 0,
-          Number(depositDeductionAmount) || 0,
-          Number(depositWhtAmount) || 0,
-        ),
-      ),
-    [selectedItems, discountAmount, whtPercent, retentionPercent, depositDeductionAmount, depositWhtAmount],
-  );
+  // A new document, or one first saved on/after the round-by-round cutoff,
+  // calculates a later installment's VAT/WHT per round; an older one keeps
+  // the whole-job calculation (plus its satang rounding) so it never shifts.
+  const splitRounds = usesSplitRounds(mode === "create" ? null : initialData?.createdAt, docType);
+  const summary = useMemo(() => {
+    const base = computeBillingDocumentSummary(
+      selectedItems,
+      Number(discountAmount) || 0,
+      Number(whtPercent) || 0,
+      Number(retentionPercent) || 0,
+      Number(depositDeductionAmount) || 0,
+      Number(depositWhtAmount) || 0,
+      0,
+      splitRounds,
+    );
+    return splitRounds ? base : withSatangRounding(base);
+  }, [selectedItems, discountAmount, whtPercent, retentionPercent, depositDeductionAmount, depositWhtAmount, splitRounds]);
 
   // The printed line order (per the user's "อยากให้คุมลำดับเองได้" request —
   // items previously printed in whatever order Postgres happened to return
@@ -1729,6 +1732,48 @@ export function BillingDocumentForm({
           </div>
         </div>
 
+        {summary.installmentTotal !== null && summary.installmentPreVat !== null && summary.installmentVat !== null ? (
+          // A later installment is its own round: the whole total and the deposit
+          // are shown, but VAT 7% and WHT are worked out on the remainder alone.
+          <div className="space-y-1 rounded-lg border p-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">รวมเป็นเงิน</span>
+              <span>{formatTHB(summary.afterDiscount)}</span>
+            </div>
+            <div className="flex justify-between text-destructive">
+              <span>หักมัดจำ{depositDeductionInvoiceNo && ` (เลขที่ ${depositDeductionInvoiceNo})`}</span>
+              <span>{formatTHB(round2(summary.afterDiscount - summary.installmentPreVat))}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">ยอดคงเหลือหลังหักมัดจำ</span>
+              <span>{formatTHB(summary.installmentPreVat)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">ภาษีมูลค่าเพิ่ม 7%</span>
+              <span>{formatTHB(summary.installmentVat)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">จำนวนเงินรวม</span>
+              <span>{formatTHB(summary.installmentTotal)}</span>
+            </div>
+            {Number(whtPercent) > 0 && (
+              <div className="flex justify-between text-destructive">
+                <span>หัก ณ ที่จ่าย {whtPercent}%</span>
+                <span>{formatTHB(summary.whtAmountThisRound)}</span>
+              </div>
+            )}
+            {Number(retentionPercent) > 0 && (
+              <div className="flex justify-between text-destructive">
+                <span>หักประกันผลงาน {retentionPercent}%</span>
+                <span>{formatTHB(summary.retentionAmount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between border-t pt-1 text-base font-semibold">
+              <span>จำนวนเงินรวมทั้งสิ้น</span>
+              <span>{formatTHB(summary.netPayable)}</span>
+            </div>
+          </div>
+        ) : (
         <div className="space-y-1 rounded-lg border p-3 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">รวมเป็นเงิน</span>
@@ -1777,6 +1822,7 @@ export function BillingDocumentForm({
             <span>{formatTHB(summary.netPayable)}</span>
           </div>
         </div>
+        )}
 
         <div className="flex justify-end gap-2">
           <Button

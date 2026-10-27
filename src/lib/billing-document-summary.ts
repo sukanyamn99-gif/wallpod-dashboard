@@ -23,7 +23,27 @@ export interface BillingDocumentSummary {
   // value (billing_notes.rounding_amount), 0 for anything issued before it
   // existed. See withSatangRounding for how a new document gets its value.
   roundingAmount: number;
+  // Set only when the document is calculated round by round (splitRounds):
+  // THIS installment's own pre-VAT base, VAT and total — VAT 7% worked out on
+  // that base by itself, not as "whole job's VAT minus the deposit's".
+  installmentPreVat: number | null;
+  installmentVat: number | null;
+  installmentTotal: number | null;
   netPayable: number;
+}
+
+// Documents created from this date on calculate a later installment's VAT and
+// WHT round by round (see computeBillingDocumentSummary's splitRounds).
+// Anything issued before keeps the whole-job calculation it was printed and
+// billed with, so older amounts never move by a satang.
+const SPLIT_ROUNDS_FROM = "2026-10-27";
+
+// A document being created uses it; a saved one by its created_at (ISO).
+// Only ใบแจ้งหนี้ / ใบกำกับภาษี: ใบวางบิล and ใบเสร็จรับเงิน collect on what was
+// already billed and keep their own layout and arithmetic.
+export function usesSplitRounds(createdAt: string | null | undefined, docType: string): boolean {
+  if (docType !== "invoice" && docType !== "tax_invoice") return false;
+  return !createdAt || createdAt.slice(0, 10) >= SPLIT_ROUNDS_FROM;
 }
 
 // One bundled line's amount (VAT-inclusive, matching how every item amount
@@ -58,6 +78,12 @@ export function computeBillingDocumentSummary(
   // the deposit's own WHT (depositDeductionAmount is already net of it).
   depositWhtAmount = 0,
   roundingAmount = 0,
+  // A later installment (a deposit is being deducted) is its own round: its
+  // base is what's left after the deposit's pre-VAT share, VAT 7% is
+  // computed on that base by itself, WHT follows the same round, and the
+  // satang-rounding hack is not needed because both rounds are now
+  // calculated the same way (see usesSplitRounds).
+  splitRounds = false,
 ): BillingDocumentSummary {
   const subtotal = round2(items.reduce((sum, it) => sum + it.amount, 0) / 1.07);
   const afterDiscount = round2(subtotal - discountAmount);
@@ -80,7 +106,20 @@ export function computeBillingDocumentSummary(
     whtAmount = round2(depositWhtAmount + whtAmountThisRound);
   }
   const retentionAmount = round2(totalAfterVat * (retentionPercent / 100));
-  const netPayable = round2(totalAfterVat - whtAmount - retentionAmount - depositDeductionAmount + roundingAmount);
+  let installmentPreVat: number | null = null;
+  let installmentVat: number | null = null;
+  let installmentTotal: number | null = null;
+  let netPayable = round2(totalAfterVat - whtAmount - retentionAmount - depositDeductionAmount + roundingAmount);
+  let retention = retentionAmount;
+  if (splitRounds && depositDeductionAmount > 0) {
+    // The stored deposit is VAT-inclusive and net of its own WHT.
+    const depositGross = round2(depositDeductionAmount + depositWhtAmount);
+    installmentPreVat = round2(afterDiscount - round2(depositGross / 1.07));
+    installmentVat = round2(installmentPreVat * 0.07);
+    installmentTotal = round2(installmentPreVat + installmentVat);
+    retention = round2(installmentTotal * (retentionPercent / 100));
+    netPayable = round2(installmentTotal - whtAmountThisRound - retention + roundingAmount);
+  }
   return {
     subtotal,
     discountAmount,
@@ -89,9 +128,12 @@ export function computeBillingDocumentSummary(
     totalAfterVat,
     whtAmount,
     whtAmountThisRound,
-    retentionAmount,
+    retentionAmount: retention,
     depositDeductionAmount,
     roundingAmount,
+    installmentPreVat,
+    installmentVat,
+    installmentTotal,
     netPayable,
   };
 }
@@ -105,7 +147,8 @@ export function computeBillingDocumentSummary(
 // deposit is deducted. Stored with the document — never recomputed on read,
 // so older documents are untouched.
 export function withSatangRounding(summary: BillingDocumentSummary): BillingDocumentSummary {
-  if (summary.depositDeductionAmount <= 0) return summary;
+  // A round-by-round document needs no rounding hack (see splitRounds).
+  if (summary.depositDeductionAmount <= 0 || summary.installmentTotal !== null) return summary;
   const exact = round2(summary.netPayable - summary.roundingAmount);
   const rounding = round2(Math.round(exact * 20) / 20 - exact);
   return { ...summary, roundingAmount: rounding, netPayable: round2(exact + rounding) };

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { DownloadPdfButton } from "@/components/dashboard/download-pdf-button";
 import { formatTHB } from "@/lib/format";
 import { thaiBahtText } from "@/lib/thai-baht-text";
-import { computeBillingDocumentSummary, round2 } from "@/lib/billing-document-summary";
+import { computeBillingDocumentSummary, round2, usesSplitRounds } from "@/lib/billing-document-summary";
 import { BILLING_DOCUMENT_LABELS } from "@/lib/types";
 import type { BillingDocumentDetail, PaymentMethod, PrimaryBankAccount } from "@/lib/types";
 
@@ -74,6 +74,7 @@ function DocumentBody({
     document.depositDeductionAmount,
     document.depositWhtAmount,
     document.roundingAmount,
+    usesSplitRounds(document.createdAt, document.docType),
   );
   // ใบกำกับภาษี / ใบแจ้งหนี้ for a later installment (a deposit already received) prints
   // the deposit deduction BEFORE VAT — หักมัดจำ → ยอดคงเหลือหลังหักมัดจำ →
@@ -85,6 +86,11 @@ function DocumentBody({
   // exactly on the same total the other doc types reach, to the satang.
   const isDepositTaxInvoice =
     (document.docType === "tax_invoice" || document.docType === "invoice") && summary.depositDeductionAmount > 0;
+  // Calculated round by round (see usesSplitRounds): same printed layout as
+  // before (whole total, หักมัดจำ, ยอดคงเหลือ), but the 7% VAT and the WHT
+  // are worked out on this installment's own remainder, not as the whole
+  // job's minus the deposit's.
+  const isSplitInstallment = summary.installmentTotal !== null;
   const depositGross = round2(summary.depositDeductionAmount + document.depositWhtAmount);
   const depositPreVat = round2(depositGross / 1.07);
   const remainingPreVat = round2(summary.afterDiscount - depositPreVat);
@@ -425,13 +431,13 @@ function DocumentBody({
             )}
             <tr>
               <td className="py-0.5 text-neutral-600">ภาษีมูลค่าเพิ่ม 7%</td>
-              <td className="py-0.5 text-right">{formatTHB(isDepositTaxInvoice ? remainingVat : summary.vat)}</td>
+              <td className="py-0.5 text-right">{formatTHB(isSplitInstallment ? (summary.installmentVat ?? 0) : isDepositTaxInvoice ? remainingVat : summary.vat)}</td>
             </tr>
             {(!isDepositTaxInvoice || hasDeductionAfterVat) && (
               <tr style={{ backgroundColor: "#d8eceb" }}>
                 <td className="py-0.5 font-medium">{isCollectionDoc ? "จำนวนเงินรวมทั้งสิ้น" : "จำนวนเงินรวม"}</td>
                 <td className="py-0.5 text-right font-medium">
-                  {formatTHB(isDepositTaxInvoice ? remainingTotal : summary.totalAfterVat)}
+                  {formatTHB(isSplitInstallment ? (summary.installmentTotal ?? 0) : isDepositTaxInvoice ? remainingTotal : summary.totalAfterVat)}
                 </td>
               </tr>
             )}
@@ -439,7 +445,7 @@ function DocumentBody({
               <tr>
                 <td className="py-0.5 text-red-600">หัก ณ ที่จ่าย {document.whtPercent}%</td>
                 <td className="py-0.5 text-right text-red-600">
-                  {formatTHB(round2(summary.whtAmount - document.depositWhtAmount))}
+                  {formatTHB(isSplitInstallment ? summary.whtAmountThisRound : round2(summary.whtAmount - document.depositWhtAmount))}
                 </td>
               </tr>
             )}

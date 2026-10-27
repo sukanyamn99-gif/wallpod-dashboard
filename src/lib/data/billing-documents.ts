@@ -1,6 +1,6 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { getQuotationItemsByIds, getQuotationItemsByJobNumbers } from "@/lib/data/quotations";
-import { allocateBillingDocumentSummaryByLine, computeBillingDocumentSummary } from "@/lib/billing-document-summary";
+import { allocateBillingDocumentSummaryByLine, computeBillingDocumentSummary, usesSplitRounds } from "@/lib/billing-document-summary";
 import type {
   BillableBillingNoteItem,
   BillableTaxInvoice,
@@ -87,7 +87,7 @@ export async function getReceivedInvoicesForCustomer(
   let docsQuery = supabase
     .from("billing_notes")
     .select(
-      "id, doc_no, doc_date, job_no, discount_amount, wht_percent, retention_percent, deposit_deduction_amount, deposit_wht_amount, rounding_amount, billing_note_items(amount, apply_wht)",
+      "id, doc_no, doc_date, job_no, discount_amount, wht_percent, retention_percent, deposit_deduction_amount, deposit_wht_amount, rounding_amount, created_at, billing_note_items(amount, apply_wht)",
     )
     .eq("customer_id", customerId)
     .in("doc_type", ["tax_invoice", "invoice"]);
@@ -112,6 +112,7 @@ export async function getReceivedInvoicesForCustomer(
         Number(doc.deposit_deduction_amount),
         Number(doc.deposit_wht_amount),
         Number(doc.rounding_amount),
+        usesSplitRounds(doc.created_at, "invoice"),
       );
       return {
         paymentId: `doc:${doc.id}`,
@@ -675,6 +676,7 @@ export async function getBillingDocuments(docType: BillingDocumentType): Promise
       Number(row.deposit_deduction_amount),
       Number(row.deposit_wht_amount),
       Number(row.rounding_amount),
+      usesSplitRounds(row.created_at, row.doc_type),
     );
     // Every DISTINCT job this document actually covers — a ใบวางบิล/
     // ใบเสร็จรับเงิน can legitimately bundle several different JOBs' invoices
@@ -840,6 +842,7 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     Number(header.deposit_deduction_amount),
     Number(header.deposit_wht_amount),
     Number(header.rounding_amount),
+    usesSplitRounds(header.created_at, header.doc_type),
   );
 
   return {
