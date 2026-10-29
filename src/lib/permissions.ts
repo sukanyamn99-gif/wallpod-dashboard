@@ -55,18 +55,15 @@ const PAGE_ACCESS: Record<string, Role[]> = {
   "/dashboard/expenses/wht-certificates": [...ADMIN_ROLES, "account", "support_sale"],
   "/dashboard/expenses/petty-cash": [...ADMIN_ROLES, "account", "support_sale"],
   "/dashboard/expenses/payables": [...ADMIN_ROLES, "account", "support_sale"],
-  // support_sale works like account across Expenses EXCEPT these three:
-  // payroll (everyone's salary) and commission/incentive (the ทีม Support
-  // payout itself) — kept to admin + account.
   // Salary is individually-sensitive in a way the rest of Expenses isn't —
   // opened to account (ธุรการบัญชี) explicitly per the user's request, since
   // payroll is core accounting work, but not further than that.
-  "/dashboard/expenses/payroll": [...ADMIN_ROLES, "account"],
-  "/dashboard/expenses/commission": [...ADMIN_ROLES, "account"],
+  "/dashboard/expenses/payroll": [...ADMIN_ROLES, "account", "support_sale"],
+  "/dashboard/expenses/commission": [...ADMIN_ROLES, "account", "support_sale"],
   // Shows individual ทีม Support staff names + payout amounts, same
   // sensitivity as payroll (see its own comment above) — opened to account
   // for the same reason.
-  "/dashboard/expenses/incentive": [...ADMIN_ROLES, "account"],
+  "/dashboard/expenses/incentive": [...ADMIN_ROLES, "account", "support_sale"],
   "/dashboard/settings/documents": [...ADMIN_ROLES, "support_sale", "account"],
   "/dashboard/settings/activity-log": ADMIN_ROLES,
 };
