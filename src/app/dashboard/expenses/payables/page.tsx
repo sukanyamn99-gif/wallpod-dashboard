@@ -17,7 +17,7 @@ export default async function PayablesPage() {
   if (!canAccessPage(profile.role, "/dashboard/expenses/payables")) redirect("/dashboard/sales");
 
   const [data, suppliers] = await Promise.all([getPayablesDashboardData(), getSuppliers()]);
-  const canManage = profile.role === "owner" || profile.role === "manager" || profile.role === "account";
+  const canManage = profile.role === "owner" || profile.role === "manager" || profile.role === "account" || profile.role === "support_sale";
 
   return (
     <div className="space-y-6">

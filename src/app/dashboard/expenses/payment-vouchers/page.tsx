@@ -12,7 +12,7 @@ export default async function PaymentVouchersPage() {
   if (!canAccessPage(profile.role, "/dashboard/expenses/payment-vouchers")) redirect("/dashboard/sales");
 
   const vouchers = await getPaymentVouchers();
-  const canCreate = profile.role === "owner" || profile.role === "manager" || profile.role === "account";
+  const canCreate = profile.role === "owner" || profile.role === "manager" || profile.role === "account" || profile.role === "support_sale";
 
   return (
     <div className="space-y-6">

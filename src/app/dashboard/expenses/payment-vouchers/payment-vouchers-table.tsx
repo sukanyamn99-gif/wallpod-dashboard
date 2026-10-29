@@ -52,7 +52,7 @@ function monthLabelOf(key: string) {
 }
 
 function canManage(profile: Profile, voucher: VoucherRow) {
-  return profile.role === "owner" || profile.role === "manager" || profile.role === "account" || voucher.recordedById === profile.id;
+  return profile.role === "owner" || profile.role === "manager" || profile.role === "account" || profile.role === "support_sale" || voucher.recordedById === profile.id;
 }
 
 function DeleteButton({ voucher }: { voucher: VoucherRow }) {

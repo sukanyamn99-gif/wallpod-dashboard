@@ -12,7 +12,7 @@ export default async function BankAccountsPage() {
 
   const accounts = await getBankAccounts();
   const transactions = await getBankTransactions(accounts);
-  const canManage = profile.role === "owner" || profile.role === "manager" || profile.role === "account";
+  const canManage = profile.role === "owner" || profile.role === "manager" || profile.role === "account" || profile.role === "support_sale";
 
   return (
     <div className="space-y-6">

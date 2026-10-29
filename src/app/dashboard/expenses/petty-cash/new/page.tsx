@@ -9,7 +9,7 @@ export default async function NewPettyCashPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
   if (!canAccessPage(profile.role, "/dashboard/expenses/petty-cash")) redirect("/dashboard/sales");
-  if (!["owner", "manager", "account"].includes(profile.role)) redirect("/dashboard/expenses/petty-cash");
+  if (!["owner", "manager", "account", "support_sale"].includes(profile.role)) redirect("/dashboard/expenses/petty-cash");
 
   const [recentDescriptions, recentBillers, jobNoSuggestions] = await Promise.all([
     getRecentPettyCashDescriptions(),

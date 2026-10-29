@@ -18,8 +18,8 @@ const PAGE_ACCESS: Record<string, Role[]> = {
   "/dashboard/sale-report": ["owner", "manager", "sales"],
   // account (ธุรการบัญชี) needs profit figures to compute ค่า Incentive —
   // opened alongside canSeeCosts below (same reasoning, same role).
-  "/dashboard/gp": [...ADMIN_ROLES, "account"],
-  "/dashboard/ar": [...ADMIN_ROLES, "account"],
+  "/dashboard/gp": [...ADMIN_ROLES, "account", "support_sale"],
+  "/dashboard/ar": [...ADMIN_ROLES, "account", "support_sale"],
   // "design" sees the page but not cost/profit — canSeeProjectCosts below
   // doesn't include design, so that stays hidden without any extra change.
   "/dashboard/project-sales": [...STOCK_STAFF, "design"],
@@ -48,13 +48,16 @@ const PAGE_ACCESS: Record<string, Role[]> = {
   "/dashboard/stock-movement": STOCK_STAFF,
   "/dashboard/inventory/alerts": STOCK_STAFF,
   "/dashboard/inventory/report": STOCK_STAFF,
-  "/dashboard/bank-accounts": [...ADMIN_ROLES, "account"],
-  "/dashboard/expenses": [...ADMIN_ROLES, "account"],
-  "/dashboard/expenses/payment-vouchers": [...ADMIN_ROLES, "account"],
-  "/dashboard/expenses/payment-vouchers/summary": [...ADMIN_ROLES, "account"],
-  "/dashboard/expenses/wht-certificates": [...ADMIN_ROLES, "account"],
-  "/dashboard/expenses/petty-cash": [...ADMIN_ROLES, "account"],
-  "/dashboard/expenses/payables": [...ADMIN_ROLES, "account"],
+  "/dashboard/bank-accounts": [...ADMIN_ROLES, "account", "support_sale"],
+  "/dashboard/expenses": [...ADMIN_ROLES, "account", "support_sale"],
+  "/dashboard/expenses/payment-vouchers": [...ADMIN_ROLES, "account", "support_sale"],
+  "/dashboard/expenses/payment-vouchers/summary": [...ADMIN_ROLES, "account", "support_sale"],
+  "/dashboard/expenses/wht-certificates": [...ADMIN_ROLES, "account", "support_sale"],
+  "/dashboard/expenses/petty-cash": [...ADMIN_ROLES, "account", "support_sale"],
+  "/dashboard/expenses/payables": [...ADMIN_ROLES, "account", "support_sale"],
+  // support_sale works like account across Expenses EXCEPT these three:
+  // payroll (everyone's salary) and commission/incentive (the ทีม Support
+  // payout itself) — kept to admin + account.
   // Salary is individually-sensitive in a way the rest of Expenses isn't —
   // opened to account (ธุรการบัญชี) explicitly per the user's request, since
   // payroll is core accounting work, but not further than that.
@@ -78,7 +81,7 @@ export function canAccessPage(role: Role, path: string): boolean {
 // opened to account (ธุรการบัญชี), who need cost/profit figures across the
 // board for accounting work, including computing ค่า Incentive.
 export function canSeeCosts(role: Role): boolean {
-  return ADMIN_ROLES.includes(role) || role === "account";
+  return ADMIN_ROLES.includes(role) || role === "account" || role === "support_sale";
 }
 
 // Stock Requisition (ใบเบิกสินค้า) specifically also opens cost visibility to

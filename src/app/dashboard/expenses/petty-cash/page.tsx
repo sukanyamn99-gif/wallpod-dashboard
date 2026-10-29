@@ -16,7 +16,7 @@ export default async function PettyCashPage() {
 
   const transactions = await getPettyCashTransactions();
   const currentBalance = transactions[0]?.balanceAfter ?? 0;
-  const canCreate = profile.role === "owner" || profile.role === "manager" || profile.role === "account";
+  const canCreate = profile.role === "owner" || profile.role === "manager" || profile.role === "account" || profile.role === "support_sale";
 
   return (
     <div className="space-y-6">

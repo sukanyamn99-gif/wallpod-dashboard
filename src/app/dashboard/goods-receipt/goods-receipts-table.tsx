@@ -86,7 +86,7 @@ function canDelete(profile: Profile, receipt: Omit<GoodsReceipt, "items">) {
 // specifically for the เจ้าหนี้คงค้าง page) even though they can't touch
 // items/stock on a receipt.
 function canTogglePayment(profile: Profile, receipt: Omit<GoodsReceipt, "items">) {
-  if (profile.role === "account") return true;
+  if (profile.role === "account" || profile.role === "support_sale") return true;
   return canDelete(profile, receipt);
 }
 

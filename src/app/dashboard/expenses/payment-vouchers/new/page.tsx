@@ -13,7 +13,7 @@ export default async function NewPaymentVoucherPage({
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
   if (!canAccessPage(profile.role, "/dashboard/expenses/payment-vouchers")) redirect("/dashboard/sales");
-  if (!["owner", "manager", "account"].includes(profile.role)) redirect("/dashboard/expenses/payment-vouchers");
+  if (!["owner", "manager", "account", "support_sale"].includes(profile.role)) redirect("/dashboard/expenses/payment-vouchers");
 
   const { copyFrom } = await searchParams;
   const [jobNoSuggestions, sourceVoucher] = await Promise.all([

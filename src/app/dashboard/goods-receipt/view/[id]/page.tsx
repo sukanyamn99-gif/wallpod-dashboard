@@ -36,7 +36,7 @@ export default async function GoodsReceiptDetailPage({
     (profile.role === "owner" ||
       profile.role === "manager" ||
       (profile.role === "production" && receipt.receivedById === profile.id));
-  const canManagePayments = profile.role === "owner" || profile.role === "manager" || profile.role === "account";
+  const canManagePayments = profile.role === "owner" || profile.role === "manager" || profile.role === "account" || profile.role === "support_sale";
   const amountPaid = paymentHistory.reduce((sum, p) => sum + p.amount, 0);
   const remainingBalance = Math.round((totalValue - amountPaid) * 100) / 100;
 

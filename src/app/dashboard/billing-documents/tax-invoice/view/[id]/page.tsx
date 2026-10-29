@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 // Mirrors billing-document-table.tsx's canDelete rule — owner/manager can
 // edit any document — a plain "account" (ธุรการบัญชี) role gets the same blanket rights, anyone else only their own.
 function canEdit(role: string, createdById: string | null, profileId: string) {
-  if (role === "owner" || role === "manager" || role === "account") return true;
+  if (role === "owner" || role === "manager" || role === "account" || role === "support_sale") return true;
   return createdById === profileId;
 }
 

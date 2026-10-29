@@ -25,7 +25,7 @@ const TOTAL_COLUMNS = 8;
 // owner/manager/account can edit or delete any document, anyone else only
 // their own.
 function canDelete(profile: Profile, doc: BillingDocument) {
-  return profile.role === "owner" || profile.role === "manager" || profile.role === "account" || doc.createdById === profile.id;
+  return profile.role === "owner" || profile.role === "manager" || profile.role === "account" || profile.role === "support_sale" || doc.createdById === profile.id;
 }
 
 function DeleteButton({ docType, doc }: { docType: BillingDocumentType; doc: BillingDocument }) {
