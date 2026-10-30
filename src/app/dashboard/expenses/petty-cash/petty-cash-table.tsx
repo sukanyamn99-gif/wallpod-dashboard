@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, Pencil, Printer, Trash2, X } from "lucide-react";
+import { Ban, Check, Pencil, Printer, Trash2, Undo2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/table";
 import { formatTHB } from "@/lib/format";
 import type { PettyCashTransaction } from "@/lib/types";
-import { deletePettyCashTransaction } from "./actions";
+import { cancelPettyCashTransaction, deletePettyCashTransaction } from "./actions";
 
 const TOTAL_COLUMNS_BASE = 9;
 
@@ -62,6 +62,63 @@ function DeleteButton({ transaction }: { transaction: PettyCashTransaction }) {
     <div className="flex flex-col gap-1">
       <Button size="icon-sm" variant="destructive" onClick={() => setConfirming(true)}>
         <Trash2 className="h-3.5 w-3.5" />
+      </Button>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
+// ยกเลิก / กู้คืน: the entry stays on the ledger but stops counting.
+function CancelButton({ transaction }: { transaction: PettyCashTransaction }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const restoring = transaction.isCancelled;
+
+  function handleConfirm() {
+    setError(null);
+    startTransition(async () => {
+      const result = await cancelPettyCashTransaction(transaction.id, !restoring);
+      if (result.error) setError(result.error);
+      setConfirming(false);
+    });
+  }
+
+  if (confirming) {
+    return (
+      <div className="flex flex-col gap-1">
+        <div className="flex gap-1">
+          <Button
+            size="icon-sm"
+            variant="destructive"
+            onClick={handleConfirm}
+            disabled={pending}
+            title={
+              restoring
+                ? `ยืนยันกู้คืน "${transaction.docNo}" (กลับมานับในยอดคงเหลือและต้นทุน)`
+                : `ยืนยันยกเลิก "${transaction.docNo}" (ไม่นับในยอดคงเหลือ ต้นทุน Job และรายงาน แต่ยังเห็นรายการอยู่)`
+            }
+          >
+            <Check className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="icon-sm" variant="outline" onClick={() => setConfirming(false)} disabled={pending} title="ไม่ทำรายการ">
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+        {error && <p className="text-xs text-destructive">{error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Button
+        size="icon-sm"
+        variant="outline"
+        onClick={() => setConfirming(true)}
+        title={restoring ? "กู้คืนรายการที่ยกเลิก" : "ยกเลิกรายการนี้ (ไม่ลบ)"}
+      >
+        {restoring ? <Undo2 className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
       </Button>
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
@@ -151,8 +208,15 @@ export function PettyCashTable({
               </TableRow>
             )}
             {filtered.map((t) => (
-              <TableRow key={t.id}>
-                <TableCell className="font-medium whitespace-nowrap">{t.docNo}</TableCell>
+              <TableRow key={t.id} className={t.isCancelled ? "opacity-60" : undefined}>
+                <TableCell className="font-medium whitespace-nowrap">
+                  {t.docNo}
+                  {t.isCancelled && (
+                    <Badge variant="outline" className="ml-2">
+                      ยกเลิก
+                    </Badge>
+                  )}
+                </TableCell>
                 <TableCell className="whitespace-nowrap">
                   {new Date(t.transactionDate).toLocaleDateString("th-TH")}
                 </TableCell>
@@ -165,8 +229,10 @@ export function PettyCashTable({
                 </TableCell>
                 <TableCell className="whitespace-nowrap">{t.category ?? "—"}</TableCell>
                 <TableCell className="whitespace-nowrap">{t.jobNo ?? "—"}</TableCell>
-                <TableCell className="whitespace-nowrap">{t.description}</TableCell>
-                <TableCell className="text-right whitespace-nowrap">
+                <TableCell className={t.isCancelled ? "whitespace-nowrap line-through" : "whitespace-nowrap"}>
+                  {t.description}
+                </TableCell>
+                <TableCell className={t.isCancelled ? "text-right whitespace-nowrap line-through" : "text-right whitespace-nowrap"}>
                   {t.transactionType === "topup" ? "+" : "-"}
                   {formatTHB(t.amount)}
                 </TableCell>
@@ -185,6 +251,7 @@ export function PettyCashTable({
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
+                      <CancelButton transaction={t} />
                       <DeleteButton transaction={t} />
                     </div>
                   </TableCell>

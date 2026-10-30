@@ -204,6 +204,32 @@ export async function updatePettyCashTransaction(id: string, formData: FormData)
   return { error: null };
 }
 
+// ยกเลิก keeps the row on the ledger (unlike delete) but takes it out of
+// everything that counts: the running balance is recomputed without it, and
+// job cost / WHT certificates / printed reports skip it. Reversible.
+export async function cancelPettyCashTransaction(id: string, cancelled: boolean) {
+  if (!isSupabaseConfigured()) {
+    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("petty_cash_transactions")
+    .update({ is_cancelled: cancelled, cancelled_at: cancelled ? new Date().toISOString() : null })
+    .eq("id", id)
+    .select("id");
+  if (error) return { error: error.message };
+  if (!data || data.length === 0) return { error: "ไม่มีสิทธิ์ยกเลิกรายการนี้" };
+
+  const { error: recomputeError } = await supabase.rpc("recompute_petty_cash_balances");
+  if (recomputeError) return { error: `บันทึกสถานะแล้ว แต่คำนวณยอดคงเหลือใหม่ไม่สำเร็จ: ${recomputeError.message}` };
+
+  revalidatePath("/dashboard/expenses/petty-cash");
+  revalidatePath("/dashboard/expenses");
+  revalidatePath("/dashboard/project-sales");
+  return { error: null };
+}
+
 export async function deletePettyCashTransaction(id: string) {
   if (!isSupabaseConfigured()) {
     return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถลบได้ในโหมดทดลอง" };

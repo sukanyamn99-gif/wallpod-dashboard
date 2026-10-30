@@ -3,7 +3,7 @@ import type { PettyCashTransaction, PettyCashTransactionType, WhtFormType, WhtIn
 import { isCostBucket } from "@/lib/job-cost-buckets";
 
 const COLUMNS =
-  "id, doc_no, transaction_date, transaction_type, amount, description, balance_after, recorded_by, created_at, category, biller_name, job_no, vat_amount, wht_amount, pre_vat_amount, cost_bucket, wht_cert_no, wht_rate, wht_form_type, payee_tax_id, payee_address, income_type, profiles(full_name)";
+  "id, doc_no, transaction_date, transaction_type, amount, description, balance_after, recorded_by, created_at, category, biller_name, job_no, vat_amount, wht_amount, pre_vat_amount, cost_bucket, is_cancelled, wht_cert_no, wht_rate, wht_form_type, payee_tax_id, payee_address, income_type, profiles(full_name)";
 
 type Row = {
   id: string;
@@ -22,6 +22,7 @@ type Row = {
   wht_amount: number | string;
   pre_vat_amount: number | string | null;
   cost_bucket: string | null;
+  is_cancelled: boolean;
   wht_cert_no: string | null;
   wht_rate: number | string | null;
   wht_form_type: string | null;
@@ -47,6 +48,7 @@ function mapRow(row: Row): PettyCashTransaction {
     billerName: row.biller_name,
     jobNo: row.job_no,
     costBucket: isCostBucket(row.cost_bucket) ? row.cost_bucket : null,
+    isCancelled: !!row.is_cancelled,
     vatAmount: Number(row.vat_amount),
     whtAmount: Number(row.wht_amount),
     preVatAmount: row.pre_vat_amount === null ? null : Number(row.pre_vat_amount),
@@ -62,14 +64,19 @@ function mapRow(row: Row): PettyCashTransaction {
 // Ordered newest-first for display; the current balance is simply the
 // first row here (or 0 if the ledger is empty) since balance_after already
 // reflects the running total as of that transaction.
-export async function getPettyCashTransactions(): Promise<PettyCashTransaction[]> {
+//
+// Cancelled (ยกเลิก) rows are left out unless asked for: every report, the
+// WHT certificate list and the expenses dashboard must not count them — only
+// the petty-cash ledger page itself shows them (struck through).
+export async function getPettyCashTransactions(
+  { includeCancelled = false }: { includeCancelled?: boolean } = {},
+): Promise<PettyCashTransaction[]> {
   if (!isSupabaseConfigured()) return [];
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("petty_cash_transactions")
-    .select(COLUMNS)
-    .order("created_at", { ascending: false });
+  let query = supabase.from("petty_cash_transactions").select(COLUMNS).order("created_at", { ascending: false });
+  if (!includeCancelled) query = query.eq("is_cancelled", false);
+  const { data, error } = await query;
   if (error) throw error;
 
   // @ts-expect-error -- Supabase types the joined relation loosely here

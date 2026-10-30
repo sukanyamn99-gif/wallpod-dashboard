@@ -14,7 +14,7 @@ export default async function PettyCashPage() {
   if (!profile) redirect("/login");
   if (!canAccessPage(profile.role, "/dashboard/expenses/petty-cash")) redirect("/dashboard/sales");
 
-  const transactions = await getPettyCashTransactions();
+  const transactions = await getPettyCashTransactions({ includeCancelled: true });
   const currentBalance = transactions[0]?.balanceAfter ?? 0;
   const canCreate = profile.role === "owner" || profile.role === "manager" || profile.role === "account" || profile.role === "support_sale";
 

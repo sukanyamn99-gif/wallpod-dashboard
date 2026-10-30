@@ -1924,3 +1924,8 @@ alter table payment_vouchers
 alter table petty_cash_transactions
   add column if not exists cost_bucket text
     check (cost_bucket in ('material', 'cutting', 'install', 'shipping', 'parking', 'other'));
+
+-- migration_103: petty-cash ยกเลิก (see migration_103_petty_cash_cancel.sql, which also replaces recompute_petty_cash_balances and ai.gp)
+alter table petty_cash_transactions
+  add column if not exists is_cancelled boolean not null default false,
+  add column if not exists cancelled_at timestamptz;

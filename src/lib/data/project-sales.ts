@@ -138,6 +138,7 @@ async function getJobLinkedCosts(
       .from("petty_cash_transactions")
       .select("job_no, doc_no, amount, category, cost_bucket")
       .eq("transaction_type", "expense")
+      .eq("is_cancelled", false)
       .not("job_no", "is", null),
   ]);
   if (requisitionItems.error) throw requisitionItems.error;
@@ -407,7 +408,8 @@ export async function getJobLinkedCostSummary(jobNo: string): Promise<JobLinkedC
       .from("petty_cash_transactions")
       .select("doc_no, amount")
       .eq("job_no", trimmed)
-      .eq("transaction_type", "expense"),
+      .eq("transaction_type", "expense")
+      .eq("is_cancelled", false),
   ]);
   if (requisitionsRes.error) throw requisitionsRes.error;
   if (vouchersRes.error) throw vouchersRes.error;

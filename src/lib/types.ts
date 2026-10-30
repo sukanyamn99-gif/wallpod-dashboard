@@ -721,6 +721,9 @@ export interface PettyCashTransaction {
   // Which Project Sales cost column this expense counts toward (when tied to
   // a JOB); null = sort by the free-text category (rows saved before this).
   costBucket: CostBucket | null;
+  // ยกเลิก: kept on the ledger but no longer counted anywhere (balance, job
+  // cost, WHT certificates, printed report). See cancelPettyCashTransaction.
+  isCancelled: boolean;
   vatAmount: number;
   whtAmount: number;
   // Base VAT/WHT were computed on. null on rows saved before this existed —
