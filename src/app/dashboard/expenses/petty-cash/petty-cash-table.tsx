@@ -20,7 +20,7 @@ import { formatTHB } from "@/lib/format";
 import type { PettyCashTransaction } from "@/lib/types";
 import { cancelPettyCashTransaction, deletePettyCashTransaction } from "./actions";
 
-const TOTAL_COLUMNS_BASE = 9;
+const TOTAL_COLUMNS_BASE = 10;
 
 function DeleteButton({ transaction }: { transaction: PettyCashTransaction }) {
   const [pending, startTransition] = useTransition();
@@ -136,6 +136,9 @@ export function PettyCashTable({
   const [query, setQuery] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  // เลขที่เอกสาร ticked for printing — only ใช้จ่าย entries that still count
+  // (the printed report lists expenses, and a cancelled one is left out).
+  const [selectedDocNos, setSelectedDocNos] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -155,6 +158,27 @@ export function PettyCashTable({
   const printHref = `/dashboard/expenses/petty-cash/print${
     fromDate || toDate ? `?from=${fromDate}&to=${toDate}` : ""
   }`;
+  const selectable = filtered.filter((t) => t.transactionType === "expense" && !t.isCancelled);
+  const allSelected = selectable.length > 0 && selectable.every((t) => selectedDocNos.has(t.docNo));
+  const selectedPrintHref = `/dashboard/expenses/petty-cash/print?docs=${encodeURIComponent(
+    Array.from(selectedDocNos).join(","),
+  )}`;
+  function toggleDoc(docNo: string) {
+    setSelectedDocNos((prev) => {
+      const next = new Set(prev);
+      if (next.has(docNo)) next.delete(docNo);
+      else next.add(docNo);
+      return next;
+    });
+  }
+  function toggleAll() {
+    setSelectedDocNos((prev) => {
+      const next = new Set(prev);
+      if (allSelected) for (const t of selectable) next.delete(t.docNo);
+      else for (const t of selectable) next.add(t.docNo);
+      return next;
+    });
+  }
 
   return (
     <div className="space-y-4">
@@ -181,12 +205,39 @@ export function PettyCashTable({
           <Printer className="h-3.5 w-3.5" />
           พิมพ์รายงานตามช่วงวันที่
         </Button>
+        {selectedDocNos.size > 0 ? (
+          <Button variant="outline" nativeButton={false} render={<Link href={selectedPrintHref} target="_blank" />}>
+            <Printer className="h-3.5 w-3.5" />
+            พิมพ์รายการที่เลือก ({selectedDocNos.size})
+          </Button>
+        ) : (
+          <Button variant="outline" disabled title="ติ๊กเลือกรายการใช้จ่ายที่ต้องการพิมพ์ในตารางก่อน">
+            <Printer className="h-3.5 w-3.5" />
+            พิมพ์รายการที่เลือก (0)
+          </Button>
+        )}
+        {selectedDocNos.size > 0 && (
+          <Button variant="ghost" onClick={() => setSelectedDocNos(new Set())}>
+            ล้างที่เลือก
+          </Button>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-8">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  disabled={selectable.length === 0}
+                  className="h-4 w-4"
+                  aria-label="เลือกทุกรายการใช้จ่ายที่แสดง"
+                  title="เลือกทุกรายการใช้จ่ายที่แสดงอยู่เพื่อพิมพ์"
+                />
+              </TableHead>
               <TableHead className="whitespace-nowrap">เลขที่เอกสาร</TableHead>
               <TableHead className="whitespace-nowrap">วันที่</TableHead>
               <TableHead className="whitespace-nowrap">ประเภท</TableHead>
@@ -209,6 +260,17 @@ export function PettyCashTable({
             )}
             {filtered.map((t) => (
               <TableRow key={t.id} className={t.isCancelled ? "opacity-60" : undefined}>
+                <TableCell>
+                  {t.transactionType === "expense" && !t.isCancelled && (
+                    <input
+                      type="checkbox"
+                      checked={selectedDocNos.has(t.docNo)}
+                      onChange={() => toggleDoc(t.docNo)}
+                      className="h-4 w-4"
+                      aria-label={`เลือก ${t.docNo} เพื่อพิมพ์`}
+                    />
+                  )}
+                </TableCell>
                 <TableCell className="font-medium whitespace-nowrap">
                   {t.docNo}
                   {t.isCancelled && (

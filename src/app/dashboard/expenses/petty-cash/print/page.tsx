@@ -10,9 +10,10 @@ import { PrintPettyCashView } from "./print-petty-cash-view";
 export async function generateMetadata({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; docs?: string }>;
 }): Promise<Metadata> {
-  const { from, to } = await searchParams;
+  const { from, to, docs } = await searchParams;
+  if (docs) return { title: `เงินสดย่อย ${docs.split(",").filter(Boolean).length} รายการที่เลือก` };
   const fromLabel = from ? new Date(from).toLocaleDateString("th-TH") : "เริ่มต้น";
   const toLabel = to ? new Date(to).toLocaleDateString("th-TH") : "ปัจจุบัน";
   return { title: `เงินสดย่อย ${fromLabel}-${toLabel}` };
@@ -21,9 +22,9 @@ export async function generateMetadata({
 export default async function PrintPettyCashPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; docs?: string }>;
 }) {
-  const { from, to } = await searchParams;
+  const { from, to, docs } = await searchParams;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
   if (!canAccessPage(profile.role, "/dashboard/expenses/petty-cash")) redirect("/dashboard/sales");
@@ -31,8 +32,12 @@ export default async function PrintPettyCashPage({
   const all = await getPettyCashTransactions(); // newest first
   const chronological = [...all].reverse(); // oldest first, needed for "starting balance"
 
+  // `docs` = specific เลขที่เอกสาร picked on the list (comma-separated): print
+  // exactly those expense entries instead of a date range.
+  const selectedDocNos = docs ? new Set(docs.split(",").map((d) => d.trim()).filter(Boolean)) : null;
   const rangeRows = chronological.filter((t) => {
     if (t.transactionType !== "expense") return false;
+    if (selectedDocNos) return selectedDocNos.has(t.docNo);
     if (from && t.transactionDate < from) return false;
     if (to && t.transactionDate > to) return false;
     return true;
@@ -43,13 +48,29 @@ export default async function PrintPettyCashPage({
   // dated earlier than `from`. No `from` given means "since the beginning",
   // so the float starts at 0.
   let startingBalance = 0;
-  if (from) {
+  if (selectedDocNos) {
+    // The running balance right before the earliest picked entry.
+    const firstIndex = rangeRows.length > 0 ? chronological.findIndex((t) => t.id === rangeRows[0].id) : -1;
+    startingBalance = firstIndex > 0 ? chronological[firstIndex - 1].balanceAfter : 0;
+  } else if (from) {
     const before = chronological.filter((t) => t.transactionDate < from);
     startingBalance = before.length > 0 ? before[before.length - 1].balanceAfter : 0;
   }
 
-  const fromLabel = from ? new Date(from).toLocaleDateString("th-TH") : "เริ่มต้น";
-  const toLabel = to ? new Date(to).toLocaleDateString("th-TH") : "ปัจจุบัน";
+  const fromLabel = selectedDocNos
+    ? rangeRows.length > 0
+      ? new Date(rangeRows[0].transactionDate).toLocaleDateString("th-TH")
+      : "-"
+    : from
+      ? new Date(from).toLocaleDateString("th-TH")
+      : "เริ่มต้น";
+  const toLabel = selectedDocNos
+    ? rangeRows.length > 0
+      ? new Date(rangeRows[rangeRows.length - 1].transactionDate).toLocaleDateString("th-TH")
+      : "-"
+    : to
+      ? new Date(to).toLocaleDateString("th-TH")
+      : "ปัจจุบัน";
 
   return (
     <PrintPettyCashView
