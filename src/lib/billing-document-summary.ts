@@ -139,6 +139,12 @@ export function computeBillingDocumentSummary(
     installmentVat = bestGap === Infinity ? round2(remainingTotal - preVat) : round2(preVat * 0.07);
     installmentTotal = round2(installmentPreVat + installmentVat);
     retention = round2(installmentTotal * (retentionPercent / 100));
+    // No WHT recorded against the deposit: this round's WHT is still worked
+    // out on this installment's own pre-VAT base (its share of the whole
+    // job's WHT), not the whole job's WHT minus nothing.
+    if (depositWhtAmount === 0 && afterDiscount > 0) {
+      whtAmountThisRound = round2((whtAmount * installmentPreVat) / afterDiscount);
+    }
     // A round-by-round document ignores any stored satang rounding (written
     // by the earlier whole-job rounding) — its own rounding is the line above.
     netPayable = round2(installmentTotal - whtAmountThisRound - retention);
