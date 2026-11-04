@@ -187,8 +187,10 @@ export function BillingDocumentForm({
   // further down are mutually exclusive based on this choice, matching the
   // reference dialog. Not asked in edit mode (the existing items already
   // imply which kind it is) or for billing_note/tax_invoice (they only
-  // ever have one source to begin with).
-  const needsSourceKindChoice = (docType === "receipt" || docType === "invoice") && mode === "create";
+  // ever have one source to begin with). ใบเสร็จรับเงิน is no longer asked
+  // either: it always shows the tax-invoice picker, the typed lines and the
+  // deposit deduction together (sourceKind stays null).
+  const needsSourceKindChoice = docType === "invoice" && mode === "create";
   const [sourceKind, setSourceKind] = useState<"existing" | "other" | null>(null);
   // Every doc type but ใบเสร็จรับเงิน only ever sets this via the top JOB
   // NO. picker at creation time (see job_no_picker below) — starts blank
@@ -868,7 +870,7 @@ export function BillingDocumentForm({
         <Dialog open onOpenChange={(next) => !next && router.push(listPath)}>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>{docType === "receipt" ? "ประเภทใบเสร็จรับเงิน" : "ประเภทใบแจ้งหนี้"}</DialogTitle>
+              <DialogTitle>ประเภทใบแจ้งหนี้</DialogTitle>
             </DialogHeader>
             <DialogBody className="space-y-2 pb-4">
               <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-muted">
@@ -880,14 +882,8 @@ export function BillingDocumentForm({
                   onChange={() => setSourceKind("existing")}
                 />
                 <span>
-                  <span className="block text-sm font-medium">
-                    {docType === "receipt" ? "รับเงินจากใบกำกับภาษี (ใบเสร็จรวม)" : "ออกจากรายการที่ยังไม่ได้แจ้งหนี้ (รวมได้หลายรายการ)"}
-                  </span>
-                  <span className="block text-xs text-muted-foreground">
-                    {docType === "receipt"
-                      ? "สร้างโดยเลือกจากใบกำกับภาษีเดียว หรือหลายใบ"
-                      : "สร้างโดยเลือกจากรายการเดียว หรือหลายรายการ"}
-                  </span>
+                  <span className="block text-sm font-medium">ออกจากรายการที่ยังไม่ได้แจ้งหนี้ (รวมได้หลายรายการ)</span>
+                  <span className="block text-xs text-muted-foreground">สร้างโดยเลือกจากรายการเดียว หรือหลายรายการ</span>
                 </span>
               </label>
               <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:bg-muted">
@@ -899,7 +895,7 @@ export function BillingDocumentForm({
                   onChange={() => setSourceKind("other")}
                 />
                 <span>
-                  <span className="block text-sm font-medium">{docType === "receipt" ? "รับเงินอื่นๆ" : "รายการอื่นๆ"}</span>
+                  <span className="block text-sm font-medium">รายการอื่นๆ</span>
                   <span className="block text-xs text-muted-foreground">
                     เช่น เงินประกัน เงินมัดจำ รับเงินล่วงหน้า หรืออื่นๆ
                   </span>
@@ -1040,13 +1036,7 @@ export function BillingDocumentForm({
             <span>
               ประเภท:{" "}
               <span className="font-medium">
-                {sourceKind === "existing"
-                  ? docType === "receipt"
-                    ? "รับเงินจากใบกำกับภาษี (ใบเสร็จรวม)"
-                    : "ออกจากรายการที่ยังไม่ได้แจ้งหนี้"
-                  : docType === "receipt"
-                    ? "รับเงินอื่นๆ"
-                    : "รายการอื่นๆ"}
+                {sourceKind === "existing" ? "ออกจากรายการที่ยังไม่ได้แจ้งหนี้" : "รายการอื่นๆ"}
               </span>
             </span>
             <button
