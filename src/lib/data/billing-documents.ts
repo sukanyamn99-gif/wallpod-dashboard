@@ -638,6 +638,8 @@ export async function getBillingDocuments(docType: BillingDocumentType): Promise
       `${HEADER_COLUMNS}, billing_note_items(amount, apply_wht, source_item_id, invoice_no_snapshot, manual_description, payments(projects(job_no)), quotations(job_number))`,
     )
     .eq("doc_type", docType)
+    .order("doc_date", { ascending: false })
+    .order("doc_no", { ascending: false })
     .order("created_at", { ascending: false });
   if (error) throw error;
 
