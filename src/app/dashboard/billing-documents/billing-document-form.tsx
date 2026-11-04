@@ -398,8 +398,22 @@ export function BillingDocumentForm({
   function handleJobNoChange(value: string) {
     setJobNo(value);
     const match = jobNoLookup[value];
-    if (match?.customerId) {
-      void pickCustomer(match.customerId, match.customerName, value);
+    // A JOB that only exists on a quotation (no project yet) carries just the
+    // customer's name, so find the customer record by that name.
+    const squash = (s: string) => s.replace(/\s+/g, " ").trim();
+    const matchedCustomer = match
+      ? match.customerId
+        ? { id: match.customerId, name: match.customerName }
+        : (() => {
+            const found = customers.find((c) => squash(c.name) === squash(match.customerName));
+            return found ? { id: found.id, name: found.name } : null;
+          })()
+      : null;
+    if (match && matchedCustomer) {
+      // A receipt bundles tax invoices across JOBs, so typing a JOB for the
+      // same customer only narrows the list — it never resets what's ticked.
+      if (docType === "receipt" && matchedCustomer.id === customerId) return;
+      void pickCustomer(matchedCustomer.id, matchedCustomer.name, value);
       // A JOB has exactly one assigned sales rep — a stronger, unambiguous
       // signal than the customer alone (who can have deals across several
       // reps), so this is the one path that auto-fills ผู้ขาย too.
@@ -1057,9 +1071,14 @@ export function BillingDocumentForm({
         {docType === "receipt" && (
           <div className="space-y-2">
             <Label htmlFor="job_no_receipt">เลขที่ Job</Label>
-            <JobNoSelect id="job_no_receipt" value={jobNo} onChange={setJobNo} jobNos={jobNoSuggestions} />
+            <JobNoSelect
+              id="job_no_receipt"
+              value={jobNo}
+              onChange={mode === "create" ? handleJobNoChange : setJobNo}
+              jobNos={jobNoSuggestions}
+            />
             <p className="text-xs text-muted-foreground">
-              ใช้พิมพ์อ้างอิงบนเอกสารเท่านั้น ไม่จำกัดรายการที่เลือกได้ด้านล่าง — บังคับกรอกเฉพาะเมื่อมีรายการที่พิมพ์เอง
+              เลือก JOB เพื่อดึงลูกค้าและรายการใบกำกับภาษีของ JOB นั้นมาให้ (ใช้พิมพ์อ้างอิงบนเอกสารด้วย) — บังคับกรอกเฉพาะเมื่อมีรายการที่พิมพ์เอง
             </p>
           </div>
         )}
