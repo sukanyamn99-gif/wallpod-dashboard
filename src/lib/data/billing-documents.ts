@@ -87,7 +87,7 @@ export async function getReceivedInvoicesForCustomer(
   let docsQuery = supabase
     .from("billing_notes")
     .select(
-      "id, doc_no, doc_date, job_no, discount_amount, wht_percent, retention_percent, deposit_deduction_amount, deposit_wht_amount, rounding_amount, created_at, billing_note_items(amount, apply_wht)",
+      "id, doc_no, doc_date, job_no, discount_amount, wht_percent, retention_percent, deposit_deduction_amount, deposit_wht_amount, rounding_amount, created_at, billing_note_items(amount, apply_wht, manual_description, quotations(total))",
     )
     .eq("customer_id", customerId)
     .in("doc_type", ["tax_invoice", "invoice"]);
@@ -95,8 +95,22 @@ export async function getReceivedInvoicesForCustomer(
   const { data: docs, error: docsErr } = await docsQuery;
   if (docsErr) throw docsErr;
 
+  // Only a deposit/installment is something to deduct later — a ใบกำกับภาษี
+  // that bills a whole quotation in full isn't. A document counts when a line
+  // is typed as มัดจำ/งวด, or bills only part of its quotation.
+  const isDepositDoc = (doc: { billing_note_items?: unknown }) =>
+    ((doc.billing_note_items ?? []) as unknown as {
+      amount: number;
+      manual_description: string | null;
+      quotations: { total: number } | { total: number }[] | null;
+    }[]).some((it) => {
+      if (it.manual_description && /มัดจำ|งวด/.test(it.manual_description)) return true;
+      const quotation = Array.isArray(it.quotations) ? it.quotations[0] : it.quotations;
+      return !!quotation && Number(it.amount) < Number(quotation.total) - 0.005;
+    });
+
   const fromDocs: UnbilledInvoice[] = (docs ?? [])
-    .filter((doc) => (doc.billing_note_items ?? []).length > 0)
+    .filter((doc) => (doc.billing_note_items ?? []).length > 0 && isDepositDoc(doc))
     .map((doc) => {
       const items = (doc.billing_note_items ?? []) as unknown as { amount: number; apply_wht: boolean }[];
       // Recursive by construction: if THIS document is itself a later
