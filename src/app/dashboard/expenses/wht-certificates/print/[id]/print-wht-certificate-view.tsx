@@ -142,7 +142,10 @@ export function PrintWhtCertificateView({ certificate: voucher }: { certificate:
       <style>{`@page { size: A4; margin: 10mm; }`}</style>
 
       <div className="mb-4 flex justify-end gap-2 print:hidden">
-        <Button variant="outline" onClick={() => router.back()}>
+        {/* The list opens this page in a new tab, which has no history to go
+            back to — router.back() did nothing there. Go to the list
+            explicitly instead. */}
+        <Button variant="outline" onClick={() => router.push("/dashboard/expenses/wht-certificates")}>
           ปิด
         </Button>
         <Button onClick={() => window.print()}>พิมพ์</Button>
