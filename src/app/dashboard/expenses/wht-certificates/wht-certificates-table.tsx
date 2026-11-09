@@ -1,8 +1,8 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Copy, Pencil, Printer } from "lucide-react";
+import { Check, Copy, Pencil, Printer, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MultiSelectFilter } from "@/components/dashboard/multi-select-filter";
@@ -16,8 +16,63 @@ import {
 } from "@/components/ui/table";
 import { formatTHB } from "@/lib/format";
 import type { WhtCertificateRow } from "@/lib/types";
+import { deletePaymentVoucher } from "../payment-vouchers/actions";
+import { deletePettyCashTransaction } from "../petty-cash/actions";
 
 const TOTAL_COLUMNS = 7;
+
+// A ใบหัก ณ ที่จ่าย is only a view over its Payment Voucher / petty-cash entry,
+// so deleting one deletes that source entry (the confirm step says so).
+function DeleteButton({ row }: { row: WhtCertificateRow }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const sourceLabel = row.source === "petty_cash" ? "เงินสดย่อย" : "ใบสำคัญจ่าย";
+
+  function handleConfirm() {
+    setError(null);
+    startTransition(async () => {
+      const result =
+        row.source === "petty_cash" ? await deletePettyCashTransaction(row.id) : await deletePaymentVoucher(row.id);
+      if (result.error) setError(result.error);
+      setConfirming(false);
+    });
+  }
+
+  if (confirming) {
+    return (
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-1">
+          <Button
+            size="icon-sm"
+            variant="destructive"
+            onClick={handleConfirm}
+            disabled={pending}
+            title={`ยืนยันลบ ${row.whtCertNo ?? ""} — จะลบ${sourceLabel} ${row.docNo} ทั้งรายการ`}
+          >
+            <Check className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="icon-sm" variant="outline" onClick={() => setConfirming(false)} disabled={pending} title="ยกเลิก">
+            <X className="h-3.5 w-3.5" />
+          </Button>
+          <span className="text-xs text-destructive whitespace-nowrap">
+            ลบ{sourceLabel} {row.docNo} ทั้งรายการ?
+          </span>
+        </div>
+        {error && <p className="text-xs text-destructive">{error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Button size="icon-sm" variant="destructive" onClick={() => setConfirming(true)} title="ลบใบหัก ณ ที่จ่าย">
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
 
 const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -180,6 +235,7 @@ export function WhtCertificatesTable({ rows: allRows }: { rows: WhtCertificateRo
                               <Copy className="h-3.5 w-3.5" />
                             </Button>
                           )}
+                          <DeleteButton row={v} />
                         </div>
                       </TableCell>
                     </TableRow>

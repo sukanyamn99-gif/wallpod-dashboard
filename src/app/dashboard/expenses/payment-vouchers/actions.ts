@@ -22,6 +22,7 @@ function str(v: FormDataEntryValue | null): string | null {
 
 function revalidateConsumers() {
   revalidatePath("/dashboard/expenses/payment-vouchers");
+  revalidatePath("/dashboard/expenses/wht-certificates");
   revalidatePath("/dashboard/expenses");
   revalidatePath("/dashboard/project-sales");
 }

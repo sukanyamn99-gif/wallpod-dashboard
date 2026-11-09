@@ -239,6 +239,7 @@ export async function deletePettyCashTransaction(id: string) {
   const { error } = await supabase.rpc("delete_petty_cash_transaction", { p_id: id });
   if (error) return { error: error.message };
 
+  revalidatePath("/dashboard/expenses/wht-certificates");
   revalidatePath("/dashboard/expenses/petty-cash");
   revalidatePath("/dashboard/expenses");
   return { error: null };
