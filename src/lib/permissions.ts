@@ -33,6 +33,8 @@ const PAGE_ACCESS: Record<string, Role[]> = {
   "/dashboard/billing-documents/billing-note": STOCK_STAFF,
   "/dashboard/billing-documents/tax-invoice": STOCK_STAFF,
   "/dashboard/billing-documents/receipt": STOCK_STAFF,
+  // Accounting journal entry for money received — kept to the accounting roles, same as Payment Voucher.
+  "/dashboard/billing-documents/receipt-voucher": [...ADMIN_ROLES, "account", "support_sale"],
   "/dashboard/inventory": STOCK_STAFF,
   "/dashboard/stock-product": STOCK_STAFF,
   "/dashboard/stock-product/report": [...STOCK_STAFF, "sales", "design"],

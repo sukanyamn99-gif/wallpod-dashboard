@@ -26,6 +26,7 @@ import {
   FileSignature,
   FileSpreadsheet,
   FileStack,
+  BookOpenCheck,
   FileText,
   FileUp,
   Gauge,
@@ -90,6 +91,7 @@ const salesDocsGroup = {
     { title: "ใบวางบิล", url: "/dashboard/billing-documents/billing-note", icon: FileStack },
     { title: "ใบกำกับภาษี", url: "/dashboard/billing-documents/tax-invoice", icon: FileCheck2 },
     { title: "ใบเสร็จรับเงิน", url: "/dashboard/billing-documents/receipt", icon: ReceiptText },
+    { title: "ใบสำคัญรับเงิน", url: "/dashboard/billing-documents/receipt-voucher", icon: BookOpenCheck },
     { title: "ลูกค้า", url: "/dashboard/customers", icon: BookUser },
   ],
 };

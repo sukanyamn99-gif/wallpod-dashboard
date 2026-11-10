@@ -1257,3 +1257,34 @@ export interface BillingDocumentDetail extends BillingDocument {
   // ใบแจ้งหนี้/ใบกำกับภาษี even for typed lines that carry no document no.
   quotationRefNos?: string[];
 }
+
+export interface ReceiptVoucherLine {
+  accountCode: string | null;
+  accountName: string | null;
+  debit: number;
+  credit: number;
+}
+
+// ใบสำคัญรับเงิน / สมุดรายวันรับ — the journal entry for money received, issued
+// from a ใบเสร็จรับเงิน. Everything is copied onto the voucher itself so later
+// edits to the receipt never change an issued voucher.
+export interface ReceiptVoucher {
+  id: string;
+  docNo: string;
+  docDate: string;
+  // "อ้างอิง/Reference" — the receipt this was issued from.
+  receiptId: string | null;
+  receiptNo: string | null;
+  // "ผู้ติดต่อ/Contact" — the customer who paid.
+  contactName: string;
+  contactTaxId: string | null;
+  contactAddress: string | null;
+  description: string | null;
+  note: string | null;
+  recordedById: string | null;
+  recordedByName: string;
+  createdAt: string;
+  lines: ReceiptVoucherLine[];
+  // Grand total (sum of the debit column).
+  amount: number;
+}
