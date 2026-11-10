@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DownloadPdfButton } from "@/components/dashboard/download-pdf-button";
-import { formatTHB } from "@/lib/format";
+import { thaiBahtText } from "@/lib/thai-baht-text";
 import type { ReceiptVoucher } from "@/lib/types";
 
 // Company details printed in the header — same as on the company's other documents.
@@ -13,23 +13,28 @@ const COMPANY_ADDRESS = "24/2-4 ถนนสุขาภิบาล 2 แขว
 const COMPANY_TAX_ID = "0105559182973";
 
 const BLUE = "#2a9bd4";
+const MIN_ROWS = 10;
 
-// dd/mm/yyyy, Gregorian — the journal form's own date style.
+// dd/mm/yyyy, Gregorian — the form's own date style.
 function fmtDate(dateStr: string) {
   const [y, m, d] = dateStr.slice(0, 10).split("-");
   return `${d}/${m}/${y}`;
 }
 
-const SIGNATURES = [
-  { th: "ผู้จัดทำ", en: "Prepared by" },
-  { th: "ผู้สอบทาน", en: "Reviewed by" },
-  { th: "ผู้อนุมัติ", en: "Approved by" },
-];
+// The amount column is split into บาท | ส.ต. cells.
+function splitBaht(amount: number) {
+  const cents = Math.round(amount * 100);
+  return {
+    baht: Math.floor(cents / 100).toLocaleString("en-US"),
+    satang: String(cents % 100).padStart(2, "0"),
+  };
+}
 
 export function PrintReceiptVoucherView({ voucher }: { voucher: ReceiptVoucher }) {
   const router = useRouter();
-  const totalDebit = voucher.lines.reduce((sum, l) => sum + l.debit, 0);
-  const totalCredit = voucher.lines.reduce((sum, l) => sum + l.credit, 0);
+  const rows = [...voucher.items];
+  while (rows.length < MIN_ROWS) rows.push({ description: "", amount: 0 });
+  const total = splitBaht(voucher.amount);
 
   return (
     <div className="mx-auto max-w-3xl bg-white p-6 text-[13px] leading-snug text-black print:p-0">
@@ -98,84 +103,69 @@ export function PrintReceiptVoucherView({ voucher }: { voucher: ReceiptVoucher }
         {voucher.contactTaxId && <p>เลขประจำตัวผู้เสียภาษี/Tax ID: {voucher.contactTaxId}</p>}
       </div>
 
-      {voucher.description && (
-        <p className="mt-6">
-          <span>ค่าอธิบาย/Description: </span>
-          {voucher.description}
-        </p>
-      )}
-
-      <table className="mt-3 w-full table-fixed border-collapse border border-black">
+      {/* รายการ | จำนวนเงิน (บาท / ส.ต.) — heavy outer frame, thin row lines, and the
+          total boxed under the amount columns only, as on the paper form. */}
+      <table className="mt-6 w-full table-fixed border-collapse text-center">
         <colgroup>
-          <col className="w-[16%]" />
-          <col className="w-[44%]" />
-          <col className="w-[20%]" />
-          <col className="w-[20%]" />
+          <col />
+          <col className="w-[18%]" />
+          <col className="w-[10%]" />
         </colgroup>
         <thead>
-          <tr className="text-white" style={{ backgroundColor: BLUE }}>
-            <th className="p-1.5 text-left font-normal">
-              รหัสบัญชี
-              <br />
-              Code
+          <tr className="font-semibold">
+            <th className="border-2 border-black p-1.5 align-middle" rowSpan={2}>
+              รายการ
             </th>
-            <th className="p-1.5 text-left font-normal">
-              ชื่อบัญชี
-              <br />
-              Account name
+            <th className="border-2 border-black p-1.5" colSpan={2}>
+              จำนวนเงิน
             </th>
-            <th className="p-1.5 text-right font-normal">
-              เดบิต
-              <br />
-              Debit
-            </th>
-            <th className="p-1.5 text-right font-normal">
-              เครดิต
-              <br />
-              Credit
-            </th>
+          </tr>
+          <tr className="font-semibold">
+            <th className="border-2 border-black p-1.5">บาท</th>
+            <th className="border-2 border-black p-1.5">ส.ต.</th>
           </tr>
         </thead>
         <tbody>
-          {voucher.lines.map((l, i) => (
-            <tr key={i} className="align-top">
-              <td className="border-r border-black p-1.5 pb-0.5">{l.accountCode ?? ""}</td>
-              <td className="border-r border-black p-1.5 pb-0.5">{l.accountName ?? ""}</td>
-              <td className="border-r border-black p-1.5 pb-0.5 text-right">{l.debit ? formatTHB(l.debit) : ""}</td>
-              <td className="p-1.5 pb-0.5 text-right">{l.credit ? formatTHB(l.credit) : ""}</td>
-            </tr>
-          ))}
-          {/* Filler so the column rules run down the page like the paper form. */}
-          <tr style={{ height: "125mm" }}>
-            <td className="border-r border-black" />
-            <td className="border-r border-black" />
-            <td className="border-r border-black" />
-            <td />
-          </tr>
-          <tr className="border-t border-black">
-            <td className="border-r border-black p-1.5" />
-            <td className="border-r border-black p-1.5 text-right">รวมทั้งสิ้น/Grand total</td>
-            <td className="border-r border-black p-1.5 text-right">{formatTHB(totalDebit)}</td>
-            <td className="p-1.5 text-right">{formatTHB(totalCredit)}</td>
-          </tr>
-          <tr className="border-t border-black">
-            <td className="p-1.5" colSpan={4}>
-              หมายเหตุ/Remark: {voucher.note ?? ""}
-            </td>
-          </tr>
-          <tr className="border-t border-black">
-            <td className="p-0" colSpan={4}>
-              <div className="grid grid-cols-3 text-center">
-                {SIGNATURES.map((s, i) => (
-                  <div key={s.en} className={`p-1.5 ${i < SIGNATURES.length - 1 ? "border-r border-black" : ""}`} style={{ height: 70 }}>
-                    {s.th}/{s.en}
-                  </div>
-                ))}
-              </div>
-            </td>
+          {rows.map((row, i) => {
+            const filled = !!(row.description || row.amount);
+            const parts = splitBaht(row.amount);
+            const last = i === rows.length - 1;
+            const edge = `border-t border-black ${last ? "border-b-2" : ""}`;
+            return (
+              <tr key={i} className="h-9 align-top">
+                <td className={`border-x-2 border-black p-1.5 text-left ${edge}`}>{row.description}</td>
+                <td className={`border-r border-black p-1.5 text-right ${edge}`}>{filled ? parts.baht : ""}</td>
+                <td className={`border-r-2 border-black p-1.5 text-center ${edge}`}>{filled ? parts.satang : ""}</td>
+              </tr>
+            );
+          })}
+          <tr className="h-9 font-semibold">
+            <td className="p-1.5 text-right">รวมเป็นเงิน</td>
+            <td className="border-x border-b-2 border-l-2 border-black p-1.5 text-right">{total.baht}</td>
+            <td className="border-b-2 border-r-2 border-black p-1.5 text-center">{total.satang}</td>
           </tr>
         </tbody>
       </table>
+
+      <div className="mt-8 flex items-baseline gap-3">
+        <span className="whitespace-nowrap">จำนวนเงิน (อักษร)</span>
+        <span className="min-h-[1.5em] flex-1 border-b border-black px-2">({thaiBahtText(voucher.amount)})</span>
+      </div>
+
+      {voucher.note && <p className="mt-4">หมายเหตุ/Remark: {voucher.note}</p>}
+
+      <div className="mt-10 flex flex-col items-end gap-4">
+        <div className="flex w-80 items-baseline gap-3">
+          <span>ลงชื่อ</span>
+          <span className="flex-1 border-b border-black">&nbsp;</span>
+          <span>ผู้รับเงิน</span>
+        </div>
+        <div className="flex w-80 items-baseline gap-3">
+          <span>ลงชื่อ</span>
+          <span className="flex-1 border-b border-black">&nbsp;</span>
+          <span>ผู้จ่ายเงิน</span>
+        </div>
+      </div>
     </div>
   );
 }

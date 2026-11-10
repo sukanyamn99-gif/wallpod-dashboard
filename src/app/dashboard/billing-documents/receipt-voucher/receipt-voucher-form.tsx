@@ -25,17 +25,15 @@ export type ReceiptVoucherDraft = Omit<
   "id" | "docNo" | "recordedById" | "recordedByName" | "createdAt" | "amount"
 >;
 
-interface LineDraft {
+interface ItemDraft {
   key: number;
-  accountCode: string;
-  accountName: string;
-  debit: string;
-  credit: string;
+  description: string;
+  amount: string;
 }
 
 let nextKey = 0;
-function emptyLine(): LineDraft {
-  return { key: nextKey++, accountCode: "", accountName: "", debit: "", credit: "" };
+function emptyItem(): ItemDraft {
+  return { key: nextKey++, description: "", amount: "" };
 }
 
 export function ReceiptVoucherForm({
@@ -54,16 +52,14 @@ export function ReceiptVoucherForm({
   receiptOptions?: { id: string; label: string }[];
 }) {
   const router = useRouter();
-  const [lines, setLines] = useState<LineDraft[]>(() =>
-    initialData.lines.length > 0
-      ? initialData.lines.map((l) => ({
+  const [items, setItems] = useState<ItemDraft[]>(() =>
+    initialData.items.length > 0
+      ? initialData.items.map((it) => ({
           key: nextKey++,
-          accountCode: l.accountCode ?? "",
-          accountName: l.accountName ?? "",
-          debit: l.debit ? String(l.debit) : "",
-          credit: l.credit ? String(l.credit) : "",
+          description: it.description,
+          amount: it.amount ? String(it.amount) : "",
         }))
-      : [emptyLine(), emptyLine()],
+      : [emptyItem()],
   );
 
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
@@ -73,22 +69,20 @@ export function ReceiptVoucherForm({
     return result;
   }, initialState);
 
-  const totalDebit = Math.round(lines.reduce((sum, l) => sum + (Number(l.debit) || 0), 0) * 100) / 100;
-  const totalCredit = Math.round(lines.reduce((sum, l) => sum + (Number(l.credit) || 0), 0) * 100) / 100;
-  const balanced = Math.abs(totalDebit - totalCredit) <= 0.005;
+  const total = Math.round(items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0) * 100) / 100;
   const receiptSelectItems = [
     { value: NO_RECEIPT, label: "ไม่อ้างอิงใบเสร็จ (กรอกเอง)" },
     ...receiptOptions.map((o) => ({ value: o.id, label: o.label })),
   ];
 
-  function updateLine(key: number, patch: Partial<LineDraft>) {
-    setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+  function updateItem(key: number, patch: Partial<ItemDraft>) {
+    setItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...patch } : it)));
   }
 
-  function removeLine(key: number) {
-    setLines((prev) => {
-      const next = prev.filter((l) => l.key !== key);
-      return next.length > 0 ? next : [emptyLine()];
+  function removeItem(key: number) {
+    setItems((prev) => {
+      const next = prev.filter((it) => it.key !== key);
+      return next.length > 0 ? next : [emptyItem()];
     });
   }
 
@@ -131,7 +125,7 @@ export function ReceiptVoucherForm({
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            เลือกแล้วระบบจะกรอกผู้ติดต่อ คำอธิบาย และรายการบัญชีให้ — แก้ไขต่อได้ก่อนบันทึก
+            เลือกแล้วระบบจะกรอกผู้ติดต่อและรายการรับเงินให้ — แก้ไขต่อได้ก่อนบันทึก
           </p>
         </div>
       ) : (
@@ -168,82 +162,36 @@ export function ReceiptVoucherForm({
         </div>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="description">คำอธิบาย (Description)</Label>
-        <Textarea
-          id="description"
-          name="description"
-          placeholder="เช่น รับชำระเงิน #RE… จาก … Ref: #INV…"
-          defaultValue={initialData.description ?? undefined}
-        />
-      </div>
-
       <div className="space-y-3 rounded-lg border p-4">
         <div className="flex items-center justify-between gap-2">
-          <div>
-            <p className="text-sm font-semibold">รายการบัญชี</p>
-            <p className="text-xs text-muted-foreground">
-              ตั้งรหัสบัญชีเริ่มต้นไว้ให้ตามใบสำคัญรับเงินที่ใช้อยู่ — แก้ไขรหัส/ชื่อบัญชีได้ และยอดเดบิตต้องเท่ากับเครดิต
-            </p>
-          </div>
-          <Button type="button" variant="outline" size="sm" onClick={() => setLines((prev) => [...prev, emptyLine()])}>
+          <p className="text-sm font-semibold">รายการ</p>
+          <Button type="button" variant="outline" size="sm" onClick={() => setItems((prev) => [...prev, emptyItem()])}>
             <Plus className="h-3.5 w-3.5" />
             เพิ่มรายการ
           </Button>
         </div>
-        <div className="hidden gap-2 text-xs text-muted-foreground sm:grid sm:grid-cols-[7rem_1fr_8rem_8rem_2rem]">
-          <span>รหัสบัญชี</span>
-          <span>ชื่อบัญชี</span>
-          <span>เดบิต</span>
-          <span>เครดิต</span>
-          <span />
-        </div>
-        {lines.map((l) => (
-          <div key={l.key} className="grid gap-2 sm:grid-cols-[7rem_1fr_8rem_8rem_2rem] sm:items-center">
+        {items.map((it, i) => (
+          <div key={it.key} className="grid gap-2 sm:grid-cols-[1fr_10rem_2rem] sm:items-center">
             <Input
-              name="line_account_code"
-              value={l.accountCode}
-              onChange={(e) => updateLine(l.key, { accountCode: e.target.value })}
-              placeholder="รหัสบัญชี"
-            />
-            <Input
-              name="line_account_name"
-              value={l.accountName}
-              onChange={(e) => updateLine(l.key, { accountName: e.target.value })}
-              placeholder="ชื่อบัญชี"
+              name="item_description"
+              value={it.description}
+              onChange={(e) => updateItem(it.key, { description: e.target.value })}
+              placeholder={`รายการที่ ${i + 1}`}
             />
             <NumberInput
-              name="line_debit"
+              name="item_amount"
               min={0}
               step={0.01}
-              value={l.debit}
-              onChange={(v) => updateLine(l.key, { debit: v })}
-              placeholder="เดบิต"
+              value={it.amount}
+              onChange={(v) => updateItem(it.key, { amount: v })}
+              placeholder="จำนวนเงิน"
             />
-            <NumberInput
-              name="line_credit"
-              min={0}
-              step={0.01}
-              value={l.credit}
-              onChange={(v) => updateLine(l.key, { credit: v })}
-              placeholder="เครดิต"
-            />
-            <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeLine(l.key)} title="ลบรายการ">
+            <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeItem(it.key)} title="ลบรายการ">
               <X className="h-3.5 w-3.5" />
             </Button>
           </div>
         ))}
-        <div className="flex flex-wrap justify-between gap-2 text-sm font-medium">
-          <span>รวมทั้งสิ้น</span>
-          <span>
-            เดบิต {formatTHB(totalDebit)} / เครดิต {formatTHB(totalCredit)}
-          </span>
-        </div>
-        {!balanced && (
-          <p className="text-xs text-amber-600">
-            ยอดเดบิตกับเครดิตยังไม่เท่ากัน (ต่างกัน {formatTHB(Math.abs(totalDebit - totalCredit))} บาท) — บันทึกไม่ได้จนกว่าจะเท่ากัน
-          </p>
-        )}
+        <p className="text-sm font-medium">รวมเป็นเงิน {formatTHB(total)} บาท</p>
       </div>
 
       <div className="space-y-2">

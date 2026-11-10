@@ -44,30 +44,13 @@ function parseForm(formData: FormData) {
   const contactName = str(formData.get("contact_name"));
   if (!contactName) return { ok: false as const, error: "กรุณากรอกชื่อผู้ติดต่อ (ลูกค้า)" };
 
-  const codes = formData.getAll("line_account_code");
-  const names = formData.getAll("line_account_name");
-  const debits = formData.getAll("line_debit");
-  const credits = formData.getAll("line_credit");
-  const lines = codes
-    .map((code, i) => ({
-      accountCode: str(code),
-      accountName: str(names[i] ?? null),
-      debit: round2(num(debits[i] ?? null)),
-      credit: round2(num(credits[i] ?? null)),
-    }))
-    .filter((l) => l.accountCode || l.accountName || l.debit || l.credit);
-  if (lines.length === 0) return { ok: false as const, error: "กรุณากรอกรายการบัญชีอย่างน้อย 1 รายการ" };
-  if (lines.some((l) => l.debit < 0 || l.credit < 0)) return { ok: false as const, error: "จำนวนเงินต้องไม่ติดลบ" };
-
-  const totalDebit = round2(lines.reduce((sum, l) => sum + l.debit, 0));
-  const totalCredit = round2(lines.reduce((sum, l) => sum + l.credit, 0));
-  if (Math.abs(totalDebit - totalCredit) > 0.005) {
-    const fmt = (n: number) => n.toLocaleString("th-TH", { minimumFractionDigits: 2 });
-    return {
-      ok: false as const,
-      error: `ยอดเดบิต (${fmt(totalDebit)}) ต้องเท่ากับยอดเครดิต (${fmt(totalCredit)})`,
-    };
-  }
+  const descriptions = formData.getAll("item_description");
+  const amounts = formData.getAll("item_amount");
+  const items = descriptions
+    .map((d, i) => ({ description: String(d ?? "").trim(), amount: round2(num(amounts[i] ?? null)) }))
+    .filter((it) => it.description || it.amount);
+  if (items.length === 0) return { ok: false as const, error: "กรุณากรอกรายการอย่างน้อย 1 รายการ" };
+  if (items.some((it) => it.amount < 0)) return { ok: false as const, error: "จำนวนเงินต้องไม่ติดลบ" };
 
   return {
     ok: true as const,
@@ -77,29 +60,21 @@ function parseForm(formData: FormData) {
     contactName,
     contactTaxId: str(formData.get("contact_tax_id")),
     contactAddress: str(formData.get("contact_address")),
-    description: str(formData.get("description")),
     note: str(formData.get("note")),
-    lines,
+    items,
   };
 }
 
-async function replaceLines(
+async function replaceItems(
   supabase: Awaited<ReturnType<typeof createClient>>,
   voucherId: string,
-  lines: { accountCode: string | null; accountName: string | null; debit: number; credit: number }[],
+  items: { description: string; amount: number }[],
 ) {
-  const { error: deleteErr } = await supabase.from("receipt_voucher_lines").delete().eq("voucher_id", voucherId);
+  const { error: deleteErr } = await supabase.from("receipt_voucher_items").delete().eq("voucher_id", voucherId);
   if (deleteErr) return deleteErr.message;
 
-  const { error: insertErr } = await supabase.from("receipt_voucher_lines").insert(
-    lines.map((l, i) => ({
-      voucher_id: voucherId,
-      account_code: l.accountCode,
-      account_name: l.accountName,
-      debit: l.debit,
-      credit: l.credit,
-      sort_order: i,
-    })),
+  const { error: insertErr } = await supabase.from("receipt_voucher_items").insert(
+    items.map((it, i) => ({ voucher_id: voucherId, description: it.description, amount: it.amount, sort_order: i })),
   );
   return insertErr ? insertErr.message : null;
 }
@@ -128,7 +103,6 @@ export async function createReceiptVoucher(formData: FormData) {
       contact_name: parsed.contactName,
       contact_tax_id: parsed.contactTaxId,
       contact_address: parsed.contactAddress,
-      description: parsed.description,
       note: parsed.note,
       recorded_by: user?.id ?? null,
     })
@@ -136,8 +110,8 @@ export async function createReceiptVoucher(formData: FormData) {
     .single();
   if (error) return { error: error.message };
 
-  const linesError = await replaceLines(supabase, created.id, parsed.lines);
-  if (linesError) return { error: `บันทึกใบสำคัญรับเงินสำเร็จ แต่บันทึกรายการบัญชีไม่สำเร็จ: ${linesError}` };
+  const itemsError = await replaceItems(supabase, created.id, parsed.items);
+  if (itemsError) return { error: `บันทึกใบสำคัญรับเงินสำเร็จ แต่บันทึกรายการไม่สำเร็จ: ${itemsError}` };
 
   revalidateConsumers();
   return { error: null, docNo, id: created.id };
@@ -159,14 +133,13 @@ export async function updateReceiptVoucher(id: string, formData: FormData) {
       contact_name: parsed.contactName,
       contact_tax_id: parsed.contactTaxId,
       contact_address: parsed.contactAddress,
-      description: parsed.description,
       note: parsed.note,
     })
     .eq("id", id);
   if (error) return { error: error.message };
 
-  const linesError = await replaceLines(supabase, id, parsed.lines);
-  if (linesError) return { error: `บันทึกใบสำคัญรับเงินสำเร็จ แต่บันทึกรายการบัญชีไม่สำเร็จ: ${linesError}` };
+  const itemsError = await replaceItems(supabase, id, parsed.items);
+  if (itemsError) return { error: `บันทึกใบสำคัญรับเงินสำเร็จ แต่บันทึกรายการไม่สำเร็จ: ${itemsError}` };
 
   revalidateConsumers();
   return { error: null };

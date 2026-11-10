@@ -1258,16 +1258,14 @@ export interface BillingDocumentDetail extends BillingDocument {
   quotationRefNos?: string[];
 }
 
-export interface ReceiptVoucherLine {
-  accountCode: string | null;
-  accountName: string | null;
-  debit: number;
-  credit: number;
+export interface ReceiptVoucherItem {
+  description: string;
+  amount: number;
 }
 
-// ใบสำคัญรับเงิน / สมุดรายวันรับ — the journal entry for money received, issued
-// from a ใบเสร็จรับเงิน. Everything is copied onto the voucher itself so later
-// edits to the receipt never change an issued voucher.
+// ใบสำคัญรับเงิน — the company's record of money received, issued from a
+// ใบเสร็จรับเงิน. Everything is copied onto the voucher itself so later edits to
+// the receipt never change an issued voucher.
 export interface ReceiptVoucher {
   id: string;
   docNo: string;
@@ -1279,12 +1277,11 @@ export interface ReceiptVoucher {
   contactName: string;
   contactTaxId: string | null;
   contactAddress: string | null;
-  description: string | null;
   note: string | null;
   recordedById: string | null;
   recordedByName: string;
   createdAt: string;
-  lines: ReceiptVoucherLine[];
-  // Grand total (sum of the debit column).
+  items: ReceiptVoucherItem[];
+  // Total of the items (รวมเป็นเงิน).
   amount: number;
 }
