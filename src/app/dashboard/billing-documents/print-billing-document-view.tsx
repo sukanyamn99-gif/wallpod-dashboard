@@ -136,19 +136,19 @@ function DocumentBody({
       </div>
 
       {/* Doc info grid */}
-      <div className="grid grid-cols-[3fr_2fr] gap-x-8 border-b border-black py-2">
+      <div className="grid grid-cols-[minmax(0,3fr)_minmax(0,2fr)] gap-x-8 border-b border-black py-2">
         <div>
           <p className="font-medium">ลูกค้า</p>
           <p>{document.customerName}</p>
-          {document.customerAddress && (
-            <p className="whitespace-nowrap text-neutral-600">{document.customerAddress}</p>
-          )}
+          {/* A long address wraps inside its column — on one line it pushed
+              the เลขที่/วันที่ block off the right edge of the page. */}
+          {document.customerAddress && <p className="text-neutral-600">{document.customerAddress}</p>}
           <p className="text-neutral-600">
             เลขประจำตัวผู้เสียภาษี: {document.customerTaxId ?? ""}
             {document.customerPhone && <> &nbsp;|&nbsp; โทร. {document.customerPhone}</>}
           </p>
         </div>
-        <table className="ml-auto text-right">
+        <table className="ml-auto whitespace-nowrap text-right">
           <tbody>
             <tr>
               <td className="pr-2 text-left text-neutral-500">เลขที่</td>
