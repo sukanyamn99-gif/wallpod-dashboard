@@ -507,7 +507,9 @@ function DocumentBody({
                 <td className="py-0.5 text-right text-red-600">{formatTHB(summary.retentionAmount)}</td>
               </tr>
             )}
-            {summary.roundingAmount !== 0 && (
+            {/* The billing note (ใบวางบิล) doesn't show a ปัดเศษ line — only the
+                other documents do. */}
+            {summary.roundingAmount !== 0 && document.docType !== "billing_note" && (
               <tr>
                 <td className="py-0.5 text-neutral-600">ปัดเศษ</td>
                 <td className="py-0.5 text-right">{formatTHB(summary.roundingAmount)}</td>
