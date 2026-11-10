@@ -4,40 +4,41 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DownloadPdfButton } from "@/components/dashboard/download-pdf-button";
+import { formatTHB } from "@/lib/format";
 import { thaiBahtText } from "@/lib/thai-baht-text";
 import type { ReceiptVoucher } from "@/lib/types";
 
-// Company details printed in the header — same as on the company's other documents.
-const COMPANY_NAME = "บริษัท คูนเว จำกัด";
-const COMPANY_ADDRESS = "24/2-4 ถนนสุขาภิบาล 2 แขวงประเวศ เขตประเวศ กรุงเทพฯ 10250";
-const COMPANY_TAX_ID = "0105559182973";
+// Same layout as the ใบสำคัญจ่าย print (see expenses/payment-vouchers/print), turned
+// around for money received.
 
-const BLUE = "#2a9bd4";
-const MIN_ROWS = 10;
+// Splits the doc no. (RVyyyymmnnnn) into the monthly running number shown on the
+// form, e.g. "RV2026110001" -> "11/0001". A voucher numbered in the earlier
+// day-based style has no such split, so its full number is shown instead.
+function runningNoOf(docNo: string): string {
+  const match = /^RV(\d{4})(\d{2})(\d{4})$/.exec(docNo);
+  return match ? `${match[2]}/${match[3]}` : docNo;
+}
 
-// dd/mm/yyyy, Gregorian — the form's own date style.
-function fmtDate(dateStr: string) {
+function dateParts(dateStr: string) {
   const [y, m, d] = dateStr.slice(0, 10).split("-");
-  return `${d}/${m}/${y}`;
+  return { dd: d, mm: m, yy: String(Number(y) + 543).slice(-2) };
 }
 
-// The amount column is split into บาท | ส.ต. cells.
-function splitBaht(amount: number) {
-  const cents = Math.round(amount * 100);
-  return {
-    baht: Math.floor(cents / 100).toLocaleString("en-US"),
-    satang: String(cents % 100).padStart(2, "0"),
-  };
-}
+const MIN_LEDGER_ROWS = 4;
+const SIGNATURE_BLOCKS = ["ผู้จัดทำ", "ผู้ตรวจสอบการเงิน", "ผู้ตรวจสอบบัญชี", "ผู้อนุมัติ", "ผู้บันทึกบัญชี"];
 
 export function PrintReceiptVoucherView({ voucher }: { voucher: ReceiptVoucher }) {
   const router = useRouter();
-  const rows = [...voucher.items];
-  while (rows.length < MIN_ROWS) rows.push({ description: "", amount: 0 });
-  const total = splitBaht(voucher.amount);
+  const { dd, mm, yy } = dateParts(voucher.docDate);
+  const ledgerRows: { id: string; accountCode: string | null; description: string | null; debit: number; credit: number }[] =
+    voucher.ledgerLines.map((l, i) => ({ id: `line-${i}`, ...l }));
+  while (ledgerRows.length < MIN_LEDGER_ROWS) {
+    ledgerRows.push({ id: `blank-${ledgerRows.length}`, accountCode: null, description: null, debit: 0, credit: 0 });
+  }
+  const filledItems = voucher.items.filter((it) => it.description || it.amount);
 
   return (
-    <div className="mx-auto max-w-3xl bg-white p-6 text-[13px] leading-snug text-black print:p-0">
+    <div className="mx-auto max-w-3xl bg-white p-6 text-black print:p-0">
       <div className="mb-4 flex justify-end gap-2 print:hidden">
         {/* The print view opens in a new tab, where router.back() has no
             history to go back to — go to the list explicitly. */}
@@ -48,124 +49,165 @@ export function PrintReceiptVoucherView({ voucher }: { voucher: ReceiptVoucher }
         <DownloadPdfButton />
       </div>
 
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-xl font-semibold" style={{ color: BLUE }}>
-            ใบสำคัญรับเงิน
-          </h1>
-          <p className="text-sm" style={{ color: BLUE }}>
-            Receipt voucher
-          </p>
+      <div className="border border-black text-[13px] leading-tight">
+        {/* Header */}
+        <div className="flex items-start justify-between border-b border-black p-3">
+          <div>
+            <Image src="/koonwaylogo.png" alt="KOONWAY" width={152} height={24} className="h-6 w-auto" priority />
+            <p className="mt-1">บริษัท คูนเว จำกัด</p>
+            <p>เลขที่ 24/2-4 ถนนสุขาภิบาล 2</p>
+            <p>แขวงประเวศ เขตประเวศ กรุงเทพฯ 10250</p>
+          </div>
+          <div className="text-right">
+            <p className="font-medium text-red-600">เลขที่ใบสำคัญรับเงิน</p>
+            <p className="text-red-600">{voucher.docNo}</p>
+          </div>
         </div>
-        <Image src="/koonwaylogo.png" alt="KOONWAY" width={152} height={24} className="h-6 w-auto" priority />
-      </div>
 
-      <div className="mt-5 grid grid-cols-[1fr_auto] gap-x-8">
-        <div>
-          <p>{COMPANY_NAME}</p>
-          <p>{COMPANY_ADDRESS}</p>
-          <p>เลขประจำตัวผู้เสียภาษี/Tax ID: {COMPANY_TAX_ID}</p>
+        <div className="border-b border-black p-2 text-center text-lg font-semibold">
+          ใบสำคัญรับเงิน / RECEIPT VOUCHER
         </div>
-        <table className="self-start text-left">
+
+        {/* Date + running no. */}
+        <div className="grid grid-cols-2 border-b border-black">
+          <div className="border-r border-black p-2">
+            <p className="mb-1 text-center font-medium">DD/MM/YY</p>
+            <div className="grid grid-cols-3 text-center">
+              <span className="border-r border-black">{dd}</span>
+              <span className="border-r border-black">{mm}</span>
+              <span>{yy}</span>
+            </div>
+          </div>
+          <div className="p-2">
+            <p className="mb-1 text-center font-medium">RUNNING No.</p>
+            <p className="text-center">{runningNoOf(voucher.docNo)}</p>
+          </div>
+        </div>
+
+        <Field label="ได้รับเงินจาก /Received from" value={voucher.contactName} />
+        <Field label="จำนวนเงิน (ตัวเลข)" value={formatTHB(voucher.amount)} />
+        <Field label="จำนวนเงิน (ตัวอักษร)" value={thaiBahtText(voucher.amount)} />
+        {/* One line per รายการ, each with its own amount when there are several. */}
+        <div className="flex border-b border-black">
+          <span className="w-48 shrink-0 border-r border-black p-2 font-medium">รายการรับ</span>
+          <div className="flex-1 p-2">
+            {filledItems.length === 0 && <span>—</span>}
+            {filledItems.map((it, i) => (
+              <div key={i} className="flex justify-between gap-4">
+                <span>{it.description}</span>
+                {filledItems.length > 1 && <span className="whitespace-nowrap">{formatTHB(it.amount)}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+        <Field label="หมายเหตุ" value={voucher.note} />
+        <Field label="เลขที่เอกสารแนบ" value={voucher.receiptNo} />
+
+        <div className="border-b border-black p-2">ลงชื่อผู้รับเงิน : ___________________________</div>
+
+        {/* Bank row and Ledger below share this exact column grid (same
+            <colgroup> widths on both table-fixed tables) so their vertical
+            borders line up as one continuous grid down the form. */}
+        <table className="w-full table-fixed border-collapse border-b border-black text-center">
+          <colgroup>
+            <col className="w-[15%]" />
+            <col className="w-[20%]" />
+            <col className="w-[20%]" />
+            <col className="w-[20%]" />
+            <col className="w-[25%]" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th className="border-r border-black p-1 font-medium">ธนาคาร/สาขา</th>
+              <th className="border-r border-black p-1 font-medium">เลขที่บัญชี</th>
+              <th className="border-r border-black p-1 font-medium">ลงวันที่</th>
+              <th className="p-1 font-medium" colSpan={2}>
+                จำนวนเงินรับ
+              </th>
+            </tr>
+          </thead>
           <tbody>
             <tr>
-              <td className="pr-3" style={{ color: BLUE }}>
-                เลขที่/Voucher:
+              <td className="border-r border-t border-black p-1 font-medium">{voucher.bankName ?? "—"}</td>
+              <td className="border-r border-t border-black p-1">{voucher.bankAccountNo ?? "—"}</td>
+              <td className="border-r border-t border-black p-1">
+                {voucher.payDate ? new Date(voucher.payDate).toLocaleDateString("th-TH") : "—"}
               </td>
-              <td className="pl-4">{voucher.docNo}</td>
+              <td className="border-t border-black p-1" colSpan={2}>
+                {formatTHB(voucher.amount)}
+              </td>
             </tr>
+          </tbody>
+        </table>
+
+        {/* Ledger */}
+        <table className="w-full table-fixed border-collapse border-b border-black text-center">
+          <colgroup>
+            <col className="w-[15%]" />
+            <col className="w-[20%]" />
+            <col className="w-[20%]" />
+            <col className="w-[20%]" />
+            <col className="w-[25%]" />
+          </colgroup>
+          <thead>
             <tr>
-              <td className="pr-3" style={{ color: BLUE }}>
-                วันที่/Date:
-              </td>
-              <td className="pl-4">{fmtDate(voucher.docDate)}</td>
+              <th className="border-r border-black p-1 font-medium">รหัสบัญชี/CODE</th>
+              <th className="border-r border-black p-1 font-medium" colSpan={2}>
+                รายการ/DESCRIPTIONS
+              </th>
+              <th className="border-r border-black p-1 font-medium">DEBIT</th>
+              <th className="p-1 font-medium">CREDIT</th>
             </tr>
+          </thead>
+          <tbody>
+            {ledgerRows.map((line) => (
+              <tr key={line.id} className="h-7">
+                <td className="border-r border-t border-black p-1">{line.accountCode ?? ""}</td>
+                <td className="border-r border-t border-black p-1 text-left" colSpan={2}>
+                  {line.description ?? ""}
+                </td>
+                <td className="border-r border-t border-black p-1 text-right">
+                  {line.debit ? formatTHB(line.debit) : ""}
+                </td>
+                <td className="border-t border-black p-1 text-right">{line.credit ? formatTHB(line.credit) : ""}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Signatures — same 5-column grid as the bank/ledger tables above,
+            so the vertical borders run continuously all the way down. */}
+        <table className="w-full table-fixed border-collapse text-center">
+          <colgroup>
+            <col className="w-[15%]" />
+            <col className="w-[20%]" />
+            <col className="w-[20%]" />
+            <col className="w-[20%]" />
+            <col className="w-[25%]" />
+          </colgroup>
+          <tbody>
             <tr>
-              <td className="pr-3" style={{ color: BLUE }}>
-                อ้างอิง/Reference:
-              </td>
-              <td className="pl-4">{voucher.receiptNo ?? ""}</td>
-            </tr>
-            <tr>
-              <td className="pr-3" style={{ color: BLUE }}>
-                ผู้จัดทำ/Preparer:
-              </td>
-              <td className="pl-4">{voucher.recordedByName}</td>
+              {SIGNATURE_BLOCKS.map((label) => (
+                <td key={label} className="border-r border-black p-2 last:border-r-0" style={{ height: 70 }}>
+                  <p className="mb-8 font-medium">{label}</p>
+                  {label === "ผู้จัดทำ" && voucher.recordedByName && (
+                    <p className="text-xs text-neutral-500">({voucher.recordedByName})</p>
+                  )}
+                </td>
+              ))}
             </tr>
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
 
-      <div className="mt-6">
-        <p style={{ color: BLUE }}>ผู้ติดต่อ/Contact:</p>
-        <p>{voucher.contactName}</p>
-        {voucher.contactAddress && <p>{voucher.contactAddress}</p>}
-        {voucher.contactTaxId && <p>เลขประจำตัวผู้เสียภาษี/Tax ID: {voucher.contactTaxId}</p>}
-      </div>
-
-      {/* รายการ | จำนวนเงิน (บาท / ส.ต.) — heavy outer frame, thin row lines, and the
-          total boxed under the amount columns only, as on the paper form. */}
-      <table className="mt-6 w-full table-fixed border-collapse text-center">
-        <colgroup>
-          <col />
-          <col className="w-[18%]" />
-          <col className="w-[10%]" />
-        </colgroup>
-        <thead>
-          <tr className="font-semibold">
-            <th className="border-2 border-black p-1.5 align-middle" rowSpan={2}>
-              รายการ
-            </th>
-            <th className="border-2 border-black p-1.5" colSpan={2}>
-              จำนวนเงิน
-            </th>
-          </tr>
-          <tr className="font-semibold">
-            <th className="border-2 border-black p-1.5">บาท</th>
-            <th className="border-2 border-black p-1.5">ส.ต.</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => {
-            const filled = !!(row.description || row.amount);
-            const parts = splitBaht(row.amount);
-            const last = i === rows.length - 1;
-            const edge = `border-t border-black ${last ? "border-b-2" : ""}`;
-            return (
-              <tr key={i} className="h-9 align-top">
-                <td className={`border-x-2 border-black p-1.5 text-left ${edge}`}>{row.description}</td>
-                <td className={`border-r border-black p-1.5 text-right ${edge}`}>{filled ? parts.baht : ""}</td>
-                <td className={`border-r-2 border-black p-1.5 text-center ${edge}`}>{filled ? parts.satang : ""}</td>
-              </tr>
-            );
-          })}
-          <tr className="h-9 font-semibold">
-            <td className="p-1.5 text-right">รวมเป็นเงิน</td>
-            <td className="border-x border-b-2 border-l-2 border-black p-1.5 text-right">{total.baht}</td>
-            <td className="border-b-2 border-r-2 border-black p-1.5 text-center">{total.satang}</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div className="mt-8 flex items-baseline gap-3">
-        <span className="whitespace-nowrap">จำนวนเงิน (อักษร)</span>
-        <span className="min-h-[1.5em] flex-1 border-b border-black px-2">({thaiBahtText(voucher.amount)})</span>
-      </div>
-
-      {voucher.note && <p className="mt-4">หมายเหตุ/Remark: {voucher.note}</p>}
-
-      <div className="mt-10 flex flex-col items-end gap-4">
-        <div className="flex w-80 items-baseline gap-3">
-          <span>ลงชื่อ</span>
-          <span className="flex-1 border-b border-black">&nbsp;</span>
-          <span>ผู้รับเงิน</span>
-        </div>
-        <div className="flex w-80 items-baseline gap-3">
-          <span>ลงชื่อ</span>
-          <span className="flex-1 border-b border-black">&nbsp;</span>
-          <span>ผู้จ่ายเงิน</span>
-        </div>
-      </div>
+function Field({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div className="flex border-b border-black">
+      <span className="w-48 shrink-0 border-r border-black p-2 font-medium">{label}</span>
+      <span className="flex-1 p-2">{value ?? "—"}</span>
     </div>
   );
 }

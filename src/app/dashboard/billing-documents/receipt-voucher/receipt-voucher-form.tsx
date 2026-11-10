@@ -31,9 +31,20 @@ interface ItemDraft {
   amount: string;
 }
 
+interface LedgerDraft {
+  key: number;
+  accountCode: string;
+  description: string;
+  debit: string;
+  credit: string;
+}
+
 let nextKey = 0;
 function emptyItem(): ItemDraft {
   return { key: nextKey++, description: "", amount: "" };
+}
+function emptyLedger(): LedgerDraft {
+  return { key: nextKey++, accountCode: "", description: "", debit: "", credit: "" };
 }
 
 export function ReceiptVoucherForm({
@@ -61,6 +72,17 @@ export function ReceiptVoucherForm({
         }))
       : [emptyItem()],
   );
+  const [ledger, setLedger] = useState<LedgerDraft[]>(() =>
+    initialData.ledgerLines.length > 0
+      ? initialData.ledgerLines.map((l) => ({
+          key: nextKey++,
+          accountCode: l.accountCode ?? "",
+          description: l.description ?? "",
+          debit: l.debit ? String(l.debit) : "",
+          credit: l.credit ? String(l.credit) : "",
+        }))
+      : [emptyLedger(), emptyLedger()],
+  );
 
   const [state, formAction, pending] = useActionState(async (_prev: typeof initialState, formData: FormData) => {
     const result =
@@ -77,6 +99,17 @@ export function ReceiptVoucherForm({
 
   function updateItem(key: number, patch: Partial<ItemDraft>) {
     setItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...patch } : it)));
+  }
+
+  function updateLedger(key: number, patch: Partial<LedgerDraft>) {
+    setLedger((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+  }
+
+  function removeLedger(key: number) {
+    setLedger((prev) => {
+      const next = prev.filter((l) => l.key !== key);
+      return next.length > 0 ? next : [emptyLedger()];
+    });
   }
 
   function removeItem(key: number) {
@@ -192,6 +225,72 @@ export function ReceiptVoucherForm({
           </div>
         ))}
         <p className="text-sm font-medium">รวมเป็นเงิน {formatTHB(total)} บาท</p>
+      </div>
+
+      <div className="space-y-4 rounded-lg border p-4">
+        <p className="text-sm font-semibold">ช่องทางรับเงิน</p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="space-y-2">
+            <Label htmlFor="bank_name">ธนาคาร/สาขา</Label>
+            <Input id="bank_name" name="bank_name" defaultValue={initialData.bankName ?? undefined} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="bank_account_no">เลขที่บัญชี</Label>
+            <Input id="bank_account_no" name="bank_account_no" defaultValue={initialData.bankAccountNo ?? undefined} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="pay_date">ลงวันที่</Label>
+            <DateInput id="pay_date" name="pay_date" defaultValue={initialData.payDate ?? undefined} />
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-3 rounded-lg border p-4">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-semibold">รายการบัญชี</p>
+            <p className="text-xs text-muted-foreground">รหัสบัญชีตั้งต้นตามใบสำคัญรับเงินที่ใช้อยู่ — แก้ไขหรือเว้นว่างได้</p>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={() => setLedger((prev) => [...prev, emptyLedger()])}>
+            <Plus className="h-3.5 w-3.5" />
+            เพิ่มรายการ
+          </Button>
+        </div>
+        {ledger.map((l) => (
+          <div key={l.key} className="grid gap-2 sm:grid-cols-[7rem_1fr_8rem_8rem_2rem] sm:items-center">
+            <Input
+              name="line_account_code"
+              value={l.accountCode}
+              onChange={(e) => updateLedger(l.key, { accountCode: e.target.value })}
+              placeholder="รหัสบัญชี"
+            />
+            <Input
+              name="line_description"
+              value={l.description}
+              onChange={(e) => updateLedger(l.key, { description: e.target.value })}
+              placeholder="รายการ"
+            />
+            <NumberInput
+              name="line_debit"
+              min={0}
+              step={0.01}
+              value={l.debit}
+              onChange={(v) => updateLedger(l.key, { debit: v })}
+              placeholder="เดบิต"
+            />
+            <NumberInput
+              name="line_credit"
+              min={0}
+              step={0.01}
+              value={l.credit}
+              onChange={(v) => updateLedger(l.key, { credit: v })}
+              placeholder="เครดิต"
+            />
+            <Button type="button" variant="ghost" size="icon-sm" onClick={() => removeLedger(l.key)} title="ลบรายการ">
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ))}
       </div>
 
       <div className="space-y-2">

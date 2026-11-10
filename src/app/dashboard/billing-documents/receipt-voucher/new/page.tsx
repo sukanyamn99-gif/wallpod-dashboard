@@ -1,8 +1,16 @@
 import { redirect } from "next/navigation";
 import { getBillingDocumentById, getBillingDocuments } from "@/lib/data/billing-documents";
+import { getPrimaryBankAccount } from "@/lib/data/bank-accounts";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
 import { ReceiptVoucherForm, type ReceiptVoucherDraft } from "../receipt-voucher-form";
+
+// Default chart-of-accounts codes, taken from the receipt vouchers the office already
+// issues: money lands in the bank account (11121.01) against the "ใบเสร็จรอเรียกเก็บ"
+// clearing account (11319). Both stay editable on the form.
+const BANK_ACCOUNT_CODE = "11121.01";
+const RECEIPT_CLEARING_CODE = "11319";
+const RECEIPT_CLEARING_NAME = "ใบเสร็จรอเรียกเก็บ";
 
 export default async function NewReceiptVoucherPage({
   searchParams,
@@ -14,9 +22,10 @@ export default async function NewReceiptVoucherPage({
   if (!canAccessPage(profile.role, "/dashboard/billing-documents/receipt-voucher")) redirect("/dashboard/sales");
 
   const { receiptId } = await searchParams;
-  const [receipts, receipt] = await Promise.all([
+  const [receipts, receipt, bank] = await Promise.all([
     getBillingDocuments("receipt"),
     receiptId ? getBillingDocumentById(receiptId) : Promise.resolve(null),
+    getPrimaryBankAccount(),
   ]);
   const source = receipt && receipt.docType === "receipt" ? receipt : null;
 
@@ -39,7 +48,27 @@ export default async function NewReceiptVoucherPage({
     contactTaxId: source?.customerTaxId ?? null,
     contactAddress: source?.customerAddress ?? null,
     note: null,
+    // The receipt's own bank / date when it recorded one; the company account number comes from the primary account.
+    bankName: source ? (source.bankName ?? bank?.bankName ?? null) : null,
+    bankAccountNo: source && (!source.bankName || source.bankName === bank?.bankName) ? (bank?.accountNo ?? null) : null,
+    payDate: source?.paymentDate ?? null,
     // One row for what was actually received (the receipt's net payable); more can be added.
+    ledgerLines: source
+      ? [
+          {
+            accountCode: source.paymentMethod === "เงินสด" ? null : BANK_ACCOUNT_CODE,
+            description:
+              source.paymentMethod === "เงินสด"
+                ? "เงินสด"
+                : bank
+                  ? `${bank.bankName} ${bank.accountNo.replace(/\D/g, "")}`
+                  : null,
+            debit: source.amount,
+            credit: 0,
+          },
+          { accountCode: RECEIPT_CLEARING_CODE, description: RECEIPT_CLEARING_NAME, debit: 0, credit: source.amount },
+        ]
+      : [],
     items: source
       ? [
           {

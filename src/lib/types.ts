@@ -1266,6 +1266,13 @@ export interface ReceiptVoucherItem {
 // ใบสำคัญรับเงิน — the company's record of money received, issued from a
 // ใบเสร็จรับเงิน. Everything is copied onto the voucher itself so later edits to
 // the receipt never change an issued voucher.
+export interface ReceiptVoucherLedgerLine {
+  accountCode: string | null;
+  description: string | null;
+  debit: number;
+  credit: number;
+}
+
 export interface ReceiptVoucher {
   id: string;
   docNo: string;
@@ -1278,10 +1285,15 @@ export interface ReceiptVoucher {
   contactTaxId: string | null;
   contactAddress: string | null;
   note: string | null;
+  // Where the money came in — printed in the bank row of the voucher.
+  bankName: string | null;
+  bankAccountNo: string | null;
+  payDate: string | null;
   recordedById: string | null;
   recordedByName: string;
   createdAt: string;
   items: ReceiptVoucherItem[];
+  ledgerLines: ReceiptVoucherLedgerLine[];
   // Total of the items (รวมเป็นเงิน).
   amount: number;
 }

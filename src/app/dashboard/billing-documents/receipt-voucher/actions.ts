@@ -55,6 +55,19 @@ function parseForm(formData: FormData) {
   if (items.length === 0) return { ok: false as const, error: "กรุณากรอกรายการอย่างน้อย 1 รายการ" };
   if (items.some((it) => it.amount < 0)) return { ok: false as const, error: "จำนวนเงินต้องไม่ติดลบ" };
 
+  const codes = formData.getAll("line_account_code");
+  const lineDescriptions = formData.getAll("line_description");
+  const debits = formData.getAll("line_debit");
+  const credits = formData.getAll("line_credit");
+  const ledgerLines = codes
+    .map((code, i) => ({
+      accountCode: str(code),
+      description: str(lineDescriptions[i] ?? null),
+      debit: round2(num(debits[i] ?? null)),
+      credit: round2(num(credits[i] ?? null)),
+    }))
+    .filter((l) => l.accountCode || l.description || l.debit || l.credit);
+
   return {
     ok: true as const,
     docDate: str(formData.get("doc_date")) ?? new Date().toISOString().slice(0, 10),
@@ -64,8 +77,34 @@ function parseForm(formData: FormData) {
     contactTaxId: str(formData.get("contact_tax_id")),
     contactAddress: str(formData.get("contact_address")),
     note: str(formData.get("note")),
+    bankName: str(formData.get("bank_name")),
+    bankAccountNo: str(formData.get("bank_account_no")),
+    payDate: str(formData.get("pay_date")),
     items,
+    ledgerLines,
   };
+}
+
+async function replaceLedgerLines(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  voucherId: string,
+  lines: { accountCode: string | null; description: string | null; debit: number; credit: number }[],
+) {
+  const { error: deleteErr } = await supabase.from("receipt_voucher_ledger_lines").delete().eq("voucher_id", voucherId);
+  if (deleteErr) return deleteErr.message;
+  if (lines.length === 0) return null;
+
+  const { error: insertErr } = await supabase.from("receipt_voucher_ledger_lines").insert(
+    lines.map((l, i) => ({
+      voucher_id: voucherId,
+      account_code: l.accountCode,
+      description: l.description,
+      debit: l.debit,
+      credit: l.credit,
+      sort_order: i,
+    })),
+  );
+  return insertErr ? insertErr.message : null;
 }
 
 async function replaceItems(
@@ -107,6 +146,9 @@ export async function createReceiptVoucher(formData: FormData) {
       contact_tax_id: parsed.contactTaxId,
       contact_address: parsed.contactAddress,
       note: parsed.note,
+      bank_name: parsed.bankName,
+      bank_account_no: parsed.bankAccountNo,
+      pay_date: parsed.payDate,
       recorded_by: user?.id ?? null,
     })
     .select("id")
@@ -115,6 +157,8 @@ export async function createReceiptVoucher(formData: FormData) {
 
   const itemsError = await replaceItems(supabase, created.id, parsed.items);
   if (itemsError) return { error: `บันทึกใบสำคัญรับเงินสำเร็จ แต่บันทึกรายการไม่สำเร็จ: ${itemsError}` };
+  const ledgerError = await replaceLedgerLines(supabase, created.id, parsed.ledgerLines);
+  if (ledgerError) return { error: `บันทึกใบสำคัญรับเงินสำเร็จ แต่บันทึกรายการบัญชีไม่สำเร็จ: ${ledgerError}` };
 
   revalidateConsumers();
   return { error: null, docNo, id: created.id };
@@ -137,12 +181,17 @@ export async function updateReceiptVoucher(id: string, formData: FormData) {
       contact_tax_id: parsed.contactTaxId,
       contact_address: parsed.contactAddress,
       note: parsed.note,
+      bank_name: parsed.bankName,
+      bank_account_no: parsed.bankAccountNo,
+      pay_date: parsed.payDate,
     })
     .eq("id", id);
   if (error) return { error: error.message };
 
   const itemsError = await replaceItems(supabase, id, parsed.items);
   if (itemsError) return { error: `บันทึกใบสำคัญรับเงินสำเร็จ แต่บันทึกรายการไม่สำเร็จ: ${itemsError}` };
+  const ledgerError = await replaceLedgerLines(supabase, id, parsed.ledgerLines);
+  if (ledgerError) return { error: `บันทึกใบสำคัญรับเงินสำเร็จ แต่บันทึกรายการบัญชีไม่สำเร็จ: ${ledgerError}` };
 
   revalidateConsumers();
   return { error: null };
