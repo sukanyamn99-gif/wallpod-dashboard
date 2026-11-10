@@ -1,6 +1,24 @@
+import { round2 } from "@/lib/billing-document-summary";
 import { getPaymentVoucherById, getPaymentVouchers } from "@/lib/data/payment-vouchers";
 import { getPettyCashTransactionById, getPettyCashTransactions } from "@/lib/data/petty-cash";
 import type { PaymentVoucher, PettyCashTransaction, WhtCertificateRow, WhtCertificateSource } from "@/lib/types";
+
+// The certificate's "จำนวนเงินที่จ่าย" is the pre-VAT base the tax was worked
+// out on. A voucher's amount is often the VAT-inclusive total, and older
+// vouchers don't record that, so check which figure the withheld tax actually
+// came from: whole amount x rate, or amount / 1.07 x rate. Falls back to the
+// voucher's own VAT-included flag when neither matches.
+function whtBaseOf(v: Omit<PaymentVoucher, "ledgerLines">): number {
+  const preVat = round2(v.amount / 1.07);
+  if (v.whtRate && v.whtAmount > 0) {
+    const fromAmount = round2((v.amount * v.whtRate) / 100);
+    const fromPreVat = round2((preVat * v.whtRate) / 100);
+    const matches = (calc: number) => Math.abs(calc - v.whtAmount) <= 0.011;
+    if (matches(fromAmount)) return v.amount;
+    if (matches(fromPreVat)) return preVat;
+  }
+  return v.vatIncluded ? preVat : v.amount;
+}
 
 function fromVoucher(v: Omit<PaymentVoucher, "ledgerLines">): WhtCertificateRow {
   return {
@@ -14,7 +32,7 @@ function fromVoucher(v: Omit<PaymentVoucher, "ledgerLines">): WhtCertificateRow 
     // recorded transfer date (e.g. paid in cash).
     date: v.bankTransferDate || v.voucherDate,
     payeeName: v.payeeName,
-    amount: v.amount,
+    amount: whtBaseOf(v),
     description: v.description,
     whtCertNo: v.whtCertNo,
     whtRate: v.whtRate,
