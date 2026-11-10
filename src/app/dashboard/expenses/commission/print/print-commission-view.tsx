@@ -86,6 +86,8 @@ export function PrintCommissionView({
 
   const brokerOverride = BROKER_OVERRIDES[broker];
   const brokerOverrideAmount = brokerOverride ? totalPreVat * (brokerOverride.ratePercent / 100) : 0;
+  const brokerOverrideExVat = Math.round((brokerOverrideAmount / 1.07) * 100) / 100;
+  const brokerOverrideVat = Math.round((brokerOverrideAmount - brokerOverrideExVat) * 100) / 100;
 
   // Support isn't one person — the pool it earned above (already computed
   // per-job from the discount-tier rate table, same as every other rep)
@@ -207,6 +209,11 @@ export function PrintCommissionView({
           <div className="mt-3 space-y-1 text-right">
             <p className="font-medium">
               สรุปยอดจ่ายค่านายหน้า {brokerOverride.brokerName}: {formatTHB(brokerOverrideAmount)} บาท
+            </p>
+            {/* The company's fee is VAT-inclusive — show the same amount split
+                into the pre-VAT figure and its 7% VAT. */}
+            <p className="text-neutral-700">
+              (ยอดก่อน VAT {formatTHB(brokerOverrideExVat)} บาท + VAT 7% {formatTHB(brokerOverrideVat)} บาท)
             </p>
             <p className="font-medium">
               สรุปยอดจ่ายค่านายหน้า {brokerOverride.recipientLabel}: {formatTHB(totalCommission)} บาท
