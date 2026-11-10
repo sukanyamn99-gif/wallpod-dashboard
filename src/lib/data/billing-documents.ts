@@ -861,33 +861,57 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     usesSplitRounds(header.created_at, header.doc_type),
   );
 
+  // Falls back, in order: (1) the item's own payment/quotation link;
+  // (2) the JOB of the specific ใบกำกับภาษี this line was copied from,
+  // when it's a copied typed line (source_item_id — see
+  // jobNoBySourceItemId above); (3) a quotation doc no. extracted from
+  // THIS line's own text, matched against a real quotations row (see
+  // jobNoFromText above) — the last structured signal before giving up
+  // on this specific line; then (4) the document's own stored
+  // header.job_no for a line with no source of its own (typed fresh,
+  // never copied from anywhere, no quotation number in its text
+  // either) — not the fuller jobNoFallback above, which also guesses
+  // from an unrelated item's own JOB and would misattribute one to a
+  // line that has nothing to do with it.
+  const lineJobNoOf = (it: ItemRow): string | null =>
+    it.payments?.projects?.job_no ??
+    it.quotations?.job_number ??
+    (it.source_item_id ? jobNoBySourceItemId[it.source_item_id] : null) ??
+    jobNoFromText(it.manual_description) ??
+    jobNoFromText(it.invoice_no_snapshot) ??
+    header.job_no ??
+    null;
+
+  // Typed lines (e.g. "มัดจำ 50%") carry no document no. of their own, so the
+  // "เลขที่อ้างอิง" on an invoice/tax invoice used to skip them and print
+  // nothing. Trace each line to its quotation — directly, or through its
+  // JOB — so every ใบแจ้งหนี้/ใบกำกับภาษี can cite the ใบเสนอราคา it came from.
+  let quotationRefNos: string[] = [];
+  if (showsItemizedDetail) {
+    const refJobNos = itemRows.filter((it) => !it.quotation_id).map(lineJobNoOf);
+    const refByJobNo = await getQuotationItemsByJobNumbers(refJobNos.filter((j): j is string => !!j));
+    const refs = new Set<string>();
+    for (const it of itemRows) {
+      const docNo = it.quotation_id
+        ? quotationDetailById[it.quotation_id]?.quotationDocNo
+        : (() => {
+            const j = lineJobNoOf(it);
+            return j ? refByJobNo[j]?.quotationDocNo : undefined;
+          })();
+      if (docNo) refs.add(docNo);
+    }
+    quotationRefNos = [...refs];
+  }
+
   return {
     // @ts-expect-error -- Supabase types the joined relation loosely here
     ...mapHeader(header),
     jobNo: jobNoFallback,
     jobNos: [],
     amount: docSummary.netPayable,
+    quotationRefNos,
     items: itemRows.map((it) => {
-      // Falls back, in order: (1) the item's own payment/quotation link;
-      // (2) the JOB of the specific ใบกำกับภาษี this line was copied from,
-      // when it's a copied typed line (source_item_id — see
-      // jobNoBySourceItemId above); (3) a quotation doc no. extracted from
-      // THIS line's own text, matched against a real quotations row (see
-      // jobNoFromText above) — the last structured signal before giving up
-      // on this specific line; then (4) the document's own stored
-      // header.job_no for a line with no source of its own (typed fresh,
-      // never copied from anywhere, no quotation number in its text
-      // either) — not the fuller jobNoFallback above, which also guesses
-      // from an unrelated item's own JOB and would misattribute one to a
-      // line that has nothing to do with it.
-      const jobNo =
-        it.payments?.projects?.job_no ??
-        it.quotations?.job_number ??
-        (it.source_item_id ? jobNoBySourceItemId[it.source_item_id] : null) ??
-        jobNoFromText(it.manual_description) ??
-        jobNoFromText(it.invoice_no_snapshot) ??
-        header.job_no ??
-        null;
+      const jobNo = lineJobNoOf(it);
       const quotationDetail = it.quotation_id
         ? quotationDetailById[it.quotation_id]
         : jobNo

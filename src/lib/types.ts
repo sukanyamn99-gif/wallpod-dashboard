@@ -1252,4 +1252,8 @@ export type PaymentMethod = "เงินสด" | "เช็ค" | "โอน�
 
 export interface BillingDocumentDetail extends BillingDocument {
   items: BillingDocumentItem[];
+  // Quotation doc no(s) this document traces back to (via a line's own
+  // quotation link or its JOB) — printed as the "เลขที่อ้างอิง" on a
+  // ใบแจ้งหนี้/ใบกำกับภาษี even for typed lines that carry no document no.
+  quotationRefNos?: string[];
 }

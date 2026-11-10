@@ -109,8 +109,15 @@ function DocumentBody({
   // Shown once in the header instead of repeated per group inside the
   // items table — manual lines have no real underlying document, so
   // they're excluded. Just the reference number(s), no date.
+  // Typed lines have no document no. of their own, so the quotation(s) the
+  // document traces back to (quotationRefNos) are added — that way every
+  // ใบแจ้งหนี้/ใบกำกับภาษี cites its ใบเสนอราคา, not only the ones billed
+  // straight off a quotation.
   const referenceNos = Array.from(
-    new Set(document.items.filter((it) => !it.manualDescription).map((it) => it.invoiceNo)),
+    new Set([
+      ...document.items.filter((it) => !it.manualDescription).map((it) => it.invoiceNo),
+      ...(document.quotationRefNos ?? []),
+    ]),
   ).join(", ");
 
   return (
