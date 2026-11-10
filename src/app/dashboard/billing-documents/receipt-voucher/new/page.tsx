@@ -69,7 +69,7 @@ export default async function NewReceiptVoucherPage({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">สร้างใบสำคัญรับเงิน</h1>
-        <p className="text-sm text-muted-foreground">ออกสมุดรายวันรับจากใบเสร็จรับเงิน — ตรวจสอบข้อมูลก่อนบันทึก</p>
+        <p className="text-sm text-muted-foreground">ออกใบสำคัญรับเงินจากใบเสร็จรับเงิน — ตรวจสอบข้อมูลก่อนบันทึก</p>
       </div>
 
       <ReceiptVoucherForm

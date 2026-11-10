@@ -46,7 +46,7 @@ export function PrintReceiptVoucherView({ voucher }: { voucher: ReceiptVoucher }
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-semibold" style={{ color: BLUE }}>
-            สมุดรายวันรับ
+            ใบสำคัญรับเงิน
           </h1>
           <p className="text-sm" style={{ color: BLUE }}>
             Receipt voucher

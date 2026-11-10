@@ -18,7 +18,7 @@ export default async function ReceiptVouchersPage() {
       <div className="flex flex-wrap items-start gap-4">
         <div>
           <h1 className="text-2xl font-semibold">ใบสำคัญรับเงิน</h1>
-          <p className="text-sm text-muted-foreground">สมุดรายวันรับ — ออกจากใบเสร็จรับเงินที่บริษัทได้รับเงินแล้ว</p>
+          <p className="text-sm text-muted-foreground">ออกจากใบเสร็จรับเงินที่บริษัทได้รับเงินแล้ว</p>
         </div>
         <Button nativeButton={false} render={<Link href="/dashboard/billing-documents/receipt-voucher/new" />}>
           + สร้างใบสำคัญรับเงิน
