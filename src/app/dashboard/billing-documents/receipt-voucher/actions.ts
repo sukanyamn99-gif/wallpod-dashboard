@@ -22,20 +22,23 @@ function revalidateConsumers() {
   revalidatePath("/dashboard/billing-documents/receipt-voucher");
 }
 
-// RV + yyyymmdd (the voucher's own date, Gregorian — same shape as the other
-// billing documents, e.g. INV202610120003) + a 4-digit running number per day.
+// RV + yyyymm (the voucher's own year and month, Gregorian — same year style as the
+// other billing documents, e.g. INV202610120003) + a 4-digit running number that
+// restarts each month, e.g. RV2026110001.
 async function generateDocNo(supabase: Awaited<ReturnType<typeof createClient>>, docDate: string): Promise<string> {
-  const prefix = `RV${docDate.replaceAll("-", "")}`;
+  const prefix = `RV${docDate.slice(0, 7).replace("-", "")}`;
 
   // Highest existing sequence, not a row count — a deleted voucher leaves a
-  // gap and count+1 would then collide with a surviving higher number.
+  // gap and count+1 would then collide with a surviving higher number. Only a
+  // plain 4-digit tail counts: vouchers numbered in the earlier yyyymmdd style
+  // (RV202611100001) share this prefix but must not feed the sequence.
   const { data, error } = await supabase.from("receipt_vouchers").select("doc_no").like("doc_no", `${prefix}%`);
   if (error) throw error;
 
   let max = 0;
   for (const row of data ?? []) {
-    const n = parseInt(row.doc_no.slice(prefix.length), 10);
-    if (Number.isFinite(n)) max = Math.max(max, n);
+    const tail = row.doc_no.slice(prefix.length);
+    if (/^\d{4}$/.test(tail)) max = Math.max(max, parseInt(tail, 10));
   }
   return `${prefix}${String(max + 1).padStart(4, "0")}`;
 }
