@@ -1084,6 +1084,9 @@ export interface BillableTaxInvoice {
   // combined total, so bundling just this quotation onto a new document
   // bills exactly its own fair share.
   netPayable: number;
+  // The same share before its WHT/retention (VAT-inclusive, after discount) —
+  // what a ใบเสร็จรับเงิน that withholds tax itself carries on the line.
+  grossAmount: number;
   // The tax invoice's own WHT rate — used to auto-suggest the bundling
   // document's wht_percent when this invoice is picked, so staff don't have
   // to remember and re-type a rate that's already on file.

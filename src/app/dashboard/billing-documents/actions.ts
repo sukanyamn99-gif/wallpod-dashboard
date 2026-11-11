@@ -23,6 +23,25 @@ import type {
   UnbilledInvoice,
 } from "@/lib/types";
 
+// The amount a quotation-sourced line is stored with. A ใบเสร็จรับเงิน that
+// withholds tax on a line taken from a tax invoice stores the invoice's amount
+// BEFORE its own WHT (the receipt takes WHT off itself, once); everything else
+// keeps the amount worked out by the caller. Not exported: a "use server" file
+// may only export async functions.
+function receiptLineAmount(
+  docType: BillingDocumentType,
+  billsQuotationDirectly: boolean,
+  applyWht: boolean,
+  whtPercent: number,
+  source: { netPayable: number; grossAmount: number } | undefined,
+  fallback: number,
+): number {
+  if (docType === "receipt" && !billsQuotationDirectly && applyWht && whtPercent > 0 && source) {
+    return source.grossAmount;
+  }
+  return fallback;
+}
+
 // Thin server-action wrapper so the create form (client component) can
 // re-fetch a customer's open invoices the moment one is picked, without a
 // full page reload.
@@ -736,6 +755,12 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
   // value, per the itemized print view), already-net when referencing an
   // existing tax invoice.
   const quotationBilledAmountById: Record<string, number> = {};
+  // What is actually written on the line. Same as the above, except a
+  // ใบเสร็จรับเงิน that withholds tax on a line taken from a tax invoice: the
+  // invoice's figure is already net of its own WHT, and this receipt takes
+  // WHT off the line itself, so the line must carry the pre-WHT amount or the
+  // WHT would be deducted twice (and on a smaller base).
+  const quotationStoredAmountById: Record<string, number> = {};
   // What actually lands on the Project Sales installment — always the net,
   // cash-equivalent amount (gross minus this line's own WHT/retention),
   // distinct from quotationBilledAmountById when billing a quotation
@@ -758,6 +783,14 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
     quotationBilledAmountById[q.id] = billsQuotationDirectly
       ? (override ?? q.total)
       : (netPayableByQuotationId[q.id]?.netPayable ?? q.total);
+    quotationStoredAmountById[q.id] = receiptLineAmount(
+      docType,
+      billsQuotationDirectly,
+      quotationApplyWhtMap.get(q.id) ?? true,
+      whtPercent,
+      netPayableByQuotationId[q.id],
+      quotationBilledAmountById[q.id],
+    );
     // How much of this installment is already settled via a WHT
     // certificate rather than cash — synced onto the installment so
     // Project Sales can tell "still owed" apart from "settled, just not in
@@ -797,7 +830,7 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
       quotation_id: q.id,
       invoice_no_snapshot: q.doc_no,
       invoice_date_snapshot: q.quote_date,
-      amount: quotationBilledAmountById[q.id],
+      amount: quotationStoredAmountById[q.id],
       apply_wht: quotationApplyWhtMap.get(q.id) ?? true,
       sort_order: quotationSortOrderMap.get(q.id) ?? 0,
     })),
@@ -1041,6 +1074,7 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
   // quotation-sourced line's owning tax invoice and real billed amount.
   const ownerTaxInvoiceIdByQuotationId: Record<string, string> = {};
   const quotationBilledAmountById: Record<string, number> = {};
+  const quotationStoredAmountById: Record<string, number> = {};
   const installmentAmountByQuotationId: Record<string, number> = {};
   const whtAmountByQuotationId: Record<string, number> = {};
   for (const q of liveQuotations) {
@@ -1054,6 +1088,14 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
     quotationBilledAmountById[q.id] = billsQuotationDirectly
       ? (override ?? q.total)
       : (netPayableByQuotationId[q.id]?.netPayable ?? q.total);
+    quotationStoredAmountById[q.id] = receiptLineAmount(
+      docType,
+      billsQuotationDirectly,
+      quotationApplyWhtMap.get(q.id) ?? true,
+      whtPercent,
+      netPayableByQuotationId[q.id],
+      quotationBilledAmountById[q.id],
+    );
     if (billsQuotationDirectly) {
       const applyWht = quotationApplyWhtMap.get(q.id) ?? true;
       const grossAmount = quotationBilledAmountById[q.id];
@@ -1082,7 +1124,7 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
       quotation_id: q.id,
       invoice_no_snapshot: q.doc_no,
       invoice_date_snapshot: q.quote_date,
-      amount: quotationBilledAmountById[q.id],
+      amount: quotationStoredAmountById[q.id],
       apply_wht: quotationApplyWhtMap.get(q.id) ?? true,
       sort_order: quotationSortOrderMap.get(q.id) ?? 0,
     })),

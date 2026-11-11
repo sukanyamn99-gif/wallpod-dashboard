@@ -488,7 +488,12 @@ export function BillingDocumentForm({
           billableTaxInvoices
             .filter((ti) => {
               const existingAmount = existingAmountByQuotationId.get(ti.quotationId);
-              return existingAmount !== undefined && Math.abs(existingAmount - ti.netPayable) < 0.01;
+              // A receipt stores the pre-WHT amount (grossAmount) when it
+              // withholds tax itself, the net payable otherwise.
+              return (
+                existingAmount !== undefined &&
+                (Math.abs(existingAmount - ti.netPayable) < 0.01 || Math.abs(existingAmount - ti.grossAmount) < 0.01)
+              );
             })
             .map((ti) => ti.quotationId),
         );
@@ -771,7 +776,13 @@ export function BillingDocumentForm({
       // itself carried its own discount/WHT/retention.
       ...taxInvoices
         .filter((ti) => selectedTaxInvoices.has(ti.id))
-        .map((ti) => ({ amount: ti.netPayable, applyWht: !whtExcluded.has(ti.quotationId) })),
+        .map((ti) => {
+          const applyWht = !whtExcluded.has(ti.quotationId);
+          // A receipt that withholds tax itself carries the invoice's pre-WHT
+          // amount (see receiptLineAmount in actions.ts) — matches what is saved.
+          const withholdsHere = docType === "receipt" && applyWht && Number(whtPercent) > 0;
+          return { amount: withholdsHere ? ti.grossAmount : ti.netPayable, applyWht };
+        }),
       ...manualItems
         .filter((row) => row.description.trim())
         .map((row) => ({ amount: manualItemVatInclusiveAmount(row), applyWht: row.applyWht })),
@@ -786,6 +797,8 @@ export function BillingDocumentForm({
       selectedTaxInvoices,
       manualItems,
       whtExcluded,
+      docType,
+      whtPercent,
     ],
   );
   // A new document, or one first saved on/after the round-by-round cutoff,

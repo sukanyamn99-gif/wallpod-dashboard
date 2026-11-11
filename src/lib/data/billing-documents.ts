@@ -261,6 +261,7 @@ export async function getBillableTaxInvoicesForCustomer(
         quotationId: it.quotation_id,
         jobNo: it.quotations?.job_number ?? null,
         netPayable: allocated[i].netPayable,
+        grossAmount: allocated[i].grossAmount,
         whtPercent: Number(inv.wht_percent),
         docType: inv.doc_type as "tax_invoice" | "invoice",
       });
