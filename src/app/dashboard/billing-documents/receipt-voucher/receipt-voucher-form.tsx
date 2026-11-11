@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useState } from "react";
+import { startTransition, useActionState, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,16 +9,12 @@ import { Input } from "@/components/ui/input";
 import { DateInput } from "@/components/ui/date-input";
 import { NumberInput } from "@/components/ui/number-input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatTHB } from "@/lib/format";
 import type { ReceiptVoucher } from "@/lib/types";
 import { createReceiptVoucher, updateReceiptVoucher } from "./actions";
 
 const LIST_PATH = "/dashboard/billing-documents/receipt-voucher";
 const initialState: { error: string | null; docNo?: string; id?: string } = { error: null };
-
-// Base UI Select can't use "" as a real option value.
-const NO_RECEIPT = "__none__";
 
 export type ReceiptVoucherDraft = Omit<
   ReceiptVoucher,
@@ -60,7 +56,7 @@ export function ReceiptVoucherForm({
   initialData: ReceiptVoucherDraft;
   // Receipts the voucher can be issued from (create mode only) — picking one
   // reloads the page with ?receiptId=… so the server fills in its data.
-  receiptOptions?: { id: string; label: string }[];
+  receiptOptions?: { id: string; docNo: string; label: string }[];
 }) {
   const router = useRouter();
   const [items, setItems] = useState<ItemDraft[]>(() =>
@@ -92,10 +88,18 @@ export function ReceiptVoucherForm({
   }, initialState);
 
   const total = Math.round(items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0) * 100) / 100;
-  const receiptSelectItems = [
-    { value: NO_RECEIPT, label: "ไม่อ้างอิงใบเสร็จ (กรอกเอง)" },
-    ...receiptOptions.map((o) => ({ value: o.id, label: o.label })),
-  ];
+
+  // One box for the reference receipt: type to search the receipts and pick one to pull its
+  // data in, or just type any number to reference a receipt by hand.
+  const [receiptText, setReceiptText] = useState(initialData.receiptNo ?? "");
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const suggestions = useMemo(() => {
+    const q = receiptText.trim().toLowerCase();
+    const pool = q ? receiptOptions.filter((o) => o.label.toLowerCase().includes(q)) : receiptOptions;
+    return pool.slice(0, 8);
+  }, [receiptText, receiptOptions]);
+  // The link to the receipt only holds while the typed number is still that receipt's.
+  const linkedReceiptId = receiptText.trim() === (initialData.receiptNo ?? "") ? (initialData.receiptId ?? "") : "";
 
   function updateItem(key: number, patch: Partial<ItemDraft>) {
     setItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...patch } : it)));
@@ -132,45 +136,57 @@ export function ReceiptVoucherForm({
     >
       {state.error && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>}
 
-      <input type="hidden" name="receipt_id" value={initialData.receiptId ?? ""} />
+      <input type="hidden" name="receipt_id" value={linkedReceiptId} />
 
-      {mode === "create" ? (
-        <div className="space-y-2">
-          <Label htmlFor="receipt_picker">ดึงข้อมูลจากใบเสร็จรับเงิน</Label>
-          <Select
-            value={initialData.receiptId ?? NO_RECEIPT}
-            onValueChange={(v) => {
-              const id = v as string;
-              router.push(id && id !== NO_RECEIPT ? `${LIST_PATH}/new?receiptId=${id}` : `${LIST_PATH}/new`);
-            }}
-            items={receiptSelectItems}
-          >
-            <SelectTrigger id="receipt_picker" className="w-full">
-              <SelectValue placeholder="เลือกใบเสร็จรับเงิน" />
-            </SelectTrigger>
-            <SelectContent>
-              {receiptSelectItems.map((item) => (
-                <SelectItem key={item.value} value={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            เลือกแล้วระบบจะกรอกให้ และแก้ไขต่อได้ก่อนบันทึก — หรือเลือก &ldquo;ไม่อ้างอิงใบเสร็จ&rdquo; แล้วกรอกเองทุกช่อง
-          </p>
-        </div>
-      ) : (
+      {mode === "edit" && (
         <div className="space-y-1">
           <Label>เลขที่เอกสาร</Label>
           <p className="text-sm text-muted-foreground">{docNo}</p>
         </div>
       )}
 
-      {/* Typed by hand when there is no receipt to pull from; filled in when there is. */}
-      <div className="space-y-2 sm:max-w-xs">
+      <div className="space-y-2">
         <Label htmlFor="receipt_no">เลขที่ใบเสร็จรับเงิน (อ้างอิง)</Label>
-        <Input id="receipt_no" name="receipt_no" defaultValue={initialData.receiptNo ?? undefined} placeholder="เช่น RE202610210001" />
+        <div className="relative">
+          <Input
+            id="receipt_no"
+            name="receipt_no"
+            autoComplete="off"
+            value={receiptText}
+            onChange={(e) => {
+              setReceiptText(e.target.value);
+              setPickerOpen(true);
+            }}
+            onFocus={() => setPickerOpen(true)}
+            onBlur={() => setPickerOpen(false)}
+            placeholder={mode === "create" ? "พิมพ์เลขที่ใบเสร็จหรือชื่อลูกค้าเพื่อค้นหา หรือพิมพ์เลขที่เอง" : "เช่น RE202610210001"}
+          />
+          {mode === "create" && pickerOpen && suggestions.length > 0 && (
+            <ul className="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-md border bg-popover p-1 text-sm shadow-md">
+              {suggestions.map((o) => (
+                <li key={o.id}>
+                  <button
+                    type="button"
+                    // mousedown (not click) so it lands before the input's blur closes the list
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setPickerOpen(false);
+                      router.push(`${LIST_PATH}/new?receiptId=${o.id}`);
+                    }}
+                    className="w-full rounded-sm px-2 py-1.5 text-left hover:bg-accent hover:text-accent-foreground"
+                  >
+                    {o.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {mode === "create"
+            ? "เลือกจากรายการเพื่อดึงข้อมูลใบเสร็จมากรอกให้ — หรือพิมพ์เลขที่เองแล้วกรอกช่องอื่นเองได้ทุกช่อง"
+            : "แก้ไขเลขที่อ้างอิงได้"}
+        </p>
       </div>
 
       <div className="space-y-2 sm:max-w-xs">

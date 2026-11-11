@@ -69,6 +69,7 @@ export default async function NewReceiptVoucherPage({
         initialData={draft}
         receiptOptions={receipts.map((r) => ({
           id: r.id,
+          docNo: r.docNo,
           label: `${r.docNo} — ${r.customerName} (${new Date(r.docDate).toLocaleDateString("th-TH")})`,
         }))}
       />
