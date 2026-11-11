@@ -90,11 +90,11 @@ export function PrintReceiptVoucherView({ voucher }: { voucher: ReceiptVoucher }
         {/* One line per รายการ, each with its own amount when there are several. */}
         <div className="flex border-b border-black">
           <span className="w-48 shrink-0 border-r border-black p-2 font-medium">รายการรับ</span>
-          <div className="flex-1 p-2">
+          <div className="min-w-0 flex-1 p-2">
             {filledItems.length === 0 && <span>—</span>}
             {filledItems.map((it, i) => (
               <div key={i} className="flex justify-between gap-4">
-                <span>{it.description}</span>
+                <span className="min-w-0 [overflow-wrap:anywhere]">{it.description}</span>
                 {filledItems.length > 1 && <span className="whitespace-nowrap">{formatTHB(it.amount)}</span>}
               </div>
             ))}
@@ -207,7 +207,7 @@ function Field({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="flex border-b border-black">
       <span className="w-48 shrink-0 border-r border-black p-2 font-medium">{label}</span>
-      <span className="flex-1 p-2">{value ?? "—"}</span>
+      <span className="min-w-0 flex-1 p-2 [overflow-wrap:anywhere]">{value ?? "—"}</span>
     </div>
   );
 }
