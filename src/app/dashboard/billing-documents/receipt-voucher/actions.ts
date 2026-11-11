@@ -177,6 +177,7 @@ export async function updateReceiptVoucher(id: string, formData: FormData) {
     .from("receipt_vouchers")
     .update({
       doc_date: parsed.docDate,
+      receipt_no: parsed.receiptNo,
       contact_name: parsed.contactName,
       contact_tax_id: parsed.contactTaxId,
       contact_address: parsed.contactAddress,

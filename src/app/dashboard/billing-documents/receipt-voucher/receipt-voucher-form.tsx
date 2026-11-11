@@ -133,7 +133,6 @@ export function ReceiptVoucherForm({
       {state.error && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>}
 
       <input type="hidden" name="receipt_id" value={initialData.receiptId ?? ""} />
-      <input type="hidden" name="receipt_no" value={initialData.receiptNo ?? ""} />
 
       {mode === "create" ? (
         <div className="space-y-2">
@@ -158,21 +157,21 @@ export function ReceiptVoucherForm({
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
-            เลือกแล้วระบบจะกรอกผู้ติดต่อและรายการรับเงินให้ — แก้ไขต่อได้ก่อนบันทึก
+            เลือกแล้วระบบจะกรอกให้ และแก้ไขต่อได้ก่อนบันทึก — หรือเลือก &ldquo;ไม่อ้างอิงใบเสร็จ&rdquo; แล้วกรอกเองทุกช่อง
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1">
-            <Label>เลขที่เอกสาร</Label>
-            <p className="text-sm text-muted-foreground">{docNo}</p>
-          </div>
-          <div className="space-y-1">
-            <Label>อ้างอิงใบเสร็จรับเงิน</Label>
-            <p className="text-sm text-muted-foreground">{initialData.receiptNo ?? "—"}</p>
-          </div>
+        <div className="space-y-1">
+          <Label>เลขที่เอกสาร</Label>
+          <p className="text-sm text-muted-foreground">{docNo}</p>
         </div>
       )}
+
+      {/* Typed by hand when there is no receipt to pull from; filled in when there is. */}
+      <div className="space-y-2 sm:max-w-xs">
+        <Label htmlFor="receipt_no">เลขที่ใบเสร็จรับเงิน (อ้างอิง)</Label>
+        <Input id="receipt_no" name="receipt_no" defaultValue={initialData.receiptNo ?? undefined} placeholder="เช่น RE202610210001" />
+      </div>
 
       <div className="space-y-2 sm:max-w-xs">
         <Label htmlFor="doc_date">วันที่</Label>
