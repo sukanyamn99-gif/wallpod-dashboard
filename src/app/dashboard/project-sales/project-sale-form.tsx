@@ -843,24 +843,22 @@ export function ProjectSaleForm({
                   <DateInput id="paid_date_2" name="paid_date_2" value={paidDate2} onChange={setPaidDate2} />
                 </div>
               )}
-              {taxInvoiceNo2 && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="tax_invoice_no_2">เลขที่ใบกำกับภาษี</Label>
-                    <Input
-                      id="tax_invoice_no_2"
-                      name="tax_invoice_no_2"
-                      value={taxInvoiceNo2}
-                      onChange={(e) => setTaxInvoiceNo2(e.target.value)}
-                      placeholder="INV..."
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="tax_invoice_date_2">วันที่ออกใบกำกับภาษี</Label>
-                    <DateInput id="tax_invoice_date_2" name="tax_invoice_date_2" value={taxInvoiceDate2} onChange={setTaxInvoiceDate2} />
-                  </div>
-                </>
-              )}
+              {/* Always shown, like งวดที่ 1 — hiding it while empty left no way to
+                  type a ใบกำกับภาษี issued outside the normal sync flow. */}
+              <div className="space-y-2">
+                <Label htmlFor="tax_invoice_no_2">เลขที่ใบกำกับภาษี</Label>
+                <Input
+                  id="tax_invoice_no_2"
+                  name="tax_invoice_no_2"
+                  value={taxInvoiceNo2}
+                  onChange={(e) => setTaxInvoiceNo2(e.target.value)}
+                  placeholder="INV..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tax_invoice_date_2">วันที่ออกใบกำกับภาษี</Label>
+                <DateInput id="tax_invoice_date_2" name="tax_invoice_date_2" value={taxInvoiceDate2} onChange={setTaxInvoiceDate2} />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="receipt_no_2">เลขที่ใบเสร็จ</Label>
                 <Input
@@ -949,24 +947,20 @@ export function ProjectSaleForm({
                     <DateInput id="paid_date_3" name="paid_date_3" value={paidDate3} onChange={setPaidDate3} />
                   </div>
                 )}
-                {taxInvoiceNo3 && (
-                  <>
-                    <div className="space-y-2">
-                      <Label htmlFor="tax_invoice_no_3">เลขที่ใบกำกับภาษี</Label>
-                      <Input
-                        id="tax_invoice_no_3"
-                        name="tax_invoice_no_3"
-                        value={taxInvoiceNo3}
-                        onChange={(e) => setTaxInvoiceNo3(e.target.value)}
-                        placeholder="INV..."
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="tax_invoice_date_3">วันที่ออกใบกำกับภาษี</Label>
-                      <DateInput id="tax_invoice_date_3" name="tax_invoice_date_3" value={taxInvoiceDate3} onChange={setTaxInvoiceDate3} />
-                    </div>
-                  </>
-                )}
+                <div className="space-y-2">
+                  <Label htmlFor="tax_invoice_no_3">เลขที่ใบกำกับภาษี</Label>
+                  <Input
+                    id="tax_invoice_no_3"
+                    name="tax_invoice_no_3"
+                    value={taxInvoiceNo3}
+                    onChange={(e) => setTaxInvoiceNo3(e.target.value)}
+                    placeholder="INV..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tax_invoice_date_3">วันที่ออกใบกำกับภาษี</Label>
+                  <DateInput id="tax_invoice_date_3" name="tax_invoice_date_3" value={taxInvoiceDate3} onChange={setTaxInvoiceDate3} />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="receipt_no_3">เลขที่ใบเสร็จ</Label>
                   <Input
