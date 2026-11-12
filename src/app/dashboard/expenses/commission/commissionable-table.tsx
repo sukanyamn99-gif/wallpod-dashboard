@@ -185,7 +185,8 @@ function ProjectRow({ project }: { project: CommissionableProject }) {
 export function CommissionableTable({ projects }: { projects: CommissionableProject[] }) {
   const [monthFilter, setMonthFilter] = useState(ALL_VALUE);
   const [salesRepFilter, setSalesRepFilter] = useState(ALL_VALUE);
-  const [paidFilter, setPaidFilter] = useState(ALL_VALUE);
+  // Opens on the jobs still waiting to be paid.
+  const [paidFilter, setPaidFilter] = useState("unpaid");
 
   const monthOptions = useMemo(() => {
     const map = new Map<string, string>();
