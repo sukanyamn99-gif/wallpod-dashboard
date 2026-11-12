@@ -2039,3 +2039,8 @@ create policy receipt_voucher_ledger_lines_write on receipt_voucher_ledger_lines
 -- Whether a job's commission has been paid out yet, and when.
 alter table commission_entries add column if not exists paid boolean not null default false;
 alter table commission_entries add column if not exists paid_date date;
+
+-- The support team (support_sale) may add a supplier (e.g. from the purchase
+-- request form) but not edit or delete one — that stays owner/manager only.
+create policy suppliers_insert_support on suppliers for insert
+  with check (my_role() = 'support_sale');

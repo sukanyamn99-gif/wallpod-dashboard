@@ -156,7 +156,7 @@ export function PurchaseRequestForm({
   mode?: "create" | "edit";
   requestId?: string;
   initialData?: PurchaseRequest;
-  // Only owner/manager may write to the supplier list (see the suppliers_write policy).
+  // Owner/manager (suppliers_write) and the support team (suppliers_insert_support) may add suppliers.
   canAddSupplier?: boolean;
 }) {
   const router = useRouter();
