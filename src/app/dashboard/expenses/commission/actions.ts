@@ -126,6 +126,29 @@ export async function saveProjectCommission(projectId: string, discountPercent: 
   return { error: null, commissionRatePercent, commissionAmount };
 }
 
+// Marks a job's commission as paid out (with today's date) or back to unpaid.
+// Only a job whose commission has been saved has a row to mark.
+export async function setCommissionPaid(projectId: string, paid: boolean) {
+  if (!isSupabaseConfigured()) {
+    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง", paidDate: null as string | null };
+  }
+
+  const paidDate = paid ? new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Bangkok" }) : null;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("commission_entries")
+    .update({ paid, paid_date: paidDate })
+    .eq("project_id", projectId)
+    .select("project_id");
+  if (error) return { error: error.message, paidDate: null as string | null };
+  if (!data || data.length === 0) {
+    return { error: "กรุณาบันทึกค่าคอมมิชชั่นของ Job นี้ก่อน", paidDate: null as string | null };
+  }
+
+  revalidateCommissionConsumers();
+  return { error: null, paidDate };
+}
+
 export async function clearProjectCommission(projectId: string) {
   if (!isSupabaseConfigured()) {
     return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };

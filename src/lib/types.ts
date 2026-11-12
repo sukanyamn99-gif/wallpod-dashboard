@@ -816,6 +816,9 @@ export interface CommissionableProject {
   commissionRatePercent: number;
   commissionAmount: number;
   hasCommissionEntry: boolean;
+  // Whether this job's commission has been paid out, and the date it was marked paid.
+  paid: boolean;
+  paidDate: string | null;
 }
 
 // One payment installment printed under its job's row on the Incentive

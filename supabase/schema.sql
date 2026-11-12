@@ -2035,3 +2035,7 @@ create policy receipt_voucher_ledger_lines_select on receipt_voucher_ledger_line
 create policy receipt_voucher_ledger_lines_write on receipt_voucher_ledger_lines for all
   using (my_role() in ('owner', 'manager', 'account', 'support_sale'))
   with check (my_role() in ('owner', 'manager', 'account', 'support_sale'));
+
+-- Whether a job's commission has been paid out yet, and when.
+alter table commission_entries add column if not exists paid boolean not null default false;
+alter table commission_entries add column if not exists paid_date date;

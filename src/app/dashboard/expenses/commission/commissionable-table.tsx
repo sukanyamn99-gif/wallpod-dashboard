@@ -21,10 +21,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatTHB } from "@/lib/format";
-import { clearProjectCommission, saveProjectCommission } from "./actions";
+import { clearProjectCommission, saveProjectCommission, setCommissionPaid } from "./actions";
 import type { CommissionableProject } from "@/lib/types";
 
 const ALL_VALUE = "all";
+
+const PAID_FILTER_ITEMS = [
+  { value: ALL_VALUE, label: "ทุกสถานะ" },
+  { value: "unpaid", label: "ยังไม่จ่าย" },
+  { value: "paid", label: "จ่ายแล้ว" },
+];
 
 const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -46,8 +52,25 @@ function ProjectRow({ project }: { project: CommissionableProject }) {
   const [saved, setSaved] = useState(project.hasCommissionEntry);
   const [rate, setRate] = useState(project.commissionRatePercent);
   const [commissionAmount, setCommissionAmount] = useState(project.commissionAmount);
+  const [paid, setPaid] = useState(project.paid);
+  const [paidDate, setPaidDate] = useState(project.paidDate);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  function handleTogglePaid() {
+    // Going back to "ยังไม่จ่าย" undoes a payment record — ask first.
+    if (paid && !window.confirm("ยกเลิกสถานะ \"จ่ายแล้ว\" ของค่าคอมมิชชั่นนี้?")) return;
+    setError(null);
+    startTransition(async () => {
+      const result = await setCommissionPaid(project.projectId, !paid);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+      setPaid(!paid);
+      setPaidDate(result.paidDate);
+    });
+  }
 
   function handleSave() {
     setError(null);
@@ -102,6 +125,8 @@ function ProjectRow({ project }: { project: CommissionableProject }) {
               setSaved(false);
             }}
             className="h-8 w-20"
+            disabled={paid}
+            title={paid ? "จ่ายค่าคอมมิชชั่นแล้ว — ยกเลิกสถานะจ่ายก่อนจึงจะแก้ส่วนลดได้" : undefined}
           />
           <span className="text-xs text-muted-foreground">%</span>
         </div>
@@ -110,9 +135,40 @@ function ProjectRow({ project }: { project: CommissionableProject }) {
       <TableCell className="text-right whitespace-nowrap font-medium">
         {saved ? formatTHB(commissionAmount) : "—"}
       </TableCell>
+      <TableCell className="whitespace-nowrap">
+        {saved ? (
+          <div className="flex flex-col items-start gap-0.5">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleTogglePaid}
+              disabled={pending}
+              title={paid ? "กดเพื่อยกเลิกสถานะจ่ายแล้ว" : "กดเมื่อจ่ายค่าคอมมิชชั่นแล้ว"}
+              className={
+                paid
+                  ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                  : "border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+              }
+            >
+              {paid ? "จ่ายแล้ว" : "ยังไม่จ่าย"}
+            </Button>
+            {paid && paidDate && (
+              <span className="text-xs text-muted-foreground">{new Date(paidDate).toLocaleDateString("th-TH")}</span>
+            )}
+          </div>
+        ) : (
+          "—"
+        )}
+      </TableCell>
       <TableCell>
         {saved ? (
-          <Button size="icon-sm" variant="outline" onClick={handleClear} disabled={pending} title="ล้างค่าคอมมิชชั่น">
+          <Button
+            size="icon-sm"
+            variant="outline"
+            onClick={handleClear}
+            disabled={pending || paid}
+            title={paid ? "จ่ายค่าคอมมิชชั่นแล้ว — ยกเลิกสถานะจ่ายก่อนจึงจะล้างได้" : "ล้างค่าคอมมิชชั่น"}
+          >
             <X className="h-3.5 w-3.5" />
           </Button>
         ) : (
@@ -129,6 +185,7 @@ function ProjectRow({ project }: { project: CommissionableProject }) {
 export function CommissionableTable({ projects }: { projects: CommissionableProject[] }) {
   const [monthFilter, setMonthFilter] = useState(ALL_VALUE);
   const [salesRepFilter, setSalesRepFilter] = useState(ALL_VALUE);
+  const [paidFilter, setPaidFilter] = useState(ALL_VALUE);
 
   const monthOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -160,9 +217,12 @@ export function CommissionableTable({ projects }: { projects: CommissionableProj
       projects.filter((p) => {
         if (monthFilter !== ALL_VALUE && monthKey(p.receivedDate) !== monthFilter) return false;
         if (salesRepFilter !== ALL_VALUE && p.salesRepName !== salesRepFilter) return false;
+        // "ยังไม่จ่าย" includes jobs whose commission isn't calculated/saved yet.
+        if (paidFilter === "paid" && !p.paid) return false;
+        if (paidFilter === "unpaid" && p.paid) return false;
         return true;
       }),
-    [projects, monthFilter, salesRepFilter],
+    [projects, monthFilter, salesRepFilter, paidFilter],
   );
 
   const grouped = useMemo(() => {
@@ -218,9 +278,28 @@ export function CommissionableTable({ projects }: { projects: CommissionableProj
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">สถานะการจ่าย</Label>
+          <Select
+            value={paidFilter}
+            onValueChange={(v) => setPaidFilter((v as string) ?? ALL_VALUE)}
+            items={PAID_FILTER_ITEMS}
+          >
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAID_FILTER_ITEMS.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {grouped.size === 0 && <p className="text-center text-sm text-muted-foreground">ไม่พบ Project ตามเงื่อนไขที่เลือก</p>}
+      {grouped.size === 0 &&<p className="text-center text-sm text-muted-foreground">ไม่พบ Project ตามเงื่อนไขที่เลือก</p>}
 
       {Array.from(grouped.entries()).map(([month, byRep]) => (
         <div key={month} className="space-y-3">
@@ -243,6 +322,7 @@ export function CommissionableTable({ projects }: { projects: CommissionableProj
                       <TableHead className="whitespace-nowrap">ส่วนลด</TableHead>
                       <TableHead className="text-right whitespace-nowrap">อัตราคอมฯ</TableHead>
                       <TableHead className="text-right whitespace-nowrap">ค่าคอมมิชชั่น</TableHead>
+                      <TableHead className="whitespace-nowrap">สถานะการจ่าย</TableHead>
                       <TableHead className="whitespace-nowrap">จัดการ</TableHead>
                     </TableRow>
                   </TableHeader>

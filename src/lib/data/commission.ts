@@ -27,6 +27,8 @@ type CommissionEntryRow = {
   discount_percent: number;
   commission_rate_percent: number;
   commission_amount: number;
+  paid: boolean;
+  paid_date: string | null;
 };
 
 // Every fully-collected job ("เก็บเงินเรียบร้อยแล้ว") — job_no, customer,
@@ -45,7 +47,7 @@ export async function getCommissionableProjects(): Promise<CommissionableProject
       const supabase = await createClient();
       return supabase
         .from("commission_entries")
-        .select("project_id, discount_percent, commission_rate_percent, commission_amount");
+        .select("project_id, discount_percent, commission_rate_percent, commission_amount, paid, paid_date");
     })(),
   ]);
   if (existingRes.error) throw existingRes.error;
@@ -90,6 +92,8 @@ export async function getCommissionableProjects(): Promise<CommissionableProject
       commissionRatePercent: existing ? Number(existing.commission_rate_percent) : 0,
       commissionAmount: existing ? Number(existing.commission_amount) : 0,
       hasCommissionEntry: !!existing,
+      paid: existing?.paid ?? false,
+      paidDate: existing?.paid_date ?? null,
     });
   }
 
