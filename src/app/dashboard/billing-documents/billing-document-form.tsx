@@ -223,6 +223,8 @@ export function BillingDocumentForm({
   // ใบวางบิล/ใบกำกับภาษี doc_no), so this set is just a convenience, not the
   // thing actually submitted.
   const [selectedDepositInvoices, setSelectedDepositInvoices] = useState<Set<string>>(new Set());
+  // Deposits (by paymentId) the user says had tax withheld — see applyDepositSelection.
+  const [depositWhtOn, setDepositWhtOn] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set((initialData?.items ?? []).map((it) => it.paymentId).filter((id): id is string => !!id)),
   );
@@ -565,17 +567,34 @@ export function BillingDocumentForm({
   // it) still works. depositWhtAmount sums each ticked invoice's own
   // already-withheld WHT, credited against this document's own WHT so a
   // later installment doesn't withhold the same job's WHT twice.
+  // A ใบเสร็จรับเงิน can also say that tax was withheld on a deposit whose own
+  // invoice recorded no WHT (the "หัก x%" tick on its row): that WHT is taken
+  // out of the deposit's amount (what was really received is net of it) and
+  // counted as already withheld, so this receipt only withholds the rest.
+  function applyDepositSelection(selected: Set<string>, whtOn: Set<string>) {
+    const pct = Number(whtPercent) || 0;
+    const picked = receivedInvoices.filter((r) => selected.has(r.paymentId));
+    const extraWht = (r: UnbilledInvoice) =>
+      whtOn.has(r.paymentId) && !((r.whtAmount ?? 0) > 0) ? round2((r.amount / 1.07) * (pct / 100)) : 0;
+    setDepositDeductionAmount(String(round2(picked.reduce((sum, r) => sum + r.amount - extraWht(r), 0))));
+    setDepositDeductionInvoiceNo(picked.map((r) => r.invoiceNo).join(", "));
+    setDepositWhtAmount(String(round2(picked.reduce((sum, r) => sum + (r.whtAmount ?? 0) + extraWht(r), 0))));
+  }
+
   function toggleDepositInvoice(paymentId: string) {
-    setSelectedDepositInvoices((prev) => {
-      const next = new Set(prev);
-      if (next.has(paymentId)) next.delete(paymentId);
-      else next.add(paymentId);
-      const picked = receivedInvoices.filter((r) => next.has(r.paymentId));
-      setDepositDeductionAmount(String(picked.reduce((sum, r) => sum + r.amount, 0)));
-      setDepositDeductionInvoiceNo(picked.map((r) => r.invoiceNo).join(", "));
-      setDepositWhtAmount(String(picked.reduce((sum, r) => sum + (r.whtAmount ?? 0), 0)));
-      return next;
-    });
+    const next = new Set(selectedDepositInvoices);
+    if (next.has(paymentId)) next.delete(paymentId);
+    else next.add(paymentId);
+    setSelectedDepositInvoices(next);
+    applyDepositSelection(next, depositWhtOn);
+  }
+
+  function toggleDepositWht(paymentId: string) {
+    const next = new Set(depositWhtOn);
+    if (next.has(paymentId)) next.delete(paymentId);
+    else next.add(paymentId);
+    setDepositWhtOn(next);
+    applyDepositSelection(selectedDepositInvoices, next);
   }
 
   function toggleQuotation(quotationId: string) {
@@ -1706,6 +1725,23 @@ export function BillingDocumentForm({
                         {inv.projectName} {inv.invoiceDate && `• ${new Date(inv.invoiceDate).toLocaleDateString("th-TH")}`}
                       </p>
                     </div>
+                    {docType === "receipt" &&
+                      selectedDepositInvoices.has(inv.paymentId) &&
+                      Number(whtPercent) > 0 &&
+                      !((inv.whtAmount ?? 0) > 0) && (
+                        <span
+                          className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={depositWhtOn.has(inv.paymentId)}
+                            onChange={() => toggleDepositWht(inv.paymentId)}
+                            className="h-3.5 w-3.5"
+                          />
+                          หัก {whtPercent}%
+                        </span>
+                      )}
                     <p className="shrink-0 text-sm font-medium">{formatTHB(inv.amount)}</p>
                   </label>
                 ))}
