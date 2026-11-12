@@ -12,6 +12,7 @@ function friendlyError(error: { code?: string; message: string }): string {
 function revalidateSupplierConsumers() {
   revalidatePath("/dashboard/suppliers");
   revalidatePath("/dashboard/goods-receipt/new");
+  revalidatePath("/dashboard/purchase-requests/new");
 }
 
 function supplierFields(formData: FormData) {
@@ -27,18 +28,18 @@ function supplierFields(formData: FormData) {
 
 export async function createSupplier(formData: FormData) {
   if (!isSupabaseConfigured()) {
-    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
+    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง", id: null };
   }
 
   const fields = supplierFields(formData);
-  if (!fields.name) return { error: "กรุณากรอกชื่อผู้จำหน่าย" };
+  if (!fields.name) return { error: "กรุณากรอกชื่อผู้จำหน่าย", id: null };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("suppliers").insert(fields);
-  if (error) return { error: friendlyError(error) };
+  const { data: created, error } = await supabase.from("suppliers").insert(fields).select("id").single();
+  if (error) return { error: friendlyError(error), id: null };
 
   revalidateSupplierConsumers();
-  return { error: null };
+  return { error: null, id: created.id as string };
 }
 
 export async function updateSupplier(id: string, formData: FormData) {

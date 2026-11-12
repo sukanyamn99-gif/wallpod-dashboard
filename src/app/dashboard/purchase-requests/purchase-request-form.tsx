@@ -27,10 +27,16 @@ import {
 import { JobNoSelect } from "@/components/dashboard/job-no-select";
 import { formatTHB } from "@/lib/format";
 import { createPurchaseRequest, updatePurchaseRequest } from "./actions";
-import type { Department, PurchaseRequest, StockProduct, Supplier } from "@/lib/types";
+import { createSupplier } from "../suppliers/actions";
+import type { Department, PurchaseRequest, StockProduct, Supplier, SupplierType } from "@/lib/types";
 import type { JobLookupEntry } from "@/lib/data/reference";
 
 const NONE_SUPPLIER = "__none__";
+
+const SUPPLIER_TYPE_ITEMS: { value: SupplierType; label: string }[] = [
+  { value: "ในประเทศ", label: "ในประเทศ" },
+  { value: "ต่างประเทศ", label: "ต่างประเทศ" },
+];
 
 const initialState = { error: null as string | null, id: undefined as string | undefined };
 
@@ -140,6 +146,7 @@ export function PurchaseRequestForm({
   mode = "create",
   requestId,
   initialData,
+  canAddSupplier = false,
 }: {
   departments: Department[];
   stockProducts: StockProduct[];
@@ -149,8 +156,64 @@ export function PurchaseRequestForm({
   mode?: "create" | "edit";
   requestId?: string;
   initialData?: PurchaseRequest;
+  // Only owner/manager may write to the supplier list (see the suppliers_write policy).
+  canAddSupplier?: boolean;
 }) {
   const router = useRouter();
+  // Suppliers added from this form show up in the dropdown straight away,
+  // without waiting for the page to reload with the refreshed list.
+  const [addedSuppliers, setAddedSuppliers] = useState<Supplier[]>([]);
+  const supplierList = useMemo(
+    () => [...suppliers, ...addedSuppliers.filter((a) => !suppliers.some((s) => s.id === a.id))],
+    [suppliers, addedSuppliers],
+  );
+  const [addingSupplier, setAddingSupplier] = useState(false);
+  const [newSupplier, setNewSupplier] = useState({
+    name: "",
+    address: "",
+    taxId: "",
+    branch: "",
+    supplierType: "ในประเทศ" as SupplierType,
+  });
+  const [supplierError, setSupplierError] = useState<string | null>(null);
+  const [savingSupplier, startSavingSupplier] = useTransition();
+
+  function handleSaveSupplier() {
+    const name = newSupplier.name.trim();
+    if (!name) {
+      setSupplierError("กรุณากรอกชื่อผู้จำหน่าย");
+      return;
+    }
+    setSupplierError(null);
+    startSavingSupplier(async () => {
+      const fd = new FormData();
+      fd.set("name", name);
+      fd.set("address", newSupplier.address.trim());
+      fd.set("tax_id", newSupplier.taxId.trim());
+      fd.set("branch", newSupplier.branch.trim());
+      fd.set("supplier_type", newSupplier.supplierType);
+      const result = await createSupplier(fd);
+      if (result.error || !result.id) {
+        setSupplierError(result.error ?? "บันทึกผู้จำหน่ายไม่สำเร็จ");
+        return;
+      }
+      setAddedSuppliers((prev) => [
+        ...prev,
+        {
+          id: result.id,
+          name,
+          address: newSupplier.address.trim() || null,
+          taxId: newSupplier.taxId.trim() || null,
+          branch: newSupplier.branch.trim() || null,
+          supplierType: newSupplier.supplierType,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+      setSupplierId(result.id);
+      setNewSupplier({ name: "", address: "", taxId: "", branch: "", supplierType: "ในประเทศ" });
+      setAddingSupplier(false);
+    });
+  }
   const [jobNo, setJobNo] = useState(initialData?.jobNo ?? "");
   const [projectName, setProjectName] = useState(initialData?.projectName ?? "");
   const [supplierId, setSupplierId] = useState(initialData?.supplierId ?? "");
@@ -293,32 +356,113 @@ export function PurchaseRequestForm({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label htmlFor="supplier_id">ผู้จำหน่าย</Label>
-            <Link
-              href="/dashboard/suppliers"
-              className="flex items-center gap-1 text-xs text-muted-foreground underline underline-offset-2"
-            >
-              <Settings2 className="h-3 w-3" />
-              จัดการ
-            </Link>
+            <div className="flex items-center gap-3">
+              {canAddSupplier && (
+                <button
+                  type="button"
+                  onClick={() => setAddingSupplier((v) => !v)}
+                  className="flex items-center gap-1 text-xs text-muted-foreground underline underline-offset-2"
+                >
+                  <Plus className="h-3 w-3" />
+                  เพิ่มผู้จำหน่าย
+                </button>
+              )}
+              <Link
+                href="/dashboard/suppliers"
+                className="flex items-center gap-1 text-xs text-muted-foreground underline underline-offset-2"
+              >
+                <Settings2 className="h-3 w-3" />
+                จัดการ
+              </Link>
+            </div>
           </div>
           <input type="hidden" name="supplier_id" value={supplierId} />
           <Select
             value={supplierId || NONE_SUPPLIER}
             onValueChange={(v) => setSupplierId(v === NONE_SUPPLIER ? "" : (v ?? ""))}
-            items={[{ value: NONE_SUPPLIER, label: "— ไม่ระบุ —" }, ...suppliers.map((s) => ({ value: s.id, label: s.name }))]}
+            items={[{ value: NONE_SUPPLIER, label: "— ไม่ระบุ —" }, ...supplierList.map((s) => ({ value: s.id, label: s.name }))]}
           >
             <SelectTrigger id="supplier_id" className="w-full">
               <SelectValue placeholder="— ไม่ระบุ —" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value={NONE_SUPPLIER}>— ไม่ระบุ —</SelectItem>
-              {suppliers.map((s) => (
+              {supplierList.map((s) => (
                 <SelectItem key={s.id} value={s.id}>
                   {s.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+
+          {/* Quick add: saves a new supplier straight to the supplier list and
+              picks it for this request. Plain inputs (no names) so nothing here
+              is submitted with the request itself. */}
+          {addingSupplier && canAddSupplier && (
+            <div className="space-y-2 rounded-lg border p-3">
+              <p className="text-sm font-medium">เพิ่มผู้จำหน่ายใหม่</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Input
+                  placeholder="ชื่อผู้จำหน่าย *"
+                  value={newSupplier.name}
+                  onChange={(e) => setNewSupplier((s) => ({ ...s, name: e.target.value }))}
+                  disabled={savingSupplier}
+                />
+                <Input
+                  placeholder="เลขประจำตัวผู้เสียภาษี (ถ้ามี)"
+                  value={newSupplier.taxId}
+                  onChange={(e) => setNewSupplier((s) => ({ ...s, taxId: e.target.value }))}
+                  disabled={savingSupplier}
+                />
+                <Input
+                  placeholder="ที่อยู่ (ถ้ามี)"
+                  value={newSupplier.address}
+                  onChange={(e) => setNewSupplier((s) => ({ ...s, address: e.target.value }))}
+                  disabled={savingSupplier}
+                />
+                <Input
+                  placeholder="สำนักงาน/สาขา (ถ้ามี)"
+                  value={newSupplier.branch}
+                  onChange={(e) => setNewSupplier((s) => ({ ...s, branch: e.target.value }))}
+                  disabled={savingSupplier}
+                />
+              </div>
+              <Select
+                value={newSupplier.supplierType}
+                onValueChange={(v) => setNewSupplier((s) => ({ ...s, supplierType: (v as SupplierType) ?? "ในประเทศ" }))}
+                items={SUPPLIER_TYPE_ITEMS}
+              >
+                <SelectTrigger className="w-[160px]" disabled={savingSupplier}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SUPPLIER_TYPE_ITEMS.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>
+                      {item.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {supplierError && <p className="text-sm text-destructive">{supplierError}</p>}
+              <div className="flex gap-2">
+                <Button type="button" size="sm" onClick={handleSaveSupplier} disabled={savingSupplier}>
+                  {savingSupplier ? "กำลังบันทึก..." : "บันทึกผู้จำหน่าย"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setAddingSupplier(false);
+                    setSupplierError(null);
+                  }}
+                  disabled={savingSupplier}
+                >
+                  ยกเลิก
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">

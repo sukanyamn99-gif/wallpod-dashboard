@@ -35,6 +35,7 @@ export default async function NewPurchaseRequestPage() {
         departments={departments}
         stockProducts={stockProducts}
         suppliers={suppliers}
+        canAddSupplier={profile.role === "owner" || profile.role === "manager"}
         jobNoSuggestions={jobNoSuggestions}
         jobNoLookup={jobNoLookup}
       />

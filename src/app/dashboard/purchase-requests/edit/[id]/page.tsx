@@ -54,6 +54,7 @@ export default async function EditPurchaseRequestPage({ params }: { params: Prom
           departments={departments}
           stockProducts={stockProducts}
           suppliers={suppliers}
+          canAddSupplier={profile.role === "owner" || profile.role === "manager"}
           jobNoSuggestions={jobNoSuggestions}
           jobNoLookup={jobNoLookup}
         />
