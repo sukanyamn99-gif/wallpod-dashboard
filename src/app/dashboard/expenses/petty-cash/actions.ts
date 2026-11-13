@@ -167,6 +167,32 @@ export async function updatePettyCashTransaction(id: string, formData: FormData)
   }
 
   const supabase = await createClient();
+
+  // The document number can be corrected here. A blank field keeps the current
+  // number; a number another entry already uses is refused before anything is saved.
+  const newDocNo = str(formData.get("doc_no"));
+  let docNoToSave: string | null = null;
+  if (newDocNo) {
+    const { data: current, error: currentErr } = await supabase
+      .from("petty_cash_transactions")
+      .select("doc_no")
+      .eq("id", id)
+      .maybeSingle();
+    if (currentErr) return { error: currentErr.message };
+    if (!current) return { error: "ไม่พบรายการนี้" };
+    if (current.doc_no !== newDocNo) {
+      const { data: taken, error: takenErr } = await supabase
+        .from("petty_cash_transactions")
+        .select("id")
+        .eq("doc_no", newDocNo)
+        .neq("id", id)
+        .limit(1);
+      if (takenErr) return { error: takenErr.message };
+      if (taken && taken.length > 0) return { error: `เลขที่เอกสาร ${newDocNo} มีอยู่ในระบบแล้ว กรุณาใช้เลขที่อื่น` };
+      docNoToSave = newDocNo;
+    }
+  }
+
   const whtAmount = num(formData.get("wht_amount"));
   const existingWhtCertNo = str(formData.get("wht_cert_no"));
   const whtCertNo = whtAmount > 0 && !existingWhtCertNo ? await generateWhtCertNo(supabase) : existingWhtCertNo;
@@ -190,6 +216,22 @@ export async function updatePettyCashTransaction(id: string, formData: FormData)
     p_income_type: incomeType,
   });
   if (error) return { error: error.message };
+
+  if (docNoToSave) {
+    const { data: renamed, error: renameError } = await supabase
+      .from("petty_cash_transactions")
+      .update({ doc_no: docNoToSave })
+      .eq("id", id)
+      .select("id");
+    if (renameError) {
+      return {
+        error: renameError.code === "23505"
+          ? `เลขที่เอกสาร ${docNoToSave} มีอยู่ในระบบแล้ว กรุณาใช้เลขที่อื่น`
+          : `บันทึกรายการสำเร็จ แต่เปลี่ยนเลขที่เอกสารไม่สำเร็จ: ${renameError.message}`,
+      };
+    }
+    if (!renamed || renamed.length === 0) return { error: "บันทึกรายการสำเร็จ แต่ไม่มีสิทธิ์เปลี่ยนเลขที่เอกสาร" };
+  }
 
   // Always written on edit (null when absent) so switching an entry from
   // ใช้จ่าย to เติมเงิน doesn't leave a stale base behind.

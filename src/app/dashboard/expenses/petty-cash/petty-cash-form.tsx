@@ -225,6 +225,14 @@ export function PettyCashForm({
     <form action={formAction} className="max-w-xl space-y-4" noValidate>
       {state.error && <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{state.error}</p>}
 
+      {mode === "edit" && initialData && (
+        <div className="space-y-2">
+          <Label htmlFor="doc_no">เลขที่เอกสาร</Label>
+          <Input id="doc_no" name="doc_no" defaultValue={initialData.docNo} required />
+          <p className="text-xs text-muted-foreground">แก้เลขที่ได้ — ห้ามซ้ำกับรายการอื่น</p>
+        </div>
+      )}
+
       <div className="space-y-2">
         <Label>ประเภทรายการ</Label>
         <input type="hidden" name="transaction_type" value={type} />
