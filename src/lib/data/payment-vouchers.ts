@@ -113,3 +113,39 @@ export async function getPaymentVoucherById(id: string): Promise<PaymentVoucher 
   // @ts-expect-error -- Supabase types the joined relation loosely here
   return { ...mapRow(data), ledgerLines };
 }
+
+// A payee seen on an earlier voucher, with the bank details last used for them —
+// typing the name on a new voucher fills the bank and account number from this.
+export interface PayeeSuggestion {
+  name: string;
+  bankName: string | null;
+  bankAccountNo: string | null;
+  taxId: string | null;
+  address: string | null;
+}
+
+export async function getPayeeSuggestions(): Promise<PayeeSuggestion[]> {
+  if (!isSupabaseConfigured()) return [];
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("payment_vouchers")
+    .select("payee_name, bank_name, bank_account_no, payee_tax_id, payee_address")
+    .order("voucher_date", { ascending: false })
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+
+  // Newest voucher first, so each field keeps the most recent value that was filled in.
+  const byName = new Map<string, PayeeSuggestion>();
+  for (const row of data ?? []) {
+    const name = String(row.payee_name ?? "").trim();
+    if (!name) continue;
+    const existing = byName.get(name) ?? { name, bankName: null, bankAccountNo: null, taxId: null, address: null };
+    existing.bankName ??= row.bank_name?.trim() || null;
+    existing.bankAccountNo ??= row.bank_account_no?.trim() || null;
+    existing.taxId ??= row.payee_tax_id?.trim() || null;
+    existing.address ??= row.payee_address?.trim() || null;
+    byName.set(name, existing);
+  }
+  return Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name, "th"));
+}

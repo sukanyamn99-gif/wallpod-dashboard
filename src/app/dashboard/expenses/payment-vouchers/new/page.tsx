@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { getDistinctProjectJobNos } from "@/lib/data/reference";
-import { getPaymentVoucherById } from "@/lib/data/payment-vouchers";
+import { getPaymentVoucherById, getPayeeSuggestions } from "@/lib/data/payment-vouchers";
 import { canAccessPage } from "@/lib/permissions";
 import { PaymentVoucherForm } from "../payment-voucher-form";
 
@@ -16,8 +16,9 @@ export default async function NewPaymentVoucherPage({
   if (!["owner", "manager", "account", "support_sale"].includes(profile.role)) redirect("/dashboard/expenses/payment-vouchers");
 
   const { copyFrom } = await searchParams;
-  const [jobNoSuggestions, sourceVoucher] = await Promise.all([
+  const [jobNoSuggestions, payeeSuggestions, sourceVoucher] = await Promise.all([
     getDistinctProjectJobNos(),
+    getPayeeSuggestions(),
     copyFrom ? getPaymentVoucherById(copyFrom) : Promise.resolve(null),
   ]);
 
@@ -47,7 +48,12 @@ export default async function NewPaymentVoucherPage({
         </p>
       </div>
 
-      <PaymentVoucherForm mode="create" jobNoSuggestions={jobNoSuggestions} initialData={initialData} />
+      <PaymentVoucherForm
+        mode="create"
+        jobNoSuggestions={jobNoSuggestions}
+        payeeSuggestions={payeeSuggestions}
+        initialData={initialData}
+      />
     </div>
   );
 }

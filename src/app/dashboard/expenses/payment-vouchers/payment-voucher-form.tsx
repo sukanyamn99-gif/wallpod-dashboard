@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useState } from "react";
+import { startTransition, useActionState, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import { formatTHB } from "@/lib/format";
 import { VOUCHER_COST_BUCKETS, costBucketOptionLabel } from "@/lib/job-cost-buckets";
 import { createPaymentVoucher, updatePaymentVoucher } from "./actions";
 import type { PaymentVoucher, WhtFormType, WhtIncomeType } from "@/lib/types";
+import type { PayeeSuggestion } from "@/lib/data/payment-vouchers";
 
 const initialState: { error: string | null; docNo?: string; id?: string } = { error: null };
 
@@ -68,13 +69,39 @@ export function PaymentVoucherForm({
   voucherId,
   initialData,
   jobNoSuggestions = [],
+  payeeSuggestions = [],
 }: {
   mode: "create" | "edit";
   voucherId?: string;
   initialData?: PaymentVoucher;
   jobNoSuggestions?: string[];
+  payeeSuggestions?: PayeeSuggestion[];
 }) {
   const router = useRouter();
+  // Typing a payee seen on an earlier voucher fills in their bank, account
+  // number, tax id and address. A field is only filled while it is empty or
+  // still holds what was filled in last time, so anything typed by hand stays.
+  const [bankName, setBankName] = useState(initialData?.bankName ?? "");
+  const [bankAccountNo, setBankAccountNo] = useState(initialData?.bankAccountNo ?? "");
+  const [payeeTaxId, setPayeeTaxId] = useState(initialData?.payeeTaxId ?? "");
+  const [payeeAddress, setPayeeAddress] = useState(initialData?.payeeAddress ?? "");
+  const autoFilled = useRef<Record<string, string>>({});
+  const payeeByName = useMemo(() => new Map(payeeSuggestions.map((p) => [p.name, p])), [payeeSuggestions]);
+
+  function handlePayeeNameChange(value: string) {
+    const match = payeeByName.get(value.trim());
+    if (!match) return;
+    const fill = (key: string, current: string, next: string | null, set: (v: string) => void) => {
+      if (!next) return;
+      if (current && current !== autoFilled.current[key]) return;
+      set(next);
+      autoFilled.current[key] = next;
+    };
+    fill("bankName", bankName, match.bankName, setBankName);
+    fill("bankAccountNo", bankAccountNo, match.bankAccountNo, setBankAccountNo);
+    fill("payeeTaxId", payeeTaxId, match.taxId, setPayeeTaxId);
+    fill("payeeAddress", payeeAddress, match.address, setPayeeAddress);
+  }
   const [whtFormType, setWhtFormType] = useState<string>(initialData?.whtFormType ?? "");
   const [incomeType, setIncomeType] = useState<string>(initialData?.incomeType ?? "5");
   // Controlled (not defaultValue) because the per-JOB split below is
@@ -208,7 +235,21 @@ export function PaymentVoucherForm({
 
       <div className="space-y-2">
         <Label htmlFor="payee_name">จ่ายให้ (Payment to)</Label>
-        <Input id="payee_name" name="payee_name" defaultValue={initialData?.payeeName} required />
+        <Input
+          id="payee_name"
+          name="payee_name"
+          defaultValue={initialData?.payeeName}
+          list="payee-suggestions"
+          autoComplete="off"
+          onChange={(e) => handlePayeeNameChange(e.target.value)}
+          required
+        />
+        <datalist id="payee-suggestions">
+          {payeeSuggestions.map((p) => (
+            <option key={p.name} value={p.name} />
+          ))}
+        </datalist>
+        <p className="text-xs text-muted-foreground">เลือกชื่อที่เคยจ่ายแล้ว ระบบจะใส่ธนาคารและเลขที่บัญชีให้อัตโนมัติ</p>
       </div>
 
       <div className="space-y-2">
@@ -408,7 +449,7 @@ export function PaymentVoucherForm({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="payee_tax_id">เลขประจำตัวผู้เสียภาษีของผู้รับเงิน</Label>
-              <Input id="payee_tax_id" name="payee_tax_id" defaultValue={initialData?.payeeTaxId ?? undefined} />
+              <Input id="payee_tax_id" name="payee_tax_id" value={payeeTaxId} onChange={(e) => setPayeeTaxId(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="income_type">ประเภทเงินได้ (สำหรับใบหัก ณ ที่จ่าย)</Label>
@@ -429,7 +470,12 @@ export function PaymentVoucherForm({
           </div>
           <div className="space-y-2">
             <Label htmlFor="payee_address">ที่อยู่ผู้รับเงิน (สำหรับใบหัก ณ ที่จ่าย)</Label>
-            <Textarea id="payee_address" name="payee_address" defaultValue={initialData?.payeeAddress ?? undefined} />
+            <Textarea
+              id="payee_address"
+              name="payee_address"
+              value={payeeAddress}
+              onChange={(e) => setPayeeAddress(e.target.value)}
+            />
           </div>
         </div>
       </div>
@@ -439,11 +485,16 @@ export function PaymentVoucherForm({
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="bank_name">ธนาคาร/สาขา</Label>
-            <Input id="bank_name" name="bank_name" defaultValue={initialData?.bankName ?? undefined} />
+            <Input id="bank_name" name="bank_name" value={bankName} onChange={(e) => setBankName(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="bank_account_no">เลขที่บัญชี</Label>
-            <Input id="bank_account_no" name="bank_account_no" defaultValue={initialData?.bankAccountNo ?? undefined} />
+            <Input
+              id="bank_account_no"
+              name="bank_account_no"
+              value={bankAccountNo}
+              onChange={(e) => setBankAccountNo(e.target.value)}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="bank_transfer_date">วันที่โอน</Label>
