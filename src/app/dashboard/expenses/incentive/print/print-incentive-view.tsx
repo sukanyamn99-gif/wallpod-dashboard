@@ -37,7 +37,7 @@ function pct(value: number | null): string {
 
 const th = "border-r border-b border-black p-1 font-medium break-words bg-[#c8d7d6]";
 const td = "border-r border-b border-black p-1 whitespace-nowrap";
-const tdWrap = "border-r border-b border-black p-1 break-words";
+const tdWrap = "border-r border-b border-black p-1 break-words [overflow-wrap:anywhere]";
 // The letterhead row above the column headers deliberately has no border of
 // its own (see print-incentive-view git history) — these add the grid's
 // top/left frame back starting at the actual header row instead, so the
@@ -86,14 +86,14 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
               <col className="w-[6%]" />
               <col className="w-[5%]" />
               <col className="w-[7%]" />
-              <col className="w-[7%]" />
-              <col className="w-[7%]" />
+              <col className="w-[6%]" />
+              <col className="w-[6%]" />
               <col className="w-[4%]" />
-              <col className="w-[5%]" />
+              <col className="w-[4%]" />
+              <col className="w-[7%]" />
+              <col className="w-[6%]" />
+              <col className="w-[4%]" />
               <col className="w-[8%]" />
-              <col className="w-[5%]" />
-              <col className="w-[4%]" />
-              <col className="w-[5%]" />
               <col className="w-[7%]" />
               <col className="w-[6%]" />
               <col className="w-[5%]" />
@@ -165,7 +165,7 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
                             <td className={td}>{num(it.amountWithVat)}</td>
                             <td className={tdWrap}>{it.invoiceNo ?? "-"}</td>
                             <td className={td}>{shortDate(it.receivedDate)}</td>
-                            <td className={td}>{it.receiptNo ?? "-"}</td>
+                            <td className={tdWrap}>{it.receiptNo ?? "-"}</td>
                           </>
                         ) : (
                           <td className={td} colSpan={5}>-</td>
