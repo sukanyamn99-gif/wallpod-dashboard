@@ -80,6 +80,18 @@ export function PaymentVoucherForm({
   // Controlled (not defaultValue) because the per-JOB split below is
   // checked against it as the user types.
   const [amount, setAmount] = useState(initialData?.amount ? String(initialData.amount) : "");
+  // WHT is worked out from the amount and rate (on the pre-VAT amount when the
+  // amount includes VAT) and stays editable: once the amount is typed by hand
+  // it is left alone until the rate, the amount or the VAT tick changes again.
+  const [vatIncluded, setVatIncluded] = useState(initialData?.vatIncluded ?? false);
+  const [whtRate, setWhtRate] = useState(initialData?.whtRate ? String(initialData.whtRate) : "");
+  const [whtAmount, setWhtAmount] = useState(initialData?.whtAmount ? String(initialData.whtAmount) : "");
+
+  function recalcWht(nextAmount: string, nextRate: string, nextVatIncluded: boolean) {
+    const rate = Number(nextRate) || 0;
+    const base = (Number(nextAmount) || 0) / (nextVatIncluded ? 1.07 : 1);
+    setWhtAmount(rate > 0 && base > 0 ? String(Math.round((base * rate) / 100 * 100 + 1e-9) / 100) : "");
+  }
   const [allocations, setAllocations] = useState<AllocationDraft[]>(() => {
     if (initialData?.jobAllocations && initialData.jobAllocations.length > 0) {
       return initialData.jobAllocations.map((a) => ({ key: nextKey++, jobNo: a.jobNo, amount: String(a.amount) }));
@@ -201,7 +213,18 @@ export function PaymentVoucherForm({
 
       <div className="space-y-2">
         <Label htmlFor="amount">จำนวนเงิน</Label>
-        <NumberInput id="amount" name="amount" min={0} step={0.01} value={amount} onChange={setAmount} required />
+        <NumberInput
+          id="amount"
+          name="amount"
+          min={0}
+          step={0.01}
+          value={amount}
+          onChange={(v) => {
+            setAmount(v);
+            recalcWht(v, whtRate, vatIncluded);
+          }}
+          required
+        />
       </div>
 
       <div className="space-y-2">
@@ -301,7 +324,16 @@ export function PaymentVoucherForm({
           <span className="text-xs text-muted-foreground">— ช่องต้นทุนที่ยอดนี้ไปลงใน Project Sales</span>
         </div>
         <label className="flex cursor-pointer items-center gap-2 text-sm">
-          <input type="checkbox" name="vat_included" defaultChecked={initialData?.vatIncluded ?? false} className="h-4 w-4" />
+          <input
+            type="checkbox"
+            name="vat_included"
+            checked={vatIncluded}
+            onChange={(e) => {
+              setVatIncluded(e.target.checked);
+              recalcWht(amount, whtRate, e.target.checked);
+            }}
+            className="h-4 w-4"
+          />
           <span>
             ยอดนี้รวม VAT 7%
             <span className="text-xs text-muted-foreground"> — ต้นทุนของ Job จะนับเป็นยอดก่อน VAT (ยอด ÷ 1.07)</span>
@@ -329,17 +361,24 @@ export function PaymentVoucherForm({
         <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="wht_rate">อัตรา (%)</Label>
-            <NumberInput id="wht_rate" name="wht_rate" min={0} step={0.01} defaultValue={initialData?.whtRate ?? undefined} />
+            <NumberInput
+              id="wht_rate"
+              name="wht_rate"
+              min={0}
+              step={0.01}
+              value={whtRate}
+              onChange={(v) => {
+                setWhtRate(v);
+                recalcWht(amount, v, vatIncluded);
+              }}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="wht_amount">จำนวนภาษีหัก</Label>
-            <NumberInput
-              id="wht_amount"
-              name="wht_amount"
-              min={0}
-              step={0.01}
-              defaultValue={initialData?.whtAmount ?? undefined}
-            />
+            <NumberInput id="wht_amount" name="wht_amount" min={0} step={0.01} value={whtAmount} onChange={setWhtAmount} />
+            <p className="text-xs text-muted-foreground">
+              คำนวณให้อัตโนมัติจากอัตรา × จำนวนเงิน{vatIncluded ? " (ก่อน VAT)" : ""} — พิมพ์แก้เองได้
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="wht_form_type">ประเภทแบบ</Label>
