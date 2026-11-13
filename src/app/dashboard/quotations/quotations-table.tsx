@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { MonthTabs, filterByMonth, useDocMonth } from "@/components/dashboard/month-tabs";
 import Link from "next/link";
 import { Check, Eye, Pencil, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -63,10 +64,12 @@ function DeleteButton({ quotation }: { quotation: Quotation }) {
 
 export function QuotationsTable({ quotations }: { quotations: Quotation[] }) {
   const [query, setQuery] = useState("");
+  const [month, setMonth] = useDocMonth();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return quotations;
+    // Typing a search looks through every month; otherwise the chosen month applies.
+    if (!q) return filterByMonth(quotations, (row) => row.quoteDate, month);
     return quotations.filter(
       (r) =>
         r.docNo.toLowerCase().includes(q) ||
@@ -74,10 +77,11 @@ export function QuotationsTable({ quotations }: { quotations: Quotation[] }) {
         r.projectName.toLowerCase().includes(q) ||
         (r.salesRepName ?? "").toLowerCase().includes(q),
     );
-  }, [quotations, query]);
+  }, [quotations, query, month]);
 
   return (
     <div className="space-y-4">
+      <MonthTabs dates={quotations.map((row) => row.quoteDate)} value={month} onChange={setMonth} />
       <Input
         value={query}
         onChange={(e) => setQuery(e.target.value)}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { MonthTabs, filterByMonth, useDocMonth } from "@/components/dashboard/month-tabs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BookOpenCheck, Check, Eye, Pencil, Plus, Trash2, X } from "lucide-react";
@@ -74,21 +75,24 @@ export function BillingDocumentTable({
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [month, setMonth] = useDocMonth();
   const routeSegment = docType.replace("_", "-");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return documents;
+    // Typing a search looks through every month; otherwise the chosen month applies.
+    if (!q) return filterByMonth(documents, (row) => row.docDate, month);
     return documents.filter(
       (d) =>
         d.docNo.toLowerCase().includes(q) ||
         d.customerName.toLowerCase().includes(q) ||
         d.jobNos.some((j) => j.toLowerCase().includes(q)),
     );
-  }, [documents, query]);
+  }, [documents, query, month]);
 
   return (
     <div className="space-y-4">
+      <MonthTabs dates={documents.map((row) => row.docDate)} value={month} onChange={setMonth} />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Input
           value={query}

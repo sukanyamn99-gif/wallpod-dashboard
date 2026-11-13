@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { MonthTabs, filterByMonth, useDocMonth } from "@/components/dashboard/month-tabs";
 import Link from "next/link";
 import { Ban, Check, Eye, Pencil, RotateCcw, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -89,11 +90,13 @@ export function ProductionOrdersTable({
   existingProjectJobNos: string[];
 }) {
   const [query, setQuery] = useState("");
+  const [month, setMonth] = useDocMonth();
   const projectJobNoSet = useMemo(() => new Set(existingProjectJobNos), [existingProjectJobNos]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return orders;
+    // Typing a search looks through every month; otherwise the chosen month applies.
+    if (!q) return filterByMonth(orders, (row) => row.quoteDate, month);
     return orders.filter(
       (o) =>
         (o.jobNumber ?? "").toLowerCase().includes(q) ||
@@ -102,10 +105,11 @@ export function ProductionOrdersTable({
         o.projectName.toLowerCase().includes(q) ||
         (o.salesRepName ?? "").toLowerCase().includes(q),
     );
-  }, [orders, query]);
+  }, [orders, query, month]);
 
   return (
     <div className="space-y-4">
+      <MonthTabs dates={orders.map((row) => row.quoteDate)} value={month} onChange={setMonth} />
       <Input
         value={query}
         onChange={(e) => setQuery(e.target.value)}

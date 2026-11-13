@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { MonthTabs, filterByMonth, useDocMonth } from "@/components/dashboard/month-tabs";
 import Link from "next/link";
 import { Check, Eye, Pencil, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -146,11 +147,13 @@ export function GoodsReceiptsTable({
   showAmount: boolean;
 }) {
   const [query, setQuery] = useState("");
+  const [month, setMonth] = useDocMonth();
   const totalColumns = showAmount ? 8 : 7;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return receipts;
+    // Typing a search looks through every month; otherwise the chosen month applies.
+    if (!q) return filterByMonth(receipts, (row) => row.createdAt, month);
     return receipts.filter(
       (r) =>
         r.docNo.toLowerCase().includes(q) ||
@@ -158,10 +161,11 @@ export function GoodsReceiptsTable({
         r.receivedByName.toLowerCase().includes(q) ||
         (r.referenceNo ?? "").toLowerCase().includes(q),
     );
-  }, [receipts, query]);
+  }, [receipts, query, month]);
 
   return (
     <div className="space-y-4">
+      <MonthTabs dates={receipts.map((row) => row.createdAt)} value={month} onChange={setMonth} />
       <Input
         value={query}
         onChange={(e) => setQuery(e.target.value)}

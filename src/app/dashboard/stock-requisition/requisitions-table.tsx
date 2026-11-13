@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { MonthTabs, filterByMonth, useDocMonth } from "@/components/dashboard/month-tabs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Eye, Pencil, Trash2, X } from "lucide-react";
@@ -81,10 +82,12 @@ export function RequisitionsTable({
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [month, setMonth] = useDocMonth();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return requisitions;
+    // Typing a search looks through every month; otherwise the chosen month applies.
+    if (!q) return filterByMonth(requisitions, (row) => row.createdAt, month);
     return requisitions.filter(
       (r) =>
         r.docNo.toLowerCase().includes(q) ||
@@ -93,10 +96,11 @@ export function RequisitionsTable({
         (r.projectName ?? "").toLowerCase().includes(q) ||
         (r.jobNo ?? "").toLowerCase().includes(q),
     );
-  }, [requisitions, query]);
+  }, [requisitions, query, month]);
 
   return (
     <div className="space-y-4">
+      <MonthTabs dates={requisitions.map((row) => row.createdAt)} value={month} onChange={setMonth} />
       <Input
         value={query}
         onChange={(e) => setQuery(e.target.value)}

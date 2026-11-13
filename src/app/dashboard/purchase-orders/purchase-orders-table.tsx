@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { MonthTabs, filterByMonth, useDocMonth } from "@/components/dashboard/month-tabs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Eye, Printer, Trash2, X } from "lucide-react";
@@ -80,21 +81,24 @@ export function PurchaseOrdersTable({
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [month, setMonth] = useDocMonth();
   const TOTAL_COLUMNS = showAmount ? 8 : 7;
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return orders;
+    // Typing a search looks through every month; otherwise the chosen month applies.
+    if (!q) return filterByMonth(orders, (row) => row.orderDate, month);
     return orders.filter(
       (o) =>
         o.docNo.toLowerCase().includes(q) ||
         o.requestDocNo.toLowerCase().includes(q) ||
         (o.supplierName ?? "").toLowerCase().includes(q),
     );
-  }, [orders, query]);
+  }, [orders, query, month]);
 
   return (
     <div className="space-y-4">
+      <MonthTabs dates={orders.map((row) => row.orderDate)} value={month} onChange={setMonth} />
       <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ค้นหาเลขที่เอกสาร, เลขที่ใบขอซื้อ, ผู้จำหน่าย..." className="max-w-sm" />
 
       <div className="overflow-x-auto rounded-md border">

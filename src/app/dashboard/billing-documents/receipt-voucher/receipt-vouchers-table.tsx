@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { MonthTabs, filterByMonth, useDocMonth } from "@/components/dashboard/month-tabs";
 import Link from "next/link";
 import { Check, Pencil, Printer, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -58,20 +59,23 @@ function DeleteButton({ voucher }: { voucher: ReceiptVoucher }) {
 
 export function ReceiptVouchersTable({ vouchers }: { vouchers: ReceiptVoucher[] }) {
   const [query, setQuery] = useState("");
+  const [month, setMonth] = useDocMonth();
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return vouchers;
+    // Typing a search looks through every month; otherwise the chosen month applies.
+    if (!q) return filterByMonth(vouchers, (row) => row.docDate, month);
     return vouchers.filter(
       (v) =>
         v.docNo.toLowerCase().includes(q) ||
         v.contactName.toLowerCase().includes(q) ||
         (v.receiptNo ?? "").toLowerCase().includes(q),
     );
-  }, [vouchers, query]);
+  }, [vouchers, query, month]);
 
   return (
     <div className="space-y-4">
+      <MonthTabs dates={vouchers.map((row) => row.docDate)} value={month} onChange={setMonth} />
       <Input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
