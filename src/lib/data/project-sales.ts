@@ -362,11 +362,15 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
       paidDate3: payment3?.paid_date ?? null,
       receiptNo3: payment3?.receipt_no ?? null,
       receivedDate3: payment3?.received_date ?? null,
-      status: payment1?.status ?? payment2?.status ?? payment3?.status ?? null,
+      // A job with no installment yet (no invoice opened) has no payment row
+      // to carry a status, so fall back to the one saved on the job itself; a
+      // job marked "รอชำระเงิน" that way still owes its whole total.
+      status: payment1?.status ?? payment2?.status ?? payment3?.status ?? (p.payment_status as string | null) ?? null,
       outstanding:
         payment1 ? Number(payment1.outstanding_amount)
         : payment2 ? Number(payment2.outstanding_amount)
         : payment3 ? Number(payment3.outstanding_amount)
+        : p.payment_status === "รอชำระเงิน" ? Number(p.total)
         : null,
       savedPaymentStatus: (p.payment_status as string | null) ?? null,
     };
