@@ -65,6 +65,7 @@ function DeleteButton({ quotation }: { quotation: Quotation }) {
 export function QuotationsTable({ quotations }: { quotations: Quotation[] }) {
   const [query, setQuery] = useState("");
   const [month, setMonth] = useDocMonth();
+  const monthRows = useMemo(() => filterByMonth(quotations, (row) => row.quoteDate, month), [quotations, month]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -81,7 +82,23 @@ export function QuotationsTable({ quotations }: { quotations: Quotation[] }) {
 
   return (
     <div className="space-y-4">
-      <MonthTabs dates={quotations.map((row) => row.quoteDate)} value={month} onChange={setMonth} />
+      <MonthTabs
+        dates={quotations.map((row) => row.quoteDate)}
+        value={month}
+        onChange={setMonth}
+        total={monthRows.reduce((sum, row) => sum + row.preVat, 0)}
+        count={monthRows.length}
+        breakdown={(
+          [
+            { status: "ลูกค้าตอบตกลง", label: "ได้งาน", tone: "good" },
+            { status: "ปฏิเสธ", label: "ไม่ได้งาน", tone: "bad" },
+            { status: "รอตอบรับ", label: "รอตอบรับ", tone: "pending" },
+          ] as const
+        ).map(({ status, label, tone }) => {
+          const rows = monthRows.filter((row) => row.status === status);
+          return { label, tone, count: rows.length, amount: rows.reduce((sum, row) => sum + row.preVat, 0) };
+        })}
+      />
       <Input
         value={query}
         onChange={(e) => setQuery(e.target.value)}

@@ -1244,6 +1244,9 @@ export interface BillingDocument {
   // computed server-side from its items so list views can show an amount
   // column without each one re-fetching/re-computing it themselves.
   amount: number;
+  // The document's own total before VAT (after discount; for a later
+  // installment, just that installment) — what the list's month total adds up.
+  preVat?: number;
   createdById: string | null;
   createdByName: string | null;
   createdAt: string;

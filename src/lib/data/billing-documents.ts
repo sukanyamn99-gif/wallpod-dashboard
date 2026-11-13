@@ -724,7 +724,13 @@ export async function getBillingDocuments(docType: BillingDocumentType): Promise
       if (textJob) jobNoSet.add(textJob);
     }
     const jobNos = [...jobNoSet];
-    return { ...mapHeader(row), jobNo: jobNos[0] ?? null, jobNos, amount: summary.netPayable };
+    return {
+      ...mapHeader(row),
+      jobNo: jobNos[0] ?? null,
+      jobNos,
+      amount: summary.netPayable,
+      preVat: summary.installmentPreVat ?? summary.afterDiscount,
+    };
   });
 }
 

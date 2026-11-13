@@ -76,6 +76,7 @@ export function BillingDocumentTable({
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [month, setMonth] = useDocMonth();
+  const monthRows = useMemo(() => filterByMonth(documents, (row) => row.docDate, month), [documents, month]);
   const routeSegment = docType.replace("_", "-");
 
   const filtered = useMemo(() => {
@@ -92,7 +93,13 @@ export function BillingDocumentTable({
 
   return (
     <div className="space-y-4">
-      <MonthTabs dates={documents.map((row) => row.docDate)} value={month} onChange={setMonth} />
+      <MonthTabs
+        dates={documents.map((row) => row.docDate)}
+        value={month}
+        onChange={setMonth}
+        total={monthRows.reduce((sum, row) => sum + (row.preVat ?? 0), 0)}
+        count={monthRows.length}
+      />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <Input
           value={query}

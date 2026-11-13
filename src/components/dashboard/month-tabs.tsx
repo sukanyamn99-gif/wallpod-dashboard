@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
+import { formatTHB } from "@/lib/format";
 
 // One month picker shared by every document list. The chosen month is kept in
 // localStorage under a single key, so going into a document and coming back —
@@ -82,10 +83,19 @@ export function MonthTabs({
   dates,
   value,
   onChange,
+  total,
+  count,
+  breakdown,
 }: {
   dates: (string | null | undefined)[];
   value: string;
   onChange: (value: string) => void;
+  // The month's total split by outcome (e.g. quotations won / lost / pending).
+  breakdown?: { label: string; amount: number; count: number; tone: "good" | "bad" | "pending" }[];
+  // The pre-VAT total (and number of documents) of the selected month, shown
+  // at the right of the tabs. Left out on lists that carry no amounts.
+  total?: number;
+  count?: number;
 }) {
   const months = useMemo(() => {
     const keys = new Set<string>([currentMonthKey()]);
@@ -98,15 +108,43 @@ export function MonthTabs({
   }, [dates, value]);
 
   return (
-    <div className="flex gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label="เลือกเดือน">
-      <MonthTab active={value === ALL_MONTHS} onClick={() => onChange(ALL_MONTHS)}>
-        ทั้งหมด
-      </MonthTab>
-      {months.map((key) => (
-        <MonthTab key={key} active={value === key} onClick={() => onChange(key)}>
-          {monthLabel(key)}
+    <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+      <div className="flex min-w-0 gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label="เลือกเดือน">
+        <MonthTab active={value === ALL_MONTHS} onClick={() => onChange(ALL_MONTHS)}>
+          ทั้งหมด
         </MonthTab>
-      ))}
+        {months.map((key) => (
+          <MonthTab key={key} active={value === key} onClick={() => onChange(key)}>
+            {monthLabel(key)}
+          </MonthTab>
+        ))}
+      </div>
+      {total !== undefined && (
+        <div className="ml-auto text-right">
+          <p className="text-xs text-muted-foreground">
+            ยอดรวมก่อน VAT · {value === ALL_MONTHS ? "ทั้งหมด" : monthLabel(value)}
+            {count !== undefined && ` · ${count} รายการ`}
+          </p>
+          <p className="text-2xl leading-tight font-semibold tabular-nums">{formatTHB(total)}</p>
+          {breakdown && breakdown.length > 0 && (
+            <div className="mt-1 flex flex-wrap justify-end gap-x-4 gap-y-0.5 text-sm tabular-nums">
+              {breakdown.map((b) => (
+                <span
+                  key={b.label}
+                  className={cn(
+                    "whitespace-nowrap",
+                    b.tone === "good" && "text-emerald-600 dark:text-emerald-400",
+                    b.tone === "bad" && "text-rose-600 dark:text-rose-400",
+                    b.tone === "pending" && "text-amber-600 dark:text-amber-400",
+                  )}
+                >
+                  {b.label} {formatTHB(b.amount)} ({b.count})
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

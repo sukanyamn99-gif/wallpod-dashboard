@@ -82,6 +82,7 @@ export function PurchaseOrdersTable({
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [month, setMonth] = useDocMonth();
+  const monthRows = useMemo(() => filterByMonth(orders, (row) => row.orderDate, month), [orders, month]);
   const TOTAL_COLUMNS = showAmount ? 8 : 7;
 
   const filtered = useMemo(() => {
@@ -98,7 +99,13 @@ export function PurchaseOrdersTable({
 
   return (
     <div className="space-y-4">
-      <MonthTabs dates={orders.map((row) => row.orderDate)} value={month} onChange={setMonth} />
+      <MonthTabs
+        dates={orders.map((row) => row.orderDate)}
+        value={month}
+        onChange={setMonth}
+        total={showAmount ? monthRows.reduce((sum, row) => sum + (row.totalAmount - row.discountAmount), 0) : undefined}
+        count={monthRows.length}
+      />
       <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ค้นหาเลขที่เอกสาร, เลขที่ใบขอซื้อ, ผู้จำหน่าย..." className="max-w-sm" />
 
       <div className="overflow-x-auto rounded-md border">
