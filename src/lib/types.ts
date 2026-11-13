@@ -1009,6 +1009,7 @@ export interface ProductionOrder {
   customerName: string;
   salesRepName: string | null;
   jobNumber: string | null;
+  preVat: number;
   total: number;
   items: ProductionOrderItem[];
   isCancelled: boolean;

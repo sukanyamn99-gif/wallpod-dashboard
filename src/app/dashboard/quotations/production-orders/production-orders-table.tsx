@@ -91,6 +91,7 @@ export function ProductionOrdersTable({
 }) {
   const [query, setQuery] = useState("");
   const [month, setMonth] = useDocMonth();
+  const monthRows = useMemo(() => filterByMonth(orders, (row) => row.quoteDate, month), [orders, month]);
   const projectJobNoSet = useMemo(() => new Set(existingProjectJobNos), [existingProjectJobNos]);
 
   const filtered = useMemo(() => {
@@ -109,7 +110,27 @@ export function ProductionOrdersTable({
 
   return (
     <div className="space-y-4">
-      <MonthTabs dates={orders.map((row) => row.quoteDate)} value={month} onChange={setMonth} />
+      <MonthTabs
+        dates={orders.map((row) => row.quoteDate)}
+        value={month}
+        onChange={setMonth}
+        total={monthRows.reduce((sum, row) => sum + row.preVat, 0)}
+        count={monthRows.length}
+        breakdown={[
+          {
+            label: "ลงผลิต",
+            tone: "good",
+            count: monthRows.filter((row) => !row.isCancelled).length,
+            amount: monthRows.filter((row) => !row.isCancelled).reduce((sum, row) => sum + row.preVat, 0),
+          },
+          {
+            label: "ยกเลิก",
+            tone: "bad",
+            count: monthRows.filter((row) => row.isCancelled).length,
+            amount: monthRows.filter((row) => row.isCancelled).reduce((sum, row) => sum + row.preVat, 0),
+          },
+        ]}
+      />
       <Input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
