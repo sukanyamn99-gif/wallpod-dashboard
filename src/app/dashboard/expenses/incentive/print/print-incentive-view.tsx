@@ -76,11 +76,11 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
       </div>
 
       <div className="mx-auto max-w-[1400px] bg-white p-6 text-black print:p-0">
-        <div className="text-[9px] leading-tight">
+        <div className="text-[10.5px] leading-tight">
           <table className="mt-3 w-full table-fixed border-collapse border-black text-center">
             <colgroup>
-              <col className="w-[2%]" />
-              <col className="w-[4%]" />
+              <col className="w-[3%]" />
+              <col className="w-[5%]" />
               <col className="w-[5%]" />
               <col className="w-[8%]" />
               <col className="w-[6%]" />
@@ -88,12 +88,11 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
               <col className="w-[7%]" />
               <col className="w-[6%]" />
               <col className="w-[6%]" />
-              <col className="w-[4%]" />
-              <col className="w-[4%]" />
-              <col className="w-[7%]" />
+              <col className="w-[5%]" />
+              <col className="w-[5%]" />
               <col className="w-[6%]" />
-              <col className="w-[4%]" />
-              <col className="w-[8%]" />
+              <col className="w-[5%]" />
+              <col className="w-[10%]" />
               <col className="w-[7%]" />
               <col className="w-[6%]" />
               <col className="w-[5%]" />
@@ -104,7 +103,7 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
                   letterhead on page 2+ instead of just page 1, which
                   sitting outside the table never would. */}
               <tr>
-                <th colSpan={18} className="border-0 p-0 pb-2 text-left align-bottom">
+                <th colSpan={17} className="border-0 p-0 pb-2 text-left align-bottom">
                   <Image src="/koonwaylogo.png" alt="KOONWAY" width={152} height={24} className="h-6 w-auto" priority />
                   <p className="mt-2 font-medium">บริษัท คูนเว จำกัด</p>
                   <p className="font-medium">ค่า Incentive ทีม support (5% จากกำไรขั้นต้น)</p>
@@ -122,7 +121,7 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
                 <th className={thTop} rowSpan={2}>รวมต้นทุน</th>
                 <th className={thTop} rowSpan={2}>กำไร</th>
                 <th className={thTop} rowSpan={2}>กำไร%</th>
-                <th className={thTop} colSpan={5}>รายการ</th>
+                <th className={thTop} colSpan={4}>รายการ</th>
                 <th className={thTop} rowSpan={2}>กำไรขั้นต้น
                   <br />Koonway 70%</th>
                 <th className={thTop} rowSpan={2}>ค่าคอมบริษัท
@@ -133,7 +132,6 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
               <tr>
                 <th className={th}>งวดที่</th>
                 <th className={th}>จำนวนเงิน +VAT</th>
-                <th className={th}>เลขที่ใบกำกับ IV</th>
                 <th className={th}>วันที่ชำระ</th>
                 <th className={th}>เลขที่ใบรับเงิน</th>
               </tr>
@@ -163,12 +161,11 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
                           <>
                             <td className={td}>{it.label}</td>
                             <td className={td}>{num(it.amountWithVat)}</td>
-                            <td className={tdWrap}>{it.invoiceNo ?? "-"}</td>
                             <td className={td}>{shortDate(it.receivedDate)}</td>
                             <td className={tdWrap}>{it.receiptNo ?? "-"}</td>
                           </>
                         ) : (
-                          <td className={td} colSpan={5}>-</td>
+                          <td className={td} colSpan={4}>-</td>
                         )}
                         {j === 0 && (
                           <>
@@ -190,7 +187,7 @@ export function PrintIncentiveView({ report, names }: { report: IncentiveReport;
                 <td className={td + " font-medium"}>{pct(totals.profitPercent)}</td>
                 <td className={td}></td>
                 <td className={td + " font-medium"}>{num(totals.amountWithVat)}</td>
-                <td className={td} colSpan={3}></td>
+                <td className={td} colSpan={2}></td>
                 <td className={td + " font-medium"}>{num(totals.koonwayShare)}</td>
                 <td className={td + " font-medium"}>{num(totals.companyCommission)}</td>
                 <td className={td + " font-medium"}>{num(totals.incentiveAmount)}</td>
