@@ -347,6 +347,7 @@ export async function createProjectSale(formData: FormData) {
       sales_rep_id: parsed.salesRepId,
       customer_type: parsed.customerType,
       production_status: parsed.productionStatus,
+      payment_status: parsed.status,
       stage_percent: 100,
       pre_vat: parsed.preVat,
       vat: parsed.vat,
@@ -399,6 +400,7 @@ export async function updateProjectSale(projectId: string, formData: FormData) {
       sales_rep_id: parsed.salesRepId,
       customer_type: parsed.customerType,
       production_status: parsed.productionStatus,
+      payment_status: parsed.status,
       pre_vat: parsed.preVat,
       vat: parsed.vat,
     })

@@ -43,8 +43,17 @@ function billingStartDate(r: FullProjectRow): string {
 }
 
 export async function getArDashboardData(): Promise<ArDashboardData> {
-  const { rows } = await getFullProjectReport();
+  const { rows: reportRows } = await getFullProjectReport();
   const now = new Date();
+
+  // A job marked "รอชำระเงิน" that has no installment yet (no invoice opened —
+  // e.g. a customer on 30-day credit) still owes its whole total, so count it
+  // in full instead of leaving it out for having no outstanding figure.
+  const rows: FullProjectRow[] = reportRows.map((r) =>
+    r.outstanding === null && r.savedPaymentStatus === "รอชำระเงิน"
+      ? { ...r, outstanding: r.total, status: "รอชำระเงิน" }
+      : r,
+  );
 
   // Threshold at ฿1 rather than 0: some imported jobs have a few satang of
   // "outstanding_amount" left over from splitting an odd total across two

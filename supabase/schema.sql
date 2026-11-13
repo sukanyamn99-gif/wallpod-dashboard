@@ -2044,3 +2044,18 @@ alter table commission_entries add column if not exists paid_date date;
 -- request form) but not edit or delete one — that stays owner/manager only.
 create policy suppliers_insert_support on suppliers for insert
   with check (my_role() = 'support_sale');
+
+-- The payment status picked on the Project Sales form, kept on the job itself.
+-- It used to live only on the job's installment rows, so a job with no
+-- installment yet (no invoice opened) lost the status the moment it was saved.
+alter table projects add column if not exists payment_status text
+  check (payment_status in ('เก็บเงินเรียบร้อย', 'ชำระมาแล้ว 50%', 'รอชำระเงิน'));
+
+-- Jobs that already have installments: copy the status they currently show.
+update projects p
+set payment_status = (
+  select pay.status from payments pay
+  where pay.project_id = p.id and pay.status is not null
+  order by pay.installment_no limit 1
+)
+where p.payment_status is null;

@@ -71,6 +71,9 @@ export interface FullProjectRow {
   receivedDate3: string | null;
   status: string | null;
   outstanding: number | null;
+  // The payment status saved on the job itself — the only record of it for a
+  // job with no installment yet (no invoice opened), where `status` is null.
+  savedPaymentStatus: string | null;
 }
 
 export interface FullProjectReport {
@@ -226,7 +229,7 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
     supabase
       .from("projects")
       .select(
-        "id, job_no, project_date, project_name, customer_type, pre_vat, vat, total, is_cancelled, production_status, customers(name), sales_reps(name), project_items(product_category, amount), project_costs(material_cost, glue_cost, cutting_cost, install_cost, parking_cost, shipping_cost, total_cost), payments(invoice_no, tax_invoice_no, installment_no, amount, paid_date, status, outstanding_amount, receipt_no, received_date, billing_note_no, billing_note_date)",
+        "id, job_no, project_date, project_name, customer_type, pre_vat, vat, total, is_cancelled, production_status, payment_status, customers(name), sales_reps(name), project_items(product_category, amount), project_costs(material_cost, glue_cost, cutting_cost, install_cost, parking_cost, shipping_cost, total_cost), payments(invoice_no, tax_invoice_no, installment_no, amount, paid_date, status, outstanding_amount, receipt_no, received_date, billing_note_no, billing_note_date)",
       )
       .order("project_date", { ascending: false })
       .order("installment_no", { foreignTable: "payments", ascending: true }),
@@ -365,6 +368,7 @@ export async function getFullProjectReport(): Promise<FullProjectReport> {
         : payment2 ? Number(payment2.outstanding_amount)
         : payment3 ? Number(payment3.outstanding_amount)
         : null,
+      savedPaymentStatus: (p.payment_status as string | null) ?? null,
     };
   });
 
@@ -458,7 +462,7 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
   const { data: project, error: projectErr } = await supabase
     .from("projects")
     .select(
-      "id, job_no, project_date, customer_id, project_name, sales_rep_id, customer_type, pre_vat, vat, is_cancelled, production_status, customers(name), project_items(product_category, amount), project_costs(material_cost, glue_cost, cutting_cost, install_cost, parking_cost, shipping_cost), payments(invoice_no, installment_no, amount, wht_amount, paid_date, status, receipt_no, received_date, billing_note_no, billing_note_date, tax_invoice_no, tax_invoice_date)",
+      "id, job_no, project_date, customer_id, project_name, sales_rep_id, customer_type, pre_vat, vat, is_cancelled, production_status, payment_status, customers(name), project_items(product_category, amount), project_costs(material_cost, glue_cost, cutting_cost, install_cost, parking_cost, shipping_cost), payments(invoice_no, installment_no, amount, wht_amount, paid_date, status, receipt_no, received_date, billing_note_no, billing_note_date, tax_invoice_no, tax_invoice_date)",
     )
     .eq("job_no", jobNo)
     .order("installment_no", { foreignTable: "payments", ascending: true })
@@ -518,7 +522,7 @@ export async function getProjectByJobNo(jobNo: string): Promise<ProjectDetail | 
         parking_cost: costs?.parking_cost != null ? String(costs.parking_cost) : "",
         shipping_cost: costs?.shipping_cost != null ? String(costs.shipping_cost) : "",
       },
-      status: payment1?.status ?? payment2?.status ?? payment3?.status ?? "",
+      status: payment1?.status ?? payment2?.status ?? payment3?.status ?? (project.payment_status as string | null) ?? "",
       billingNoteNo1: payment1?.billing_note_no ?? "",
       billingNoteDate1: payment1?.billing_note_date ?? "",
       invoiceNo1: payment1?.invoice_no ?? "",
