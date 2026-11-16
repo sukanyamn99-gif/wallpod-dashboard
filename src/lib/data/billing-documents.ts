@@ -320,6 +320,33 @@ export async function getBillableBillingNoteItemsForCustomer(
   if (claimedErr) throw claimedErr;
   const claimedItemIds = new Set((claimed ?? []).map((row) => row.source_item_id as string));
 
+  // A receipt for a typed line (e.g. a deposit) is often typed in by hand rather
+  // than copied from the tax invoice, so it carries no source_item_id back to
+  // it. For ใบเสร็จรับเงิน, a typed line that already appears on one of this
+  // customer's receipts (same text, same amount) counts as receipted too. Each
+  // receipt line cancels out one matching candidate, so two identical deposits
+  // are not both hidden by a single receipt.
+  const lineKey = (description: string, amount: number) =>
+    `${description.replace(/s+/g, " ").trim()}|${Number(amount).toFixed(2)}`;
+  const receiptedLineCounts = new Map<string, number>();
+  if (targetDocType === "receipt") {
+    let receiptsQuery = supabase
+      .from("billing_notes")
+      .select("id, billing_note_items(manual_description, amount)")
+      .eq("doc_type", "receipt")
+      .eq("customer_id", customerId);
+    if (excludeDocId) receiptsQuery = receiptsQuery.neq("id", excludeDocId);
+    const { data: receipts, error: receiptsErr } = await receiptsQuery;
+    if (receiptsErr) throw receiptsErr;
+    for (const receipt of receipts ?? []) {
+      for (const line of (receipt.billing_note_items ?? []) as unknown as { manual_description: string | null; amount: number }[]) {
+        if (!line.manual_description) continue;
+        const key = lineKey(line.manual_description, line.amount);
+        receiptedLineCounts.set(key, (receiptedLineCounts.get(key) ?? 0) + 1);
+      }
+    }
+  }
+
   const result: BillableBillingNoteItem[] = [];
   for (const note of notes ?? []) {
     const items = (note.billing_note_items ?? []) as unknown as {
@@ -335,6 +362,14 @@ export async function getBillableBillingNoteItemsForCustomer(
     }[];
     for (const it of items) {
       if (it.quotation_id || it.payment_id || claimedItemIds.has(it.id)) continue;
+      if (targetDocType === "receipt" && it.manual_description) {
+        const key = lineKey(it.manual_description, it.amount);
+        const remaining = receiptedLineCounts.get(key) ?? 0;
+        if (remaining > 0) {
+          receiptedLineCounts.set(key, remaining - 1);
+          continue;
+        }
+      }
       result.push({
         id: it.id,
         billingNoteDocNo: note.doc_no,
