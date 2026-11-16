@@ -59,6 +59,11 @@ export async function getUnbilledInvoicesForCustomer(customerId: string): Promis
 export async function getReceivedInvoicesForCustomer(
   customerId: string,
   excludeDocId?: string,
+  // The type of document being made. A deposit already deducted on another
+  // document of THIS type is not offered again — the same deposit is still
+  // offered on every other type, since one deposit is normally deducted all the
+  // way along the invoice → billing note → tax invoice → receipt chain.
+  forDocType?: BillingDocumentType,
 ): Promise<UnbilledInvoice[]> {
   if (!isSupabaseConfigured()) return [];
   const supabase = await createClient();
@@ -150,8 +155,24 @@ export async function getReceivedInvoicesForCustomer(
   // entries of the same real deposit rather than a distinct one — e.g. a
   // payments row re-numbered at some point, leaving its old "IV..." value
   // still on file. Only the current "INV..." reference is worth offering.
+  let alreadyDeducted = new Set<string>();
+  if (forDocType) {
+    let deductedQuery = supabase
+      .from("billing_notes")
+      .select("deposit_deduction_invoice_no")
+      .eq("customer_id", customerId)
+      .eq("doc_type", forDocType)
+      .not("deposit_deduction_invoice_no", "is", null);
+    if (excludeDocId) deductedQuery = deductedQuery.neq("id", excludeDocId);
+    const { data: deducted, error: deductedErr } = await deductedQuery;
+    if (deductedErr) throw deductedErr;
+    // The field is free text — "INV…001, INV…002" — so match each INV… number in it.
+    alreadyDeducted = new Set(
+      (deducted ?? []).flatMap((row) => String(row.deposit_deduction_invoice_no ?? "").match(/INVd+/g) ?? []),
+    );
+  }
   return combined
-    .filter((r) => r.invoiceNo.startsWith("INV"))
+    .filter((r) => r.invoiceNo.startsWith("INV") && !alreadyDeducted.has(r.invoiceNo))
     .sort((a, b) => (b.invoiceDate ?? "").localeCompare(a.invoiceDate ?? ""));
 }
 

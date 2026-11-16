@@ -53,9 +53,13 @@ export async function fetchUnbilledInvoices(customerId: string): Promise<Unbille
 // Powers the "เลือกใบแจ้งหนี้มัดจำ" picker — a customer's own already-received
 // installments, offered so the deposit-deduction amount/invoice number can be
 // auto-filled instead of retyped.
-export async function fetchReceivedInvoices(customerId: string, excludeDocId?: string): Promise<UnbilledInvoice[]> {
+export async function fetchReceivedInvoices(
+  customerId: string,
+  excludeDocId?: string,
+  forDocType?: BillingDocumentType,
+): Promise<UnbilledInvoice[]> {
   if (!customerId) return [];
-  return getReceivedInvoicesForCustomer(customerId, excludeDocId);
+  return getReceivedInvoicesForCustomer(customerId, excludeDocId, forDocType);
 }
 
 // Same idea, for the alternative "bill straight from an accepted quotation"

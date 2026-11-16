@@ -356,7 +356,7 @@ export function BillingDocumentForm({
     try {
       const [rows, receivedRows, billableQuotations, billableTaxInvoices, billableBillingNoteItems] = await Promise.all([
         fetchUnbilledInvoices(id),
-        fetchReceivedInvoices(id),
+        fetchReceivedInvoices(id, undefined, docType),
         // The "accepted quotations not yet a real job" picker is hidden in
         // create mode for ใบกำกับภาษี/ใบวางบิล/ใบเสร็จรับเงิน — per feedback,
         // billing that carries real tax/legal weight should always go
@@ -454,7 +454,7 @@ export function BillingDocumentForm({
       // so saving the form doesn't silently drop it.
       const [rows, receivedRows, billableQuotations, billableTaxInvoices, billableBillingNoteItems] = await Promise.all([
         fetchUnbilledInvoices(initialData.customerId),
-        fetchReceivedInvoices(initialData.customerId, docId),
+        fetchReceivedInvoices(initialData.customerId, docId, docType),
         fetchBillableQuotations(initialData.customerName),
         usesTaxInvoiceSource
           ? fetchBillableTaxInvoices(initialData.customerId, docType as "billing_note" | "receipt" | "tax_invoice", docId)
