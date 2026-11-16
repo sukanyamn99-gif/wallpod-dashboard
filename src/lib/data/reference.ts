@@ -45,14 +45,14 @@ export async function getCustomersWithQuotationStatus(): Promise<CustomerWithQuo
   const supabase = await createClient();
   const [{ data: customerRows, error: customerErr }, { data: quotationRows, error: quotationErr }] = await Promise.all([
     supabase.from("customers").select("id, name, customer_type, contact_person, address, phone, tax_id, customer_code"),
-    supabase.from("quotations").select("customer_name, status"),
+    supabase.from("quotations").select("customer_name, status, is_cancelled"),
   ]);
   if (customerErr) throw customerErr;
   if (quotationErr) throw quotationErr;
 
   const acceptedNames = new Set(
     (quotationRows ?? [])
-      .filter((q) => q.status === "ลูกค้าตอบตกลง")
+      .filter((q) => q.status === "ลูกค้าตอบตกลง" && !q.is_cancelled)
       .map((q) => q.customer_name.trim().toLowerCase()),
   );
 

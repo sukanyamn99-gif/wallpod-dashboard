@@ -399,6 +399,9 @@ export async function updateQuotationStatus(id: string, status: "รอตอบ
 
   const supabase = await createClient();
 
+  const { data: current } = await supabase.from("quotations").select("is_cancelled").eq("id", id).maybeSingle();
+  if (current?.is_cancelled) return { error: "ใบเสนอราคานี้ถูกยกเลิกแล้ว กรุณากู้คืนก่อนจึงจะเปลี่ยนสถานะได้" };
+
   const updates: { status: typeof status; job_number?: string; accepted_at?: string } = { status };
 
   // Accepting a quotation is the moment it becomes a real production job —
@@ -422,6 +425,57 @@ export async function updateQuotationStatus(id: string, status: "รอตอบ
 
   revalidatePath("/dashboard/quotations");
   revalidatePath(`/dashboard/quotations/view/${id}`);
+  revalidatePath("/dashboard/quotations/production-orders");
+  return { error: null };
+}
+
+// ยกเลิก keeps the quotation on the list (unlike delete) but takes it out of the
+// month totals, ใบลงผลิต and the billing pickers. Reversible with กู้คืน. A
+// quotation already turned into a Project Sales job, or already referenced by
+// an accounting document, cannot be cancelled — those still rely on it.
+export async function cancelQuotation(id: string, cancelled: boolean) {
+  if (!isSupabaseConfigured()) {
+    return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
+  }
+
+  const supabase = await createClient();
+  const { data: quotation, error: findErr } = await supabase
+    .from("quotations")
+    .select("doc_no, status, production_cancelled, converted_project_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (findErr) return { error: findErr.message };
+  if (!quotation) return { error: "ไม่พบใบเสนอราคานี้ในระบบ" };
+
+  if (cancelled) {
+    // An accepted quotation is already a ใบลงผลิต. It can only be cancelled once
+    // that production order has been cancelled first.
+    if (quotation.status === "ลูกค้าตอบตกลง" && !quotation.production_cancelled) {
+      return { error: "ใบเสนอราคานี้ลงผลิตแล้ว กรุณายกเลิกใบลงผลิตก่อน จึงจะยกเลิกใบเสนอราคาได้" };
+    }
+    if (quotation.converted_project_id) {
+      return { error: "ใบเสนอราคานี้แปลงเป็น Project Sales แล้ว ยกเลิกไม่ได้" };
+    }
+    const { count, error: usedErr } = await supabase
+      .from("billing_note_items")
+      .select("id", { count: "exact", head: true })
+      .eq("quotation_id", id);
+    if (usedErr) return { error: usedErr.message };
+    if ((count ?? 0) > 0) {
+      return { error: "มีเอกสาร (ใบแจ้งหนี้/ใบกำกับภาษี ฯลฯ) อ้างอิงใบเสนอราคานี้อยู่ ยกเลิกไม่ได้" };
+    }
+  }
+
+  const { data, error } = await supabase
+    .from("quotations")
+    .update({ is_cancelled: cancelled, cancelled_at: cancelled ? new Date().toISOString() : null })
+    .eq("id", id)
+    .select("id");
+  if (error) return { error: error.message };
+  if (!data || data.length === 0) return { error: "ไม่มีสิทธิ์ยกเลิกรายการนี้" };
+
+  await logActivity(cancelled ? "ยกเลิกใบเสนอราคา" : "กู้คืนใบเสนอราคา", quotation.doc_no);
+  revalidatePath("/dashboard/quotations");
   revalidatePath("/dashboard/quotations/production-orders");
   return { error: null };
 }

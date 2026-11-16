@@ -14,7 +14,7 @@ const IMAGE_BUCKET = "quotation-item-images";
 const HEADER_COLUMNS =
   "id, doc_no, quote_date, project_name, attn, customer_name, customer_address, customer_tel, customer_tax_id, " +
   "job_number, po_number, delivery_date, price_validity, remark, payment_terms, pre_vat, extra_discount_amount, vat, total, " +
-  "sales_rep_id, status, quotation_type, converted_project_id, created_at, sales_reps(name)";
+  "sales_rep_id, status, quotation_type, converted_project_id, is_cancelled, production_cancelled, created_at, sales_reps(name)";
 
 type HeaderRow = {
   id: string;
@@ -40,6 +40,8 @@ type HeaderRow = {
   status: Quotation["status"];
   quotation_type: Quotation["quotationType"];
   converted_project_id: string | null;
+  is_cancelled: boolean;
+  production_cancelled: boolean;
   created_at: string;
   sales_reps: { name: string } | null;
 };
@@ -70,6 +72,8 @@ function mapHeader(row: HeaderRow): Quotation {
     status: row.status,
     quotationType: row.quotation_type,
     convertedProjectId: row.converted_project_id,
+    isCancelled: row.is_cancelled ?? false,
+    productionCancelled: row.production_cancelled ?? false,
     createdAt: row.created_at,
   };
 }
@@ -161,6 +165,7 @@ export async function getAcceptedQuotationsForProduction(): Promise<ProductionOr
     .from("quotations")
     .select(PRODUCTION_ORDER_COLUMNS)
     .eq("status", "ลูกค้าตอบตกลง")
+    .eq("is_cancelled", false)
     // Highest JOB NO. first — job_number's fixed-width JB+YYMM+seq shape
     // (see src/lib/job-no.ts) sorts lexicographically the same as
     // numerically, so this reads as "newest job first" without depending on
@@ -438,6 +443,7 @@ export async function getAcceptedUnconvertedQuotationsForCustomer(customerName: 
     .from("quotations")
     .select("id, doc_no, quote_date, project_name, total, customer_name, job_number, payment_terms")
     .eq("status", "ลูกค้าตอบตกลง")
+    .eq("is_cancelled", false)
     .is("converted_project_id", null)
     .order("quote_date", { ascending: false });
   if (error) throw error;

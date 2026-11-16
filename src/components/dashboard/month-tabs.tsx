@@ -91,7 +91,7 @@ export function MonthTabs({
   value: string;
   onChange: (value: string) => void;
   // The month's total split by outcome (e.g. quotations won / lost / pending).
-  breakdown?: { label: string; amount: number; count: number; tone: "good" | "bad" | "pending" }[];
+  breakdown?: { label: string; amount: number; count: number; tone: "good" | "bad" | "pending" | "muted" }[];
   // The pre-VAT total (and number of documents) of the selected month, shown
   // at the right of the tabs. Left out on lists that carry no amounts.
   total?: number;
@@ -136,6 +136,7 @@ export function MonthTabs({
                     b.tone === "good" && "text-emerald-600 dark:text-emerald-400",
                     b.tone === "bad" && "text-rose-600 dark:text-rose-400",
                     b.tone === "pending" && "text-amber-600 dark:text-amber-400",
+                    b.tone === "muted" && "text-muted-foreground",
                   )}
                 >
                   {b.label} {formatTHB(b.amount)} ({b.count})

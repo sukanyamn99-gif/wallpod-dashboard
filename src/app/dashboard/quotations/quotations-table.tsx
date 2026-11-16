@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { MonthTabs, filterByMonth, useDocMonth } from "@/components/dashboard/month-tabs";
 import Link from "next/link";
-import { Check, Eye, Pencil, Trash2, X } from "lucide-react";
+import { Ban, Check, Eye, Pencil, Trash2, Undo2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table";
 import type { Quotation } from "@/lib/types";
 import { formatTHB } from "@/lib/format";
-import { deleteQuotation } from "./actions";
+import { cancelQuotation, deleteQuotation } from "./actions";
 
 function statusVariant(status: Quotation["status"]): "secondary" | "destructive" | "outline" {
   if (status === "ลูกค้าตอบตกลง") return "secondary";
@@ -62,10 +62,79 @@ function DeleteButton({ quotation }: { quotation: Quotation }) {
   );
 }
 
+// ยกเลิก / กู้คืน: the quotation stays on the list but stops counting.
+function CancelButton({ quotation }: { quotation: Quotation }) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const restoring = quotation.isCancelled;
+  // Already in production (accepted, and its ใบลงผลิต not cancelled): not cancellable.
+  const inProduction = !restoring && quotation.status === "ลูกค้าตอบตกลง" && !quotation.productionCancelled;
+
+  function handleConfirm() {
+    setError(null);
+    startTransition(async () => {
+      const result = await cancelQuotation(quotation.id, !restoring);
+      if (result.error) setError(result.error);
+      setConfirming(false);
+    });
+  }
+
+  if (confirming) {
+    return (
+      <div className="flex flex-col gap-1">
+        <div className="flex gap-1">
+          <Button
+            size="icon-sm"
+            variant="destructive"
+            onClick={handleConfirm}
+            disabled={pending}
+            title={
+              restoring
+                ? `ยืนยันกู้คืน "${quotation.docNo}"`
+                : `ยืนยันยกเลิก "${quotation.docNo}" (ไม่นับในยอดรวม แต่ยังเห็นรายการอยู่)`
+            }
+          >
+            <Check className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="icon-sm" variant="outline" onClick={() => setConfirming(false)} disabled={pending} title="ไม่ทำรายการ">
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+        {error && <p className="max-w-48 text-xs text-destructive">{error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Button
+        size="icon-sm"
+        variant="outline"
+        onClick={() => setConfirming(true)}
+        disabled={inProduction}
+        title={
+          restoring
+            ? "กู้คืนใบเสนอราคาที่ยกเลิก"
+            : inProduction
+              ? "ลงผลิตแล้ว — ต้องยกเลิกใบลงผลิตก่อนจึงจะยกเลิกใบเสนอราคาได้"
+              : "ยกเลิกใบเสนอราคานี้ (ไม่ลบ)"
+        }
+      >
+        {restoring ? <Undo2 className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
+      </Button>
+      {error && <p className="max-w-48 text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
 export function QuotationsTable({ quotations }: { quotations: Quotation[] }) {
   const [query, setQuery] = useState("");
   const [month, setMonth] = useDocMonth();
   const monthRows = useMemo(() => filterByMonth(quotations, (row) => row.quoteDate, month), [quotations, month]);
+  // A cancelled quotation is listed but left out of the totals.
+  const activeMonthRows = useMemo(() => monthRows.filter((row) => !row.isCancelled), [monthRows]);
+  const cancelledMonthRows = useMemo(() => monthRows.filter((row) => row.isCancelled), [monthRows]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -86,18 +155,30 @@ export function QuotationsTable({ quotations }: { quotations: Quotation[] }) {
         dates={quotations.map((row) => row.quoteDate)}
         value={month}
         onChange={setMonth}
-        total={monthRows.reduce((sum, row) => sum + row.preVat, 0)}
-        count={monthRows.length}
-        breakdown={(
-          [
-            { status: "ลูกค้าตอบตกลง", label: "ได้งาน", tone: "good" },
-            { status: "ปฏิเสธ", label: "ไม่ได้งาน", tone: "bad" },
-            { status: "รอตอบรับ", label: "รอตอบรับ", tone: "pending" },
-          ] as const
-        ).map(({ status, label, tone }) => {
-          const rows = monthRows.filter((row) => row.status === status);
-          return { label, tone, count: rows.length, amount: rows.reduce((sum, row) => sum + row.preVat, 0) };
-        })}
+        total={activeMonthRows.reduce((sum, row) => sum + row.preVat, 0)}
+        count={activeMonthRows.length}
+        breakdown={[
+          ...(
+            [
+              { status: "ลูกค้าตอบตกลง", label: "ได้งาน", tone: "good" },
+              { status: "ปฏิเสธ", label: "ไม่ได้งาน", tone: "bad" },
+              { status: "รอตอบรับ", label: "รอตอบรับ", tone: "pending" },
+            ] as const
+          ).map(({ status, label, tone }) => {
+            const rows = activeMonthRows.filter((row) => row.status === status);
+            return { label, tone, count: rows.length, amount: rows.reduce((sum, row) => sum + row.preVat, 0) };
+          }),
+          ...(cancelledMonthRows.length > 0
+            ? [
+                {
+                  label: "ยกเลิก (ไม่นับ)",
+                  tone: "muted" as const,
+                  count: cancelledMonthRows.length,
+                  amount: cancelledMonthRows.reduce((sum, row) => sum + row.preVat, 0),
+                },
+              ]
+            : []),
+        ]}
       />
       <Input
         value={query}
@@ -129,15 +210,15 @@ export function QuotationsTable({ quotations }: { quotations: Quotation[] }) {
               </TableRow>
             )}
             {filtered.map((q) => (
-              <TableRow key={q.id}>
-                <TableCell className="font-medium whitespace-nowrap">{q.docNo}</TableCell>
+              <TableRow key={q.id} className={q.isCancelled ? "opacity-60" : undefined}>
+                <TableCell className={q.isCancelled ? "font-medium whitespace-nowrap line-through" : "font-medium whitespace-nowrap"}>{q.docNo}</TableCell>
                 <TableCell className="whitespace-nowrap">{new Date(q.quoteDate).toLocaleDateString("th-TH")}</TableCell>
                 <TableCell className="whitespace-nowrap">{q.customerName}</TableCell>
                 <TableCell className="whitespace-nowrap">{q.projectName}</TableCell>
                 <TableCell className="whitespace-nowrap">{q.salesRepName ?? "—"}</TableCell>
                 <TableCell className="text-right whitespace-nowrap">{formatTHB(q.total)}</TableCell>
                 <TableCell>
-                  <Badge variant={statusVariant(q.status)}>{q.status}</Badge>
+                  {q.isCancelled ? <Badge variant="destructive">ยกเลิก</Badge> : <Badge variant={statusVariant(q.status)}>{q.status}</Badge>}
                 </TableCell>
                 <TableCell>
                   <div className="flex gap-1">
@@ -147,6 +228,7 @@ export function QuotationsTable({ quotations }: { quotations: Quotation[] }) {
                     <Button size="icon-sm" variant="outline" nativeButton={false} render={<Link href={`/dashboard/quotations/edit/${q.id}`} />}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
+                    <CancelButton quotation={q} />
                     <DeleteButton quotation={q} />
                   </div>
                 </TableCell>

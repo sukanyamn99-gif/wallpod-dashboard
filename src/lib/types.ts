@@ -976,6 +976,10 @@ export interface Quotation {
   status: QuotationStatus;
   quotationType: QuotationType;
   convertedProjectId: string | null;
+  // Cancelled (ยกเลิก): kept on the list but no longer counted anywhere.
+  isCancelled: boolean;
+  // The ใบลงผลิต made from this quotation has been cancelled (see production_cancelled).
+  productionCancelled: boolean;
   createdAt: string;
 }
 
