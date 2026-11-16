@@ -1091,6 +1091,10 @@ export interface BillableTaxInvoice {
   // The same share before its WHT/retention (VAT-inclusive, after discount) —
   // what a ใบเสร็จรับเงิน that withholds tax itself carries on the line.
   grossAmount: number;
+  // The quotation's own live total (VAT-inclusive). A ใบกำกับภาษี/ใบแจ้งหนี้ made
+  // from this row is saved at this figure, not at the source document's
+  // net-of-WHT amount above, so its live preview must use it too.
+  quotationTotal: number | null;
   // The tax invoice's own WHT rate — used to auto-suggest the bundling
   // document's wht_percent when this invoice is picked, so staff don't have
   // to remember and re-type a rate that's already on file.

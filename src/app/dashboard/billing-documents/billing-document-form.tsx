@@ -494,7 +494,9 @@ export function BillingDocumentForm({
               // withholds tax itself, the net payable otherwise.
               return (
                 existingAmount !== undefined &&
-                (Math.abs(existingAmount - ti.netPayable) < 0.01 || Math.abs(existingAmount - ti.grossAmount) < 0.01)
+                (Math.abs(existingAmount - ti.netPayable) < 0.01 ||
+                  Math.abs(existingAmount - ti.grossAmount) < 0.01 ||
+                  (ti.quotationTotal != null && Math.abs(existingAmount - ti.quotationTotal) < 0.01))
               );
             })
             .map((ti) => ti.quotationId),
@@ -800,7 +802,14 @@ export function BillingDocumentForm({
           // A receipt that withholds tax itself carries the invoice's pre-WHT
           // amount (see receiptLineAmount in actions.ts) — matches what is saved.
           const withholdsHere = docType === "receipt" && applyWht && Number(whtPercent) > 0;
-          return { amount: withholdsHere ? ti.grossAmount : ti.netPayable, applyWht };
+          // A ใบกำกับภาษี/ใบแจ้งหนี้ is saved at the quotation's own total, so the
+          // preview uses that too — the source document's figure may already be
+          // net of WHT, which would shrink the base and the WHT with it.
+          const billsQuotationTotal = docType === "tax_invoice" || docType === "invoice";
+          return {
+            amount: billsQuotationTotal && ti.quotationTotal != null ? ti.quotationTotal : withholdsHere ? ti.grossAmount : ti.netPayable,
+            applyWht,
+          };
         }),
       ...manualItems
         .filter((row) => row.description.trim())
