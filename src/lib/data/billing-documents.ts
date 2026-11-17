@@ -1050,14 +1050,26 @@ export async function getReceiptsByTaxInvoiceNo(): Promise<Record<string, { id: 
   // line for the same quotation at about the same amount.
   const { data: docs, error: docsErr } = await supabase
     .from("billing_notes")
-    .select("id, doc_no, doc_type, customer_id, billing_note_items(id, quotation_id, amount, source_item_id, manual_description)")
+    .select(
+      "id, doc_no, doc_type, customer_id, deposit_deduction_invoice_no, billing_note_items(id, quotation_id, amount, source_item_id, manual_description)",
+    )
     .in("doc_type", ["tax_invoice", "receipt"]);
   if (docsErr) throw docsErr;
-  const all = (docs ?? []) as unknown as ChainDoc[];
+  const all = (docs ?? []) as unknown as (ChainDoc & { deposit_deduction_invoice_no: string | null })[];
   const receiptDocs = all.filter((d) => d.doc_type === "receipt");
+  // A deposit tax invoice is often settled by a receipt that deducts it as
+  // "เงินมัดจำที่ได้รับ" rather than listing it as a line — the receipt then
+  // only carries the tax invoice's number as text (e.g. "INV…2, INV…3").
+  const depositNosOf = (r: { deposit_deduction_invoice_no: string | null }) =>
+    (r.deposit_deduction_invoice_no ?? "")
+      .split(",")
+      .map((no) => no.trim().toLowerCase())
+      .filter(Boolean);
   for (const ti of all.filter((d) => d.doc_type === "tax_invoice")) {
     if (result[ti.doc_no]) continue;
-    const found = receiptDocs.find((r) => chainFollows(ti, r));
+    const found =
+      receiptDocs.find((r) => chainFollows(ti, r)) ??
+      receiptDocs.find((r) => r.customer_id === ti.customer_id && depositNosOf(r).includes(ti.doc_no.toLowerCase()));
     if (found) result[ti.doc_no] = { id: found.id, docNo: found.doc_no };
   }
   return result;
