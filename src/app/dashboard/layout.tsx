@@ -34,7 +34,17 @@ export default async function DashboardLayout({
       <main className="min-w-0 flex-1">
         <div className="flex items-center gap-2 border-b p-3 print:hidden">
           <SidebarTrigger />
+          {profile.readOnly && (
+            <span className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs text-amber-600 dark:text-amber-400">
+              โหมดอ่านอย่างเดียว — ดูข้อมูลได้ แต่เพิ่ม แก้ไข หรือลบไม่ได้
+            </span>
+          )}
         </div>
+        {profile.readOnly && (
+          // The database refuses every write for this account; this only tidies
+          // away the buttons that would open a create / edit / import screen.
+          <style>{`a[href$="/new"],a[href*="/new?"],a[href*="/edit/"],a[href$="/import"],a[href*="/import?"]{display:none!important}`}</style>
+        )}
         <div className="p-6 print:p-0">{children}</div>
       </main>
     </SidebarProvider>

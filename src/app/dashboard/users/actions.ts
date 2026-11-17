@@ -15,6 +15,7 @@ const VALID_ROLES: Role[] = [
   "account",
   "foreman",
   "production",
+  "viewer",
 ];
 
 function friendlyCreateUserError(message: string): string {

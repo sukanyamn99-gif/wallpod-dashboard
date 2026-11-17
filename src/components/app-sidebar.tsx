@@ -175,22 +175,24 @@ export function AppSidebar({ profile }: { profile: Profile }) {
   const isSettingsActive = settingsGroup.items.some((item) => pathname === item.url);
   const [settingsOpen, setSettingsOpen] = useState(isSettingsActive);
 
-  const visibleNavItems = navItems.filter((item) => canAccessPage(profile.role, item.url));
-  const visibleSalesDocsItems = salesDocsGroup.items.filter((item) => canAccessPage(profile.role, item.url));
+  // A อ่านอย่างเดียว account is shown as owner but never gets user management.
+  const canSee = (url: string) => canAccessPage(profile.role, url) && !(profile.readOnly && url === "/dashboard/users");
+  const visibleNavItems = navItems.filter((item) => canSee(item.url));
+  const visibleSalesDocsItems = salesDocsGroup.items.filter((item) => canSee(item.url));
   // A role can be granted a child (e.g. "รายงานสินค้าคงเหลือ") without
   // access to its parent group page (e.g. the aggregate "รายงาน" page,
   // which shows cost data Sales/Designer shouldn't see) — in that case the
   // parent link would just redirect them away, so flatten the accessible
   // children up to this level instead of nesting them under a dead link.
   const visibleInventoryItems = inventoryGroup.items.flatMap((item) => {
-    const visibleChildren = item.children?.filter((c) => canAccessPage(profile.role, c.url));
-    if (canAccessPage(profile.role, item.url)) return [{ ...item, children: visibleChildren }];
+    const visibleChildren = item.children?.filter((c) => canSee(c.url));
+    if (canSee(item.url)) return [{ ...item, children: visibleChildren }];
     return (visibleChildren ?? []).map((c) => ({ ...c, children: undefined }));
   });
-  const visiblePurchaseDocsItems = purchaseDocsGroup.items.filter((item) => canAccessPage(profile.role, item.url));
-  const visibleExpensesItems = expensesGroup.items.filter((item) => canAccessPage(profile.role, item.url));
-  const visibleRemainingNavItems = remainingNavItems.filter((item) => canAccessPage(profile.role, item.url));
-  const visibleSettingsItems = settingsGroup.items.filter((item) => canAccessPage(profile.role, item.url));
+  const visiblePurchaseDocsItems = purchaseDocsGroup.items.filter((item) => canSee(item.url));
+  const visibleExpensesItems = expensesGroup.items.filter((item) => canSee(item.url));
+  const visibleRemainingNavItems = remainingNavItems.filter((item) => canSee(item.url));
+  const visibleSettingsItems = settingsGroup.items.filter((item) => canSee(item.url));
 
   return (
     <Sidebar>

@@ -39,5 +39,11 @@ export async function getCurrentProfile(): Promise<Profile | null> {
     .eq("id", user.id)
     .single();
 
-  return (data as Profile) ?? null;
+  if (!data) return null;
+  // A อ่านอย่างเดียว account reads exactly what the owner reads, so every page
+  // and permission helper is given the owner role for it. Writing is refused by
+  // the database itself (migration 111); readOnly lets the few places that must
+  // stay closed to it (user management) say no.
+  if (data.role === "viewer") return { ...(data as Profile), role: "owner", readOnly: true };
+  return data as Profile;
 }

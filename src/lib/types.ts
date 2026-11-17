@@ -82,7 +82,11 @@ export type Role =
   | "support_sale"
   | "account"
   | "foreman"
-  | "production";
+  | "production"
+  // อ่านอย่างเดียว: sees what the owner sees, changes nothing. The app treats
+  // this account as an owner for viewing (see getCurrentProfile) and the
+  // database refuses every write (migration 111).
+  | "viewer";
 
 export const ROLE_LABELS: Record<Role, string> = {
   owner: "เจ้าของกิจการ",
@@ -93,6 +97,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   account: "ธุรการบัญชี",
   foreman: "หัวหน้าช่าง",
   production: "ฝ่ายผลิต",
+  viewer: "อ่านอย่างเดียว",
 };
 
 export interface Profile {
@@ -102,6 +107,9 @@ export interface Profile {
   sales_rep_id: string | null;
   department: string | null;
   active: boolean;
+  // True for a อ่านอย่างเดียว account, whose role above is reported as "owner"
+  // so every page shows it as it would to the owner.
+  readOnly?: boolean;
 }
 
 export interface LoginLogEntry {

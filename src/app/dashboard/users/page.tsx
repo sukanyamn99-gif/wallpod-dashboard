@@ -8,7 +8,7 @@ import { UsersTable } from "./users-table";
 export default async function UsersPage() {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
-  if (!canAccessPage(profile.role, "/dashboard/users")) redirect("/dashboard/sales");
+  if (profile.readOnly || !canAccessPage(profile.role, "/dashboard/users")) redirect("/dashboard/sales");
 
   const accounts = await getUserAccounts();
 
