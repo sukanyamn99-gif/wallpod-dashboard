@@ -1051,7 +1051,7 @@ export async function getReceiptsByTaxInvoiceNo(): Promise<Record<string, { id: 
   const { data: docs, error: docsErr } = await supabase
     .from("billing_notes")
     .select(
-      "id, doc_no, doc_type, customer_id, deposit_deduction_invoice_no, billing_note_items(id, quotation_id, amount, source_item_id, manual_description)",
+      "id, doc_no, doc_type, customer_id, deposit_deduction_amount, deposit_deduction_invoice_no, billing_note_items(id, quotation_id, amount, source_item_id, manual_description)",
     )
     .in("doc_type", ["tax_invoice", "receipt"]);
   if (docsErr) throw docsErr;
@@ -1082,6 +1082,8 @@ type ChainDoc = {
   doc_no: string;
   doc_type: string;
   customer_id: string;
+  // What the document takes off for a deposit already received (document level).
+  deposit_deduction_amount?: number | string | null;
   billing_note_items: {
     id: string;
     quotation_id: string | null;
@@ -1094,21 +1096,38 @@ type ChainDoc = {
 // Whether `later` carries on from `earlier`: same customer, and a line copied
 // from it (source_item_id) or a line for the same quotation at about the same
 // amount (within 15%).
-function chainFollows(earlier: ChainDoc, later: ChainDoc) {
+function chainFollows(earlier: ChainDoc, later: ChainDoc, quotationDocNos?: Map<string, string>) {
   if (earlier.customer_id !== later.customer_id) return false;
   const earlierItemIds = new Set(earlier.billing_note_items.map((i) => i.id));
   // A typed line (e.g. "รับเงินมัดจำ ของใบเสนอราคาเลขที่ QT… มูลค่า … บาท") has no
   // quotation or source line to follow, but the same text at the same amount on
   // the next document is the same deposit carried forward.
   const lineText = (text: string | null) => (text ?? "").split(" ").filter(Boolean).join(" ");
+  // About the same amount (within 15%) — or, for a tax invoice for the balance,
+  // which is raised on the full quotation and then takes the deposit off, the
+  // amount once that deposit is taken off, since the billing note before it
+  // already billed only what was left.
+  const deposit = Number(later.deposit_deduction_amount ?? 0);
+  const amountClose = (earlierAmount: number | string, laterAmount: number | string) => {
+    const base = Number(earlierAmount) || 1;
+    if (Math.abs(Number(laterAmount) / base - 1) <= 0.15) return true;
+    return deposit > 0 && Math.abs((Number(laterAmount) - deposit) / base - 1) <= 0.15;
+  };
   return later.billing_note_items.some(
     (b) =>
       (b.source_item_id && earlierItemIds.has(b.source_item_id)) ||
       (b.quotation_id &&
         earlier.billing_note_items.some((a) => {
-          if (a.quotation_id !== b.quotation_id) return false;
-          const ratio = Number(b.amount) / (Number(a.amount) || 1);
-          return Math.abs(ratio - 1) <= 0.15;
+          if (a.quotation_id === b.quotation_id) return amountClose(a.amount, b.amount);
+          // The earlier line may be typed ("… ของใบเสนอราคาเลขที่ QT…") with the
+          // quotation named only in its text.
+          const quotationDocNo = quotationDocNos?.get(b.quotation_id as string);
+          return (
+            !a.quotation_id &&
+            !!quotationDocNo &&
+            lineText(a.manual_description).includes(quotationDocNo) &&
+            amountClose(a.amount, b.amount)
+          );
         })) ||
       (!b.quotation_id &&
         lineText(b.manual_description) !== "" &&
@@ -1139,26 +1158,30 @@ export async function getBillingChainLinks(): Promise<{
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("billing_notes")
-    .select("id, doc_no, doc_type, customer_id, billing_note_items(id, quotation_id, amount, source_item_id, manual_description)")
+    .select(
+      "id, doc_no, doc_type, customer_id, deposit_deduction_amount, billing_note_items(id, quotation_id, amount, source_item_id, manual_description)",
+    )
     .in("doc_type", ["invoice", "billing_note", "tax_invoice"]);
   if (error) throw error;
 
   const docs = (data ?? []) as unknown as ChainDoc[];
   const ofType = (t: string) => docs.filter((d) => d.doc_type === t);
 
+  const { data: quotations, error: quotationErr } = await supabase.from("quotations").select("id, doc_no");
+  if (quotationErr) throw quotationErr;
+  const quotationDocNos = new Map((quotations ?? []).map((q) => [q.id as string, q.doc_no as string]));
+
   function linkAll(from: string, to: string): Record<string, DocRef> {
     const later = ofType(to);
     const result: Record<string, DocRef> = {};
     for (const a of ofType(from)) {
-      const found = later.find((b) => chainFollows(a, b));
+      const found = later.find((b) => chainFollows(a, b, quotationDocNos));
       if (found) result[a.id] = { id: found.id, docNo: found.doc_no };
     }
     return result;
   }
 
   const invoices = ofType("invoice");
-  const { data: quotations, error: quotationErr } = await supabase.from("quotations").select("id, doc_no");
-  if (quotationErr) throw quotationErr;
   const quotationToInvoice: Record<string, DocRef> = {};
   for (const q of quotations ?? []) {
     const found = invoices.find((d) =>
