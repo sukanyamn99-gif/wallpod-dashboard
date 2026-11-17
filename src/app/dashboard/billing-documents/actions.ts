@@ -225,6 +225,37 @@ function revalidateBillingDocumentConsumers(docType: BillingDocumentType, affect
   }
 }
 
+// A document that deducts a deposit only asks for the balance this round — the
+// deposit itself was already received on an earlier installment. Take the
+// deposit (and the WHT already withheld on it) off the installment this
+// document creates, shared across its quotation lines in proportion to their
+// amounts, so the installments of a JOB add up to the quotation instead of
+// counting the deposit twice (once on installment 1, again inside installment 2
+// — which also overstated the bank balance on the day the balance came in).
+function deductDepositFromInstallments(
+  installments: Record<string, number>,
+  whtAmounts: Record<string, number>,
+  depositAmount: number,
+  depositWhtAmount: number,
+) {
+  const ids = Object.keys(installments);
+  if (ids.length === 0 || !(depositAmount > 0)) return;
+  const base = ids.reduce((sum, id) => sum + installments[id], 0);
+  if (!(base > 0)) return;
+  let amountLeft = depositAmount;
+  let whtLeft = depositWhtAmount;
+  ids.forEach((id, index) => {
+    const isLast = index === ids.length - 1;
+    const share = installments[id] / base;
+    const amountShare = isLast ? amountLeft : Math.round(depositAmount * share * 100) / 100;
+    const whtShare = isLast ? whtLeft : Math.round(depositWhtAmount * share * 100) / 100;
+    amountLeft = Math.round((amountLeft - amountShare) * 100) / 100;
+    whtLeft = Math.round((whtLeft - whtShare) * 100) / 100;
+    installments[id] = Math.max(0, Math.round((installments[id] - amountShare) * 100) / 100);
+    whtAmounts[id] = Math.max(0, Math.round(((whtAmounts[id] ?? 0) - whtShare) * 100) / 100);
+  });
+}
+
 const SYNC_FIELDS: Record<BillingDocumentType, { no: string; date: string } | null> = {
   invoice: null,
   billing_note: { no: "billing_note_no", date: "billing_note_date" },
@@ -270,6 +301,10 @@ async function syncQuotationSourcedInstallments(
   ownerTaxInvoiceIdByQuotationId: Record<string, string>,
   installmentAmountByQuotationId: Record<string, number> = {},
   whtAmountByQuotationId: Record<string, number> = {},
+  // A ใบวางบิล/ใบเสร็จรับเงิน only points at an installment its tax invoice
+  // already created (and sized, deposit included) — it must not overwrite that
+  // amount with the tax invoice's undeducted figure.
+  keepExistingAmounts = false,
 ): Promise<string[]> {
   const syncFields = SYNC_FIELDS[docType];
   const withJobNo = liveQuotations.filter(
@@ -300,7 +335,7 @@ async function syncQuotationSourcedInstallments(
 
     const { data: existing, error: existingErr } = await supabase
       .from("payments")
-      .select("id, installment_no, source_tax_invoice_id, source_quotation_id, receipt_no")
+      .select("id, installment_no, source_tax_invoice_id, source_quotation_id, receipt_no, amount")
       .eq("project_id", project.id);
     if (existingErr) continue;
 
@@ -319,9 +354,10 @@ async function syncQuotationSourcedInstallments(
       // Already-received installments keep their status — a later edit to
       // the tax invoice/billing note that produced this installment
       // shouldn't silently un-receive money that already came in.
+      const keepAmount = keepExistingAmounts && priorRow.amount !== null && priorRow.amount !== undefined;
+      const rowAmount = keepAmount ? Number(priorRow.amount) : netAmount;
       const patch: Record<string, unknown> = {
-        amount: netAmount,
-        wht_amount: whtAmount,
+        ...(keepAmount ? {} : { amount: netAmount, wht_amount: whtAmount }),
         [syncFields.no]: docNo,
         [syncFields.date]: docDate,
       };
@@ -330,7 +366,7 @@ async function syncQuotationSourcedInstallments(
         patch.outstanding_amount = 0;
       } else if (!priorRow.receipt_no) {
         patch.status = "รอชำระเงิน";
-        patch.outstanding_amount = netAmount;
+        patch.outstanding_amount = rowAmount;
       }
       const { error: updateErr } = await supabase.from("payments").update(patch).eq("id", priorRow.id);
       if (updateErr) continue;
@@ -818,6 +854,9 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
       whtAmountByQuotationId[q.id] = Math.round((gross - quotationBilledAmountById[q.id]) * 100) / 100;
     }
   }
+  if (billsQuotationDirectly) {
+    deductDepositFromInstallments(installmentAmountByQuotationId, whtAmountByQuotationId, depositDeductionAmount, depositWhtAmount);
+  }
 
   const { error: itemsErr } = await supabase.from("billing_note_items").insert([
     ...livePayments.map((p) => ({
@@ -953,6 +992,7 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
     ownerTaxInvoiceIdByQuotationId,
     installmentAmountByQuotationId,
     whtAmountByQuotationId,
+    !billsQuotationDirectly,
   );
 
   await logActivity(`สร้าง${BILLING_DOCUMENT_LABELS[docType]}`, docNo);
@@ -1112,6 +1152,9 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
       whtAmountByQuotationId[q.id] = Math.round((gross - quotationBilledAmountById[q.id]) * 100) / 100;
     }
   }
+  if (billsQuotationDirectly) {
+    deductDepositFromInstallments(installmentAmountByQuotationId, whtAmountByQuotationId, depositDeductionAmount, depositWhtAmount);
+  }
 
   const { error: itemsErr } = await supabase.from("billing_note_items").insert([
     ...livePayments.map((p) => ({
@@ -1237,6 +1280,7 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
     ownerTaxInvoiceIdByQuotationId,
     installmentAmountByQuotationId,
     whtAmountByQuotationId,
+    !billsQuotationDirectly,
   );
 
   await logActivity(
