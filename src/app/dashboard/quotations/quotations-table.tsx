@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { MonthTabs, filterByMonth, useDocMonth } from "@/components/dashboard/month-tabs";
 import Link from "next/link";
-import { Ban, Check, Eye, Pencil, Trash2, Undo2, X } from "lucide-react";
+import { Ban, Check, Eye, Factory, Pencil, Trash2, Undo2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -228,6 +228,33 @@ export function QuotationsTable({ quotations }: { quotations: Quotation[] }) {
                     <Button size="icon-sm" variant="outline" nativeButton={false} render={<Link href={`/dashboard/quotations/edit/${q.id}`} />}>
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
+                    {!q.isCancelled && q.status !== "ปฏิเสธ" &&
+                      (q.status === "ลูกค้าตอบตกลง" && !q.productionCancelled ? (
+                        // Already in production (red) — opens its ใบลงผลิต.
+                        <Button
+                          size="icon-sm"
+                          variant="outline"
+                          nativeButton={false}
+                          render={<Link href={`/dashboard/quotations/production-orders/${q.id}`} />}
+                          title="ลงผลิตแล้ว — กดเพื่อดูใบลงผลิต"
+                          className="border-red-500/50 bg-red-500/10 text-red-600 hover:bg-red-500/20 dark:text-red-400"
+                        >
+                          <Factory className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : (
+                        // Not in production yet (green) — the quotation's page has
+                        // the "ลูกค้าตอบตกลง" button that sends it to production.
+                        <Button
+                          size="icon-sm"
+                          variant="outline"
+                          nativeButton={false}
+                          render={<Link href={`/dashboard/quotations/view/${q.id}`} />}
+                          title="ยังไม่ได้ลงผลิต — เปิดใบเสนอราคาเพื่อกด ลูกค้าตอบตกลง"
+                          className="border-emerald-500/50 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
+                        >
+                          <Factory className="h-3.5 w-3.5" />
+                        </Button>
+                      ))}
                     <CancelButton quotation={q} />
                     <DeleteButton quotation={q} />
                   </div>
