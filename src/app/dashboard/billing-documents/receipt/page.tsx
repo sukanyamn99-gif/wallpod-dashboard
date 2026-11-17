@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getBillingDocuments } from "@/lib/data/billing-documents";
 import { getCurrentProfile } from "@/lib/data/profile";
+import { getVouchersByReceipt } from "@/lib/data/receipt-vouchers";
 import { canAccessPage } from "@/lib/permissions";
 import { BillingDocumentTable } from "../billing-document-table";
 
@@ -10,6 +11,7 @@ export default async function ReceiptListPage() {
   if (!canAccessPage(profile.role, "/dashboard/billing-documents/receipt")) redirect("/dashboard/sales");
 
   const documents = await getBillingDocuments("receipt");
+  const vouchersByReceipt = await getVouchersByReceipt(documents);
 
   return (
     <div className="space-y-6">
@@ -19,7 +21,12 @@ export default async function ReceiptListPage() {
           ออกใบเสร็จรับเงินจากใบแจ้งหนี้ของ WALLPOD Project Sales — บันทึกว่าได้รับชำระแล้ว
         </p>
       </div>
-      <BillingDocumentTable docType="receipt" documents={documents} currentProfile={profile} />
+      <BillingDocumentTable
+        docType="receipt"
+        documents={documents}
+        currentProfile={profile}
+        vouchersByReceipt={vouchersByReceipt}
+      />
     </div>
   );
 }

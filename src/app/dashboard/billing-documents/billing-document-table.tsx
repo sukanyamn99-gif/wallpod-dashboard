@@ -68,10 +68,13 @@ export function BillingDocumentTable({
   docType,
   documents,
   currentProfile,
+  vouchersByReceipt = {},
 }: {
   docType: BillingDocumentType;
   documents: BillingDocument[];
   currentProfile: Profile;
+  // ใบเสร็จ id -> the ใบสำคัญรับเงิน already issued for it (receipts list only).
+  vouchersByReceipt?: Record<string, { id: string; docNo: string }>;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -159,15 +162,30 @@ export function BillingDocumentTable({
                       <Eye className="h-3.5 w-3.5" />
                     </Button>
                     {docType === "receipt" && ["owner", "manager", "account", "support_sale"].includes(currentProfile.role) && (
-                      <Button
-                        size="icon-sm"
-                        variant="outline"
-                        nativeButton={false}
-                        render={<Link href={`/dashboard/billing-documents/receipt-voucher/new?receiptId=${doc.id}`} />}
-                        title="ออกใบสำคัญรับเงิน"
-                      >
-                        <BookOpenCheck className="h-3.5 w-3.5" />
-                      </Button>
+                      vouchersByReceipt[doc.id] ? (
+                        // Already issued (red) — no second one; the button opens the one that exists.
+                        <Button
+                          size="icon-sm"
+                          variant="outline"
+                          nativeButton={false}
+                          render={<Link href={`/dashboard/billing-documents/receipt-voucher/print/${vouchersByReceipt[doc.id].id}`} />}
+                          title={`ออกใบสำคัญรับเงินแล้ว (${vouchersByReceipt[doc.id].docNo}) — ออกซ้ำไม่ได้ กดเพื่อดูใบเดิม`}
+                          className="border-red-500/50 bg-red-500/10 text-red-600 hover:bg-red-500/20 dark:text-red-400"
+                        >
+                          <BookOpenCheck className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : (
+                        <Button
+                          size="icon-sm"
+                          variant="outline"
+                          nativeButton={false}
+                          render={<Link href={`/dashboard/billing-documents/receipt-voucher/new?receiptId=${doc.id}`} />}
+                          title="ออกใบสำคัญรับเงิน (ยังไม่ได้ออก)"
+                          className="border-emerald-500/50 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
+                        >
+                          <BookOpenCheck className="h-3.5 w-3.5" />
+                        </Button>
+                      )
                     )}
                     {canDelete(currentProfile, doc) && (
                       <Button

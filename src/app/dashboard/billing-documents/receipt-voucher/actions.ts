@@ -134,6 +134,21 @@ export async function createReceiptVoucher(formData: FormData) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // One ใบสำคัญรับเงิน per ใบเสร็จ — whether the receipt was picked from the list
+  // (linked by id) or its number was typed in by hand.
+  const existing: { doc_no: string }[] = [];
+  if (parsed.receiptId) {
+    const { data } = await supabase.from("receipt_vouchers").select("doc_no").eq("receipt_id", parsed.receiptId);
+    existing.push(...(data ?? []));
+  }
+  if (parsed.receiptNo) {
+    const { data } = await supabase.from("receipt_vouchers").select("doc_no").eq("receipt_no", parsed.receiptNo.trim());
+    existing.push(...(data ?? []));
+  }
+  if (existing.length > 0) {
+    return { error: `ใบเสร็จรับเงินนี้ออกใบสำคัญรับเงินไปแล้ว (เลขที่ ${existing[0].doc_no}) — ออกซ้ำไม่ได้` };
+  }
+
   const docNo = await generateDocNo(supabase, parsed.docDate);
   const { data: created, error } = await supabase
     .from("receipt_vouchers")

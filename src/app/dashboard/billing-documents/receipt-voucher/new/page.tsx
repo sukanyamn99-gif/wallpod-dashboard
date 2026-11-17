@@ -1,4 +1,7 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { getVouchersByReceipt } from "@/lib/data/receipt-vouchers";
 import { getBillingDocumentById, getBillingDocuments } from "@/lib/data/billing-documents";
 import { getPrimaryBankAccount } from "@/lib/data/bank-accounts";
 import { getCurrentProfile } from "@/lib/data/profile";
@@ -22,6 +25,28 @@ export default async function NewReceiptVoucherPage({
     getPrimaryBankAccount(),
   ]);
   const source = receipt && receipt.docType === "receipt" ? receipt : null;
+
+  // One ใบสำคัญรับเงิน per ใบเสร็จ — a receipt that already has one can't be used again.
+  const vouchersByReceipt = await getVouchersByReceipt(receipts);
+  const existingVoucher = source ? vouchersByReceipt[source.id] : undefined;
+  if (source && existingVoucher) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-semibold">ออกใบสำคัญรับเงินแล้ว</h1>
+        <p className="text-sm text-muted-foreground">
+          ใบเสร็จรับเงิน {source.docNo} ออกใบสำคัญรับเงินเลขที่ {existingVoucher.docNo} ไปแล้ว — ออกซ้ำไม่ได้
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button nativeButton={false} render={<Link href={`/dashboard/billing-documents/receipt-voucher/edit/${existingVoucher.id}`} />}>
+            เปิดใบสำคัญรับเงิน {existingVoucher.docNo}
+          </Button>
+          <Button variant="outline" nativeButton={false} render={<Link href="/dashboard/billing-documents/receipt" />}>
+            กลับไปรายการใบเสร็จ
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const refNos = source
     ? Array.from(
@@ -67,7 +92,7 @@ export default async function NewReceiptVoucherPage({
         key={source?.id ?? "blank"}
         mode="create"
         initialData={draft}
-        receiptOptions={receipts.map((r) => ({
+        receiptOptions={receipts.filter((r) => !vouchersByReceipt[r.id]).map((r) => ({
           id: r.id,
           docNo: r.docNo,
           label: `${r.docNo} — ${r.customerName} (${new Date(r.docDate).toLocaleDateString("th-TH")})`,

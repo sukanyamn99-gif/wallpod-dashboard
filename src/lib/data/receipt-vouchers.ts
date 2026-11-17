@@ -66,6 +66,38 @@ export async function getReceiptVouchers(): Promise<ReceiptVoucher[]> {
   return ((data ?? []) as unknown as Row[]).map(mapRow);
 }
 
+// The ใบสำคัญรับเงิน already issued for each ใบเสร็จรับเงิน, keyed by the
+// receipt's id. A voucher counts for a receipt when it is linked to it, or —
+// when the receipt number was typed in by hand, leaving no link — when its
+// receipt number is the same.
+export async function getVouchersByReceipt(
+  receipts: { id: string; docNo: string }[],
+): Promise<Record<string, { id: string; docNo: string }>> {
+  if (!isSupabaseConfigured() || receipts.length === 0) return {};
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("receipt_vouchers")
+    .select("id, doc_no, receipt_id, receipt_no")
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+
+  const byId = new Map<string, { id: string; docNo: string }>();
+  const byNo = new Map<string, { id: string; docNo: string }>();
+  for (const v of data ?? []) {
+    const voucher = { id: v.id as string, docNo: v.doc_no as string };
+    if (v.receipt_id && !byId.has(v.receipt_id)) byId.set(v.receipt_id, voucher);
+    const no = (v.receipt_no ?? "").trim().toLowerCase();
+    if (no && !byNo.has(no)) byNo.set(no, voucher);
+  }
+
+  const result: Record<string, { id: string; docNo: string }> = {};
+  for (const r of receipts) {
+    const found = byId.get(r.id) ?? byNo.get(r.docNo.trim().toLowerCase());
+    if (found) result[r.id] = found;
+  }
+  return result;
+}
+
 export async function getReceiptVoucherById(id: string): Promise<ReceiptVoucher | null> {
   if (!isSupabaseConfigured()) return null;
   const supabase = await createClient();
