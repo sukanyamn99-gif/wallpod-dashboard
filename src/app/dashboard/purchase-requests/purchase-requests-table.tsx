@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { MonthTabs, filterByMonth, useDocMonth } from "@/components/dashboard/month-tabs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Eye, Pencil, Printer, Trash2, X } from "lucide-react";
+import { Check, Eye, Pencil, Printer, ShoppingCart, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -145,6 +145,31 @@ export function PurchaseRequestsTable({
                     >
                       <Printer className="h-3.5 w-3.5" />
                     </Button>
+                    {r.status === "อนุมัติ" &&
+                      (r.hasPurchaseOrder ? (
+                        // Purchase order already issued (red).
+                        <Button
+                          size="icon-sm"
+                          variant="outline"
+                          nativeButton={false}
+                          render={<Link href="/dashboard/purchase-orders" />}
+                          title="ออกใบสั่งซื้อแล้ว — กดเพื่อดูรายการใบสั่งซื้อ"
+                          className="border-red-500/50 bg-red-500/10 text-red-600 hover:bg-red-500/20 dark:text-red-400"
+                        >
+                          <ShoppingCart className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : (
+                        <Button
+                          size="icon-sm"
+                          variant="outline"
+                          nativeButton={false}
+                          render={<Link href={`/dashboard/purchase-orders/new?requestId=${r.id}`} />}
+                          title="สร้างใบสั่งซื้อจากใบขอซื้อนี้ (ยังไม่ได้ออก)"
+                          className="border-emerald-500/50 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
+                        >
+                          <ShoppingCart className="h-3.5 w-3.5" />
+                        </Button>
+                      ))}
                     {canEditPurchaseRequest(currentProfile, r) && (
                       <Button
                         size="icon-sm"

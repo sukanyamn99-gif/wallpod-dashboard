@@ -1012,3 +1012,35 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     }),
   };
 }
+
+// The ใบเสร็จรับเงิน already issued for each ใบกำกับภาษี, keyed by the tax
+// invoice's doc no. Issuing a receipt stamps its number on the installment the
+// tax invoice created (payments.tax_invoice_no / receipt_no), which is what
+// links the two.
+export async function getReceiptsByTaxInvoiceNo(): Promise<Record<string, { id: string; docNo: string }>> {
+  if (!isSupabaseConfigured()) return {};
+  const supabase = await createClient();
+  const { data: payments, error } = await supabase
+    .from("payments")
+    .select("tax_invoice_no, receipt_no")
+    .not("tax_invoice_no", "is", null)
+    .not("receipt_no", "is", null);
+  if (error) throw error;
+
+  const receiptNos = Array.from(new Set((payments ?? []).map((p) => p.receipt_no as string)));
+  if (receiptNos.length === 0) return {};
+  const { data: receipts, error: receiptErr } = await supabase
+    .from("billing_notes")
+    .select("id, doc_no")
+    .eq("doc_type", "receipt")
+    .in("doc_no", receiptNos);
+  if (receiptErr) throw receiptErr;
+  const receiptByNo = new Map((receipts ?? []).map((r) => [r.doc_no as string, { id: r.id as string, docNo: r.doc_no as string }]));
+
+  const result: Record<string, { id: string; docNo: string }> = {};
+  for (const p of payments ?? []) {
+    const receipt = receiptByNo.get(p.receipt_no as string);
+    if (receipt && !result[p.tax_invoice_no as string]) result[p.tax_invoice_no as string] = receipt;
+  }
+  return result;
+}

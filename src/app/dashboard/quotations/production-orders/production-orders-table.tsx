@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { MonthTabs, filterByMonth, useDocMonth } from "@/components/dashboard/month-tabs";
 import Link from "next/link";
-import { Ban, Check, Eye, Pencil, RotateCcw, X } from "lucide-react";
+import { Ban, Check, Eye, FolderCheck, Pencil, RotateCcw, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -196,14 +196,28 @@ export function ProductionOrdersTable({
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-amber-500 text-amber-600"
+                        className="border-emerald-500/50 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
                         nativeButton={false}
                         render={<Link href={`/dashboard/project-sales/new?fromQuotation=${o.id}`} />}
-                        title="บันทึก Project ก่อนลงผลิต"
+                        title="บันทึก Project ก่อนลงผลิต (ยังไม่ได้บันทึก)"
                       >
                         บันทึก Project
                       </Button>
                     ) : (
+                      <>
+                        {!o.isCancelled && o.jobNumber && (
+                          // Project already saved (red) — opens it.
+                          <Button
+                            size="icon-sm"
+                            variant="outline"
+                            nativeButton={false}
+                            render={<Link href={`/dashboard/project-sales/edit/${encodeURIComponent(o.jobNumber)}`} />}
+                            title={`บันทึก Project แล้ว (${o.jobNumber}) — กดเพื่อดู`}
+                            className="border-red-500/50 bg-red-500/10 text-red-600 hover:bg-red-500/20 dark:text-red-400"
+                          >
+                            <FolderCheck className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       <Button
                         size="icon-sm"
                         variant="outline"
@@ -213,6 +227,7 @@ export function ProductionOrdersTable({
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
+                      </>
                     )}
                     <CancelButton order={o} />
                   </div>

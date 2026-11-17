@@ -5,7 +5,8 @@ import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
 import { BillingDocumentForm } from "../../billing-document-form";
 
-export default async function NewReceiptPage() {
+export default async function NewReceiptPage({ searchParams }: { searchParams: Promise<{ jobNo?: string }> }) {
+  const { jobNo } = await searchParams;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
   if (!canAccessPage(profile.role, "/dashboard/billing-documents/receipt")) redirect("/dashboard/sales");
@@ -33,6 +34,7 @@ export default async function NewReceiptPage() {
         salesReps={salesReps}
         jobNoSuggestions={jobNoSuggestions}
         jobNoLookup={jobNoLookup}
+        initialJobNo={jobNo}
         listPath="/dashboard/billing-documents/receipt"
       />
     </div>

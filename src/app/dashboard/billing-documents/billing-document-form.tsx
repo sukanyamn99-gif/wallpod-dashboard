@@ -147,7 +147,10 @@ export function BillingDocumentForm({
   mode = "create",
   docId,
   initialData,
+  initialJobNo,
 }: {
+  // Create mode only: a JOB NO. to have picked on arrival (see the effect below).
+  initialJobNo?: string;
   docType: BillingDocumentType;
   customers: Customer[];
   salesReps: SalesRep[];
@@ -439,6 +442,14 @@ export function BillingDocumentForm({
       }
     }
   }
+
+  // Arriving from a ใบกำกับภาษี's "ออกใบเสร็จรับเงิน" button: start with that
+  // JOB already picked, exactly as if it had been typed into the JOB NO. field.
+  useEffect(() => {
+    if (mode !== "create" || !initialJobNo || !jobNoLookup[initialJobNo]) return;
+    handleJobNoChange(initialJobNo);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once on arrival
+  }, []);
 
   // Edit mode: customer is fixed (changing it would invalidate the whole
   // invoice bundle), so fetch its open invoices once on mount instead of

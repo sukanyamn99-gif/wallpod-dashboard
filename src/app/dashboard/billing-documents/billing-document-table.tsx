@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { MonthTabs, filterByMonth, useDocMonth } from "@/components/dashboard/month-tabs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpenCheck, Check, Eye, Pencil, Plus, Trash2, X } from "lucide-react";
+import { BookOpenCheck, Check, Eye, Pencil, Plus, ReceiptText, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -69,7 +69,10 @@ export function BillingDocumentTable({
   documents,
   currentProfile,
   vouchersByReceipt = {},
+  receiptsByTaxInvoiceNo = {},
 }: {
+  // ใบกำกับภาษี doc no -> the ใบเสร็จรับเงิน already issued for it (tax invoices list only).
+  receiptsByTaxInvoiceNo?: Record<string, { id: string; docNo: string }>;
   docType: BillingDocumentType;
   documents: BillingDocument[];
   currentProfile: Profile;
@@ -161,6 +164,35 @@ export function BillingDocumentTable({
                     >
                       <Eye className="h-3.5 w-3.5" />
                     </Button>
+                    {docType === "tax_invoice" &&
+                      (receiptsByTaxInvoiceNo[doc.docNo] ? (
+                        // Receipt already issued (red) — opens it.
+                        <Button
+                          size="icon-sm"
+                          variant="outline"
+                          nativeButton={false}
+                          render={<Link href={`/dashboard/billing-documents/receipt/view/${receiptsByTaxInvoiceNo[doc.docNo].id}`} />}
+                          title={`ออกใบเสร็จรับเงินแล้ว (${receiptsByTaxInvoiceNo[doc.docNo].docNo}) — กดเพื่อดู`}
+                          className="border-red-500/50 bg-red-500/10 text-red-600 hover:bg-red-500/20 dark:text-red-400"
+                        >
+                          <ReceiptText className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : (
+                        <Button
+                          size="icon-sm"
+                          variant="outline"
+                          nativeButton={false}
+                          render={
+                            <Link
+                              href={`/dashboard/billing-documents/receipt/new${doc.jobNos[0] ? `?jobNo=${encodeURIComponent(doc.jobNos[0])}` : ""}`}
+                            />
+                          }
+                          title="ออกใบเสร็จรับเงิน (ยังไม่ได้ออก)"
+                          className="border-emerald-500/50 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
+                        >
+                          <ReceiptText className="h-3.5 w-3.5" />
+                        </Button>
+                      ))}
                     {docType === "receipt" && ["owner", "manager", "account", "support_sale"].includes(currentProfile.role) && (
                       vouchersByReceipt[doc.id] ? (
                         // Already issued (red) — no second one; the button opens the one that exists.

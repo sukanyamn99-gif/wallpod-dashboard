@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { MonthTabs, filterByMonth, useDocMonth } from "@/components/dashboard/month-tabs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Eye, Printer, Trash2, X } from "lucide-react";
+import { Check, Eye, PackageCheck, Printer, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -154,6 +154,30 @@ export function PurchaseOrdersTable({
                     >
                       <Printer className="h-3.5 w-3.5" />
                     </Button>
+                    {o.receivingStatus === "รับครบแล้ว" ? (
+                      // Everything received (red).
+                      <Button
+                        size="icon-sm"
+                        variant="outline"
+                        nativeButton={false}
+                        render={<Link href="/dashboard/purchase-order-receipts" />}
+                        title="รับสินค้าครบแล้ว — กดเพื่อดูรายการรับสินค้าตามใบสั่งซื้อ"
+                        className="border-red-500/50 bg-red-500/10 text-red-600 hover:bg-red-500/20 dark:text-red-400"
+                      >
+                        <PackageCheck className="h-3.5 w-3.5" />
+                      </Button>
+                    ) : (
+                      <Button
+                        size="icon-sm"
+                        variant="outline"
+                        nativeButton={false}
+                        render={<Link href={`/dashboard/purchase-order-receipts/new?orderId=${o.id}`} />}
+                        title={`รับสินค้าตามใบสั่งซื้อนี้ (${o.receivingStatus})`}
+                        className="border-emerald-500/50 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
+                      >
+                        <PackageCheck className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                     {canDelete(currentProfile, o) && <DeleteButton order={o} />}
                   </div>
                 </TableCell>
