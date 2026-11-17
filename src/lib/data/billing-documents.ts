@@ -1097,6 +1097,10 @@ type ChainDoc = {
 function chainFollows(earlier: ChainDoc, later: ChainDoc) {
   if (earlier.customer_id !== later.customer_id) return false;
   const earlierItemIds = new Set(earlier.billing_note_items.map((i) => i.id));
+  // A typed line (e.g. "รับเงินมัดจำ ของใบเสนอราคาเลขที่ QT… มูลค่า … บาท") has no
+  // quotation or source line to follow, but the same text at the same amount on
+  // the next document is the same deposit carried forward.
+  const lineText = (text: string | null) => (text ?? "").split(" ").filter(Boolean).join(" ");
   return later.billing_note_items.some(
     (b) =>
       (b.source_item_id && earlierItemIds.has(b.source_item_id)) ||
@@ -1105,7 +1109,15 @@ function chainFollows(earlier: ChainDoc, later: ChainDoc) {
           if (a.quotation_id !== b.quotation_id) return false;
           const ratio = Number(b.amount) / (Number(a.amount) || 1);
           return Math.abs(ratio - 1) <= 0.15;
-        })),
+        })) ||
+      (!b.quotation_id &&
+        lineText(b.manual_description) !== "" &&
+        earlier.billing_note_items.some(
+          (a) =>
+            !a.quotation_id &&
+            lineText(a.manual_description) === lineText(b.manual_description) &&
+            Math.abs(Number(a.amount) - Number(b.amount)) < 0.01,
+        )),
   );
 }
 
