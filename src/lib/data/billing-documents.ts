@@ -1044,3 +1044,85 @@ export async function getReceiptsByTaxInvoiceNo(): Promise<Record<string, { id: 
   }
   return result;
 }
+
+export type DocRef = { id: string; docNo: string };
+
+// How far each document has got along ใบลงผลิต → ใบแจ้งหนี้ → ใบวางบิล →
+// ใบกำกับภาษี. A later document counts as following an earlier one for the same
+// customer when it carries a line copied from it (source_item_id), or a line for
+// the same quotation at about the same amount — within 15%, so a line that went
+// down by its WHT or retention still matches but the other round of a
+// 50% / 50% split does not. A deposit invoice is typed by hand with no quotation
+// link, so it is found by the quotation number written in its description.
+export async function getBillingChainLinks(): Promise<{
+  invoiceToBillingNote: Record<string, DocRef>;
+  billingNoteToTaxInvoice: Record<string, DocRef>;
+  quotationToInvoice: Record<string, DocRef>;
+}> {
+  const empty = { invoiceToBillingNote: {}, billingNoteToTaxInvoice: {}, quotationToInvoice: {} };
+  if (!isSupabaseConfigured()) return empty;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("billing_notes")
+    .select("id, doc_no, doc_type, customer_id, billing_note_items(id, quotation_id, amount, source_item_id, manual_description)")
+    .in("doc_type", ["invoice", "billing_note", "tax_invoice"]);
+  if (error) throw error;
+
+  type Doc = {
+    id: string;
+    doc_no: string;
+    doc_type: string;
+    customer_id: string;
+    billing_note_items: {
+      id: string;
+      quotation_id: string | null;
+      amount: number | string;
+      source_item_id: string | null;
+      manual_description: string | null;
+    }[];
+  };
+  const docs = (data ?? []) as unknown as Doc[];
+  const ofType = (t: string) => docs.filter((d) => d.doc_type === t);
+
+  function follows(earlier: Doc, later: Doc) {
+    if (earlier.customer_id !== later.customer_id) return false;
+    const earlierItemIds = new Set(earlier.billing_note_items.map((i) => i.id));
+    return later.billing_note_items.some(
+      (b) =>
+        (b.source_item_id && earlierItemIds.has(b.source_item_id)) ||
+        (b.quotation_id &&
+          earlier.billing_note_items.some((a) => {
+            if (a.quotation_id !== b.quotation_id) return false;
+            const ratio = Number(b.amount) / (Number(a.amount) || 1);
+            return Math.abs(ratio - 1) <= 0.15;
+          })),
+    );
+  }
+
+  function linkAll(from: string, to: string): Record<string, DocRef> {
+    const later = ofType(to);
+    const result: Record<string, DocRef> = {};
+    for (const a of ofType(from)) {
+      const found = later.find((b) => follows(a, b));
+      if (found) result[a.id] = { id: found.id, docNo: found.doc_no };
+    }
+    return result;
+  }
+
+  const invoices = ofType("invoice");
+  const { data: quotations, error: quotationErr } = await supabase.from("quotations").select("id, doc_no");
+  if (quotationErr) throw quotationErr;
+  const quotationToInvoice: Record<string, DocRef> = {};
+  for (const q of quotations ?? []) {
+    const found = invoices.find((d) =>
+      d.billing_note_items.some((i) => i.quotation_id === q.id || (i.manual_description ?? "").includes(q.doc_no)),
+    );
+    if (found) quotationToInvoice[q.id as string] = { id: found.id, docNo: found.doc_no };
+  }
+
+  return {
+    invoiceToBillingNote: linkAll("invoice", "billing_note"),
+    billingNoteToTaxInvoice: linkAll("billing_note", "tax_invoice"),
+    quotationToInvoice,
+  };
+}

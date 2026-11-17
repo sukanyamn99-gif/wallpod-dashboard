@@ -6,7 +6,8 @@ import { canAccessPage } from "@/lib/permissions";
 import { getFinishedGoods } from "@/lib/data/finished-goods";
 import { BillingDocumentForm } from "../../billing-document-form";
 
-export default async function NewTaxInvoicePage() {
+export default async function NewTaxInvoicePage({ searchParams }: { searchParams: Promise<{ jobNo?: string }> }) {
+  const { jobNo } = await searchParams;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
   if (!canAccessPage(profile.role, "/dashboard/billing-documents/tax-invoice")) redirect("/dashboard/sales");
@@ -35,6 +36,7 @@ export default async function NewTaxInvoicePage() {
         salesReps={salesReps}
         jobNoSuggestions={jobNoSuggestions}
         jobNoLookup={jobNoLookup}
+        initialJobNo={jobNo}
         finishedGoods={finishedGoods}
         listPath="/dashboard/billing-documents/tax-invoice"
       />

@@ -3,6 +3,7 @@ import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
 import { getAcceptedQuotationsForProduction } from "@/lib/data/quotations";
 import { getExistingProjectJobNos } from "@/lib/data/project-sales";
+import { getBillingChainLinks } from "@/lib/data/billing-documents";
 import { ProductionOrdersTable } from "./production-orders-table";
 
 export default async function ProductionOrdersPage() {
@@ -10,9 +11,10 @@ export default async function ProductionOrdersPage() {
   if (!profile) redirect("/login");
   if (!canAccessPage(profile.role, "/dashboard/quotations/production-orders")) redirect("/dashboard/sales");
 
-  const [orders, existingProjectJobNos] = await Promise.all([
+  const [orders, existingProjectJobNos, chain] = await Promise.all([
     getAcceptedQuotationsForProduction(),
     getExistingProjectJobNos(),
+    getBillingChainLinks(),
   ]);
 
   return (
@@ -23,7 +25,11 @@ export default async function ProductionOrdersPage() {
           ใบเสนอราคาที่ลูกค้าตอบตกลงแล้ว — กรอกเลขที่ Job และรหัสสินค้าที่นี่แทน (ข้อมูลอื่นในใบเสนอราคายังคงเดิม)
         </p>
       </div>
-      <ProductionOrdersTable orders={orders} existingProjectJobNos={[...existingProjectJobNos]} />
+      <ProductionOrdersTable
+        orders={orders}
+        existingProjectJobNos={[...existingProjectJobNos]}
+        invoicesByQuotationId={chain.quotationToInvoice}
+      />
     </div>
   );
 }

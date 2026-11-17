@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { MonthTabs, filterByMonth, useDocMonth } from "@/components/dashboard/month-tabs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpenCheck, Check, Eye, Pencil, Plus, ReceiptText, Trash2, X } from "lucide-react";
+import { BookOpenCheck, Check, Eye, FileOutput, Pencil, Plus, ReceiptText, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -70,7 +70,10 @@ export function BillingDocumentTable({
   currentProfile,
   vouchersByReceipt = {},
   receiptsByTaxInvoiceNo = {},
+  nextDocs = {},
 }: {
+  // ใบแจ้งหนี้ / ใบวางบิล id -> the document that follows it (ใบวางบิล / ใบกำกับภาษี), if already issued.
+  nextDocs?: Record<string, { id: string; docNo: string }>;
   // ใบกำกับภาษี doc no -> the ใบเสร็จรับเงิน already issued for it (tax invoices list only).
   receiptsByTaxInvoiceNo?: Record<string, { id: string; docNo: string }>;
   docType: BillingDocumentType;
@@ -164,6 +167,41 @@ export function BillingDocumentTable({
                     >
                       <Eye className="h-3.5 w-3.5" />
                     </Button>
+                    {(docType === "invoice" || docType === "billing_note") &&
+                      (() => {
+                        const nextType = docType === "invoice" ? "billing_note" : "tax_invoice";
+                        const nextLabel = BILLING_DOCUMENT_LABELS[nextType];
+                        const nextRoute = nextType.replace("_", "-");
+                        const next = nextDocs[doc.id];
+                        return next ? (
+                          // Next document already issued (red) — opens it.
+                          <Button
+                            size="icon-sm"
+                            variant="outline"
+                            nativeButton={false}
+                            render={<Link href={`/dashboard/billing-documents/${nextRoute}/view/${next.id}`} />}
+                            title={`ออก${nextLabel}แล้ว (${next.docNo}) — กดเพื่อดู`}
+                            className="border-red-500/50 bg-red-500/10 text-red-600 hover:bg-red-500/20 dark:text-red-400"
+                          >
+                            <FileOutput className="h-3.5 w-3.5" />
+                          </Button>
+                        ) : (
+                          <Button
+                            size="icon-sm"
+                            variant="outline"
+                            nativeButton={false}
+                            render={
+                              <Link
+                                href={`/dashboard/billing-documents/${nextRoute}/new${doc.jobNos[0] ? `?jobNo=${encodeURIComponent(doc.jobNos[0])}` : ""}`}
+                              />
+                            }
+                            title={`ออก${nextLabel} (ยังไม่ได้ออก)`}
+                            className="border-emerald-500/50 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
+                          >
+                            <FileOutput className="h-3.5 w-3.5" />
+                          </Button>
+                        );
+                      })()}
                     {docType === "tax_invoice" &&
                       (receiptsByTaxInvoiceNo[doc.docNo] ? (
                         // Receipt already issued (red) — opens it.
