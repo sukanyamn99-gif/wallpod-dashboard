@@ -335,7 +335,7 @@ async function syncQuotationSourcedInstallments(
 
     const { data: existing, error: existingErr } = await supabase
       .from("payments")
-      .select("id, installment_no, source_tax_invoice_id, source_quotation_id, receipt_no, amount")
+      .select("id, installment_no, source_tax_invoice_id, source_quotation_id, receipt_no, amount, billing_note_no, tax_invoice_no")
       .eq("project_id", project.id);
     if (existingErr) continue;
 
@@ -346,9 +346,32 @@ async function syncQuotationSourcedInstallments(
     // on source_tax_invoice_id alone could pick up an installment that
     // actually belongs to a DIFFERENT quotation on that same invoice
     // (possible when two of its quotations land on the same project/job).
-    const priorRow = (existing ?? []).find(
+    let priorRow = (existing ?? []).find(
       (p) => p.source_tax_invoice_id === ownerTaxInvoiceId && p.source_quotation_id === q.id,
     );
+    // A tax invoice is issued straight from the quotation, so it counts itself
+    // the owner of a NEW installment — but the ใบวางบิล that came before it
+    // already opened one for this same quotation (owned by the ใบแจ้งหนี้ it was
+    // made from). Without this the tax invoice and receipt land on a second
+    // installment and the first is left holding only the billing note number.
+    // So when this document has no installment of its own, take over one that an
+    // earlier document opened for the same quotation, hasn't got this document
+    // type's number yet and is about the same amount (within 15%, so the other
+    // round of a 50% / 50% split is left alone).
+    let adopted = false;
+    if (!priorRow) {
+      const ownNoField = syncFields.no as "billing_note_no" | "tax_invoice_no" | "receipt_no";
+      priorRow = (existing ?? [])
+        .filter(
+          (p) =>
+            p.source_quotation_id === q.id &&
+            p.source_tax_invoice_id &&
+            !p[ownNoField] &&
+            Math.abs(Number(p.amount) / (netAmount || 1) - 1) <= 0.15,
+        )
+        .sort((a, b) => Number(a.installment_no) - Number(b.installment_no))[0];
+      adopted = !!priorRow;
+    }
 
     if (priorRow) {
       // Already-received installments keep their status — a later edit to
@@ -360,6 +383,10 @@ async function syncQuotationSourcedInstallments(
         ...(keepAmount ? {} : { amount: netAmount, wht_amount: whtAmount }),
         [syncFields.no]: docNo,
         [syncFields.date]: docDate,
+        // The tax invoice (and the receipt that follows it) become the
+        // installment's owner, so later edits find this same row again. A
+        // billing note leaves the owner as it was.
+        ...(adopted && docType !== "billing_note" ? { source_tax_invoice_id: ownerTaxInvoiceId } : {}),
       };
       if (received) {
         patch.status = "เก็บเงินเรียบร้อย";
