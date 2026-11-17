@@ -1028,24 +1028,75 @@ export async function getReceiptsByTaxInvoiceNo(): Promise<Record<string, { id: 
   if (error) throw error;
 
   const receiptNos = Array.from(new Set((payments ?? []).map((p) => p.receipt_no as string)));
-  if (receiptNos.length === 0) return {};
-  const { data: receipts, error: receiptErr } = await supabase
-    .from("billing_notes")
-    .select("id, doc_no")
-    .eq("doc_type", "receipt")
-    .in("doc_no", receiptNos);
-  if (receiptErr) throw receiptErr;
-  const receiptByNo = new Map((receipts ?? []).map((r) => [r.doc_no as string, { id: r.id as string, docNo: r.doc_no as string }]));
-
   const result: Record<string, { id: string; docNo: string }> = {};
-  for (const p of payments ?? []) {
-    const receipt = receiptByNo.get(p.receipt_no as string);
-    if (receipt && !result[p.tax_invoice_no as string]) result[p.tax_invoice_no as string] = receipt;
+  if (receiptNos.length > 0) {
+    const { data: receipts, error: receiptErr } = await supabase
+      .from("billing_notes")
+      .select("id, doc_no")
+      .eq("doc_type", "receipt")
+      .in("doc_no", receiptNos);
+    if (receiptErr) throw receiptErr;
+    const receiptByNo = new Map((receipts ?? []).map((r) => [r.doc_no as string, { id: r.id as string, docNo: r.doc_no as string }]));
+    for (const p of payments ?? []) {
+      const receipt = receiptByNo.get(p.receipt_no as string);
+      if (receipt && !result[p.tax_invoice_no as string]) result[p.tax_invoice_no as string] = receipt;
+    }
+  }
+
+  // Not every tax invoice's number reaches a payment installment (e.g. one
+  // billed from a job whose installment was entered by hand, or a receipt that
+  // bundles several jobs), so fall back to reading the receipts themselves: a
+  // receipt follows a tax invoice when it carries a line copied from it or a
+  // line for the same quotation at about the same amount.
+  const { data: docs, error: docsErr } = await supabase
+    .from("billing_notes")
+    .select("id, doc_no, doc_type, customer_id, billing_note_items(id, quotation_id, amount, source_item_id, manual_description)")
+    .in("doc_type", ["tax_invoice", "receipt"]);
+  if (docsErr) throw docsErr;
+  const all = (docs ?? []) as unknown as ChainDoc[];
+  const receiptDocs = all.filter((d) => d.doc_type === "receipt");
+  for (const ti of all.filter((d) => d.doc_type === "tax_invoice")) {
+    if (result[ti.doc_no]) continue;
+    const found = receiptDocs.find((r) => chainFollows(ti, r));
+    if (found) result[ti.doc_no] = { id: found.id, docNo: found.doc_no };
   }
   return result;
 }
 
 export type DocRef = { id: string; docNo: string };
+
+type ChainDoc = {
+  id: string;
+  doc_no: string;
+  doc_type: string;
+  customer_id: string;
+  billing_note_items: {
+    id: string;
+    quotation_id: string | null;
+    amount: number | string;
+    source_item_id: string | null;
+    manual_description: string | null;
+  }[];
+};
+
+// Whether `later` carries on from `earlier`: same customer, and a line copied
+// from it (source_item_id) or a line for the same quotation at about the same
+// amount (within 15%).
+function chainFollows(earlier: ChainDoc, later: ChainDoc) {
+  if (earlier.customer_id !== later.customer_id) return false;
+  const earlierItemIds = new Set(earlier.billing_note_items.map((i) => i.id));
+  return later.billing_note_items.some(
+    (b) =>
+      (b.source_item_id && earlierItemIds.has(b.source_item_id)) ||
+      (b.quotation_id &&
+        earlier.billing_note_items.some((a) => {
+          if (a.quotation_id !== b.quotation_id) return false;
+          const ratio = Number(b.amount) / (Number(a.amount) || 1);
+          return Math.abs(ratio - 1) <= 0.15;
+        })),
+  );
+}
+
 
 // How far each document has got along ใบลงผลิต → ใบแจ้งหนี้ → ใบวางบิล →
 // ใบกำกับภาษี. A later document counts as following an earlier one for the same
@@ -1068,42 +1119,14 @@ export async function getBillingChainLinks(): Promise<{
     .in("doc_type", ["invoice", "billing_note", "tax_invoice"]);
   if (error) throw error;
 
-  type Doc = {
-    id: string;
-    doc_no: string;
-    doc_type: string;
-    customer_id: string;
-    billing_note_items: {
-      id: string;
-      quotation_id: string | null;
-      amount: number | string;
-      source_item_id: string | null;
-      manual_description: string | null;
-    }[];
-  };
-  const docs = (data ?? []) as unknown as Doc[];
+  const docs = (data ?? []) as unknown as ChainDoc[];
   const ofType = (t: string) => docs.filter((d) => d.doc_type === t);
-
-  function follows(earlier: Doc, later: Doc) {
-    if (earlier.customer_id !== later.customer_id) return false;
-    const earlierItemIds = new Set(earlier.billing_note_items.map((i) => i.id));
-    return later.billing_note_items.some(
-      (b) =>
-        (b.source_item_id && earlierItemIds.has(b.source_item_id)) ||
-        (b.quotation_id &&
-          earlier.billing_note_items.some((a) => {
-            if (a.quotation_id !== b.quotation_id) return false;
-            const ratio = Number(b.amount) / (Number(a.amount) || 1);
-            return Math.abs(ratio - 1) <= 0.15;
-          })),
-    );
-  }
 
   function linkAll(from: string, to: string): Record<string, DocRef> {
     const later = ofType(to);
     const result: Record<string, DocRef> = {};
     for (const a of ofType(from)) {
-      const found = later.find((b) => follows(a, b));
+      const found = later.find((b) => chainFollows(a, b));
       if (found) result[a.id] = { id: found.id, docNo: found.doc_no };
     }
     return result;
