@@ -37,7 +37,7 @@ export function PrintPaymentVoucherSummaryView({
         <div>
           <p className="text-lg font-semibold">รายการจ่ายเงิน</p>
           <p className="text-sm">
-            {fromLabel} — {toLabel}
+            {toLabel ? `${fromLabel} — ${toLabel}` : fromLabel}
           </p>
         </div>
         <div className="text-right">

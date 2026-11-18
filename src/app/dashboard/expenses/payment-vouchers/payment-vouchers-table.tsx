@@ -34,7 +34,7 @@ const RANGE_ANY = "__any__";
 
 type VoucherRow = Omit<PaymentVoucher, "ledgerLines">;
 
-const TOTAL_COLUMNS = 8;
+const TOTAL_COLUMNS = 9;
 
 const THAI_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -114,6 +114,9 @@ export function PaymentVouchersTable({
   const [docTo, setDocTo] = useState(RANGE_ANY);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  // Vouchers ticked for printing — when any are ticked, only those are printed
+  // and the range/date filters below are ignored.
+  const [selectedDocNos, setSelectedDocNos] = useState<Set<string>>(new Set());
 
   const monthOptions = useMemo(() => {
     const keys = new Set(vouchers.map((v) => monthKeyOf(v.voucherDate)));
@@ -153,15 +156,48 @@ export function PaymentVouchersTable({
 
   const total = filtered.reduce((sum, v) => sum + v.amount, 0);
 
+  // Only ticked vouchers that still exist count (a deleted one drops out).
+  const pickedDocNos = useMemo(
+    () => vouchers.filter((v) => selectedDocNos.has(v.docNo)).map((v) => v.docNo).sort(),
+    [vouchers, selectedDocNos],
+  );
+  const pickedTotal = useMemo(
+    () => vouchers.filter((v) => selectedDocNos.has(v.docNo)).reduce((sum, v) => sum + v.amount, 0),
+    [vouchers, selectedDocNos],
+  );
+  const allFilteredSelected = filtered.length > 0 && filtered.every((v) => selectedDocNos.has(v.docNo));
+
+  function toggleDocNo(docNo: string) {
+    setSelectedDocNos((prev) => {
+      const next = new Set(prev);
+      if (next.has(docNo)) next.delete(docNo);
+      else next.add(docNo);
+      return next;
+    });
+  }
+
+  function toggleAllFiltered() {
+    setSelectedDocNos((prev) => {
+      const next = new Set(prev);
+      if (filtered.every((v) => next.has(v.docNo))) filtered.forEach((v) => next.delete(v.docNo));
+      else filtered.forEach((v) => next.add(v.docNo));
+      return next;
+    });
+  }
+
   const summaryHref = useMemo(() => {
     const params = new URLSearchParams();
-    if (docFrom !== RANGE_ANY) params.set("docFrom", docFrom);
-    if (docTo !== RANGE_ANY) params.set("docTo", docTo);
-    if (dateFrom) params.set("dateFrom", dateFrom);
-    if (dateTo) params.set("dateTo", dateTo);
+    if (pickedDocNos.length > 0) {
+      params.set("docNos", pickedDocNos.join(","));
+    } else {
+      if (docFrom !== RANGE_ANY) params.set("docFrom", docFrom);
+      if (docTo !== RANGE_ANY) params.set("docTo", docTo);
+      if (dateFrom) params.set("dateFrom", dateFrom);
+      if (dateTo) params.set("dateTo", dateTo);
+    }
     const qs = params.toString();
     return `/dashboard/expenses/payment-vouchers/summary${qs ? `?${qs}` : ""}`;
-  }, [docFrom, docTo, dateFrom, dateTo]);
+  }, [pickedDocNos, docFrom, docTo, dateFrom, dateTo]);
 
   // Group by calendar month (newest first) with a subtotal per month —
   // same shape as WALLPOD Project Sales' report table, so ค้นหา/ดูแต่ละเดือน
@@ -205,7 +241,7 @@ export function PaymentVouchersTable({
       </div>
 
       <div className="flex flex-wrap items-end gap-2 rounded-lg border p-3">
-        <p className="w-full text-sm font-medium">พิมพ์รายการจ่าย — เลือกช่วงเลขที่เอกสาร หรือช่วงวันที่</p>
+        <p className="w-full text-sm font-medium">พิมพ์รายการจ่าย — เลือกช่วงเลขที่เอกสาร ช่วงวันที่ หรือติ๊กเลือกเฉพาะรายการในตารางด้านล่าง</p>
         <div className="space-y-1">
           <Label htmlFor="doc_from" className="text-xs text-muted-foreground">
             จากเลขที่
@@ -263,14 +299,35 @@ export function PaymentVouchersTable({
         </div>
         <Button variant="outline" nativeButton={false} render={<Link href={summaryHref} target="_blank" />}>
           <Printer className="h-3.5 w-3.5" />
-          พิมพ์รายการจ่าย
+          {pickedDocNos.length > 0 ? `พิมพ์เฉพาะที่เลือก (${pickedDocNos.length} รายการ)` : "พิมพ์รายการจ่าย"}
         </Button>
+        {pickedDocNos.length > 0 && (
+          <>
+            <Button variant="ghost" onClick={() => setSelectedDocNos(new Set())}>
+              ล้างที่เลือก
+            </Button>
+            <p className="w-full text-sm text-muted-foreground">
+              เลือกไว้ {pickedDocNos.length} รายการ — รวม {formatTHB(pickedTotal)} (พิมพ์เฉพาะรายการที่ติ๊ก ไม่ใช้ช่วงด้านบน)
+            </p>
+          </>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-8">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={allFilteredSelected}
+                  onChange={toggleAllFiltered}
+                  disabled={filtered.length === 0}
+                  title="เลือกทุกรายการที่แสดงอยู่"
+                  aria-label="เลือกทุกรายการที่แสดงอยู่"
+                />
+              </TableHead>
               <TableHead className="whitespace-nowrap">เลขที่เอกสาร</TableHead>
               <TableHead className="whitespace-nowrap">วันที่</TableHead>
               <TableHead className="whitespace-nowrap">ผู้รับเงิน</TableHead>
@@ -297,7 +354,16 @@ export function PaymentVouchersTable({
                   </TableCell>
                 </TableRow>
                 {group.rows.map((v) => (
-                  <TableRow key={v.id}>
+                  <TableRow key={v.id} className={selectedDocNos.has(v.docNo) ? "bg-muted/50" : undefined}>
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4"
+                        checked={selectedDocNos.has(v.docNo)}
+                        onChange={() => toggleDocNo(v.docNo)}
+                        aria-label={`เลือก ${v.docNo}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium whitespace-nowrap">{v.docNo}</TableCell>
                     <TableCell className="whitespace-nowrap">
                       {new Date(v.voucherDate).toLocaleDateString("th-TH")}
