@@ -141,7 +141,7 @@ function DocumentBody({
           {copyLabel === "ต้นฉบับ" ? (
             <p className="text-[18px] font-bold text-[#da3030]">{copyLabel}</p>
           ) : (
-            <p className="text-xs text-neutral-500">{copyLabel}</p>
+            <p className="text-[18px] font-bold text-neutral-500">{copyLabel}</p>
           )}
         </div>
       </div>
