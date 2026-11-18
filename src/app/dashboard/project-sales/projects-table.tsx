@@ -401,6 +401,10 @@ export function ProjectsTable({
   const [query, setQuery] = useState("");
   const [selectedMonths, setSelectedMonths] = useState<Set<string>>(new Set());
   const [selectedSalesReps, setSelectedSalesReps] = useState<Set<string>>(new Set());
+  // Typed/picked customer name — narrows to that customer across every month.
+  const [customer, setCustomer] = useState("");
+  // Show every month in one long page instead of one month per page.
+  const [showAllMonths, setShowAllMonths] = useState(false);
   const [pageIndex, setPageIndex] = useState(LATEST_PAGE);
   const [costDetail, setCostDetail] = useState<{ p: FullProjectRow; bucket: CostBucket | "all" } | null>(null);
 
@@ -417,6 +421,10 @@ export function ProjectsTable({
   }
   function updateSelectedSalesReps(v: Set<string>) {
     setSelectedSalesReps(v);
+    setPageIndex(LATEST_PAGE);
+  }
+  function updateCustomer(v: string) {
+    setCustomer(v);
     setPageIndex(LATEST_PAGE);
   }
   const totalColumns =
@@ -436,6 +444,11 @@ export function ProjectsTable({
       .map((name) => ({ value: name, label: name }));
   }, [projects]);
 
+  const customerOptions = useMemo(() => {
+    const names = new Set(projects.map((p) => p.customerName).filter(Boolean));
+    return Array.from(names).sort((a, b) => a.localeCompare(b, "th"));
+  }, [projects]);
+
   const searched = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return projects;
@@ -452,9 +465,15 @@ export function ProjectsTable({
     return searched.filter((p) => {
       if (selectedMonths.size > 0 && !selectedMonths.has(monthKeyOf(p.projectDate))) return false;
       if (selectedSalesReps.size > 0 && !selectedSalesReps.has(p.salesRepName)) return false;
+      const c = customer.trim().toLowerCase();
+      if (c && !p.customerName.toLowerCase().includes(c)) return false;
       return true;
     });
-  }, [searched, selectedMonths, selectedSalesReps]);
+  }, [searched, selectedMonths, selectedSalesReps, customer]);
+
+  // Picking a customer is for seeing everything they bought, so it shows
+  // every month on one page automatically; the button does the same for all.
+  const showEveryMonth = showAllMonths || customer.trim() !== "";
 
   const summary = useMemo(() => sumRows(filtered), [filtered]);
 
@@ -491,6 +510,8 @@ export function ProjectsTable({
   const clampedPageIndex =
     monthGroups.length === 0 ? 0 : Math.min(pageIndex, monthGroups.length - 1);
   const currentGroup = monthGroups[clampedPageIndex] as (typeof monthGroups)[number] | undefined;
+  const visibleGroups = showEveryMonth ? monthGroups : currentGroup ? [currentGroup] : [];
+  const visibleRowCount = visibleGroups.reduce((sum, g) => sum + g.rows.length, 0);
 
   // Fill exactly whatever room is actually left below the table on THIS
   // screen (filters/summary/pager height varies with content and viewport),
@@ -515,7 +536,7 @@ export function ProjectsTable({
     updateHeight();
     window.addEventListener("resize", updateHeight);
     return () => window.removeEventListener("resize", updateHeight);
-  }, [clampedPageIndex]);
+  }, [clampedPageIndex, showEveryMonth]);
 
   return (
     <div className="space-y-4">
@@ -540,6 +561,38 @@ export function ProjectsTable({
           selected={selectedSalesReps}
           onChange={updateSelectedSalesReps}
         />
+        <div className="relative">
+          <Input
+            list="project-sales-customers"
+            value={customer}
+            onChange={(e) => updateCustomer(e.target.value)}
+            placeholder="เลือกลูกค้า (พิมพ์เพื่อค้นหา)"
+            className="w-[260px] pr-8"
+          />
+          {customer && (
+            <button
+              type="button"
+              onClick={() => updateCustomer("")}
+              className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              title="ล้างลูกค้า"
+            >
+              ×
+            </button>
+          )}
+          <datalist id="project-sales-customers">
+            {customerOptions.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+        </div>
+        <Button
+          variant={showEveryMonth ? "default" : "outline"}
+          onClick={() => setShowAllMonths((v) => !v)}
+          disabled={customer.trim() !== ""}
+          title={customer.trim() !== "" ? "เลือกลูกค้าอยู่ — แสดงทุกเดือนในหน้าเดียวอัตโนมัติ" : undefined}
+        >
+          แสดงทุกเดือนในหน้าเดียว
+        </Button>
       </div>
 
       <div className="flex flex-wrap gap-3">
@@ -579,7 +632,7 @@ export function ProjectsTable({
         </SummaryGroup>
       </div>
 
-      {monthGroups.length > 0 && (
+      {monthGroups.length > 0 && !showEveryMonth && (
         <div className="flex items-center justify-between gap-2 rounded-md border bg-muted/30 px-3 py-2">
           <Button
             variant="outline"
@@ -678,7 +731,7 @@ export function ProjectsTable({
                 </TableCell>
               </TableRow>
             )}
-            {currentGroup && (
+            {visibleGroups.map((currentGroup) => (
               <Fragment key={currentGroup.key}>
                 <TableRow className="bg-muted hover:bg-muted">
                   <TableCell colSpan={totalColumns} className="font-medium">
@@ -713,12 +766,34 @@ export function ProjectsTable({
                   </TableCell>
                 </TableRow>
               </Fragment>
+            ))}
+            {showEveryMonth && visibleGroups.length > 1 && (
+              <TableRow className="bg-muted hover:bg-muted">
+                <TableCell colSpan={totalColumns} className="py-3">
+                  <div className="flex flex-wrap items-stretch gap-x-6 gap-y-2">
+                    <span className="text-sm font-medium">รวมทุกเดือน ({summary.count} งาน)</span>
+                    <SubtotalStat label="PRE.VAT" value={summary.preVat} />
+                    <SubtotalStat label="VAT" value={summary.vat} />
+                    <SubtotalStat label="รวมทั้งสิ้น" value={summary.total} emphasize />
+                    {canSeeCosts && (
+                      <>
+                        <SubtotalStat label="ต้นทุน" value={summary.totalCost} />
+                        <SubtotalStat label="กำไร" value={summary.profit} tone="profit" />
+                        <SubtotalPercent label="%กำไร" value={marginPercent(summary.profit, summary.preVat)} />
+                      </>
+                    )}
+                    <SubtotalStat label="คงค้าง" value={summary.outstanding} tone="outstanding" />
+                  </div>
+                </TableCell>
+              </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
       <p className="text-sm text-muted-foreground">
-        แสดง {currentGroup?.rows.length ?? 0} งานในหน้านี้ — {filtered.length} งานทั้งหมดตามตัวกรอง
+        {showEveryMonth
+          ? `แสดงทุกเดือน ${visibleRowCount} งาน`
+          : `แสดง ${visibleRowCount} งานในหน้านี้ — ${filtered.length} งานทั้งหมดตามตัวกรอง`}
       </p>
       <CostDetailDialog detail={costDetail} onClose={() => setCostDetail(null)} />
     </div>
