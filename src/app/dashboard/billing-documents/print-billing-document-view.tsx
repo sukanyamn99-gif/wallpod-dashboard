@@ -139,7 +139,7 @@ function DocumentBody({
               series, so this clarifies which one a printed page is. */}
           {document.docType === "invoice" && <p className="text-xs text-black">(ไม่ใช่ใบกำกับภาษี)</p>}
           {copyLabel === "ต้นฉบับ" ? (
-            <p className="text-base font-bold text-[#902727]">{copyLabel}</p>
+            <p className="text-[18px] font-bold text-[#da3030]">{copyLabel}</p>
           ) : (
             <p className="text-xs text-neutral-500">{copyLabel}</p>
           )}
