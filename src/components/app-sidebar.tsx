@@ -97,7 +97,7 @@ const salesDocsGroup = {
 };
 
 const inventoryGroup = {
-  title: "Stock Data",
+  title: "สต๊อกสินค้า",
   icon: Warehouse,
   items: [
     { title: "สินค้า", url: "/dashboard/stock-product", icon: Package },
