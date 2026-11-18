@@ -50,7 +50,11 @@ function DocumentBody({ receipt, copyLabel }: { receipt: PurchaseOrderReceipt; c
           <p className="text-2xl font-bold" style={{ color: "#2793a2" }}>
             ใบรับสินค้า
           </p>
-          <p className="text-xs text-neutral-500">{copyLabel}</p>
+          {copyLabel === "ต้นฉบับ" ? (
+            <p className="text-[18px] font-bold text-[#da3030]">{copyLabel}</p>
+          ) : (
+            <p className="text-[18px] font-bold text-neutral-500">{copyLabel}</p>
+          )}
         </div>
       </div>
 
