@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Printer } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -511,6 +511,18 @@ export function ProjectsTable({
     monthGroups.length === 0 ? 0 : Math.min(pageIndex, monthGroups.length - 1);
   const currentGroup = monthGroups[clampedPageIndex] as (typeof monthGroups)[number] | undefined;
   const visibleGroups = showEveryMonth ? monthGroups : currentGroup ? [currentGroup] : [];
+  // Same filters as on screen go to the print page; when one month per page is
+  // showing, only that month prints (what you see is what you get).
+  const printHref = useMemo(() => {
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("q", query.trim());
+    if (customer.trim()) params.set("customer", customer.trim());
+    if (selectedSalesReps.size > 0) params.set("reps", Array.from(selectedSalesReps).join("|"));
+    const months = showEveryMonth ? Array.from(selectedMonths) : currentGroup ? [currentGroup.key] : [];
+    if (months.length > 0) params.set("months", months.join("|"));
+    const qs = params.toString();
+    return `/dashboard/project-sales/print${qs ? `?${qs}` : ""}`;
+  }, [query, customer, selectedSalesReps, selectedMonths, showEveryMonth, currentGroup]);
   const visibleRowCount = visibleGroups.reduce((sum, g) => sum + g.rows.length, 0);
 
   // Fill exactly whatever room is actually left below the table on THIS
@@ -592,6 +604,15 @@ export function ProjectsTable({
           title={customer.trim() !== "" ? "เลือกลูกค้าอยู่ — แสดงทุกเดือนในหน้าเดียวอัตโนมัติ" : undefined}
         >
           แสดงทุกเดือนในหน้าเดียว
+        </Button>
+        <Button
+          variant="outline"
+          nativeButton={false}
+          render={<a href={printHref} target="_blank" rel="noreferrer" />}
+          disabled={filtered.length === 0}
+        >
+          <Printer className="h-4 w-4" />
+          พิมพ์รายงาน
         </Button>
       </div>
 
