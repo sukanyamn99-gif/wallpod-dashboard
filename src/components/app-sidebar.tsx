@@ -131,7 +131,7 @@ const purchaseDocsGroup = {
 };
 
 const expensesGroup = {
-  title: "Expenses",
+  title: "ค่าใช้จ่าย",
   icon: Banknote,
   items: [
     { title: "บัญชีธนาคาร", url: "/dashboard/bank-accounts", icon: Building2 },
