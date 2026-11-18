@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DownloadPdfButton } from "@/components/dashboard/download-pdf-button";
 import { formatTHB } from "@/lib/format";
-import { voucherJobNos } from "@/lib/payment-voucher-jobs";
+import { voucherJobNos, voucherNetPaid } from "@/lib/payment-voucher-jobs";
 import type { PaymentVoucher } from "@/lib/types";
 
 type VoucherRow = Omit<PaymentVoucher, "ledgerLines">;
@@ -21,7 +21,7 @@ export function PrintPaymentVoucherSummaryView({
   preparerName: string;
 }) {
   const router = useRouter();
-  const grandTotal = rows.reduce((sum, v) => sum + v.amount, 0);
+  const grandTotal = rows.reduce((sum, v) => sum + voucherNetPaid(v), 0);
 
   return (
     <div className="mx-auto max-w-4xl bg-white p-6 text-black print:p-0">
@@ -69,7 +69,7 @@ export function PrintPaymentVoucherSummaryView({
               เลขที่ Job
             </th>
             <th className="border border-black p-1" style={{ width: "20%" }}>
-              จำนวนเงิน
+              จำนวนเงินที่จ่าย
             </th>
           </tr>
         </thead>
@@ -89,7 +89,7 @@ export function PrintPaymentVoucherSummaryView({
               <td className="border border-black p-1 text-left">{v.payeeName}</td>
               <td className="border border-black p-1 text-left">{v.category ?? "—"}</td>
               <td className="border border-black p-1">{voucherJobNos(v).join(", ") || "—"}</td>
-              <td className="border border-black p-1 text-right">{formatTHB(v.amount)}</td>
+              <td className="border border-black p-1 text-right">{formatTHB(voucherNetPaid(v))}</td>
             </tr>
           ))}
           {rows.length > 0 && (

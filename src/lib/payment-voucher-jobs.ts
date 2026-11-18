@@ -13,3 +13,10 @@ export function voucherJobNos(v: Pick<PaymentVoucher, "jobNo" | "jobAllocations"
 export function jobCostAmount(amount: number, vatIncluded: boolean): number {
   return vatIncluded ? Math.round((amount / 1.07) * 100) / 100 : amount;
 }
+
+// What is actually paid out on a voucher: the amount less the tax withheld
+// (หัก ณ ที่จ่าย) and any social security taken off — the "จำนวนเงินจ่าย" on the
+// printed voucher.
+export function voucherNetPaid(v: Pick<PaymentVoucher, "amount" | "whtAmount" | "socialSecurityAmount">): number {
+  return Math.round((v.amount - v.whtAmount - v.socialSecurityAmount) * 100) / 100;
+}

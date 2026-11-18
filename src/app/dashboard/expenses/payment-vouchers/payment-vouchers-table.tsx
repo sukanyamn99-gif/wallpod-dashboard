@@ -24,7 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatTHB } from "@/lib/format";
-import { voucherJobNos } from "@/lib/payment-voucher-jobs";
+import { voucherJobNos, voucherNetPaid } from "@/lib/payment-voucher-jobs";
 import type { PaymentVoucher, Profile } from "@/lib/types";
 import { deletePaymentVoucher } from "./actions";
 
@@ -154,7 +154,7 @@ export function PaymentVouchersTable({
     return searched.filter((v) => selectedMonths.has(monthKeyOf(v.voucherDate)));
   }, [searched, selectedMonths]);
 
-  const total = filtered.reduce((sum, v) => sum + v.amount, 0);
+  const total = filtered.reduce((sum, v) => sum + voucherNetPaid(v), 0);
 
   // Only ticked vouchers that still exist count (a deleted one drops out).
   const pickedDocNos = useMemo(
@@ -162,7 +162,7 @@ export function PaymentVouchersTable({
     [vouchers, selectedDocNos],
   );
   const pickedTotal = useMemo(
-    () => vouchers.filter((v) => selectedDocNos.has(v.docNo)).reduce((sum, v) => sum + v.amount, 0),
+    () => vouchers.filter((v) => selectedDocNos.has(v.docNo)).reduce((sum, v) => sum + voucherNetPaid(v), 0),
     [vouchers, selectedDocNos],
   );
   const allFilteredSelected = filtered.length > 0 && filtered.every((v) => selectedDocNos.has(v.docNo));
@@ -212,7 +212,7 @@ export function PaymentVouchersTable({
         key,
         label: monthLabelOf(key),
         rows,
-        subtotal: rows.reduce((sum, v) => sum + v.amount, 0),
+        subtotal: rows.reduce((sum, v) => sum + voucherNetPaid(v), 0),
       };
     });
   }, [filtered]);
@@ -333,7 +333,7 @@ export function PaymentVouchersTable({
               <TableHead className="whitespace-nowrap">ผู้รับเงิน</TableHead>
               <TableHead className="whitespace-nowrap">หมวดหมู่</TableHead>
               <TableHead className="whitespace-nowrap">เลขที่ Job</TableHead>
-              <TableHead className="text-right whitespace-nowrap">จำนวนเงิน</TableHead>
+              <TableHead className="text-right whitespace-nowrap">จำนวนเงินที่จ่าย</TableHead>
               <TableHead className="whitespace-nowrap">ผู้บันทึก</TableHead>
               <TableHead className="whitespace-nowrap">จัดการ</TableHead>
             </TableRow>
@@ -371,7 +371,7 @@ export function PaymentVouchersTable({
                     <TableCell className="whitespace-nowrap">{v.payeeName}</TableCell>
                     <TableCell className="whitespace-nowrap">{v.category ?? "—"}</TableCell>
                     <TableCell className="whitespace-nowrap">{voucherJobNos(v).join(", ") || "—"}</TableCell>
-                    <TableCell className="text-right whitespace-nowrap">{formatTHB(v.amount)}</TableCell>
+                    <TableCell className="text-right whitespace-nowrap">{formatTHB(voucherNetPaid(v))}</TableCell>
                     <TableCell className="whitespace-nowrap">{v.recordedByName || "—"}</TableCell>
                     <TableCell>
                       <div className="flex gap-1">
