@@ -138,7 +138,11 @@ function DocumentBody({
           {/* ใบแจ้งหนี้/ใบกำกับภาษี share the same INV-prefixed doc number
               series, so this clarifies which one a printed page is. */}
           {document.docType === "invoice" && <p className="text-xs text-black">(ไม่ใช่ใบกำกับภาษี)</p>}
-          <p className="text-xs text-neutral-500">{copyLabel}</p>
+          {copyLabel === "ต้นฉบับ" ? (
+            <p className="text-base font-bold text-[#902727]">{copyLabel}</p>
+          ) : (
+            <p className="text-xs text-neutral-500">{copyLabel}</p>
+          )}
         </div>
       </div>
 
