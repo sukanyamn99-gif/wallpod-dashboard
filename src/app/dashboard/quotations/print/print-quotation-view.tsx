@@ -348,12 +348,37 @@ export function PrintQuotationView({
             per-column stacks) so CSS Grid sizes each row to its tallest
             cell, keeping all 3 signature lines aligned even when a label
             wraps to 2 lines. */}
-        <div className="mt-8 grid grid-cols-3 gap-x-4 gap-y-8 text-center print:break-inside-avoid">
+        <div
+          className={`mt-8 grid grid-cols-3 gap-x-4 text-center print:break-inside-avoid ${fromProduction ? "gap-y-12" : "gap-y-8"}`}
+        >
           <p className="self-end">Checked by /ตรวจสอบโดย</p>
           <p className="self-end">Pre-production rechecked and approved/ผู้อนุมัติผลิต</p>
           <p className="self-end">Customer Approved ยืนยันคำสั่งซื้อ</p>
-          <p className="border-t border-black pt-1">Date :</p>
-          <p className="border-t border-black pt-1">Date :</p>
+          {/* ใบลงผลิต only: the signature sits just above the first two lines. */}
+          <p className="relative border-t border-black pt-1">
+            {fromProduction && (
+              <Image
+                src="/signature.webp"
+                alt="ลายเซ็น"
+                width={200}
+                height={74}
+                className="absolute bottom-full left-1/2 h-10 w-auto -translate-x-1/2 translate-y-1 mix-blend-multiply"
+              />
+            )}
+            Date :
+          </p>
+          <p className="relative border-t border-black pt-1">
+            {fromProduction && (
+              <Image
+                src="/signature.webp"
+                alt="ลายเซ็น"
+                width={200}
+                height={74}
+                className="absolute bottom-full left-1/2 h-10 w-auto -translate-x-1/2 translate-y-1 mix-blend-multiply"
+              />
+            )}
+            Date :
+          </p>
           <p className="border-t border-black pt-1">Date :</p>
         </div>
       </div>
