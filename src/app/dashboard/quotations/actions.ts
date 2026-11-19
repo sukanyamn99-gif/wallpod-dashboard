@@ -216,6 +216,18 @@ async function uploadItemImage(
   return error ? null : path;
 }
 
+// A quotation made by copying another keeps its own copy of each picture, so
+// deleting or replacing a picture on one never touches the other.
+async function copyItemImage(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  quotationId: string,
+  fromPath: string,
+): Promise<string | null> {
+  const path = `${quotationId}/${crypto.randomUUID()}.jpg`;
+  const { error } = await supabase.storage.from(IMAGE_BUCKET).copy(fromPath, path);
+  return error ? null : path;
+}
+
 export async function createQuotation(formData: FormData) {
   if (!isSupabaseConfigured()) {
     return { error: "ยังไม่ได้ตั้งค่า Supabase — ไม่สามารถบันทึกได้ในโหมดทดลอง" };
@@ -272,6 +284,9 @@ export async function createQuotation(formData: FormData) {
     const it = items[i];
     let imagePath: string | null = null;
     if (it.image) imagePath = await uploadItemImage(supabase, quotation.id, it.image);
+    else if (it.existingImagePath && !it.removeImage) {
+      imagePath = await copyItemImage(supabase, quotation.id, it.existingImagePath);
+    }
 
     const { error: itemErr } = await supabase.from("quotation_items").insert({
       quotation_id: quotation.id,

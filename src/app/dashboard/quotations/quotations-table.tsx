@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { MonthTabs, filterByMonth, useDocMonth } from "@/components/dashboard/month-tabs";
 import Link from "next/link";
-import { Ban, Check, Eye, Factory, Pencil, Trash2, Undo2, X } from "lucide-react";
+import { Ban, Check, Copy, Eye, Factory, Pencil, Trash2, Undo2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -149,6 +149,24 @@ export function QuotationsTable({ quotations }: { quotations: Quotation[] }) {
     );
   }, [quotations, query, month]);
 
+  // Size the table to the room left on this screen, so its own scrollbars
+  // (sideways and up/down) sit at the bottom edge of the window instead of
+  // far below the last of dozens of rows. The header row stays pinned.
+  const tableWrapperRef = useRef<HTMLDivElement>(null);
+  const [tableMaxHeight, setTableMaxHeight] = useState<number | null>(null);
+  useEffect(() => {
+    function updateHeight() {
+      const el = tableWrapperRef.current;
+      if (!el) return;
+      const top = el.getBoundingClientRect().top;
+      // Leaves room for the "แสดง N จาก M รายการ" line and the page padding below.
+      setTableMaxHeight(Math.max(240, window.innerHeight - top - 76));
+    }
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+    return () => window.removeEventListener("resize", updateHeight);
+  }, [month]);
+
   return (
     <div className="space-y-4">
       <MonthTabs
@@ -187,18 +205,22 @@ export function QuotationsTable({ quotations }: { quotations: Quotation[] }) {
         className="max-w-sm"
       />
 
-      <div className="overflow-x-auto rounded-md border">
-        <Table>
+      <div
+        ref={tableWrapperRef}
+        className="overflow-auto rounded-md border"
+        style={{ maxHeight: tableMaxHeight ?? undefined }}
+      >
+        <Table containerClassName="overflow-visible">
           <TableHeader>
             <TableRow>
-              <TableHead className="whitespace-nowrap">เลขที่</TableHead>
-              <TableHead className="whitespace-nowrap">วันที่</TableHead>
-              <TableHead className="whitespace-nowrap">ลูกค้า</TableHead>
-              <TableHead className="whitespace-nowrap">ชื่อโครงการ</TableHead>
-              <TableHead className="whitespace-nowrap">พนักงานขาย</TableHead>
-              <TableHead className="text-right whitespace-nowrap">ยอดรวม</TableHead>
-              <TableHead className="whitespace-nowrap">สถานะ</TableHead>
-              <TableHead className="whitespace-nowrap">จัดการ</TableHead>
+              <TableHead className="sticky top-0 z-10 bg-card whitespace-nowrap">เลขที่</TableHead>
+              <TableHead className="sticky top-0 z-10 bg-card whitespace-nowrap">วันที่</TableHead>
+              <TableHead className="sticky top-0 z-10 bg-card whitespace-nowrap">ลูกค้า</TableHead>
+              <TableHead className="sticky top-0 z-10 bg-card whitespace-nowrap">ชื่อโครงการ</TableHead>
+              <TableHead className="sticky top-0 z-10 bg-card whitespace-nowrap">พนักงานขาย</TableHead>
+              <TableHead className="sticky top-0 z-10 bg-card text-right whitespace-nowrap">ยอดรวม</TableHead>
+              <TableHead className="sticky top-0 z-10 bg-card whitespace-nowrap">สถานะ</TableHead>
+              <TableHead className="sticky top-0 z-10 bg-card whitespace-nowrap">จัดการ</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -227,6 +249,15 @@ export function QuotationsTable({ quotations }: { quotations: Quotation[] }) {
                     </Button>
                     <Button size="icon-sm" variant="outline" nativeButton={false} render={<Link href={`/dashboard/quotations/edit/${q.id}`} />}>
                       <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      size="icon-sm"
+                      variant="outline"
+                      nativeButton={false}
+                      render={<Link href={`/dashboard/quotations/new?copyFrom=${q.id}`} />}
+                      title="คัดลอกเป็นใบเสนอราคาใหม่"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
                     </Button>
                     {!q.isCancelled && q.status !== "ปฏิเสธ" &&
                       (q.status === "ลูกค้าตอบตกลง" && !q.productionCancelled ? (
