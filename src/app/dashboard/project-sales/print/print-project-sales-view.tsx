@@ -129,7 +129,15 @@ export function PrintProjectSalesView({
         tbody tr { page-break-inside: avoid; break-inside: avoid; }
       `}</style>
       <div className="mb-4 flex justify-end gap-2 print:hidden">
-        <Button variant="outline" onClick={() => router.back()}>
+        {/* Opened in a new tab, so there is no history to go back to — close the
+            tab, and fall back to the list if the browser refuses to close it. */}
+        <Button
+          variant="outline"
+          onClick={() => {
+            window.close();
+            router.push("/dashboard/project-sales");
+          }}
+        >
           ปิด
         </Button>
         <Button onClick={() => window.print()}>พิมพ์</Button>
