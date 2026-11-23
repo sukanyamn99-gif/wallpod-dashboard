@@ -39,6 +39,16 @@ export interface BillingDocumentSummary {
 // billed with, so older amounts never move by a satang.
 const SPLIT_ROUNDS_FROM = "2026-10-27";
 
+// Documents created from this date on keep their total exactly equal to the
+// VAT-inclusive amount billed (see computeBillingDocumentSummary's exactTotal).
+// Older ones keep the figure they were printed and billed with.
+const EXACT_TOTAL_FROM = "2026-11-23";
+
+// A document being created uses it; a saved one by its created_at (ISO).
+export function usesExactTotal(createdAt: string | null | undefined): boolean {
+  return !createdAt || createdAt.slice(0, 10) >= EXACT_TOTAL_FROM;
+}
+
 // A document being created uses it; a saved one by its created_at (ISO).
 // Only ใบแจ้งหนี้ / ใบกำกับภาษี: ใบวางบิล and ใบเสร็จรับเงิน collect on what was
 // already billed and keep their own layout and arithmetic.
@@ -85,11 +95,22 @@ export function computeBillingDocumentSummary(
   // satang-rounding hack is not needed because both rounds are now
   // calculated the same way (see usesSplitRounds).
   splitRounds = false,
+  // Keep the document's total equal to the VAT-inclusive amount that was
+  // billed. Dividing that amount by 1.07 and adding 7% back can land a satang
+  // off it (a 27,656.06 deposit came out 27,656.07), because some totals can't
+  // be reached by any pre-VAT amount plus 7%. When that happens the VAT line
+  // takes the difference, so the total on the document is the agreed amount.
+  exactTotal = false,
 ): BillingDocumentSummary {
-  const subtotal = round2(items.reduce((sum, it) => sum + it.amount, 0) / 1.07);
+  const gross = round2(items.reduce((sum, it) => sum + it.amount, 0));
+  const subtotal = round2(gross / 1.07);
   const afterDiscount = round2(subtotal - discountAmount);
-  const vat = round2(afterDiscount * 0.07);
-  const totalAfterVat = round2(afterDiscount + vat);
+  let vat = round2(afterDiscount * 0.07);
+  let totalAfterVat = round2(afterDiscount + vat);
+  if (exactTotal && discountAmount === 0 && totalAfterVat !== gross) {
+    vat = round2(gross - afterDiscount);
+    totalAfterVat = gross;
+  }
   // Discount isn't allocated per line in this data model, so the WHT base
   // is the flagged lines' own pre-VAT amounts, not further reduced by the
   // document-level discount — that discount already only ever applies to

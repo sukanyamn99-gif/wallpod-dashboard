@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { DownloadPdfButton } from "@/components/dashboard/download-pdf-button";
 import { formatTHB } from "@/lib/format";
 import { thaiBahtText } from "@/lib/thai-baht-text";
-import { computeBillingDocumentSummary, round2, usesSplitRounds } from "@/lib/billing-document-summary";
+import { computeBillingDocumentSummary, round2, usesExactTotal, usesSplitRounds } from "@/lib/billing-document-summary";
 import { BILLING_DOCUMENT_LABELS } from "@/lib/types";
 import type { BillingDocumentDetail, PaymentMethod, PrimaryBankAccount } from "@/lib/types";
 
@@ -75,6 +75,7 @@ function DocumentBody({
     document.depositWhtAmount,
     document.roundingAmount,
     usesSplitRounds(document.createdAt, document.docType),
+    usesExactTotal(document.createdAt),
   );
   // ใบกำกับภาษี / ใบแจ้งหนี้ for a later installment (a deposit already received) prints
   // the deposit deduction BEFORE VAT — หักมัดจำ → ยอดคงเหลือหลังหักมัดจำ →

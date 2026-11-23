@@ -1,6 +1,11 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { getQuotationItemsByIds, getQuotationItemsByJobNumbers } from "@/lib/data/quotations";
-import { allocateBillingDocumentSummaryByLine, computeBillingDocumentSummary, usesSplitRounds } from "@/lib/billing-document-summary";
+import {
+  allocateBillingDocumentSummaryByLine,
+  computeBillingDocumentSummary,
+  usesExactTotal,
+  usesSplitRounds,
+} from "@/lib/billing-document-summary";
 import type {
   BillableBillingNoteItem,
   BillableTaxInvoice,
@@ -132,6 +137,7 @@ export async function getReceivedInvoicesForCustomer(
         Number(doc.deposit_wht_amount),
         Number(doc.rounding_amount),
         usesSplitRounds(doc.created_at, "invoice"),
+        usesExactTotal(doc.created_at),
       );
       return {
         paymentId: `doc:${doc.id}`,
@@ -751,6 +757,7 @@ export async function getBillingDocuments(docType: BillingDocumentType): Promise
       Number(row.deposit_wht_amount),
       Number(row.rounding_amount),
       usesSplitRounds(row.created_at, row.doc_type),
+      usesExactTotal(row.created_at),
     );
     // Every DISTINCT job this document actually covers — a ใบวางบิล/
     // ใบเสร็จรับเงิน can legitimately bundle several different JOBs' invoices
@@ -923,6 +930,7 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
     Number(header.deposit_wht_amount),
     Number(header.rounding_amount),
     usesSplitRounds(header.created_at, header.doc_type),
+    usesExactTotal(header.created_at),
   );
 
   // Falls back, in order: (1) the item's own payment/quotation link;

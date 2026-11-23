@@ -14,7 +14,7 @@ import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "@/
 import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomplete";
 import { JobNoSelect } from "@/components/dashboard/job-no-select";
 import { formatTHB } from "@/lib/format";
-import { computeBillingDocumentSummary, round2, usesSplitRounds, withSatangRounding } from "@/lib/billing-document-summary";
+import { computeBillingDocumentSummary, round2, usesExactTotal, usesSplitRounds, withSatangRounding } from "@/lib/billing-document-summary";
 import {
   createBillingDocument,
   fetchBillableBillingNoteItems,
@@ -844,6 +844,7 @@ export function BillingDocumentForm({
   // calculates a later installment's VAT/WHT per round; an older one keeps
   // the whole-job calculation (plus its satang rounding) so it never shifts.
   const splitRounds = usesSplitRounds(mode === "create" ? null : initialData?.createdAt, docType);
+  const exactTotal = usesExactTotal(mode === "create" ? null : initialData?.createdAt);
   const summary = useMemo(() => {
     const base = computeBillingDocumentSummary(
       selectedItems,
@@ -854,9 +855,10 @@ export function BillingDocumentForm({
       Number(depositWhtAmount) || 0,
       0,
       splitRounds,
+      exactTotal,
     );
     return splitRounds ? base : withSatangRounding(base);
-  }, [selectedItems, discountAmount, whtPercent, retentionPercent, depositDeductionAmount, depositWhtAmount, splitRounds]);
+  }, [selectedItems, discountAmount, whtPercent, retentionPercent, depositDeductionAmount, depositWhtAmount, splitRounds, exactTotal]);
 
   // The printed line order (per the user's "อยากให้คุมลำดับเองได้" request —
   // items previously printed in whatever order Postgres happened to return

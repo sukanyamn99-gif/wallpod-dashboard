@@ -12,7 +12,7 @@ import {
   getUnbilledInvoicesForCustomer,
 } from "@/lib/data/billing-documents";
 import { getAcceptedUnconvertedQuotationsForCustomer, normalizeJobNo } from "@/lib/data/quotations";
-import { computeBillingDocumentSummary, round2 } from "@/lib/billing-document-summary";
+import { computeBillingDocumentSummary, round2, usesExactTotal } from "@/lib/billing-document-summary";
 import { BILLING_DOCUMENT_LABELS, BILLING_DOCUMENT_LIST_PATH } from "@/lib/types";
 import type {
   BillableBillingNoteItem,
@@ -872,7 +872,17 @@ export async function createBillingDocument(docType: BillingDocumentType, formDa
     if (billsQuotationDirectly) {
       const applyWht = quotationApplyWhtMap.get(q.id) ?? true;
       const grossAmount = quotationBilledAmountById[q.id];
-      const lineSummary = computeBillingDocumentSummary([{ amount: grossAmount, applyWht }], 0, whtPercent, retentionPercent);
+      const lineSummary = computeBillingDocumentSummary(
+        [{ amount: grossAmount, applyWht }],
+        0,
+        whtPercent,
+        retentionPercent,
+        0,
+        0,
+        0,
+        false,
+        true,
+      );
       installmentAmountByQuotationId[q.id] = lineSummary.netPayable;
       whtAmountByQuotationId[q.id] = Math.round((lineSummary.whtAmount + lineSummary.retentionAmount) * 100) / 100;
     } else {
@@ -1170,7 +1180,17 @@ export async function updateBillingDocument(docType: BillingDocumentType, id: st
     if (billsQuotationDirectly) {
       const applyWht = quotationApplyWhtMap.get(q.id) ?? true;
       const grossAmount = quotationBilledAmountById[q.id];
-      const lineSummary = computeBillingDocumentSummary([{ amount: grossAmount, applyWht }], 0, whtPercent, retentionPercent);
+      const lineSummary = computeBillingDocumentSummary(
+        [{ amount: grossAmount, applyWht }],
+        0,
+        whtPercent,
+        retentionPercent,
+        0,
+        0,
+        0,
+        false,
+        usesExactTotal(existing.createdAt),
+      );
       installmentAmountByQuotationId[q.id] = lineSummary.netPayable;
       whtAmountByQuotationId[q.id] = Math.round((lineSummary.whtAmount + lineSummary.retentionAmount) * 100) / 100;
     } else {
