@@ -1585,7 +1585,10 @@ export function BillingDocumentForm({
           </div>
         )}
 
-        {sourceKind !== "existing" && (
+        {/* Typed lines are available in every mode (they used to be hidden under
+            "ออกจากรายการที่ยังไม่ได้แจ้งหนี้"), so a typed line like "มัดจำ 50%"
+            can take its amount from a quotation next to the quotation picker. */}
+        {(
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <Label>รายการที่พิมพ์เอง</Label>
