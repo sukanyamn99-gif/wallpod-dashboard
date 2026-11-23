@@ -1,4 +1,5 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
+import { withTermAmounts } from "@/lib/payment-term-amount";
 import type {
   BillableQuotation,
   ProductionOrder,
@@ -62,7 +63,7 @@ function mapHeader(row: HeaderRow): Quotation {
     deliveryDate: row.delivery_date,
     priceValidity: row.price_validity,
     remark: row.remark,
-    paymentTerms: row.payment_terms ?? [],
+    paymentTerms: withTermAmounts(row.payment_terms ?? [], Number(row.total)),
     preVat: Number(row.pre_vat),
     extraDiscountAmount: Number(row.extra_discount_amount),
     vat: Number(row.vat),
@@ -458,7 +459,7 @@ export async function getAcceptedUnconvertedQuotationsForCustomer(customerName: 
       projectName: row.project_name,
       total: Number(row.total),
       jobNumber: row.job_number ?? null,
-      paymentTerms: (row.payment_terms as QuotationPaymentTerm[] | null) ?? [],
+      paymentTerms: withTermAmounts((row.payment_terms as QuotationPaymentTerm[] | null) ?? [], Number(row.total)),
     }));
 }
 

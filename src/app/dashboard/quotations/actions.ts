@@ -5,6 +5,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { getQuotationById } from "@/lib/data/quotations";
 import { getNextJobNo } from "@/lib/data/reference";
 import { logActivity } from "@/lib/activity-log";
+import { paymentTermAmount } from "@/lib/payment-term-amount";
 import type { QuotationPaymentTerm, QuotationType } from "@/lib/types";
 
 const QUOTATION_TYPES: QuotationType[] = ["ค่าของ", "ค่าติดตั้ง"];
@@ -127,19 +128,12 @@ function parsePaymentTerms(formData: FormData, grandTotal: number): QuotationPay
       return {
         label: String(label ?? "").trim(),
         percent,
-        amount: Math.round(((grandTotal * percent) / 100) * 100) / 100,
+        // Satang cut off, not rounded — equal percentages give equal amounts
+        // (the terms may then add up to a satang under the total).
+        amount: paymentTermAmount(grandTotal, percent),
       };
     })
     .filter((t) => t.label && t.percent > 0);
-  // Each term rounds on its own, so two 50% terms of 74,324.77 both round UP
-  // to 37,162.39 and add to 74,324.78 — a satang over the quotation. When the
-  // terms cover the whole price (100%) the last one takes what is left
-  // (37,162.38), so the terms always add up to the grand total exactly.
-  const totalPercent = terms.reduce((sum, t) => sum + t.percent, 0);
-  if (terms.length > 1 && Math.abs(totalPercent - 100) < 0.001) {
-    const beforeLast = terms.slice(0, -1).reduce((sum, t) => sum + t.amount, 0);
-    terms[terms.length - 1].amount = Math.round((grandTotal - beforeLast) * 100) / 100;
-  }
   return terms;
 }
 

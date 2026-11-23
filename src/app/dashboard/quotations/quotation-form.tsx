@@ -21,6 +21,7 @@ import { PaymentTermLabelAutocomplete } from "@/components/dashboard/payment-ter
 import { SizeAutocomplete } from "@/components/dashboard/size-autocomplete";
 import { formatTHB } from "@/lib/format";
 import { resizeImageToBlob } from "@/lib/image-resize";
+import { paymentTermAmount } from "@/lib/payment-term-amount";
 import { createQuotation, updateQuotation } from "./actions";
 import type { Customer, QuotationDetail, QuotationType, SalesRep } from "@/lib/types";
 import type { QuotationItemFieldSuggestions } from "@/lib/data/quotations";
@@ -552,7 +553,7 @@ export function QuotationForm({
         </div>
         {terms.length === 0 && <p className="text-sm text-muted-foreground">ยังไม่มีงวดการชำระเงิน</p>}
         {terms.map((t) => {
-          const amount = Math.round(((grandTotal * (Number(t.percent) || 0)) / 100) * 100) / 100;
+          const amount = paymentTermAmount(grandTotal, Number(t.percent) || 0);
           return (
             <div key={t.key} className="flex flex-wrap items-center gap-2">
               <PaymentTermLabelAutocomplete
