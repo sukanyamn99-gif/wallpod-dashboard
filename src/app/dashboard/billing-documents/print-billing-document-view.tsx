@@ -48,10 +48,11 @@ function DocumentBody({
   const summaryItems = document.items.map((it) => {
     if (isCollectionDoc) return { amount: it.amount, applyWht: it.applyWht };
     if (it.manualDescription) {
-      return {
-        amount: Math.round((it.manualQty ?? 0) * (it.manualUnitPrice ?? 0) * 1.07 * 100) / 100,
-        applyWht: it.applyWht,
-      };
+      const computed = Math.round((it.manualQty ?? 0) * (it.manualUnitPrice ?? 0) * 1.07 * 100) / 100;
+      // A line saved with a quoted total keeps it (a 2-decimal price can be a
+      // satang off it) — only on documents from the exact-total cutoff on.
+      const keepsSaved = usesExactTotal(document.createdAt) && Math.abs(it.amount - computed) <= 0.02;
+      return { amount: keepsSaved ? it.amount : computed, applyWht: it.applyWht };
     }
     if (it.quotationItems && it.quotationItems.length > 0) {
       const preVatSum = it.quotationItems.reduce((sum, qi) => sum + qi.totalPrice, 0);

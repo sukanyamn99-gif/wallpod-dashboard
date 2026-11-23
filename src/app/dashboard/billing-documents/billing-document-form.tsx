@@ -121,7 +121,14 @@ function manualItemAmount(row: ManualItemRow): number {
 // `amount` as VAT-inclusive, so the pre-VAT row total above needs VAT added
 // on top here before it's bundled in alongside them.
 function manualItemVatInclusiveAmount(row: ManualItemRow): number {
-  return round2(manualItemAmount(row) * 1.07);
+  const computed = round2(manualItemAmount(row) * 1.07);
+  // A quoted VAT-inclusive total (see grossTotal) is the amount billed, as
+  // long as the price still reproduces it to within a couple of satang: a
+  // 2-decimal price can't always land on it (27,656.06 comes out 27,656.05 or
+  // .07), and the quotation's own figure is the one the customer was told.
+  const gross = round2(Number(row.grossTotal) || 0);
+  if (gross > 0 && Math.abs(gross - Math.abs(computed)) <= 0.02) return computed < 0 ? -gross : gross;
+  return computed;
 }
 
 // The document total this row alone would produce, through the same summary
@@ -132,6 +139,11 @@ function manualItemTotalAfterVat(row: ManualItemRow): number {
     0,
     0,
     0,
+    0,
+    0,
+    0,
+    false,
+    true,
   );
   return summary.totalAfterVat;
 }
@@ -267,6 +279,13 @@ export function BillingDocumentForm({
         unitPrice: String(it.manualUnitPrice ?? 0),
         applyWht: it.applyWht,
         isDeduction: (it.manualQty ?? 1) < 0,
+        // The amount saved can differ by a satang from price x qty x 1.07 when
+        // it was a quoted total a 2-decimal price couldn't reproduce.
+        grossTotal:
+          Math.abs(Math.abs(it.amount) - round2(Math.abs((it.manualQty ?? 1) * (it.manualUnitPrice ?? 0)) * 1.07)) > 0 &&
+          Math.abs(Math.abs(it.amount) - round2(Math.abs((it.manualQty ?? 1) * (it.manualUnitPrice ?? 0)) * 1.07)) <= 0.02
+            ? String(Math.abs(it.amount))
+            : undefined,
       })),
   );
   // The user's own reordering of the printed line list (see finalOrder
@@ -714,7 +733,7 @@ export function BillingDocumentForm({
         // shows a note (see manualItemQuotedTotalGap).
         const base = round2(gross / 1.07 / qty);
         const candidates = [0, 0.01, -0.01, 0.02, -0.02].map((d) => round2(base + d));
-        const gap = (p: string) => Math.abs(manualItemTotalAfterVat({ ...row, unitPrice: p }) - gross);
+        const gap = (p: string) => Math.abs(manualItemTotalAfterVat({ ...row, unitPrice: p, grossTotal: value }) - gross);
         const best = candidates.map(String).reduce((a, b) => (gap(b) < gap(a) ? b : a));
         return { ...row, grossTotal: value, unitPrice: best };
       }),
@@ -728,6 +747,21 @@ export function BillingDocumentForm({
   function toggleManualItemDeduction(key: string) {
     setManualItems((prev) => prev.map((row) => (row.key === key ? { ...row, isDeduction: !row.isDeduction } : row)));
   }
+
+  // Payment terms of this customer's quotations (the ones ticked above, or all
+  // of them when none is) — a typed line can take its amount straight from one.
+  const quotationTermChoices = useMemo(() => {
+    const pool = selectedQuotations.size > 0 ? quotations.filter((q) => selectedQuotations.has(q.id)) : quotations;
+    return pool.flatMap((q) =>
+      q.paymentTerms.map((t, i) => ({
+        key: `${q.id}:${i}`,
+        docNo: q.docNo,
+        label: t.label,
+        percent: t.percent,
+        amount: t.amount,
+      })),
+    );
+  }, [quotations, selectedQuotations]);
 
   function removeManualItem(key: string) {
     setManualItems((prev) => {
@@ -1041,6 +1075,7 @@ export function BillingDocumentForm({
           fd.append("item_manual_qty", String(row.isDeduction ? -(Number(row.qty) || 0) : Number(row.qty) || 1));
           fd.append("item_manual_unit", row.unit);
           fd.append("item_manual_unit_price", row.unitPrice);
+          fd.append("item_manual_gross", row.grossTotal ?? "");
           fd.append("item_manual_apply_wht", String(row.applyWht));
           fd.append("item_manual_source_id", row.sourceItemId ?? "");
           fd.append("item_manual_date", row.sourceDate ?? "");
@@ -1604,6 +1639,27 @@ export function BillingDocumentForm({
                         onChange={(v) => setManualItemGrossTotal(row.key, v)}
                       />
                       <span className="shrink-0">ระบบคำนวณราคาต่อหน่วยให้</span>
+                      {quotationTermChoices.length > 0 && (
+                        <span className="flex flex-wrap items-center gap-1">
+                          <span className="shrink-0">หรือดึงจากใบเสนอราคา:</span>
+                          {quotationTermChoices.map((c) => (
+                            <Button
+                              key={c.key}
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              title={`${c.docNo} — ${c.label}`}
+                              onClick={() => {
+                                setManualItemGrossTotal(row.key, String(c.amount));
+                                if (!row.description.trim()) updateManualItem(row.key, "description", c.label);
+                              }}
+                            >
+                              {c.docNo} · {c.percent}% · {formatTHB(c.amount)}
+                            </Button>
+                          ))}
+                        </span>
+                      )}
                       {Number(row.grossTotal) > 0 && manualItemTotalAfterVat(row) !== round2(Number(row.grossTotal)) && (
                         <span className="text-destructive">
                           ยอดนี้ทำให้ตรงเป๊ะไม่ได้ ใกล้สุดคือ {formatTHB(manualItemTotalAfterVat(row))}

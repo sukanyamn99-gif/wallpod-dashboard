@@ -535,6 +535,7 @@ function parseManualItems(formData: FormData): ParsedManualItem[] {
   const qtys = formData.getAll("item_manual_qty").map((v) => String(v));
   const units = formData.getAll("item_manual_unit").map((v) => String(v));
   const unitPrices = formData.getAll("item_manual_unit_price").map((v) => String(v));
+  const grosses = formData.getAll("item_manual_gross").map((v) => String(v));
   const applyWhts = formData.getAll("item_manual_apply_wht").map((v) => String(v));
   const sourceItemIds = formData.getAll("item_manual_source_id").map((v) => String(v));
   const sourceDates = formData.getAll("item_manual_date").map((v) => String(v));
@@ -545,6 +546,13 @@ function parseManualItems(formData: FormData): ParsedManualItem[] {
     .map((description, i) => {
       const qty = num(qtys[i]) || 1;
       const unitPrice = Math.max(0, num(unitPrices[i]));
+      const computedAmount = round2(qty * unitPrice * 1.07);
+      // A quoted VAT-inclusive total (picked from the quotation) is the amount
+      // billed when the price reproduces it to within 2 satang — a 2-decimal
+      // price can't always land on it exactly.
+      const gross = round2(Math.max(0, num(grosses[i])));
+      const amount =
+        gross > 0 && Math.abs(gross - Math.abs(computedAmount)) <= 0.02 ? (computedAmount < 0 ? -gross : gross) : computedAmount;
       return {
         description: description.trim(),
         qty,
@@ -553,7 +561,7 @@ function parseManualItems(formData: FormData): ParsedManualItem[] {
         // ราคาต่อหน่วย is entered pre-VAT — stored amount is VAT-inclusive,
         // matching every other item source and computeBillingDocumentSummary
         // (mirrors manualItemAmount in billing-document-form.tsx).
-        amount: round2(qty * unitPrice * 1.07),
+        amount,
         applyWht: applyWhts[i] !== "false",
         sourceItemId: sourceItemIds[i] || null,
         sourceDate: sourceDates[i] || null,
