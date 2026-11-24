@@ -8,7 +8,12 @@ export function paymentTermAmount(total: number, percent: number): number {
 }
 
 // Re-derives each saved term's amount from the quotation's total, so
-// quotations saved before this rule read the same way as new ones.
-export function withTermAmounts<T extends { percent: number; amount: number }>(terms: T[], total: number): T[] {
-  return terms.map((t) => ({ ...t, amount: paymentTermAmount(total, Number(t.percent)) }));
+// quotations saved before this rule read the same way as new ones (except a
+// term whose amount was keyed in by hand).
+export function withTermAmounts<T extends { percent: number; amount: number; manual?: boolean }>(
+  terms: T[],
+  total: number,
+): T[] {
+  // A hand-keyed amount stays exactly as typed.
+  return terms.map((t) => (t.manual ? t : { ...t, amount: paymentTermAmount(total, Number(t.percent)) }));
 }

@@ -935,6 +935,9 @@ export interface QuotationPaymentTerm {
   label: string;
   percent: number;
   amount: number;
+  // The amount was keyed in by hand, so it is kept as typed (percent is then
+  // just amount / total, for display) instead of being worked out from percent.
+  manual?: boolean;
 }
 
 export interface QuotationItem {

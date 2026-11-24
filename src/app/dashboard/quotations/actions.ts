@@ -122,9 +122,16 @@ function parseItems(formData: FormData): ParsedItem[] {
 function parsePaymentTerms(formData: FormData, grandTotal: number): QuotationPaymentTerm[] {
   const labels = formData.getAll("term_label");
   const percents = formData.getAll("term_percent");
+  const amounts = formData.getAll("term_amount");
+  const manuals = formData.getAll("term_manual");
   const terms = labels
     .map((label, i) => {
       const percent = num(percents[i]);
+      // An amount keyed in by hand is kept as typed.
+      if (String(manuals[i]) === "true") {
+        const typed = Math.round(Math.max(0, num(amounts[i])) * 100) / 100;
+        return { label: String(label ?? "").trim(), percent, amount: typed, manual: true as const };
+      }
       return {
         label: String(label ?? "").trim(),
         percent,
@@ -133,7 +140,7 @@ function parsePaymentTerms(formData: FormData, grandTotal: number): QuotationPay
         amount: paymentTermAmount(grandTotal, percent),
       };
     })
-    .filter((t) => t.label && t.percent > 0);
+    .filter((t) => t.label && ("manual" in t ? t.amount > 0 : t.percent > 0));
   return terms;
 }
 

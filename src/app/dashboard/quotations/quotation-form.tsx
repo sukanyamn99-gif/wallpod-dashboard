@@ -55,9 +55,18 @@ interface PaymentTermRow {
   key: number;
   label: string;
   percent: string;
+  // Keyed in by hand: amount is what was typed and percent is worked out from
+  // it. Otherwise amount follows percent.
+  amount: string;
+  manual: boolean;
 }
 
 let nextKey = 1;
+
+// A term keyed in as an amount shows its share of the total as a percentage.
+function termPercentOf(amount: number, total: number): number {
+  return total > 0 ? Math.round((amount / total) * 10000) / 100 : 0;
+}
 
 function itemsFromInitial(initialData?: QuotationDetail): ItemRow[] {
   if (!initialData || initialData.items.length === 0) {
@@ -98,7 +107,13 @@ function itemsFromInitial(initialData?: QuotationDetail): ItemRow[] {
 
 function termsFromInitial(initialData?: QuotationDetail): PaymentTermRow[] {
   if (!initialData || initialData.paymentTerms.length === 0) return [];
-  return initialData.paymentTerms.map((t) => ({ key: nextKey++, label: t.label, percent: String(t.percent) }));
+  return initialData.paymentTerms.map((t) => ({
+    key: nextKey++,
+    label: t.label,
+    percent: String(t.percent),
+    amount: t.manual ? String(t.amount) : "",
+    manual: !!t.manual,
+  }));
 }
 
 export function QuotationForm({
@@ -210,7 +225,7 @@ export function QuotationForm({
   }
 
   function addTerm() {
-    setTerms((prev) => [...prev, { key: nextKey++, label: "", percent: "" }]);
+    setTerms((prev) => [...prev, { key: nextKey++, label: "", percent: "", amount: "", manual: false }]);
   }
   function removeTerm(key: number) {
     setTerms((prev) => prev.filter((t) => t.key !== key));
@@ -293,9 +308,12 @@ export function QuotationForm({
     }
 
     for (const t of terms) {
-      if (!t.label.trim() || !(Number(t.percent) > 0)) continue;
+      const manualAmount = Number(t.amount) || 0;
+      if (!t.label.trim() || !(t.manual ? manualAmount > 0 : Number(t.percent) > 0)) continue;
       fd.append("term_label", t.label);
-      fd.append("term_percent", t.percent);
+      fd.append("term_percent", t.manual ? String(termPercentOf(manualAmount, grandTotal)) : t.percent);
+      fd.append("term_amount", t.manual ? String(manualAmount) : "");
+      fd.append("term_manual", String(t.manual));
     }
 
     const result = mode === "edit" && quotationId ? await updateQuotation(quotationId, fd) : await createQuotation(fd);
@@ -553,7 +571,8 @@ export function QuotationForm({
         </div>
         {terms.length === 0 && <p className="text-sm text-muted-foreground">ยังไม่มีงวดการชำระเงิน</p>}
         {terms.map((t) => {
-          const amount = paymentTermAmount(grandTotal, Number(t.percent) || 0);
+          const amount = t.manual ? Number(t.amount) || 0 : paymentTermAmount(grandTotal, Number(t.percent) || 0);
+          const shownPercent = t.manual ? (amount > 0 ? String(termPercentOf(amount, grandTotal)) : "") : t.percent;
           return (
             <div key={t.key} className="flex flex-wrap items-center gap-2">
               <PaymentTermLabelAutocomplete
@@ -562,10 +581,22 @@ export function QuotationForm({
                 onChange={(label) => updateTerm(t.key, { label })}
               />
               <div className="flex items-center gap-1">
-                <NumberInput value={t.percent} onChange={(v) => updateTerm(t.key, { percent: v })} min={0} className="w-20" />
+                <NumberInput
+                  value={shownPercent}
+                  onChange={(v) => updateTerm(t.key, { percent: v, manual: false, amount: "" })}
+                  min={0}
+                  className="w-20"
+                />
                 <span className="text-sm text-muted-foreground">%</span>
               </div>
-              <span className="w-32 text-right text-sm font-medium">{formatTHB(amount)}</span>
+              <NumberInput
+                value={t.manual ? t.amount : amount > 0 ? String(amount) : ""}
+                onChange={(v) => updateTerm(t.key, { amount: v, manual: true })}
+                min={0}
+                step={0.01}
+                placeholder="จำนวนเงิน"
+                className="w-32 text-right"
+              />
               <Button type="button" size="icon-sm" variant="ghost" onClick={() => removeTerm(t.key)}>
                 <Trash2 className="h-4 w-4" />
               </Button>
