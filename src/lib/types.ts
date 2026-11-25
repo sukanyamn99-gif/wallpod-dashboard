@@ -1089,6 +1089,9 @@ export interface BillableQuotation {
   projectName: string;
   total: number;
   jobNumber: string | null;
+  // True when this quotation belongs to the JOB picked on the form (by its own
+  // job number, or via the project recorded for that JOB).
+  forJob: boolean;
   // รอตอบรับ or ลูกค้าตอบตกลง — a deposit invoice is often issued while the
   // quotation is still waiting for the customer's answer, before production.
   status: QuotationStatus;

@@ -82,8 +82,14 @@ export async function setEmployeeActive(id: string, active: boolean) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("employees").update({ active }).eq("id", id);
+  // .select() so a blocked update can be told apart from a successful one: when
+  // row-level security refuses the write, Postgres reports no error at all, it
+  // just changes zero rows — which looked like "nothing happened".
+  const { data, error } = await supabase.from("employees").update({ active }).eq("id", id).select("id");
   if (error) return { error: error.message };
+  if (!data || data.length === 0) {
+    return { error: "เปลี่ยนสถานะไม่สำเร็จ — ไม่พบพนักงานนี้ หรือบัญชีนี้ไม่มีสิทธิ์แก้ไขข้อมูลพนักงาน" };
+  }
 
   revalidatePayrollConsumers();
   return { error: null };

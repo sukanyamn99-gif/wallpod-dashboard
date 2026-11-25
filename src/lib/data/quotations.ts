@@ -446,11 +446,18 @@ function normalizeCustomerName(name: string): string {
 // stays on offer for every installment).
 //
 // - With a `jobNo` (a JOB was picked on the form) that JOB's quotation is
-//   offered even when it has already been recorded as a job in Project Sales
-//   (converted_project_id set) — a recorded job with no installment invoice
-//   yet must still be billable from its quotation.
+//   offered whatever the customer name on it says, and even when it has
+//   already been recorded as a job in Project Sales (converted_project_id
+//   set). It is found two ways: its own job_number, or the project that has
+//   this job_no (quotations.converted_project_id points at it) — so a
+//   quotation with a differently-spelled customer name, or one that never had
+//   the JOB typed on it, is still found. A recorded job with no installment
+//   invoice yet must still be billable from its quotation.
 // - Without one, only quotations not yet recorded as a job are offered, as
 //   before, so a customer's every past job doesn't pile up in the list.
+// - A quotation that already has a ใบกำกับภาษี issued is left out, found two
+//   ways: a tax invoice line that cites the quotation itself, or one that
+//   bills an installment of the project the quotation was recorded as.
 // - `keepIds` (editing a saved document) always stay in, so a line already
 //   billed from a quotation that was recorded as a job afterwards doesn't
 //   silently disappear when the document is saved again.
@@ -460,6 +467,15 @@ export async function getBillableQuotationsForCustomer(
 ): Promise<BillableQuotation[]> {
   if (!customerName || !isSupabaseConfigured()) return [];
   const supabase = await createClient();
+  const wantedJob = options.jobNo ? normalizeJobNo(options.jobNo) : null;
+
+  const projectIds = new Set<string>();
+  if (wantedJob) {
+    const { data: projects, error: projectError } = await supabase.from("projects").select("id").ilike("job_no", wantedJob);
+    if (projectError) throw projectError;
+    for (const p of projects ?? []) projectIds.add(p.id);
+  }
+
   const { data, error } = await supabase
     .from("quotations")
     .select(
@@ -470,15 +486,37 @@ export async function getBillableQuotationsForCustomer(
     .order("quote_date", { ascending: false });
   if (error) throw error;
 
+  // Every line of every issued ใบกำกับภาษี: one that cites a quotation, or one
+  // that bills a payment installment (whose project is the recorded job).
+  const { data: taxInvoiceLines, error: taxError } = await supabase
+    .from("billing_note_items")
+    .select("quotation_id, payments(project_id), billing_notes!inner(doc_type)")
+    .eq("billing_notes.doc_type", "tax_invoice");
+  if (taxError) throw taxError;
+  const taxInvoicedQuotationIds = new Set<string>();
+  const taxInvoicedProjectIds = new Set<string>();
+  for (const line of taxInvoiceLines ?? []) {
+    if (line.quotation_id) taxInvoicedQuotationIds.add(line.quotation_id as string);
+    const payment = line.payments as unknown as { project_id: string } | { project_id: string }[] | null;
+    for (const p of Array.isArray(payment) ? payment : payment ? [payment] : []) taxInvoicedProjectIds.add(p.project_id);
+  }
+  const hasTaxInvoice = (row: { id: string; converted_project_id: string | null }) =>
+    taxInvoicedQuotationIds.has(row.id) ||
+    (row.converted_project_id != null && taxInvoicedProjectIds.has(row.converted_project_id));
+
   const wanted = normalizeCustomerName(customerName);
-  const wantedJob = options.jobNo ? normalizeJobNo(options.jobNo) : null;
   const keep = new Set(options.keepIds ?? []);
+  const belongsToJob =(row: { job_number: string | null; converted_project_id: string | null }) =>
+    wantedJob != null &&
+    ((!!row.job_number && normalizeJobNo(row.job_number) === wantedJob) ||
+      (row.converted_project_id != null && projectIds.has(row.converted_project_id)));
+
   return (data ?? [])
-    .filter((row) => normalizeCustomerName(row.customer_name ?? "") === wanted)
     .filter((row) => {
       if (keep.has(row.id)) return true;
-      if (row.converted_project_id == null) return true;
-      return wantedJob != null && !!row.job_number && normalizeJobNo(row.job_number) === wantedJob;
+      if (hasTaxInvoice(row)) return false;
+      if (belongsToJob(row)) return true;
+      return normalizeCustomerName(row.customer_name ?? "") === wanted && row.converted_project_id == null;
     })
     .map((row) => ({
       id: row.id,
@@ -487,6 +525,7 @@ export async function getBillableQuotationsForCustomer(
       projectName: row.project_name,
       total: Number(row.total),
       jobNumber: row.job_number ?? null,
+      forJob: belongsToJob(row),
       status: row.status as QuotationStatus,
       paymentTerms: withTermAmounts((row.payment_terms as QuotationPaymentTerm[] | null) ?? [], Number(row.total)),
     }));

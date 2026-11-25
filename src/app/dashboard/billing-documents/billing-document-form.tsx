@@ -405,10 +405,7 @@ export function BillingDocumentForm({
         // accepted quotation instead — pre-check it too so the amount shows
         // up without having to hunt for it among the customer's other quotes.
         if (jobRows.length === 0) {
-          const wanted = preselectJobNo.trim().toUpperCase();
-          setSelectedQuotations(
-            new Set(billableQuotations.filter((q) => q.jobNumber?.trim().toUpperCase() === wanted).map((q) => q.id)),
-          );
+          setSelectedQuotations(new Set(billableQuotations.filter((q) => q.forJob).map((q) => q.id)));
         }
       }
     } finally {
