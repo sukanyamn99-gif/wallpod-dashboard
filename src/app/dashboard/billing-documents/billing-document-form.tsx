@@ -677,6 +677,13 @@ export function BillingDocumentForm({
             qty: String(Math.abs(item.qty)),
             unit: item.unit,
             unitPrice: String(item.unitPrice),
+            // Carry the amount the source line was billed at: a 2-decimal price
+            // can be a satang off it (27,656.06 comes back as .07 from price
+            // x 1.07), and the ใบแจ้งหนี้ total is what the customer was told.
+            grossTotal:
+              Math.abs(Math.abs(item.amount) - round2(Math.abs(item.qty * item.unitPrice) * 1.07)) <= 0.02
+                ? String(Math.abs(item.amount))
+                : undefined,
             applyWht: item.applyWht,
             isDeduction: item.qty < 0,
             sourceItemId: item.id,
