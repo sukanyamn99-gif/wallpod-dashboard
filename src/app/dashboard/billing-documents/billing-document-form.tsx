@@ -832,6 +832,39 @@ export function BillingDocumentForm({
     return jobNo ? base.filter((it) => it.jobNo === jobNo) : base;
   }, [billingNoteItems, jobNo, receivedInvoices, docType]);
 
+  // "หักเงินมัดจำที่ได้รับ" offers only deposits of the JOB(S) being billed:
+  // the JOB picked on the form, or else the JOBs of the invoices/quotations/
+  // items ticked so far. With neither (customer picked directly, nothing
+  // chosen yet) every deposit of the customer is listed so one can still be
+  // found. A deposit already ticked always stays visible.
+  const visibleReceivedInvoices = useMemo(() => {
+    const jobs = new Set<string>();
+    if (jobNo) {
+      jobs.add(jobNo);
+    } else {
+      for (const inv of invoices) if (selected.has(inv.paymentId) && inv.jobNo) jobs.add(inv.jobNo);
+      for (const q of quotations) if (selectedQuotations.has(q.id) && q.jobNumber) jobs.add(q.jobNumber);
+      for (const ti of taxInvoices) if (selectedTaxInvoices.has(ti.id) && ti.jobNo) jobs.add(ti.jobNo);
+      for (const it of billingNoteItems) if (selectedBillingNoteItems.has(it.id) && it.jobNo) jobs.add(it.jobNo);
+    }
+    if (jobs.size === 0) return receivedInvoices;
+    return receivedInvoices.filter(
+      (r) => selectedDepositInvoices.has(r.paymentId) || (r.jobNo != null && jobs.has(r.jobNo)),
+    );
+  }, [
+    receivedInvoices,
+    jobNo,
+    invoices,
+    selected,
+    quotations,
+    selectedQuotations,
+    taxInvoices,
+    selectedTaxInvoices,
+    billingNoteItems,
+    selectedBillingNoteItems,
+    selectedDepositInvoices,
+  ]);
+
   const selectedItems = useMemo(
     () => [
       ...invoices
@@ -1790,11 +1823,11 @@ export function BillingDocumentForm({
 
         <div className="space-y-2 rounded-lg border p-3">
           <Label htmlFor="deposit_deduction_amount">หักเงินมัดจำที่ได้รับ</Label>
-          {receivedInvoices.length > 0 && (
+          {visibleReceivedInvoices.length > 0 && (
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground">ติ๊กเลือกงวดที่รับมัดจำมาแล้ว (เลือกได้มากกว่า 1 งวด) เพื่อกรอกยอด/เลขที่ให้อัตโนมัติ</p>
               <div className="space-y-1.5">
-                {receivedInvoices.map((inv) => (
+                {visibleReceivedInvoices.map((inv) => (
                   <label
                     key={inv.paymentId}
                     className="flex cursor-pointer items-center gap-3 rounded-lg border p-2 hover:bg-muted"
