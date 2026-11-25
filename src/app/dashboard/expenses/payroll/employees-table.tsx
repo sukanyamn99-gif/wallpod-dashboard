@@ -1,12 +1,18 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import { Check, Eye, EyeOff, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DateInput } from "@/components/ui/date-input";
 import { NumberInput } from "@/components/ui/number-input";
-import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -18,6 +24,11 @@ import {
 import { formatTHB } from "@/lib/format";
 import { createEmployee, deleteEmployee, setEmployeeActive, updateEmployee } from "./actions";
 import type { Employee } from "@/lib/types";
+
+const STATUS_ITEMS = [
+  { value: "active", label: "ทำงานอยู่" },
+  { value: "inactive", label: "พ้นสภาพ" },
+];
 
 // Counted through today regardless of active/พ้นสภาพ status — there's no
 // separate "leave date" field on file, only start_date, so this is always
@@ -147,6 +158,9 @@ function EmployeeRow({ employee }: { employee: Employee }) {
   const [baseSalary, setBaseSalary] = useState(employee.baseSalary > 0 ? String(employee.baseSalary) : "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // Shows the newly picked status straight away; falls back to the saved one if
+  // the save fails.
+  const [active, setActive] = useOptimistic(employee.active);
 
   function resetFields() {
     setEmployeeCode(employee.employeeCode);
@@ -176,9 +190,13 @@ function EmployeeRow({ employee }: { employee: Employee }) {
     });
   }
 
-  function handleToggleActive() {
+  function handleStatusChange(next: boolean) {
+    if (next === active) return;
+    setError(null);
     startTransition(async () => {
-      await setEmployeeActive(employee.id, !employee.active);
+      setActive(next);
+      const result = await setEmployeeActive(employee.id, next);
+      if (result.error) setError(result.error);
     });
   }
 
@@ -240,11 +258,23 @@ function EmployeeRow({ employee }: { employee: Employee }) {
         {employee.baseSalary > 0 ? formatTHB(employee.baseSalary) : "—"}
       </TableCell>
       <TableCell className="whitespace-nowrap">
-        <button type="button" onClick={handleToggleActive} disabled={pending}>
-          <Badge variant={employee.active ? "secondary" : "outline"}>
-            {employee.active ? "ทำงานอยู่" : "พ้นสภาพ"}
-          </Badge>
-        </button>
+        <Select
+          value={active ? "active" : "inactive"}
+          onValueChange={(v) => handleStatusChange(v === "active")}
+          items={STATUS_ITEMS}
+          disabled={pending}
+        >
+          <SelectTrigger size="sm" className={active ? "w-28" : "w-28 text-muted-foreground"} title="เปลี่ยนสถานะพนักงาน">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_ITEMS.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </TableCell>
       <TableCell>
         {confirmingDelete ? (
