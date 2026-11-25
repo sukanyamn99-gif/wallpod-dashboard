@@ -508,6 +508,11 @@ export async function getNetPayableForQuotationIds(
 async function getTaxInvoiceRefsForQuotationIds(
   supabase: Awaited<ReturnType<typeof createClient>>,
   quotationIds: string[],
+  // Which formal document a line cites when a quotation has both: a ใบวางบิล
+  // collects on the ใบแจ้งหนี้ (the chain runs ใบแจ้งหนี้ → ใบวางบิล → ใบกำกับภาษี
+  // → ใบเสร็จ), a ใบเสร็จรับเงิน on the ใบกำกับภาษี. The other kind is the
+  // fallback when only that one exists.
+  prefer: "invoice" | "tax_invoice" = "tax_invoice",
 ): Promise<Record<string, { docNo: string; docDate: string }>> {
   if (quotationIds.length === 0) return {};
   const { data, error } = await supabase
@@ -520,21 +525,18 @@ async function getTaxInvoiceRefsForQuotationIds(
 
   type Row = { quotation_id: string | null; billing_notes: { doc_no: string; doc_date: string; doc_type: string } | null };
   const rows = (data ?? []) as unknown as Row[];
-  // ใบกำกับภาษี always wins over ใบแจ้งหนี้ when both exist for the same
-  // quotation, regardless of which was issued more recently — per explicit
-  // feedback, a later-dated ใบแจ้งหนี้ must never outrank an earlier ใบกำกับ
-  // ภาษี that's the real document being collected on. Two passes over the
-  // same (already most-recent-first) rows: tax_invoice first, then invoice
-  // only for whichever quotations still have no tax_invoice at all.
+  // The preferred kind wins when both exist for the same quotation,
+  // regardless of which was issued more recently (a later-dated document of
+  // the other kind must never outrank it). Two passes over the same (already
+  // most-recent-first) rows: the preferred kind first, then the other only for
+  // whichever quotations still have none.
+  const order = prefer === "invoice" ? ["invoice", "tax_invoice"] : ["tax_invoice", "invoice"];
   const result: Record<string, { docNo: string; docDate: string }> = {};
-  for (const row of rows) {
-    if (row.quotation_id && row.billing_notes?.doc_type === "tax_invoice" && !result[row.quotation_id]) {
-      result[row.quotation_id] = { docNo: row.billing_notes.doc_no, docDate: row.billing_notes.doc_date };
-    }
-  }
-  for (const row of rows) {
-    if (row.quotation_id && row.billing_notes?.doc_type === "invoice" && !result[row.quotation_id]) {
-      result[row.quotation_id] = { docNo: row.billing_notes.doc_no, docDate: row.billing_notes.doc_date };
+  for (const docType of order) {
+    for (const row of rows) {
+      if (row.quotation_id && row.billing_notes?.doc_type === docType && !result[row.quotation_id]) {
+        result[row.quotation_id] = { docNo: row.billing_notes.doc_no, docDate: row.billing_notes.doc_date };
+      }
     }
   }
   return result;
@@ -891,7 +893,7 @@ export async function getBillingDocumentById(id: string): Promise<BillingDocumen
   if (header.doc_type === "billing_note" || header.doc_type === "receipt") {
     const quotationIds = itemRows.filter((it) => it.quotation_id).map((it) => it.quotation_id as string);
     const [refs, netPayable] = await Promise.all([
-      getTaxInvoiceRefsForQuotationIds(supabase, quotationIds),
+      getTaxInvoiceRefsForQuotationIds(supabase, quotationIds, header.doc_type === "billing_note" ? "invoice" : "tax_invoice"),
       getNetPayableForQuotationIds(supabase, quotationIds),
     ]);
     taxInvoiceRefsByQuotationId = refs;
