@@ -1,9 +1,16 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
-import type { PaymentVoucher, PaymentVoucherLedgerLine, WhtFormType, WhtIncomeType } from "@/lib/types";
+import type { PaymentVoucher, PaymentVoucherLedgerLine, WhtFormType, WhtIncomeType, WhtLine } from "@/lib/types";
 import { isCostBucket } from "@/lib/job-cost-buckets";
 
-const COLUMNS =
+// wht_lines (several withholding rates) comes from migration 113; until that is
+// run the column doesn't exist, so a read retries without it (see selectVouchers).
+const BASE_COLUMNS =
   "id, doc_no, voucher_date, payee_name, category, amount, payment_method, reference_no, note, recorded_by, created_at, wht_cert_no, description, wht_rate, wht_form_type, wht_amount, social_security_amount, bank_name, bank_account_no, bank_transfer_date, job_no, payee_tax_id, payee_address, income_type, vat_included, cost_bucket, profiles(full_name), payment_voucher_job_allocations(job_no, amount, sort_order)";
+const COLUMNS = BASE_COLUMNS.replace("wht_amount,", "wht_amount, wht_lines,");
+
+function isMissingLinesColumn(error: { code?: string; message?: string } | null): boolean {
+  return !!error && (error.code === "42703" || (error.message ?? "").includes("wht_lines"));
+}
 
 type Row = {
   id: string;
@@ -22,6 +29,7 @@ type Row = {
   wht_rate: number | string | null;
   wht_form_type: string | null;
   wht_amount: number | string;
+  wht_lines?: WhtLine[] | null;
   social_security_amount: number | string;
   bank_name: string | null;
   bank_account_no: string | null;
@@ -55,6 +63,9 @@ function mapRow(row: Row): Omit<PaymentVoucher, "ledgerLines"> {
     whtRate: row.wht_rate === null ? null : Number(row.wht_rate),
     whtFormType: row.wht_form_type as WhtFormType | null,
     whtAmount: Number(row.wht_amount),
+    whtLines: Array.isArray(row.wht_lines) && row.wht_lines.length > 1
+      ? row.wht_lines.map((l) => ({ rate: Number(l.rate), base: Number(l.base), amount: Number(l.amount) }))
+      : undefined,
     socialSecurityAmount: Number(row.social_security_amount),
     bankName: row.bank_name,
     bankAccountNo: row.bank_account_no,
@@ -75,11 +86,14 @@ export async function getPaymentVouchers(): Promise<Omit<PaymentVoucher, "ledger
   if (!isSupabaseConfigured()) return [];
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("payment_vouchers")
-    .select(COLUMNS)
-    .order("voucher_date", { ascending: false })
-    .order("created_at", { ascending: false });
+  const query = (columns: string) =>
+    supabase
+      .from("payment_vouchers")
+      .select(columns)
+      .order("voucher_date", { ascending: false })
+      .order("created_at", { ascending: false });
+  let { data, error } = await query(COLUMNS);
+  if (isMissingLinesColumn(error)) ({ data, error } = await query(BASE_COLUMNS));
   if (error) throw error;
 
   // @ts-expect-error -- Supabase types the joined relation loosely here
@@ -90,7 +104,7 @@ export async function getPaymentVoucherById(id: string): Promise<PaymentVoucher 
   if (!isSupabaseConfigured()) return null;
 
   const supabase = await createClient();
-  const [{ data, error }, { data: lines, error: linesErr }] = await Promise.all([
+  const [first, { data: lines, error: linesErr }] = await Promise.all([
     supabase.from("payment_vouchers").select(COLUMNS).eq("id", id).maybeSingle(),
     supabase
       .from("payment_voucher_ledger_lines")
@@ -98,6 +112,10 @@ export async function getPaymentVoucherById(id: string): Promise<PaymentVoucher 
       .eq("voucher_id", id)
       .order("sort_order", { ascending: true }),
   ]);
+  let { data, error } = first;
+  if (isMissingLinesColumn(error)) {
+    ({ data, error } = await supabase.from("payment_vouchers").select(BASE_COLUMNS).eq("id", id).maybeSingle());
+  }
   if (error) throw error;
   if (!data) return null;
   if (linesErr) throw linesErr;

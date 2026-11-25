@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -132,6 +133,9 @@ const INCOME_ROWS: IncomeRow[] = [
 
 export function PrintWhtCertificateView({ certificate: voucher }: { certificate: WhtCertificateRow }) {
   const router = useRouter();
+  // Withholding at several rates: each rate gets its own line under the same
+  // income type, with the part of the payment it was worked out on.
+  const rateLines = voucher.whtLines && voucher.whtLines.length > 1 ? voucher.whtLines : null;
 
   return (
     <div className="mx-auto max-w-3xl bg-white p-6 text-black print:p-0">
@@ -273,22 +277,38 @@ export function PrintWhtCertificateView({ certificate: voucher }: { certificate:
               {INCOME_ROWS.map((row, i) => {
                 const isMatch = !!row.key && voucher.incomeType === row.key;
                 return (
-                  <tr key={i}>
+                  <Fragment key={i}>
+                  <tr>
                     <td
                       className="border-r border-black px-1 py-0.5 align-top"
                       style={row.indent ? { paddingLeft: `${row.indent * 12 + 4}px` } : undefined}
                     >
                       {row.text}
                       {isMatch && voucher.description && ` (${voucher.description})`}
+                      {isMatch && rateLines && ` — อัตราร้อยละ ${rateLines[0].rate}`}
                     </td>
                     <td className="border-r border-black px-1 py-0.5 text-center align-top">
                       {isMatch ? numericDate(voucher.date) : ""}
                     </td>
                     <td className="border-r border-black px-1 py-0.5 text-right align-top">
-                      {isMatch ? formatTHB(voucher.amount) : ""}
+                      {isMatch ? formatTHB(rateLines ? rateLines[0].base : voucher.amount) : ""}
                     </td>
-                    <td className="px-1 py-0.5 text-right align-top">{isMatch ? formatTHB(voucher.whtAmount) : ""}</td>
+                    <td className="px-1 py-0.5 text-right align-top">
+                      {isMatch ? formatTHB(rateLines ? rateLines[0].amount : voucher.whtAmount) : ""}
+                    </td>
                   </tr>
+                  {isMatch &&
+                    rateLines?.slice(1).map((l, li) => (
+                      <tr key={`rate-${li}`}>
+                        <td className="border-r border-black px-1 py-0.5 align-top" style={{ paddingLeft: "16px" }}>
+                          {`อัตราร้อยละ ${l.rate}`}
+                        </td>
+                        <td className="border-r border-black px-1 py-0.5 text-center align-top">{numericDate(voucher.date)}</td>
+                        <td className="border-r border-black px-1 py-0.5 text-right align-top">{formatTHB(l.base)}</td>
+                        <td className="px-1 py-0.5 text-right align-top">{formatTHB(l.amount)}</td>
+                      </tr>
+                    ))}
+                  </Fragment>
                 );
               })}
               <tr className="font-medium">

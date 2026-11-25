@@ -604,6 +604,16 @@ export interface PaymentVoucherJobAllocation {
   amount: number;
 }
 
+// One withholding rate on a payment voucher: the part of the payment the tax
+// is worked out on (base), the rate, and the tax withheld at it. Only saved
+// when a voucher withholds at more than one rate; otherwise whtRate/whtAmount
+// say it all.
+export interface WhtLine {
+  rate: number;
+  base: number;
+  amount: number;
+}
+
 export interface PaymentVoucher {
   id: string;
   docNo: string;
@@ -622,6 +632,9 @@ export interface PaymentVoucher {
   whtRate: number | null;
   whtFormType: WhtFormType | null;
   whtAmount: number;
+  // Set (2 or more entries) when the voucher withholds at several rates;
+  // whtAmount is then their total and whtRate is null.
+  whtLines?: WhtLine[];
   socialSecurityAmount: number;
   bankName: string | null;
   bankAccountNo: string | null;
@@ -662,6 +675,8 @@ export interface WhtCertificateRow {
   whtRate: number | null;
   whtFormType: WhtFormType | null;
   whtAmount: number;
+  // Several withholding rates on one certificate (see PaymentVoucher.whtLines).
+  whtLines?: WhtLine[];
   payeeTaxId: string | null;
   payeeAddress: string | null;
   incomeType: WhtIncomeType;

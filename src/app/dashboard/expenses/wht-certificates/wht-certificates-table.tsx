@@ -197,7 +197,7 @@ export function WhtCertificatesTable({ rows: allRows }: { rows: WhtCertificateRo
                       <TableCell className="whitespace-nowrap">{new Date(v.date).toLocaleDateString("th-TH")}</TableCell>
                       <TableCell className="whitespace-nowrap">{v.payeeName}</TableCell>
                       <TableCell className="whitespace-nowrap">{v.whtFormType ?? "—"}</TableCell>
-                      <TableCell className="text-right whitespace-nowrap">{v.whtRate ?? "—"}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap">{v.whtLines && v.whtLines.length > 1 ? v.whtLines.map((l) => l.rate).join(" / ") : (v.whtRate ?? "—")}</TableCell>
                       <TableCell className="text-right whitespace-nowrap">{formatTHB(v.whtAmount)}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">

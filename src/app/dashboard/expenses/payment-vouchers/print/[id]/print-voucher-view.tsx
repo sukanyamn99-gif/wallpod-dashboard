@@ -113,7 +113,7 @@ export function PrintVoucherView({ voucher }: { voucher: PaymentVoucher }) {
 
         <div className="flex items-center gap-3 border-b border-black p-2">
           <span className="whitespace-nowrap">
-            W/H TAX...{voucher.whtRate ?? ""}%......
+            W/H TAX...{voucher.whtLines && voucher.whtLines.length > 1 ? voucher.whtLines.map((l) => l.rate).join("% / ") : (voucher.whtRate ?? "")}%......
           </span>
           {WHT_OPTIONS.map((opt) => (
             <label key={opt} className="flex items-center gap-1 whitespace-nowrap">

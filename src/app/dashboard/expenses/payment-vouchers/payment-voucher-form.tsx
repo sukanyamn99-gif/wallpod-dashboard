@@ -2,7 +2,7 @@
 
 import { startTransition, useActionState, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, X } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -57,6 +57,16 @@ interface AllocationDraft {
 }
 
 let nextKey = 0;
+
+interface WhtRowDraft {
+  key: number;
+  base: string;
+  rate: string;
+  amount: string;
+  // The base was typed (or loaded from a saved voucher) rather than left as
+  // "what the other rows leave over".
+  baseManual: boolean;
+}
 function emptyLine(): LedgerLineDraft {
   return { key: nextKey++, accountCode: "", description: "", debit: "", credit: "" };
 }
@@ -111,14 +121,74 @@ export function PaymentVoucherForm({
   // amount includes VAT) and stays editable: once the amount is typed by hand
   // it is left alone until the rate, the amount or the VAT tick changes again.
   const [vatIncluded, setVatIncluded] = useState(initialData?.vatIncluded ?? false);
-  const [whtRate, setWhtRate] = useState(initialData?.whtRate ? String(initialData.whtRate) : "");
-  const [whtAmount, setWhtAmount] = useState(initialData?.whtAmount ? String(initialData.whtAmount) : "");
+  // One row per withholding rate: a voucher can withhold at several rates
+  // (e.g. 1% on the transport part, 3% on the rest). The first row's base is
+  // whatever the other rows leave of the pre-VAT amount, until it is typed.
+  const [whtRows, setWhtRows] = useState<WhtRowDraft[]>(() => {
+    if (initialData?.whtLines && initialData.whtLines.length > 1) {
+      return initialData.whtLines.map((l) => ({
+        key: nextKey++,
+        base: String(l.base),
+        rate: String(l.rate),
+        amount: String(l.amount),
+        baseManual: true,
+      }));
+    }
+    return [
+      {
+        key: nextKey++,
+        // An existing voucher: show the amount the tax was taken from.
+        base: initialData?.whtAmount
+          ? String(Math.round((initialData.amount / (initialData.vatIncluded ? 1.07 : 1)) * 100) / 100)
+          : "",
+        rate: initialData?.whtRate ? String(initialData.whtRate) : "",
+        amount: initialData?.whtAmount ? String(initialData.whtAmount) : "",
+        baseManual: false,
+      },
+    ];
+  });
 
-  function recalcWht(nextAmount: string, nextRate: string, nextVatIncluded: boolean) {
-    const rate = Number(nextRate) || 0;
-    const base = (Number(nextAmount) || 0) / (nextVatIncluded ? 1.07 : 1);
-    setWhtAmount(rate > 0 && base > 0 ? String(Math.round((base * rate) / 100 * 100 + 1e-9) / 100) : "");
+  // Works out the first row's base and every row's tax from the voucher amount
+  // and the rates. A tax amount typed by hand is left alone until the amount,
+  // the VAT tick, a base or a rate changes again.
+  function applyWhtRows(rows: WhtRowDraft[], nextAmount: string, nextVatIncluded: boolean) {
+    const preVat = (Number(nextAmount) || 0) / (nextVatIncluded ? 1.07 : 1);
+    const othersBase = rows.slice(1).reduce((sum, r) => sum + (Number(r.base) || 0), 0);
+    setWhtRows(
+      rows.map((r, i) => {
+        const autoBase = i === 0 && !r.baseManual;
+        const base = autoBase ? Math.max(0, Math.round((preVat - othersBase) * 100) / 100) : Number(r.base) || 0;
+        const rate = Number(r.rate) || 0;
+        return {
+          ...r,
+          base: autoBase ? (base > 0 ? String(base) : "") : r.base,
+          amount: rate > 0 && base > 0 ? String(Math.round(((base * rate) / 100) * 100 + 1e-9) / 100) : "",
+        };
+      }),
+    );
   }
+  function recalcWht(nextAmount: string, nextVatIncluded: boolean) {
+    applyWhtRows(whtRows, nextAmount, nextVatIncluded);
+  }
+  function updateWhtRow(key: number, patch: Partial<WhtRowDraft>) {
+    applyWhtRows(
+      whtRows.map((r) => (r.key === key ? { ...r, ...patch } : r)),
+      amount,
+      vatIncluded,
+    );
+  }
+  function addWhtRow() {
+    applyWhtRows([...whtRows, { key: nextKey++, base: "", rate: "", amount: "", baseManual: true }], amount, vatIncluded);
+  }
+  function removeWhtRow(key: number) {
+    applyWhtRows(
+      whtRows.filter((r) => r.key !== key),
+      amount,
+      vatIncluded,
+    );
+  }
+  const usedWhtRows = whtRows.filter((r) => (Number(r.rate) || 0) > 0 && (Number(r.amount) || 0) > 0);
+  const whtTotal = Math.round(whtRows.reduce((sum, r) => sum + (Number(r.amount) || 0), 0) * 100) / 100;
   const [allocations, setAllocations] = useState<AllocationDraft[]>(() => {
     if (initialData?.jobAllocations && initialData.jobAllocations.length > 0) {
       return initialData.jobAllocations.map((a) => ({ key: nextKey++, jobNo: a.jobNo, amount: String(a.amount) }));
@@ -262,7 +332,7 @@ export function PaymentVoucherForm({
           value={amount}
           onChange={(v) => {
             setAmount(v);
-            recalcWht(v, whtRate, vatIncluded);
+            recalcWht(v, vatIncluded);
           }}
           required
         />
@@ -371,7 +441,7 @@ export function PaymentVoucherForm({
             checked={vatIncluded}
             onChange={(e) => {
               setVatIncluded(e.target.checked);
-              recalcWht(amount, whtRate, e.target.checked);
+              recalcWht(amount, e.target.checked);
             }}
             className="h-4 w-4"
           />
@@ -399,28 +469,77 @@ export function PaymentVoucherForm({
 
       <div className="space-y-3 rounded-lg border p-4">
         <p className="text-sm font-semibold">ภาษีหัก ณ ที่จ่าย</p>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="space-y-2">
-            <Label htmlFor="wht_rate">อัตรา (%)</Label>
-            <NumberInput
-              id="wht_rate"
-              name="wht_rate"
-              min={0}
-              step={0.01}
-              value={whtRate}
-              onChange={(v) => {
-                setWhtRate(v);
-                recalcWht(amount, v, vatIncluded);
-              }}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="wht_amount">จำนวนภาษีหัก</Label>
-            <NumberInput id="wht_amount" name="wht_amount" min={0} step={0.01} value={whtAmount} onChange={setWhtAmount} />
+        <input type="hidden" name="wht_rate" value={whtRows.length === 1 ? whtRows[0].rate : ""} />
+        <input type="hidden" name="wht_amount" value={whtTotal > 0 ? String(whtTotal) : ""} />
+        <input
+          type="hidden"
+          name="wht_lines"
+          value={
+            usedWhtRows.length > 1
+              ? JSON.stringify(
+                  usedWhtRows.map((r) => ({ rate: Number(r.rate), base: Number(r.base) || 0, amount: Number(r.amount) })),
+                )
+              : ""
+          }
+        />
+        <input type="hidden" name="had_wht_lines" value={String(!!initialData?.whtLines && initialData.whtLines.length > 1)} />
+        <div className="space-y-3">
+          {whtRows.map((r, i) => (
+            <div key={r.key} className="grid items-end gap-4 sm:grid-cols-[1fr_8rem_1fr_2rem]">
+              <div className="space-y-2">
+                <Label htmlFor={`wht_base_${r.key}`}>
+                  {whtRows.length > 1 ? `ยอดที่หัก ณ ที่จ่าย (รายการที่ ${i + 1})` : "ยอดที่หัก ณ ที่จ่าย"}
+                </Label>
+                <NumberInput
+                  id={`wht_base_${r.key}`}
+                  min={0}
+                  step={0.01}
+                  value={r.base}
+                  onChange={(v) => updateWhtRow(r.key, { base: v, baseManual: true })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor={`wht_rate_${r.key}`}>อัตรา (%)</Label>
+                <NumberInput
+                  id={`wht_rate_${r.key}`}
+                  min={0}
+                  step={0.01}
+                  value={r.rate}
+                  onChange={(v) => updateWhtRow(r.key, { rate: v })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor={`wht_amount_${r.key}`}>จำนวนภาษีหัก</Label>
+                <NumberInput
+                  id={`wht_amount_${r.key}`}
+                  min={0}
+                  step={0.01}
+                  value={r.amount}
+                  onChange={(v) => setWhtRows((prev) => prev.map((x) => (x.key === r.key ? { ...x, amount: v } : x)))}
+                />
+              </div>
+              {whtRows.length > 1 ? (
+                <Button type="button" size="icon-sm" variant="ghost" onClick={() => removeWhtRow(r.key)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              ) : (
+                <span />
+              )}
+            </div>
+          ))}
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-muted-foreground">
-              คำนวณให้อัตโนมัติจากอัตรา × จำนวนเงิน{vatIncluded ? " (ก่อน VAT)" : ""} — พิมพ์แก้เองได้
+              คำนวณให้อัตโนมัติจากยอดที่หัก × อัตรา{vatIncluded ? " (ยอดก่อน VAT)" : ""} — พิมพ์แก้เองได้
+              ถ้ามีหลายอัตราให้กด &quot;เพิ่มอัตราหัก&quot; แล้วใส่ยอดของแต่ละอัตรา
             </p>
+            <Button type="button" size="sm" variant="outline" onClick={addWhtRow}>
+              <Plus className="h-3.5 w-3.5" />
+              เพิ่มอัตราหัก
+            </Button>
           </div>
+          {whtRows.length > 1 && <p className="text-sm font-medium">ภาษีหัก ณ ที่จ่ายรวม {formatTHB(whtTotal)}</p>}
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="wht_form_type">ประเภทแบบ</Label>
             <input type="hidden" name="wht_form_type" value={whtFormType} />

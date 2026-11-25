@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activity-log";
 import { generateWhtCertNo } from "@/lib/wht-cert-no";
-import type { WhtFormType, WhtIncomeType } from "@/lib/types";
+import type { WhtFormType, WhtIncomeType, WhtLine } from "@/lib/types";
 import { isCostBucket, type CostBucket } from "@/lib/job-cost-buckets";
 
 const WHT_FORM_TYPES: WhtFormType[] = ["ภ.ง.ด.1", "ภ.ง.ด.2", "ภ.ง.ด.3", "ภ.ง.ด.53"];
@@ -65,6 +65,27 @@ function parseVoucherForm(formData: FormData) {
     return { ok: false as const, error: "ประเภทเงินได้ไม่ถูกต้อง" };
   }
 
+  // Withholding at several rates (e.g. 1% on part, 3% on the rest) arrives as
+  // a JSON list; a voucher with one rate (or none) keeps using wht_rate /
+  // wht_amount alone, exactly as before.
+  let whtLines: WhtLine[] = [];
+  const rawWhtLines = str(formData.get("wht_lines"));
+  if (rawWhtLines) {
+    try {
+      const parsedLines = JSON.parse(rawWhtLines) as { rate?: unknown; base?: unknown; amount?: unknown }[];
+      whtLines = parsedLines
+        .map((l) => ({
+          rate: Number(l.rate) || 0,
+          base: Math.round((Number(l.base) || 0) * 100) / 100,
+          amount: Math.round((Number(l.amount) || 0) * 100) / 100,
+        }))
+        .filter((l) => l.rate > 0 && l.amount > 0);
+    } catch {
+      return { ok: false as const, error: "รายการหัก ณ ที่จ่ายไม่ถูกต้อง" };
+    }
+  }
+  const hasSeveralRates = whtLines.length > 1;
+
   // Cost attribution: one or more (JOB, amount) rows. A single row with no
   // amount means "the whole voucher" (the common case, same as the old single
   // JOB field); with several rows every amount is required and together they
@@ -117,9 +138,14 @@ function parseVoucherForm(formData: FormData) {
     note: str(formData.get("note")),
     whtCertNo: str(formData.get("wht_cert_no")),
     description: str(formData.get("description")),
-    whtRate: formData.get("wht_rate") ? num(formData.get("wht_rate")) : null,
+    whtRate: hasSeveralRates ? null : formData.get("wht_rate") ? num(formData.get("wht_rate")) : null,
     whtFormType: whtFormType as WhtFormType | null,
-    whtAmount: num(formData.get("wht_amount")),
+    whtAmount: hasSeveralRates
+      ? Math.round(whtLines.reduce((sum, l) => sum + l.amount, 0) * 100) / 100
+      : num(formData.get("wht_amount")),
+    whtLines: hasSeveralRates ? whtLines : null,
+    // The voucher being edited already had several rates saved.
+    hadWhtLines: str(formData.get("had_wht_lines")) === "true",
     socialSecurityAmount: num(formData.get("social_security_amount")),
     bankName: str(formData.get("bank_name")),
     bankAccountNo: str(formData.get("bank_account_no")),
@@ -213,6 +239,7 @@ export async function createPaymentVoucher(formData: FormData) {
       wht_rate: parsed.whtRate,
       wht_form_type: parsed.whtFormType,
       wht_amount: parsed.whtAmount,
+      ...(parsed.whtLines ? { wht_lines: parsed.whtLines } : {}),
       social_security_amount: parsed.socialSecurityAmount,
       bank_name: parsed.bankName,
       bank_account_no: parsed.bankAccountNo,
@@ -269,6 +296,8 @@ export async function updatePaymentVoucher(id: string, formData: FormData) {
       wht_rate: parsed.whtRate,
       wht_form_type: parsed.whtFormType,
       wht_amount: parsed.whtAmount,
+      // Only written when needed, so saving stays the same before migration 113.
+      ...(parsed.whtLines ? { wht_lines: parsed.whtLines } : parsed.hadWhtLines ? { wht_lines: null } : {}),
       social_security_amount: parsed.socialSecurityAmount,
       bank_name: parsed.bankName,
       bank_account_no: parsed.bankAccountNo,

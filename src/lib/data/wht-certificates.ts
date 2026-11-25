@@ -9,6 +9,9 @@ import type { PaymentVoucher, PettyCashTransaction, WhtCertificateRow, WhtCertif
 // came from: whole amount x rate, or amount / 1.07 x rate. Falls back to the
 // voucher's own VAT-included flag when neither matches.
 function whtBaseOf(v: Omit<PaymentVoucher, "ledgerLines">): number {
+  // Several withholding rates: the certificate's amount is what the taxed
+  // parts add up to.
+  if (v.whtLines && v.whtLines.length > 1) return round2(v.whtLines.reduce((sum, l) => sum + l.base, 0));
   const preVat = round2(v.amount / 1.07);
   if (v.whtRate && v.whtAmount > 0) {
     const fromAmount = round2((v.amount * v.whtRate) / 100);
@@ -38,6 +41,7 @@ function fromVoucher(v: Omit<PaymentVoucher, "ledgerLines">): WhtCertificateRow 
     whtRate: v.whtRate,
     whtFormType: v.whtFormType,
     whtAmount: v.whtAmount,
+    whtLines: v.whtLines,
     payeeTaxId: v.payeeTaxId,
     payeeAddress: v.payeeAddress,
     incomeType: v.incomeType,
