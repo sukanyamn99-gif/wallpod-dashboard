@@ -150,6 +150,73 @@ export function ByStatusChart({ data }: { data: ArDashboardData["byStatus"] }) {
   );
 }
 
+// Thai combining marks (upper/lower vowels, tone marks) take no horizontal space.
+const THAI_COMBINING = /[ัิ-ฺ็-๎]/g;
+const visualLength = (s: string) => s.replace(THAI_COMBINING, "").length;
+
+// Wrap a name on spaces into at most `maxLines` lines; the remainder is cut with an ellipsis.
+function wrapLabel(text: string, maxUnits: number, maxLines: number): string[] {
+  const lines: string[] = [];
+  let current = "";
+  let truncated = false;
+  const words = text.split(/\s+/).filter(Boolean);
+
+  for (let i = 0; i < words.length; i++) {
+    const candidate = current ? `${current} ${words[i]}` : words[i];
+    if (visualLength(candidate) <= maxUnits || !current) {
+      current = candidate;
+      continue;
+    }
+    lines.push(current);
+    current = words[i];
+    if (lines.length === maxLines) {
+      truncated = true;
+      break;
+    }
+  }
+  if (!truncated && current) lines.push(current);
+  if (lines.length > maxLines) {
+    lines.length = maxLines;
+    truncated = true;
+  }
+
+  const clip = (s: string) => {
+    let out = s;
+    while (visualLength(out) > maxUnits - 1 && out.length > 1) out = out.slice(0, -1);
+    return `${out}…`;
+  };
+  const last = lines.length - 1;
+  if (truncated && last >= 0) lines[last] = clip(lines[last]);
+  else if (last >= 0 && visualLength(lines[last]) > maxUnits) lines[last] = clip(lines[last]);
+  return lines;
+}
+
+const DEBTOR_LABEL_WIDTH = 210;
+const DEBTOR_ROW_HEIGHT = 44;
+
+function DebtorTick({
+  x = 0,
+  y = 0,
+  payload,
+}: {
+  x?: number;
+  y?: number;
+  payload?: { value: string };
+}) {
+  const lines = wrapLabel(String(payload?.value ?? ""), 30, 2);
+  const lineHeight = 14;
+  const startDy = -((lines.length - 1) * lineHeight) / 2;
+  return (
+    <text x={x} y={y} textAnchor="end" fill="var(--foreground)" fontSize={12}>
+      {lines.map((line, i) => (
+        <tspan key={i} x={x - 4} dy={i === 0 ? startDy + 4 : lineHeight}>
+          {line}
+        </tspan>
+      ))}
+    </text>
+  );
+}
+
 export function TopDebtorsChart({
   data,
   list,
@@ -166,8 +233,8 @@ export function TopDebtorsChart({
         <CardTitle>ลูกหนี้รายลูกค้า (Top 8)</CardTitle>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={280}>
-          <BarChart data={data} layout="vertical" margin={{ left: 16, right: 16 }}>
+        <ResponsiveContainer width="100%" height={Math.max(280, data.length * DEBTOR_ROW_HEIGHT + 40)}>
+          <BarChart data={data} layout="vertical" margin={{ left: 8, right: 16 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
             <XAxis
               type="number"
@@ -179,10 +246,11 @@ export function TopDebtorsChart({
             <YAxis
               type="category"
               dataKey="customerName"
-              tick={{ fill: "var(--foreground)", fontSize: 12 }}
+              tick={<DebtorTick />}
+              interval={0}
               axisLine={false}
               tickLine={false}
-              width={140}
+              width={DEBTOR_LABEL_WIDTH}
             />
             <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--muted)" }} />
             <Bar
