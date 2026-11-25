@@ -6,11 +6,10 @@ import { logActivity } from "@/lib/activity-log";
 import { getJobLinkedCostSummary } from "@/lib/data/project-sales";
 import { getNextJobNo } from "@/lib/data/reference";
 import { getQuotationForJobNo } from "@/lib/data/quotations";
-import type { PaymentStatus, ProductionStatus } from "@/lib/types";
+import type { ProductionStatus } from "@/lib/types";
 import { PRODUCTION_STATUSES } from "@/lib/types";
 import { getJobNoError } from "@/lib/job-no";
-
-const PAYMENT_STATUSES: PaymentStatus[] = ["เก็บเงินเรียบร้อย", "ชำระมาแล้ว 50%", "รอชำระเงิน"];
+import { isPaymentStatus } from "@/lib/payment-status";
 
 function friendlyProjectSaleError(message: string): string {
   if (message.includes("projects_job_no_key")) {
@@ -135,8 +134,8 @@ function parseForm(formData: FormData): { ok: false; error: string } | ParsedFor
   const hasCosts = Object.values(costs).some((v) => v > 0);
 
   const status = str(formData.get("status"));
-  if (!status || !PAYMENT_STATUSES.includes(status as PaymentStatus)) {
-    return { ok: false, error: "กรุณาเลือกสถานะการชำระเงิน" };
+  if (!status || !isPaymentStatus(status)) {
+    return { ok: false, error: "กรุณาเลือกสถานะการชำระเงิน (ถ้าเลือก \"ชำระมาแล้ว\" ใส่เปอร์เซ็นต์ระหว่าง 1–99)" };
   }
 
   const installment1Amount = num(formData.get("amount_1"));

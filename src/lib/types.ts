@@ -44,7 +44,8 @@ export type ProjectType =
 // touching every existing ProductCategory-typed field across the app.
 export type ProductCategory = string;
 
-export type PaymentStatus = "เก็บเงินเรียบร้อย" | "ชำระมาแล้ว 50%" | "รอชำระเงิน";
+// "ชำระมาแล้ว N%" for any N — see src/lib/payment-status.ts.
+export type PaymentStatus = "เก็บเงินเรียบร้อย" | "รอชำระเงิน" | `ชำระมาแล้ว ${number}%`;
 
 // "เก็บเงินงวดสุดท้าย" was removed from selectable options (still allowed by
 // the DB check constraint so the handful of existing jobs already carrying

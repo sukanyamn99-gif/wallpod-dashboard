@@ -93,8 +93,11 @@ create table payments (
   installment_no int not null default 1,
   amount numeric(14,2) not null default 0,
   paid_date date,
-  status text not null check (status in
-    ('เก็บเงินเรียบร้อย','ชำระมาแล้ว 50%','รอชำระเงิน')),
+  -- เก็บเงินเรียบร้อย / รอชำระเงิน, or "ชำระมาแล้ว N%" for any N (migration_115).
+  status text not null check (
+    status in ('เก็บเงินเรียบร้อย','รอชำระเงิน')
+    or status ~ '^ชำระมาแล้ว [0-9]{1,2}(\.[0-9]{1,2})?%$'
+  ),
   outstanding_amount numeric(14,2) not null default 0,
   -- An installment counts as actually paid only once this is filled in —
   -- invoice_no alone can be entered before the money has actually arrived.
@@ -2054,7 +2057,11 @@ create policy suppliers_insert_support on suppliers for insert
 -- It used to live only on the job's installment rows, so a job with no
 -- installment yet (no invoice opened) lost the status the moment it was saved.
 alter table projects add column if not exists payment_status text
-  check (payment_status in ('เก็บเงินเรียบร้อย', 'ชำระมาแล้ว 50%', 'รอชำระเงิน'));
+  check (
+    payment_status is null
+    or payment_status in ('เก็บเงินเรียบร้อย', 'รอชำระเงิน')
+    or payment_status ~ '^ชำระมาแล้ว [0-9]{1,2}(\.[0-9]{1,2})?%$'
+  );
 
 -- Jobs that already have installments: copy the status they currently show.
 update projects p

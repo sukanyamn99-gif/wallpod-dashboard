@@ -29,13 +29,13 @@ import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomple
 import type {
   Customer,
   CustomerType,
-  PaymentStatus,
   ProductionStatus,
   QuotationForJob,
   SalesRep,
 } from "@/lib/types";
 import { PRODUCTION_STATUSES } from "@/lib/types";
 import { getJobNoError } from "@/lib/job-no";
+import { AWAITING_PAYMENT, PAID_IN_FULL, parsePartialPercent, partialPaymentStatus } from "@/lib/payment-status";
 
 const initialState = { error: null as string | null };
 
@@ -43,7 +43,14 @@ const CUSTOMER_TYPES: CustomerType[] = [
   "Owner", "Designer", "Turnkey", "Contractor", "Corporate", "Dealer", "School",
 ];
 
-const PAYMENT_STATUSES: PaymentStatus[] = ["เก็บเงินเรียบร้อย", "ชำระมาแล้ว 50%", "รอชำระเงิน"];
+// The middle choice stands for "ชำระมาแล้ว N%" with N typed in beside it; the
+// status that is saved is then e.g. "ชำระมาแล้ว 40%" (see lib/payment-status.ts).
+const PARTIAL_CHOICE = "partial";
+const STATUS_CHOICES = [
+  { value: PAID_IN_FULL, label: PAID_IN_FULL },
+  { value: PARTIAL_CHOICE, label: "ชำระมาแล้ว __%" },
+  { value: AWAITING_PAYMENT, label: AWAITING_PAYMENT },
+];
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -185,6 +192,33 @@ export function ProjectSaleForm({
   const [receivedDate3, setReceivedDate3] = useState(initialData?.receivedDate3 ?? "");
   const [whtAmount3, setWhtAmount3] = useState(initialData?.whtAmount3 ?? "");
   const [status, setStatus] = useState(initialData?.status ?? "");
+  // The % typed beside "ชำระมาแล้ว __%" — starts from the saved status if it
+  // already is one, otherwise 50.
+  const [partialPercent, setPartialPercent] = useState(String(parsePartialPercent(initialData?.status) ?? 50));
+  // Whether the middle choice is picked. Kept apart from `status` itself because
+  // a percent that is not (yet) valid leaves the status empty but the % box open.
+  const [partialMode, setPartialMode] = useState(parsePartialPercent(initialData?.status) !== null);
+  // "" for a % outside 1–99 (or with too many decimals), so the form is refused
+  // on save instead of storing something the rest of the app can't read.
+  const partialStatusFor = (percent: string) => {
+    const candidate = partialPaymentStatus(percent);
+    return parsePartialPercent(candidate) !== null ? candidate : "";
+  };
+
+  function handleStatusChoice(choice: string) {
+    if (choice === PARTIAL_CHOICE) {
+      setPartialMode(true);
+      setStatus(partialStatusFor(partialPercent));
+    } else {
+      setPartialMode(false);
+      setStatus(choice);
+    }
+  }
+
+  function handlePartialPercentChange(value: string) {
+    setPartialPercent(value);
+    setStatus(partialStatusFor(value));
+  }
   const [productionStatus, setProductionStatus] = useState(initialData?.productionStatus ?? "");
   const [savedMessage, setSavedMessage] = useState(false);
   // Bumped after every successful create to force-remount the <form> below —
@@ -273,6 +307,8 @@ export function ProjectSaleForm({
         setReceivedDate3("");
         setWhtAmount3("");
         setStatus("");
+        setPartialMode(false);
+        setPartialPercent("50");
         setProductionStatus("");
         setMaterialCost("");
         setJobCostSummary(null);
@@ -1146,18 +1182,43 @@ export function ProjectSaleForm({
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="status">สถานะ</Label>
-            <Select name="status" required value={status} onValueChange={(v) => setStatus(v ?? "")}>
-              <SelectTrigger id="status" className="w-full">
-                <SelectValue placeholder="เลือก" />
-              </SelectTrigger>
-              <SelectContent>
-                {PAYMENT_STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {/* The Select has no name of its own: what it shows ("ชำระมาแล้ว __%")
+                is not what gets saved, so the real status goes in this hidden field. */}
+            <input type="hidden" name="status" value={status} />
+            <div className="flex items-center gap-2">
+              <Select
+                value={partialMode ? PARTIAL_CHOICE : status}
+                onValueChange={(v) => handleStatusChoice(v ?? "")}
+                items={STATUS_CHOICES}
+              >
+                <SelectTrigger id="status" className="w-full">
+                  <SelectValue placeholder="เลือก" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_CHOICES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {partialMode && (
+                <div className="flex shrink-0 items-center gap-1">
+                  <NumberInput
+                    aria-label="เปอร์เซ็นต์ที่ชำระมาแล้ว"
+                    className="w-20"
+                    min={1}
+                    step={0.01}
+                    value={partialPercent}
+                    onChange={handlePartialPercentChange}
+                  />
+                  <span className="text-sm text-muted-foreground">%</span>
+                </div>
+              )}
+            </div>
+            {partialMode && !status && (
+              <p className="text-xs text-destructive">ใส่เปอร์เซ็นต์ระหว่าง 1–99 (ทศนิยมไม่เกิน 2 ตำแหน่ง)</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label className="text-muted-foreground">ยอดคงค้าง (คำนวณอัตโนมัติ)</Label>
