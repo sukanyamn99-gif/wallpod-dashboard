@@ -7,6 +7,7 @@ import type {
   QuotationDetail,
   QuotationItem,
   QuotationItemDetail,
+  QuotationForJob,
   QuotationPaymentTerm,
   QuotationStatus,
 } from "@/lib/types";
@@ -529,6 +530,36 @@ export async function getBillableQuotationsForCustomer(
       status: row.status as QuotationStatus,
       paymentTerms: withTermAmounts((row.payment_terms as QuotationPaymentTerm[] | null) ?? [], Number(row.total)),
     }));
+}
+
+// The quotation a Project Sales job was made from, found by its JOB NO. (the
+// link quotations.converted_project_id is not filled in by the app). Prefers
+// an accepted quotation, then the newest; cancelled and rejected ones are
+// ignored. Null when no quotation carries this JOB NO.
+export async function getQuotationForJobNo(jobNo: string): Promise<QuotationForJob | null> {
+  if (!jobNo.trim() || !isSupabaseConfigured()) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("quotations")
+    .select("doc_no, status, pre_vat, total, job_number, payment_terms, quote_date")
+    .neq("status", "ปฏิเสธ")
+    .eq("is_cancelled", false)
+    .not("job_number", "is", null)
+    .order("quote_date", { ascending: false });
+  if (error) throw error;
+
+  const wanted = normalizeJobNo(jobNo);
+  const matches = (data ?? []).filter((row) => row.job_number && normalizeJobNo(row.job_number) === wanted);
+  if (matches.length === 0) return null;
+  const best = matches.find((row) => row.status === "ลูกค้าตอบตกลง") ?? matches[0];
+  const total = Number(best.total);
+  return {
+    docNo: best.doc_no,
+    status: best.status as QuotationStatus,
+    preVat: Number(best.pre_vat),
+    total,
+    paymentTerms: withTermAmounts((best.payment_terms as QuotationPaymentTerm[] | null) ?? [], total),
+  };
 }
 
 // One quotation item's descriptive/pricing fields, kept as raw separate

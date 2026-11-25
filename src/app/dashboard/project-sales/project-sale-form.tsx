@@ -2,7 +2,7 @@
 
 import { useActionState, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Download, Plus, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -16,11 +16,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createProjectSale, getJobLinkedCostSuggestion, getSuggestedJobNo, updateProjectSale } from "./actions";
+import {
+  createProjectSale,
+  fetchQuotationForJob,
+  getJobLinkedCostSuggestion,
+  getSuggestedJobNo,
+  updateProjectSale,
+} from "./actions";
 import type { AdjacentJobNos, JobLinkedCostSummary } from "@/lib/data/project-sales";
 import { formatTHB } from "@/lib/format";
 import { CustomerAutocomplete } from "@/components/dashboard/customer-autocomplete";
-import type { Customer, CustomerType, PaymentStatus, ProductionStatus, SalesRep } from "@/lib/types";
+import type {
+  Customer,
+  CustomerType,
+  PaymentStatus,
+  ProductionStatus,
+  QuotationForJob,
+  SalesRep,
+} from "@/lib/types";
 import { PRODUCTION_STATUSES } from "@/lib/types";
 import { getJobNoError } from "@/lib/job-no";
 
@@ -331,6 +344,49 @@ export function ProjectSaleForm({
     if (installment2) setAmount2(String(amounts[1]));
     if (installment3) setAmount3(String(amounts[2]));
   }
+
+  // The job's quotation as it is now, so a quotation edited after the job was
+  // saved can be brought across. Nothing here saves: each button only fills a
+  // field on this form, which still has to be saved like any other edit.
+  const [quotationRef, setQuotationRef] = useState<QuotationForJob | null>(null);
+  const [quotationRefError, setQuotationRefError] = useState<string | null>(null);
+  const [quotationRefPending, startQuotationRef] = useTransition();
+  const quotationJobNo = mode === "edit" ? initialData?.jobNo : null;
+
+  function loadQuotationRef() {
+    if (!quotationJobNo) return;
+    setQuotationRefError(null);
+    startQuotationRef(async () => {
+      const result = await fetchQuotationForJob(quotationJobNo);
+      if (result.error || !result.quotation) {
+        setQuotationRef(null);
+        setQuotationRefError(result.error ?? "ไม่พบใบเสนอราคา");
+        return;
+      }
+      setQuotationRef(result.quotation);
+    });
+  }
+
+  function applyQuotationSaleAmount(quotationPreVat: number) {
+    if (items.length !== 1) return;
+    setItems((prev) => prev.map((r) => ({ ...r, amount: String(quotationPreVat) })));
+    setSavedMessage(false);
+  }
+
+  // Slot n (1-3) takes the term's amount; slots 2 and 3 are switched on if
+  // they weren't showing yet.
+  function applyQuotationTerm(slot: number, amount: number) {
+    if (slot >= 2) setInstallment2(true);
+    if (slot >= 3) setInstallment3(true);
+    const value = String(amount);
+    if (slot === 1) setAmount1(value);
+    else if (slot === 2) setAmount2(value);
+    else setAmount3(value);
+    setSavedMessage(false);
+  }
+
+  const currentInstallmentAmounts = [amount1, amount2, amount3];
+  const receivedInstallments = [receiptNo1, receiptNo2, receiptNo3].map((no) => no.trim() !== "");
 
   function addRow() {
     setItems((prev) => [...prev, { key: nextRowKey.current++, category: "", amount: "" }]);
@@ -681,6 +737,97 @@ export function ProjectSaleForm({
             แบ่งยอดเท่ากันทุกงวด
           </Button>
         </div>
+
+        {quotationJobNo && (
+          <div className="space-y-3 rounded-md border bg-muted/30 p-3 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={loadQuotationRef} disabled={quotationRefPending}>
+                <RefreshCw className="h-3.5 w-3.5" />
+                {quotationRefPending ? "กำลังดึง..." : "ดึงข้อมูลล่าสุดจากใบเสนอราคา"}
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                ใช้เมื่อแก้ใบเสนอราคาหลังบันทึก JOB แล้ว — กดใช้ค่าแล้วต้องกด &ldquo;บันทึก&rdquo; ด้วย ถึงจะเปลี่ยนจริง
+              </span>
+            </div>
+            {quotationRefError && <p className="text-xs text-destructive">{quotationRefError}</p>}
+            {quotationRef && (
+              <div className="space-y-3">
+                <p>
+                  ใบเสนอราคา <span className="font-medium">{quotationRef.docNo}</span>
+                  {quotationRef.status !== "ลูกค้าตอบตกลง" && (
+                    <span className="ml-2 rounded border px-1.5 py-0.5 text-xs text-muted-foreground">
+                      {quotationRef.status}
+                    </span>
+                  )}
+                </p>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <span>
+                    ยอดก่อน VAT ในใบเสนอราคา: <span className="font-medium">{formatTHB(quotationRef.preVat)}</span>
+                    <span className="text-muted-foreground"> (Job ตอนนี้ {formatTHB(preVat)})</span>
+                  </span>
+                  {Math.abs(quotationRef.preVat - preVat) < 0.005 ? (
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400">ตรงกันแล้ว</span>
+                  ) : items.length === 1 ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => applyQuotationSaleAmount(quotationRef.preVat)}
+                    >
+                      ใช้ยอดนี้เป็นยอดขายของ Job
+                    </Button>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">
+                      Job นี้มีหลายหมวดสินค้า — ปรับยอดแต่ละหมวดเอง
+                    </span>
+                  )}
+                </div>
+                {quotationRef.paymentTerms.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">ใบเสนอราคานี้ไม่ได้กำหนดเงื่อนไขการชำระเงิน</p>
+                ) : (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground">
+                      เงื่อนไขงวดชำระ (ยอดรวม VAT) — งวดที่รับเงินแล้ว (มีเลขใบเสร็จ) จะไม่ให้เปลี่ยน
+                    </p>
+                    {quotationRef.paymentTerms.slice(0, 3).map((term, i) => {
+                      const slot = i + 1;
+                      const same = Math.abs((Number(currentInstallmentAmounts[i]) || 0) - term.amount) < 0.005;
+                      return (
+                        <div key={slot} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <span className="w-16 shrink-0 text-muted-foreground">งวดที่ {slot}</span>
+                          <span>
+                            {term.label} {term.percent}% = <span className="font-medium">{formatTHB(term.amount)}</span>
+                          </span>
+                          {receivedInstallments[i] ? (
+                            <span className="text-xs text-muted-foreground">รับเงินแล้ว — ไม่เปลี่ยน</span>
+                          ) : same ? (
+                            <span className="text-xs text-emerald-600 dark:text-emerald-400">ตรงกันแล้ว</span>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => applyQuotationTerm(slot, term.amount)}
+                            >
+                              ใส่ที่งวดที่ {slot}
+                              {Number(currentInstallmentAmounts[i]) > 0 &&
+                                ` (เดิม ${formatTHB(Number(currentInstallmentAmounts[i]))})`}
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {quotationRef.paymentTerms.length > 3 && (
+                      <p className="text-xs text-muted-foreground">
+                        ใบเสนอราคามี {quotationRef.paymentTerms.length} งวด แต่ Job รองรับสูงสุด 3 งวด
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="space-y-2">
           <p className="text-sm font-medium text-muted-foreground">งวดที่ 1</p>

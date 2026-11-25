@@ -1100,6 +1100,17 @@ export interface BillableQuotation {
   paymentTerms: QuotationPaymentTerm[];
 }
 
+// A Project Sales job's quotation as it stands now (found by JOB NO.), offered
+// on the job's edit form so the sale amount and installments can be brought in
+// line after the quotation was edited.
+export interface QuotationForJob {
+  docNo: string;
+  status: QuotationStatus;
+  preVat: number;
+  total: number;
+  paymentTerms: QuotationPaymentTerm[];
+}
+
 // A ใบกำกับภาษี, quotation-sourced, not yet referenced by any ใบวางบิล —
 // eligible to be billed directly. ใบวางบิล is created from this instead of
 // from the quotation itself once a tax invoice exists for it (see

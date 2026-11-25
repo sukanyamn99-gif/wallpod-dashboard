@@ -5,6 +5,7 @@ import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { logActivity } from "@/lib/activity-log";
 import { getJobLinkedCostSummary } from "@/lib/data/project-sales";
 import { getNextJobNo } from "@/lib/data/reference";
+import { getQuotationForJobNo } from "@/lib/data/quotations";
 import type { PaymentStatus, ProductionStatus } from "@/lib/types";
 import { PRODUCTION_STATUSES } from "@/lib/types";
 import { getJobNoError } from "@/lib/job-no";
@@ -322,6 +323,15 @@ export async function getJobLinkedCostSuggestion(jobNo: string) {
     return { error: `ไม่พบใบเบิก/Payment Voucher/เงินสดย่อยที่ผูก JOB NO. "${jobNo.trim()}"`, summary: null };
   }
   return { error: null, summary };
+}
+
+// The job's quotation as it is now — read only; nothing on the job changes until
+// the form is saved.
+export async function fetchQuotationForJob(jobNo: string) {
+  if (!isSupabaseConfigured()) return { error: "ยังไม่ได้ตั้งค่า Supabase", quotation: null };
+  const quotation = await getQuotationForJobNo(jobNo);
+  if (!quotation) return { error: `ไม่พบใบเสนอราคาที่มีเลข JOB "${jobNo.trim()}"`, quotation: null };
+  return { error: null, quotation };
 }
 
 export async function createProjectSale(formData: FormData) {
