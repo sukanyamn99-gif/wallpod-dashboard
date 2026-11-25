@@ -1,6 +1,7 @@
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type { PaymentVoucher, PaymentVoucherLedgerLine, WhtFormType, WhtIncomeType, WhtLine } from "@/lib/types";
 import { isCostBucket } from "@/lib/job-cost-buckets";
+import { getPayeeDirectory, payeeKey } from "@/lib/data/payee-directory";
 
 // wht_lines (several withholding rates) comes from migration 113; until that is
 // run the column doesn't exist, so a read retries without it (see selectVouchers).
@@ -163,6 +164,22 @@ export async function getPayeeSuggestions(): Promise<PayeeSuggestion[]> {
     existing.bankAccountNo ??= row.bank_account_no?.trim() || null;
     existing.taxId ??= row.payee_tax_id?.trim() || null;
     existing.address ??= row.payee_address?.trim() || null;
+    byName.set(name, existing);
+  }
+  // Supplier / customer records add what earlier vouchers never had: their tax
+  // id and address fill any blank. A supplier with no voucher yet is offered as
+  // a payee too (customers are not — that would flood the list). The form
+  // matches on the exact typed name, so a master record that differs only in
+  // spacing or case reuses the voucher's spelling.
+  const directory = await getPayeeDirectory();
+  const keyToName = new Map(Array.from(byName.keys()).map((name) => [payeeKey(name), name]));
+  for (const [key, known] of directory) {
+    const seenName = keyToName.get(key);
+    if (!seenName && !known.isSupplier) continue;
+    const name = seenName ?? known.name;
+    const existing = byName.get(name) ?? { name, bankName: null, bankAccountNo: null, taxId: null, address: null };
+    existing.taxId ??= known.taxId;
+    existing.address ??= known.address;
     byName.set(name, existing);
   }
   return Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name, "th"));

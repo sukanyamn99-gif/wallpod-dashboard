@@ -1,6 +1,7 @@
 import { round2 } from "@/lib/billing-document-summary";
 import { getPaymentVoucherById, getPaymentVouchers } from "@/lib/data/payment-vouchers";
 import { getPettyCashTransactionById, getPettyCashTransactions } from "@/lib/data/petty-cash";
+import { getPayeeDirectory, payeeKey, type PayeeDetails } from "@/lib/data/payee-directory";
 import type { PaymentVoucher, PettyCashTransaction, WhtCertificateRow, WhtCertificateSource } from "@/lib/types";
 
 // The certificate's "จำนวนเงินที่จ่าย" is the pre-VAT base the tax was worked
@@ -74,23 +75,43 @@ function fromPettyCash(t: PettyCashTransaction): WhtCertificateRow {
   };
 }
 
+// The payee's tax id / address typed on the voucher win; when the voucher left
+// them blank they come from the supplier (or customer) master record of the
+// same name, so details added there later still show on the certificate.
+function withPayeeDetails(row: WhtCertificateRow, directory: Map<string, PayeeDetails>): WhtCertificateRow {
+  const known = directory.get(payeeKey(row.payeeName));
+  if (!known) return row;
+  return {
+    ...row,
+    payeeTaxId: row.payeeTaxId?.trim() ? row.payeeTaxId : known.taxId,
+    payeeAddress: row.payeeAddress?.trim() ? row.payeeAddress : known.address,
+  };
+}
+
 // ใบหัก ณ ที่จ่าย is a filtered, merged view over two source tables —
 // Payment Voucher and Petty Cash both record their own withholding-tax
 // fields, so a certificate can originate from either one.
 export async function getWhtCertificates(): Promise<WhtCertificateRow[]> {
-  const [vouchers, pettyCash] = await Promise.all([getPaymentVouchers(), getPettyCashTransactions()]);
+  const [vouchers, pettyCash, directory] = await Promise.all([
+    getPaymentVouchers(),
+    getPettyCashTransactions(),
+    getPayeeDirectory(),
+  ]);
   const rows = [
     ...vouchers.filter((v) => v.whtAmount > 0).map(fromVoucher),
     ...pettyCash.filter((t) => t.whtAmount > 0).map(fromPettyCash),
-  ];
+  ].map((row) => withPayeeDetails(row, directory));
   return rows.sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export async function getWhtCertificateById(id: string, source: WhtCertificateSource): Promise<WhtCertificateRow | null> {
+  let row: WhtCertificateRow | null;
   if (source === "petty_cash") {
     const t = await getPettyCashTransactionById(id);
-    return t ? fromPettyCash(t) : null;
+    row = t ? fromPettyCash(t) : null;
+  } else {
+    const v = await getPaymentVoucherById(id);
+    row = v ? fromVoucher(v) : null;
   }
-  const v = await getPaymentVoucherById(id);
-  return v ? fromVoucher(v) : null;
+  return row ? withPayeeDetails(row, await getPayeeDirectory()) : null;
 }

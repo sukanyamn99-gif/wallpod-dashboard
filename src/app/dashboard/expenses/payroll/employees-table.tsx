@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, Eye, EyeOff, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DateInput } from "@/components/ui/date-input";
@@ -50,7 +50,8 @@ function tenureLabel(startDate: string | null): string {
   return parts.join(" ");
 }
 
-function AddEmployeeForm({ onAdded }: { onAdded: () => void }) {
+// `actions` sits next to the "เพิ่มพนักงาน" button while the form is closed.
+function AddEmployeeForm({ onAdded, actions }: { onAdded: () => void; actions?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [employeeCode, setEmployeeCode] = useState("");
   const [fullName, setFullName] = useState("");
@@ -93,10 +94,13 @@ function AddEmployeeForm({ onAdded }: { onAdded: () => void }) {
 
   if (!open) {
     return (
-      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-        <Plus className="h-3.5 w-3.5" />
-        เพิ่มพนักงาน
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+          <Plus className="h-3.5 w-3.5" />
+          เพิ่มพนักงาน
+        </Button>
+        {actions}
+      </div>
     );
   }
 
@@ -276,10 +280,28 @@ function EmployeeRow({ employee }: { employee: Employee }) {
 
 export function EmployeesTable({ employees }: { employees: Employee[] }) {
   const [formKey, setFormKey] = useState(0);
+  // Names, ID-card numbers and salaries stay hidden until asked for, so the
+  // page can be open on screen without showing them. Not remembered: every
+  // visit starts hidden again.
+  const [revealed, setRevealed] = useState(false);
 
   return (
     <div className="space-y-3">
-      <AddEmployeeForm key={formKey} onAdded={() => setFormKey((k) => k + 1)} />
+      <AddEmployeeForm
+        key={formKey}
+        onAdded={() => setFormKey((k) => k + 1)}
+        actions={
+          <Button size="sm" variant="outline" onClick={() => setRevealed((v) => !v)} aria-pressed={revealed}>
+            {revealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            {revealed ? "ซ่อนข้อมูลพนักงาน" : "แสดงข้อมูลพนักงาน"}
+          </Button>
+        }
+      />
+      {!revealed ? (
+        <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+          ซ่อนข้อมูลพนักงานไว้ ({employees.length} คน) — กดปุ่ม &ldquo;แสดงข้อมูลพนักงาน&rdquo; เพื่อดู
+        </p>
+      ) : (
       <div className="overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
@@ -309,6 +331,7 @@ export function EmployeesTable({ employees }: { employees: Employee[] }) {
           </TableBody>
         </Table>
       </div>
+      )}
     </div>
   );
 }
