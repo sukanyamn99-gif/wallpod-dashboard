@@ -86,6 +86,7 @@ export function MonthTabs({
   total,
   count,
   breakdown,
+  totalLabel = "ยอดรวมก่อน VAT",
 }: {
   dates: (string | null | undefined)[];
   value: string;
@@ -96,6 +97,8 @@ export function MonthTabs({
   // at the right of the tabs. Left out on lists that carry no amounts.
   total?: number;
   count?: number;
+  // What the total is called; the document lists all show a pre-VAT amount.
+  totalLabel?: string;
 }) {
   const months = useMemo(() => {
     const keys = new Set<string>([currentMonthKey()]);
@@ -122,7 +125,7 @@ export function MonthTabs({
       {total !== undefined && (
         <div className="ml-auto text-right">
           <p className="text-xs text-muted-foreground">
-            ยอดรวมก่อน VAT · {value === ALL_MONTHS ? "ทั้งหมด" : monthLabel(value)}
+            {totalLabel} · {value === ALL_MONTHS ? "ทั้งหมด" : monthLabel(value)}
             {count !== undefined && ` · ${count} รายการ`}
           </p>
           <p className="text-2xl leading-tight font-semibold tabular-nums">{formatTHB(total)}</p>

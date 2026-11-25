@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { Check, Eye, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MonthTabs, filterByMonth, useDocMonth } from "@/components/dashboard/month-tabs";
 import {
   Select,
   SelectContent,
@@ -78,32 +79,30 @@ function DeleteButton({ entryId, label }: { entryId: string; label: string }) {
 
 export function EntriesTable({ entries, employees }: { entries: PayrollEntry[]; employees: Employee[] }) {
   const [employeeFilter, setEmployeeFilter] = useState("all");
-  const [monthFilter, setMonthFilter] = useState("all");
+  // Same month tabs as the quotation list (the choice is shared across the
+  // document lists). pay_period is always the 1st of the paid-for month.
+  const [month, setMonth] = useDocMonth();
 
   const filtered = useMemo(() => {
-    return entries.filter(
-      (e) =>
-        (employeeFilter === "all" || e.employeeId === employeeFilter) &&
-        (monthFilter === "all" || e.payPeriod === monthFilter),
-    );
-  }, [entries, employeeFilter, monthFilter]);
+    const byEmployee = entries.filter((e) => employeeFilter === "all" || e.employeeId === employeeFilter);
+    return filterByMonth(byEmployee, (e) => e.payPeriod, month);
+  }, [entries, employeeFilter, month]);
 
   const employeeItems = [
     { value: "all", label: "ทุกคน" },
     ...employees.map((e) => ({ value: e.id, label: `${e.employeeCode} — ${e.fullName}` })),
   ];
 
-  // Newest month first — only months that actually have an entry, so the
-  // filter never offers an empty result.
-  const monthItems = [
-    { value: "all", label: "ทุกเดือน" },
-    ...Array.from(new Set(entries.map((e) => e.payPeriod)))
-      .sort((a, b) => b.localeCompare(a))
-      .map((period) => ({ value: period, label: payPeriodLabel(period) })),
-  ];
-
   return (
     <div className="space-y-3">
+      <MonthTabs
+        dates={entries.map((e) => e.payPeriod)}
+        value={month}
+        onChange={setMonth}
+        total={filtered.reduce((sum, e) => sum + e.netSalary, 0)}
+        count={filtered.length}
+        totalLabel="เงินเดือนสุทธิรวม"
+      />
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <Select value={employeeFilter} onValueChange={(v) => setEmployeeFilter((v as string) ?? "all")} items={employeeItems}>
@@ -112,18 +111,6 @@ export function EntriesTable({ entries, employees }: { entries: PayrollEntry[]; 
             </SelectTrigger>
             <SelectContent>
               {employeeItems.map((item) => (
-                <SelectItem key={item.value} value={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={monthFilter} onValueChange={(v) => setMonthFilter((v as string) ?? "all")} items={monthItems}>
-            <SelectTrigger className="w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {monthItems.map((item) => (
                 <SelectItem key={item.value} value={item.value}>
                   {item.label}
                 </SelectItem>
