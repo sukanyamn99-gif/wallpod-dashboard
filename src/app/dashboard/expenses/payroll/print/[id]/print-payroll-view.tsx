@@ -41,7 +41,17 @@ export function PrintPayrollView({ entry, ytd }: { entry: PayrollEntry; ytd: Pay
   return (
     <div className="mx-auto max-w-3xl bg-white p-6 text-black print:p-0">
       <div className="mb-4 flex justify-end gap-2 print:hidden">
-        <Button variant="outline" onClick={() => router.back()}>
+        {/* The list opens this slip in a new tab (target="_blank"), which has
+            no history to go back to — so router.back() did nothing. Close the
+            tab; if the browser refuses (page opened directly / refreshed),
+            fall back to the payroll list. */}
+        <Button
+          variant="outline"
+          onClick={() => {
+            window.close();
+            router.push("/dashboard/expenses/payroll");
+          }}
+        >
           ปิด
         </Button>
         <Button onClick={() => window.print()}>พิมพ์</Button>
