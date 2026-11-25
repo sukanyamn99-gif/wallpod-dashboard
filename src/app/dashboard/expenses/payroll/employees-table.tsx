@@ -5,6 +5,7 @@ import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DateInput } from "@/components/ui/date-input";
+import { NumberInput } from "@/components/ui/number-input";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -14,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatTHB } from "@/lib/format";
 import { createEmployee, deleteEmployee, setEmployeeActive, updateEmployee } from "./actions";
 import type { Employee } from "@/lib/types";
 
@@ -55,6 +57,7 @@ function AddEmployeeForm({ onAdded }: { onAdded: () => void }) {
   const [position, setPosition] = useState("");
   const [idCardNo, setIdCardNo] = useState("");
   const [startDate, setStartDate] = useState("");
+  const [baseSalary, setBaseSalary] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -64,6 +67,7 @@ function AddEmployeeForm({ onAdded }: { onAdded: () => void }) {
     setPosition("");
     setIdCardNo("");
     setStartDate("");
+    setBaseSalary("");
   }
 
   function handleSubmit() {
@@ -75,6 +79,7 @@ function AddEmployeeForm({ onAdded }: { onAdded: () => void }) {
       fd.set("position", position);
       fd.set("id_card_no", idCardNo);
       fd.set("start_date", startDate);
+      fd.set("base_salary", baseSalary);
       const result = await createEmployee(fd);
       if (result.error) {
         setError(result.error);
@@ -97,12 +102,13 @@ function AddEmployeeForm({ onAdded }: { onAdded: () => void }) {
 
   return (
     <div className="space-y-2 rounded-md border bg-muted/30 p-3">
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
         <Input placeholder="รหัสพนักงาน" value={employeeCode} onChange={(e) => setEmployeeCode(e.target.value)} />
         <Input placeholder="ชื่อ-นามสกุล" value={fullName} onChange={(e) => setFullName(e.target.value)} />
         <Input placeholder="ตำแหน่ง" value={position} onChange={(e) => setPosition(e.target.value)} />
         <Input placeholder="เลขบัตรประชาชน" value={idCardNo} onChange={(e) => setIdCardNo(e.target.value)} />
         <DateInput value={startDate} onChange={setStartDate} />
+        <NumberInput min={0} step={0.01} value={baseSalary} onChange={setBaseSalary} placeholder="เงินเดือน" />
       </div>
       {error && <p className="text-xs text-destructive">{error}</p>}
       <div className="flex items-center gap-1">
@@ -134,6 +140,7 @@ function EmployeeRow({ employee }: { employee: Employee }) {
   const [position, setPosition] = useState(employee.position ?? "");
   const [idCardNo, setIdCardNo] = useState(employee.idCardNo ?? "");
   const [startDate, setStartDate] = useState(employee.startDate ?? "");
+  const [baseSalary, setBaseSalary] = useState(employee.baseSalary > 0 ? String(employee.baseSalary) : "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -143,6 +150,7 @@ function EmployeeRow({ employee }: { employee: Employee }) {
     setPosition(employee.position ?? "");
     setIdCardNo(employee.idCardNo ?? "");
     setStartDate(employee.startDate ?? "");
+    setBaseSalary(employee.baseSalary > 0 ? String(employee.baseSalary) : "");
   }
 
   function handleSave() {
@@ -154,6 +162,7 @@ function EmployeeRow({ employee }: { employee: Employee }) {
       fd.set("position", position);
       fd.set("id_card_no", idCardNo);
       fd.set("start_date", startDate);
+      fd.set("base_salary", baseSalary);
       const result = await updateEmployee(employee.id, fd);
       if (result.error) {
         setError(result.error);
@@ -181,13 +190,14 @@ function EmployeeRow({ employee }: { employee: Employee }) {
   if (editing) {
     return (
       <TableRow>
-        <TableCell colSpan={8}>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <TableCell colSpan={9}>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
             <Input value={employeeCode} onChange={(e) => setEmployeeCode(e.target.value)} placeholder="รหัสพนักงาน" />
             <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="ชื่อ-นามสกุล" />
             <Input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="ตำแหน่ง" />
             <Input value={idCardNo} onChange={(e) => setIdCardNo(e.target.value)} placeholder="เลขบัตรประชาชน" />
             <DateInput value={startDate} onChange={setStartDate} />
+            <NumberInput min={0} step={0.01} value={baseSalary} onChange={setBaseSalary} placeholder="เงินเดือน" />
           </div>
           {error && <p className="mt-1 text-xs text-destructive">{error}</p>}
           <div className="mt-2 flex items-center gap-1">
@@ -222,6 +232,9 @@ function EmployeeRow({ employee }: { employee: Employee }) {
         {employee.startDate ? new Date(employee.startDate).toLocaleDateString("th-TH") : "—"}
       </TableCell>
       <TableCell className="whitespace-nowrap">{tenureLabel(employee.startDate)}</TableCell>
+      <TableCell className="whitespace-nowrap text-right">
+        {employee.baseSalary > 0 ? formatTHB(employee.baseSalary) : "—"}
+      </TableCell>
       <TableCell className="whitespace-nowrap">
         <button type="button" onClick={handleToggleActive} disabled={pending}>
           <Badge variant={employee.active ? "secondary" : "outline"}>
@@ -277,6 +290,7 @@ export function EmployeesTable({ employees }: { employees: Employee[] }) {
               <TableHead className="whitespace-nowrap">เลขบัตรประชาชน</TableHead>
               <TableHead className="whitespace-nowrap">วันที่เริ่มงาน</TableHead>
               <TableHead className="whitespace-nowrap">อายุงาน</TableHead>
+              <TableHead className="whitespace-nowrap text-right">เงินเดือน</TableHead>
               <TableHead className="whitespace-nowrap">สถานะ</TableHead>
               <TableHead className="whitespace-nowrap">จัดการ</TableHead>
             </TableRow>
@@ -284,7 +298,7 @@ export function EmployeesTable({ employees }: { employees: Employee[] }) {
           <TableBody>
             {employees.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground">
+                <TableCell colSpan={9} className="text-center text-muted-foreground">
                   ยังไม่มีพนักงาน
                 </TableCell>
               </TableRow>

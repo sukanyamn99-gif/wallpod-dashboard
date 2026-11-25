@@ -40,6 +40,7 @@ export async function createEmployee(formData: FormData) {
     position: str(formData.get("position")),
     id_card_no: str(formData.get("id_card_no")),
     start_date: str(formData.get("start_date")),
+    base_salary: num(formData.get("base_salary")),
   });
   if (error) return { error: friendlyError(error) };
 
@@ -66,6 +67,7 @@ export async function updateEmployee(id: string, formData: FormData) {
       position: str(formData.get("position")),
       id_card_no: str(formData.get("id_card_no")),
       start_date: str(formData.get("start_date")),
+      base_salary: num(formData.get("base_salary")),
     })
     .eq("id", id);
   if (error) return { error: friendlyError(error) };
@@ -118,6 +120,7 @@ function parsePayrollEntryForm(formData: FormData) {
     commission: num(formData.get("commission")),
     incentive: num(formData.get("incentive")),
     otPay: num(formData.get("ot_pay")),
+    diligenceAllowance: num(formData.get("diligence_allowance")),
     socialSecurity: num(formData.get("social_security")),
     withholdingTax: num(formData.get("withholding_tax")),
     otherDeductions: num(formData.get("other_deductions")),
@@ -149,6 +152,7 @@ export async function createPayrollEntry(formData: FormData) {
       commission: parsed.commission,
       incentive: parsed.incentive,
       ot_pay: parsed.otPay,
+      diligence_allowance: parsed.diligenceAllowance,
       social_security: parsed.socialSecurity,
       withholding_tax: parsed.withholdingTax,
       other_deductions: parsed.otherDeductions,
@@ -183,6 +187,7 @@ export async function updatePayrollEntry(id: string, formData: FormData) {
       commission: parsed.commission,
       incentive: parsed.incentive,
       ot_pay: parsed.otPay,
+      diligence_allowance: parsed.diligenceAllowance,
       social_security: parsed.socialSecurity,
       withholding_tax: parsed.withholdingTax,
       other_deductions: parsed.otherDeductions,

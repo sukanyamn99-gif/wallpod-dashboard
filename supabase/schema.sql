@@ -1222,6 +1222,7 @@ create table employees (
   position text,
   id_card_no text,
   start_date date,
+  base_salary numeric(14,2) not null default 0,
   active boolean not null default true,
   created_at timestamptz not null default now()
 );
@@ -1244,13 +1245,17 @@ create table payroll_entries (
   commission numeric(14,2) not null default 0,
   incentive numeric(14,2) not null default 0,
   ot_pay numeric(14,2) not null default 0,
+  diligence_allowance numeric(14,2) not null default 0,
   social_security numeric(14,2) not null default 0,
   withholding_tax numeric(14,2) not null default 0,
   other_deductions numeric(14,2) not null default 0,
-  total_income numeric(14,2) generated always as (base_salary + fuel_allowance + commission + incentive + ot_pay) stored,
+  total_income numeric(14,2) generated always as (
+    base_salary + fuel_allowance + commission + incentive + ot_pay + diligence_allowance
+  ) stored,
   total_deductions numeric(14,2) generated always as (social_security + withholding_tax + other_deductions) stored,
   net_salary numeric(14,2) generated always as (
-    base_salary + fuel_allowance + commission + incentive + ot_pay - social_security - withholding_tax - other_deductions
+    base_salary + fuel_allowance + commission + incentive + ot_pay + diligence_allowance
+      - social_security - withholding_tax - other_deductions
   ) stored,
   note text,
   prepared_by uuid references profiles(id),

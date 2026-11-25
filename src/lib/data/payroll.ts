@@ -8,6 +8,7 @@ function mapEmployee(row: {
   position: string | null;
   id_card_no: string | null;
   start_date: string | null;
+  base_salary: number;
   active: boolean;
   created_at: string;
 }): Employee {
@@ -18,6 +19,7 @@ function mapEmployee(row: {
     position: row.position,
     idCardNo: row.id_card_no,
     startDate: row.start_date,
+    baseSalary: Number(row.base_salary),
     active: row.active,
     createdAt: row.created_at,
   };
@@ -28,7 +30,7 @@ export async function getEmployees(): Promise<Employee[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("employees")
-    .select("id, employee_code, full_name, position, id_card_no, start_date, active, created_at")
+    .select("id, employee_code, full_name, position, id_card_no, start_date, base_salary, active, created_at")
     .order("employee_code", { ascending: true });
   if (error) throw error;
   return (data ?? []).map(mapEmployee);
@@ -39,7 +41,7 @@ export async function getEmployeeById(id: string): Promise<Employee | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("employees")
-    .select("id, employee_code, full_name, position, id_card_no, start_date, active, created_at")
+    .select("id, employee_code, full_name, position, id_card_no, start_date, base_salary, active, created_at")
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
@@ -47,7 +49,7 @@ export async function getEmployeeById(id: string): Promise<Employee | null> {
 }
 
 const ENTRY_COLUMNS =
-  "id, employee_id, pay_period, pay_date, base_salary, fuel_allowance, commission, incentive, ot_pay, " +
+  "id, employee_id, pay_period, pay_date, base_salary, fuel_allowance, commission, incentive, ot_pay, diligence_allowance, " +
   "social_security, withholding_tax, other_deductions, total_income, total_deductions, net_salary, " +
   "note, created_at, employees(employee_code, full_name, position, id_card_no, start_date), profiles(full_name)";
 
@@ -61,6 +63,7 @@ type EntryRow = {
   commission: number;
   incentive: number;
   ot_pay: number;
+  diligence_allowance: number;
   social_security: number;
   withholding_tax: number;
   other_deductions: number;
@@ -95,6 +98,7 @@ function mapEntry(row: EntryRow): PayrollEntry {
     commission: Number(row.commission),
     incentive: Number(row.incentive),
     otPay: Number(row.ot_pay),
+    diligenceAllowance: Number(row.diligence_allowance),
     socialSecurity: Number(row.social_security),
     withholdingTax: Number(row.withholding_tax),
     otherDeductions: Number(row.other_deductions),

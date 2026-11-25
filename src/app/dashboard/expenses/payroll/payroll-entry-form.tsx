@@ -63,12 +63,29 @@ export function PayrollEntryForm({
   const [commission, setCommission] = useState(initialData ? String(initialData.commission) : "");
   const [incentive, setIncentive] = useState(initialData ? String(initialData.incentive) : "");
   const [otPay, setOtPay] = useState(initialData ? String(initialData.otPay) : "");
+  const [diligenceAllowance, setDiligenceAllowance] = useState(
+    initialData ? String(initialData.diligenceAllowance) : "",
+  );
   const [socialSecurity, setSocialSecurity] = useState(initialData ? String(initialData.socialSecurity) : "");
   const [withholdingTax, setWithholdingTax] = useState(initialData ? String(initialData.withholdingTax) : "");
   const [otherDeductions, setOtherDeductions] = useState(initialData ? String(initialData.otherDeductions) : "");
 
+  // Picking an employee fills เงินเดือน from their standing salary on file
+  // (still editable). Fuel, commission, incentive, OT and เบี้ยขยัน are keyed
+  // in by hand each month, so they are left untouched.
+  function handleEmployeeChange(id: string) {
+    setEmployeeId(id);
+    const employee = employees.find((e) => e.id === id);
+    if (employee) setBaseSalary(employee.baseSalary > 0 ? String(employee.baseSalary) : "");
+  }
+
   const totalIncome =
-    (Number(baseSalary) || 0) + (Number(fuelAllowance) || 0) + (Number(commission) || 0) + (Number(incentive) || 0) + (Number(otPay) || 0);
+    (Number(baseSalary) || 0) +
+    (Number(fuelAllowance) || 0) +
+    (Number(commission) || 0) +
+    (Number(incentive) || 0) +
+    (Number(otPay) || 0) +
+    (Number(diligenceAllowance) || 0);
   const totalDeductions = (Number(socialSecurity) || 0) + (Number(withholdingTax) || 0) + (Number(otherDeductions) || 0);
   const netSalary = totalIncome - totalDeductions;
 
@@ -96,7 +113,7 @@ export function PayrollEntryForm({
         <Label htmlFor="employee_id">พนักงาน</Label>
         <Select
           value={employeeId || NONE_VALUE}
-          onValueChange={(v) => setEmployeeId(v === NONE_VALUE ? "" : ((v as string) ?? ""))}
+          onValueChange={(v) => handleEmployeeChange(v === NONE_VALUE ? "" : ((v as string) ?? ""))}
           items={[{ value: NONE_VALUE, label: "— เลือกพนักงาน —" }, ...employeeItems]}
         >
           <SelectTrigger id="employee_id" className="w-full">
@@ -144,7 +161,7 @@ export function PayrollEntryForm({
 
       <div className="space-y-2 rounded-lg border p-4">
         <h3 className="font-medium">รายได้</h3>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <div className="space-y-2">
             <Label htmlFor="base_salary">เงินเดือน</Label>
             <NumberInput id="base_salary" name="base_salary" min={0} step={0.01} value={baseSalary} onChange={setBaseSalary} placeholder="0" />
@@ -164,6 +181,10 @@ export function PayrollEntryForm({
           <div className="space-y-2">
             <Label htmlFor="ot_pay">ค่า OT</Label>
             <NumberInput id="ot_pay" name="ot_pay" min={0} step={0.01} value={otPay} onChange={setOtPay} placeholder="0" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="diligence_allowance">เบี้ยขยัน</Label>
+            <NumberInput id="diligence_allowance" name="diligence_allowance" min={0} step={0.01} value={diligenceAllowance} onChange={setDiligenceAllowance} placeholder="0" />
           </div>
         </div>
       </div>

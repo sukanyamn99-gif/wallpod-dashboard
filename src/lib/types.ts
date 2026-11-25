@@ -770,6 +770,8 @@ export interface Employee {
   position: string | null;
   idCardNo: string | null;
   startDate: string | null;
+  // Standing monthly salary — pre-fills the payroll entry form's เงินเดือน box.
+  baseSalary: number;
   active: boolean;
   createdAt: string;
 }
@@ -789,6 +791,7 @@ export interface PayrollEntry {
   commission: number;
   incentive: number;
   otPay: number;
+  diligenceAllowance: number;
   socialSecurity: number;
   withholdingTax: number;
   otherDeductions: number;
