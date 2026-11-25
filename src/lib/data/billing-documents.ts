@@ -235,7 +235,8 @@ export async function getBillableTaxInvoicesForCustomer(
       ? ["tax_invoice"]
       : targetDocType === "tax_invoice"
         ? ["billing_note"]
-        : ["tax_invoice", "invoice"];
+        : // ใบวางบิล collects on ใบแจ้งหนี้ only; the ใบกำกับภาษี comes after it.
+          ["invoice"];
   const { data: invoices, error } = await supabase
     .from("billing_notes")
     .select(
@@ -327,7 +328,8 @@ export async function getBillableBillingNoteItemsForCustomer(
       ? ["tax_invoice"]
       : targetDocType === "tax_invoice"
         ? ["billing_note"]
-        : ["tax_invoice", "invoice"];
+        : // ใบวางบิล collects on ใบแจ้งหนี้ only; the ใบกำกับภาษี comes after it.
+          ["invoice"];
   const { data: notes, error } = await supabase
     .from("billing_notes")
     .select(
