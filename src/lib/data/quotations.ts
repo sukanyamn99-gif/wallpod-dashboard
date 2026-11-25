@@ -8,6 +8,7 @@ import type {
   QuotationItem,
   QuotationItemDetail,
   QuotationPaymentTerm,
+  QuotationStatus,
 } from "@/lib/types";
 
 const IMAGE_BUCKET = "quotation-item-images";
@@ -437,21 +438,48 @@ function normalizeCustomerName(name: string): string {
   return name.replace(/\s+/g, " ").trim().toLowerCase();
 }
 
-export async function getAcceptedUnconvertedQuotationsForCustomer(customerName: string): Promise<BillableQuotation[]> {
+// The saved quotations a ใบแจ้งหนี้ can be issued from — every one that is
+// neither cancelled nor rejected. That includes quotations still waiting for
+// the customer's answer: a deposit invoice is often issued first, before the
+// job goes to production, and the 2nd-installment invoice is issued from the
+// same quotation afterwards (nothing marks a quotation as "used up", so it
+// stays on offer for every installment).
+//
+// - With a `jobNo` (a JOB was picked on the form) that JOB's quotation is
+//   offered even when it has already been recorded as a job in Project Sales
+//   (converted_project_id set) — a recorded job with no installment invoice
+//   yet must still be billable from its quotation.
+// - Without one, only quotations not yet recorded as a job are offered, as
+//   before, so a customer's every past job doesn't pile up in the list.
+// - `keepIds` (editing a saved document) always stay in, so a line already
+//   billed from a quotation that was recorded as a job afterwards doesn't
+//   silently disappear when the document is saved again.
+export async function getBillableQuotationsForCustomer(
+  customerName: string,
+  options: { jobNo?: string | null; keepIds?: string[] } = {},
+): Promise<BillableQuotation[]> {
   if (!customerName || !isSupabaseConfigured()) return [];
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("quotations")
-    .select("id, doc_no, quote_date, project_name, total, customer_name, job_number, payment_terms")
-    .eq("status", "ลูกค้าตอบตกลง")
+    .select(
+      "id, doc_no, quote_date, project_name, total, customer_name, job_number, payment_terms, converted_project_id, status",
+    )
+    .neq("status", "ปฏิเสธ")
     .eq("is_cancelled", false)
-    .is("converted_project_id", null)
     .order("quote_date", { ascending: false });
   if (error) throw error;
 
   const wanted = normalizeCustomerName(customerName);
+  const wantedJob = options.jobNo ? normalizeJobNo(options.jobNo) : null;
+  const keep = new Set(options.keepIds ?? []);
   return (data ?? [])
     .filter((row) => normalizeCustomerName(row.customer_name ?? "") === wanted)
+    .filter((row) => {
+      if (keep.has(row.id)) return true;
+      if (row.converted_project_id == null) return true;
+      return wantedJob != null && !!row.job_number && normalizeJobNo(row.job_number) === wantedJob;
+    })
     .map((row) => ({
       id: row.id,
       docNo: row.doc_no,
@@ -459,6 +487,7 @@ export async function getAcceptedUnconvertedQuotationsForCustomer(customerName: 
       projectName: row.project_name,
       total: Number(row.total),
       jobNumber: row.job_number ?? null,
+      status: row.status as QuotationStatus,
       paymentTerms: withTermAmounts((row.payment_terms as QuotationPaymentTerm[] | null) ?? [], Number(row.total)),
     }));
 }

@@ -1089,6 +1089,9 @@ export interface BillableQuotation {
   projectName: string;
   total: number;
   jobNumber: string | null;
+  // รอตอบรับ or ลูกค้าตอบตกลง — a deposit invoice is often issued while the
+  // quotation is still waiting for the customer's answer, before production.
+  status: QuotationStatus;
   // The quotation's own เงื่อนไขการชำระเงิน — each term's amount is the figure
   // already quoted to the customer, so a deposit invoice can reuse it as-is.
   paymentTerms: QuotationPaymentTerm[];

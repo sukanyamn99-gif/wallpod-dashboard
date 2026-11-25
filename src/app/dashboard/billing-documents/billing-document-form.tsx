@@ -389,7 +389,7 @@ export function BillingDocumentForm({
         // job, so it still needs this source. Edit mode fetches it for
         // every type regardless (see the effect below) so an already-saved
         // quotation-sourced line doesn't silently disappear on save.
-        docType === "invoice" ? fetchBillableQuotations(name) : Promise.resolve([]),
+        docType === "invoice" ? fetchBillableQuotations(name, preselectJobNo) : Promise.resolve([]),
         usesTaxInvoiceSource ? fetchBillableTaxInvoices(id, docType as "billing_note" | "receipt" | "tax_invoice") : Promise.resolve([]),
         usesTaxInvoiceSource ? fetchBillableBillingNoteItems(id, docType as "billing_note" | "receipt" | "tax_invoice") : Promise.resolve([]),
       ]);
@@ -485,7 +485,11 @@ export function BillingDocumentForm({
       const [rows, receivedRows, billableQuotations, billableTaxInvoices, billableBillingNoteItems] = await Promise.all([
         fetchUnbilledInvoices(initialData.customerId),
         fetchReceivedInvoices(initialData.customerId, docId, docType),
-        fetchBillableQuotations(initialData.customerName),
+        fetchBillableQuotations(
+          initialData.customerName,
+          initialData.jobNo,
+          (initialData.items ?? []).flatMap((it) => (it.quotationId ? [it.quotationId] : [])),
+        ),
         usesTaxInvoiceSource
           ? fetchBillableTaxInvoices(initialData.customerId, docType as "billing_note" | "receipt" | "tax_invoice", docId)
           : Promise.resolve([]),
@@ -1453,9 +1457,10 @@ export function BillingDocumentForm({
           quotations.length > 0 &&
           (docType === "invoice" || selectedQuotations.size > 0) && (
           <div className="space-y-2">
-            <Label>ใบเสนอราคาที่ลูกค้าตอบตกลง (ยังไม่บันทึกเป็นงานจริง)</Label>
+            <Label>ใบเสนอราคา</Label>
             <p className="text-xs text-muted-foreground">
-              ใช้เมื่อยังไม่มีใบแจ้งหนี้จาก WALLPOD Project Sales — เลือกแล้วจะดึงยอดและรายการสินค้าทั้งใบมาให้
+              เลือกแล้วจะดึงยอดและรายการสินค้าทั้งใบมาให้ — ใช้ออกใบแจ้งหนี้มัดจำก่อนลงผลิต และงวดถัดไปหลังลงผลิตได้
+              เลือก JOB ด้านบนเพื่อให้แสดงใบเสนอราคาของ JOB นั้น แม้จะบันทึกเป็นงานจริงใน WALLPOD Project Sales แล้วก็ตาม
             </p>
             <div className="space-y-2">
               {quotations.map((q) => (
@@ -1470,6 +1475,11 @@ export function BillingDocumentForm({
                     <p className="truncate text-sm font-medium">
                       {q.docNo}
                       {q.jobNumber && <span className="text-muted-foreground"> — {q.jobNumber}</span>}
+                      {q.status !== "ลูกค้าตอบตกลง" && (
+                        <span className="ml-2 rounded border px-1.5 py-0.5 text-xs font-normal text-muted-foreground">
+                          {q.status}
+                        </span>
+                      )}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
                       {q.projectName} • {new Date(q.quoteDate).toLocaleDateString("th-TH")}

@@ -11,7 +11,7 @@ import {
   getReceivedInvoicesForCustomer,
   getUnbilledInvoicesForCustomer,
 } from "@/lib/data/billing-documents";
-import { getAcceptedUnconvertedQuotationsForCustomer, normalizeJobNo } from "@/lib/data/quotations";
+import { getBillableQuotationsForCustomer, normalizeJobNo } from "@/lib/data/quotations";
 import { computeBillingDocumentSummary, round2, usesExactTotal } from "@/lib/billing-document-summary";
 import { BILLING_DOCUMENT_LABELS, BILLING_DOCUMENT_LIST_PATH } from "@/lib/types";
 import type {
@@ -63,12 +63,17 @@ export async function fetchReceivedInvoices(
 }
 
 // Same idea, for the alternative "bill straight from an accepted quotation"
-// path used when a job hasn't been recorded (and invoiced) in WALLPOD
-// Project Sales yet. Matched by name, not id — see
-// getAcceptedUnconvertedQuotationsForCustomer.
-export async function fetchBillableQuotations(customerName: string): Promise<BillableQuotation[]> {
+// path used when a job hasn't been invoiced in WALLPOD Project Sales yet.
+// Matched by name, not id — see getBillableQuotationsForCustomer. `jobNo` is
+// the JOB picked on the form (its quotation is offered even if already
+// recorded as a job), `keepIds` the quotations an edited document already bills.
+export async function fetchBillableQuotations(
+  customerName: string,
+  jobNo?: string | null,
+  keepIds?: string[],
+): Promise<BillableQuotation[]> {
   if (!customerName) return [];
-  return getAcceptedUnconvertedQuotationsForCustomer(customerName);
+  return getBillableQuotationsForCustomer(customerName, { jobNo, keepIds });
 }
 
 // ใบวางบิล and ใบเสร็จรับเงิน: browse issued tax invoices directly instead
