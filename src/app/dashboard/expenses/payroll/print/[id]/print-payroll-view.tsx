@@ -176,12 +176,19 @@ export function PrintPayrollView({ entry, ytd }: { entry: PayrollEntry; ytd: Pay
         </table>
 
         {/* Signature */}
-        <div className="flex justify-end p-4">
+        <div className="flex justify-end gap-12 p-4">
           <div className="text-center">
             <p className="mb-8">&nbsp;</p>
             <p>________________________</p>
             <p className="mt-1 font-medium">ลงชื่อผู้จัดทำ</p>
             {entry.preparedByName && <p className="text-xs text-neutral-500">({entry.preparedByName})</p>}
+          </div>
+          {/* Left blank on purpose: who approves isn't recorded anywhere, so
+              the approver signs and prints their name by hand. */}
+          <div className="text-center">
+            <p className="mb-8">&nbsp;</p>
+            <p>________________________</p>
+            <p className="mt-1 font-medium">ลงชื่อผู้อนุมัติ</p>
           </div>
         </div>
       </div>
