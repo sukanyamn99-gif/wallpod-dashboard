@@ -13,9 +13,14 @@ export interface PayeeDetails {
   address: string | null;
 }
 
-// Same payee written with different spacing or letter case still matches.
+// The same payee written with different spacing, punctuation or letter case
+// still matches ("CO., LTD." / "CO.,LTD" / "Co Ltd"): only letters and digits
+// count (marks included, so Thai vowels and tone marks stay).
 export function payeeKey(name: string | null | undefined): string {
-  return String(name ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+  return String(name ?? "")
+    .normalize("NFC")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\p{M}]+/gu, "");
 }
 
 function clean(value: string | null | undefined): string | null {

@@ -156,6 +156,17 @@ export function PrintWhtCertificateView({ certificate: voucher }: { certificate:
         <DownloadPdfButton />
       </div>
 
+      {(!voucher.payeeTaxId?.trim() || !voucher.payeeAddress?.trim()) && (
+        <p className="mb-3 rounded border border-amber-400 bg-amber-50 p-2 text-xs text-amber-900 print:hidden">
+          ยังไม่มี
+          {[!voucher.payeeTaxId?.trim() && "เลขผู้เสียภาษี", !voucher.payeeAddress?.trim() && "ที่อยู่"]
+            .filter(Boolean)
+            .join("และ")}
+          ของ &ldquo;{voucher.payeeName}&rdquo; — ระบบดึงจากใบสำคัญจ่ายก่อน แล้วค่อยหาจากข้อมูลผู้ขาย/ลูกค้าที่ชื่อตรงกัน
+          (ไม่สนจุดและเว้นวรรค) กรอกในใบสำคัญจ่าย หรือเพิ่มในข้อมูลผู้ขายโดยใช้ชื่อเดียวกับในใบสำคัญจ่าย
+        </p>
+      )}
+
       <div className="text-[10.5px] leading-snug">
         <div className="flex justify-between">
           <div>
