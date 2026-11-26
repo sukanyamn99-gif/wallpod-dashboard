@@ -7,9 +7,10 @@ import "./globals.css";
 
 // Bundled from the @fontsource npm package, so the build never has to reach
 // fonts.googleapis.com (a failed fetch there broke deployments). The app's
-// own font-family stack (globals.css --font-sans) otherwise lists only
-// OS-provided fonts ("Segoe UI", "Leelawadee UI", "Noto Sans Thai" itself as
-// a system font), none of which exist in the minimal Linux Chromium used to
+// font-family stack (globals.css --font-sans) puts the OS fonts first
+// ("Segoe UI" / "Leelawadee UI" on Windows, as before), with the bundled
+// "Noto Sans Thai" only as the fallback behind them. None of the OS fonts
+// exist in the minimal Linux Chromium used to
 // render every print view's PDF download (@sparticuz/chromium on Vercel —
 // see src/lib/pdf/get-browser.ts). Without a real loaded font there, every
 // Thai character — which is virtually all text in every document this app
