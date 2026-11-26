@@ -3,6 +3,7 @@ import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
 import { getSalesReps, getCustomers } from "@/lib/data/reference";
 import { getDistinctQuotationItemFields, getQuotationById, getSignedQuotationImageUrls } from "@/lib/data/quotations";
+import { getQuotationPrintTemplates } from "@/lib/data/quotation-print-settings";
 import { QuotationForm } from "../../quotation-form";
 
 export default async function EditQuotationPage({ params }: { params: Promise<{ id: string }> }) {
@@ -11,11 +12,12 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
   if (!canAccessPage(profile.role, "/dashboard/quotations")) redirect("/dashboard/sales");
 
   const { id } = await params;
-  const [salesReps, customers, quotation, itemFieldSuggestions] = await Promise.all([
+  const [salesReps, customers, quotation, itemFieldSuggestions, printTemplates] = await Promise.all([
     getSalesReps(),
     getCustomers(),
     getQuotationById(id),
     getDistinctQuotationItemFields(),
+    getQuotationPrintTemplates(),
   ]);
 
   if (!quotation) {
@@ -44,6 +46,7 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
         initialData={quotation}
         imageUrlsByItemId={imageUrlsByItemId}
         itemFieldSuggestions={itemFieldSuggestions}
+        printTemplates={printTemplates}
       />
     </div>
   );

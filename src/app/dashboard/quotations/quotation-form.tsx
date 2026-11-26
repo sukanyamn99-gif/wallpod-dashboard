@@ -23,10 +23,28 @@ import { formatTHB } from "@/lib/format";
 import { resizeImageToBlob } from "@/lib/image-resize";
 import { paymentTermAmount } from "@/lib/payment-term-amount";
 import { createQuotation, updateQuotation } from "./actions";
-import type { Customer, QuotationDetail, QuotationType, SalesRep } from "@/lib/types";
+import type {
+  Customer,
+  QuotationDetail,
+  QuotationNoteTone,
+  QuotationPrintNote,
+  QuotationPrintTemplate,
+  QuotationType,
+  SalesRep,
+} from "@/lib/types";
 import type { QuotationItemFieldSuggestions } from "@/lib/data/quotations";
 
 const NONE_VALUE = "__none__";
+
+const NOTE_TONE_ITEMS: { value: QuotationNoteTone; label: string }[] = [
+  { value: "normal", label: "ปกติ" },
+  { value: "red", label: "สีแดง (ตัวหนา)" },
+  { value: "amber", label: "สีส้ม (ตัวหนา)" },
+];
+
+interface NoteRow extends QuotationPrintNote {
+  key: number;
+}
 
 const QUOTATION_TYPE_ITEMS: { value: QuotationType; label: string }[] = [
   { value: "ค่าของ", label: "ค่าของ" },
@@ -116,6 +134,10 @@ function termsFromInitial(initialData?: QuotationDetail): PaymentTermRow[] {
   }));
 }
 
+function notesKey(notes: QuotationPrintNote[]): string {
+  return JSON.stringify(notes.filter((n) => n.text.trim()).map((n) => ({ text: n.text.trim(), tone: n.tone })));
+}
+
 export function QuotationForm({
   salesReps,
   customers,
@@ -124,6 +146,7 @@ export function QuotationForm({
   initialData,
   imageUrlsByItemId,
   itemFieldSuggestions,
+  printTemplates,
 }: {
   salesReps: SalesRep[];
   customers: Customer[];
@@ -132,7 +155,11 @@ export function QuotationForm({
   initialData?: QuotationDetail;
   imageUrlsByItemId?: Record<string, string>;
   itemFieldSuggestions?: QuotationItemFieldSuggestions;
+  // The standard Remark lines per quotation type (Settings > Documents), used
+  // as the starting point of this quotation's own editable copy.
+  printTemplates?: Record<QuotationType, QuotationPrintTemplate>;
 }) {
+  const templateNotesOf = (type: QuotationType): QuotationPrintNote[] => printTemplates?.[type]?.notes ?? [];
   const suggestions = itemFieldSuggestions ?? { productNames: [], thicknesses: [], sizes: [], colors: [], cuttingPatterns: [] };
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -154,6 +181,36 @@ export function QuotationForm({
   );
   const [salesRepId, setSalesRepId] = useState(initialData?.salesRepId ?? "");
   const [quotationType, setQuotationType] = useState<QuotationType>(initialData?.quotationType ?? "ค่าของ");
+
+  // The standard Remark lines printed under the items. They start from this
+  // quotation's saved copy, or from its type's template, and can be edited
+  // freely for this document only.
+  const [notes, setNotes] = useState<NoteRow[]>(() =>
+    (initialData?.printNotes ?? templateNotesOf(initialData?.quotationType ?? "ค่าของ")).map((n) => ({
+      ...n,
+      key: nextKey++,
+    })),
+  );
+  const notesAreCustom = notesKey(notes) !== notesKey(templateNotesOf(quotationType));
+
+  function addNote() {
+    setNotes((prev) => [...prev, { key: nextKey++, text: "", tone: "normal" }]);
+  }
+  function updateNote(key: number, patch: Partial<NoteRow>) {
+    setNotes((prev) => prev.map((n) => (n.key === key ? { ...n, ...patch } : n)));
+  }
+  function removeNote(key: number) {
+    setNotes((prev) => prev.filter((n) => n.key !== key));
+  }
+  function resetNotes(type: QuotationType) {
+    setNotes(templateNotesOf(type).map((n) => ({ ...n, key: nextKey++ })));
+  }
+  // Switching ค่าของ/ค่าติดตั้ง swaps in the other type's standard lines, unless
+  // the lines were already edited for this document — those are kept.
+  function handleQuotationTypeChange(next: QuotationType) {
+    if (!notesAreCustom) resetNotes(next);
+    setQuotationType(next);
+  }
 
   const [items, setItems] = useState<ItemRow[]>(() => itemsFromInitial(initialData));
   const [terms, setTerms] = useState<PaymentTermRow[]>(() => termsFromInitial(initialData));
@@ -275,6 +332,12 @@ export function QuotationForm({
     fd.set("delivery_date", deliveryDate);
     fd.set("price_validity", priceValidity);
     fd.set("remark", remark);
+    // Left empty while the lines still match the template, so later edits to
+    // the template keep reaching this quotation.
+    fd.set(
+      "print_notes_json",
+      notesAreCustom ? JSON.stringify(notes.filter((n) => n.text.trim()).map((n) => ({ text: n.text.trim(), tone: n.tone }))) : "",
+    );
     fd.set("extra_discount_amount", extraDiscountAmount || "0");
     fd.set("sales_rep_id", salesRepId === NONE_VALUE ? "" : salesRepId);
     fd.set("quotation_type", quotationType);
@@ -401,7 +464,7 @@ export function QuotationForm({
         </div>
         <div className="space-y-2">
           <Label>ประเภทใบเสนอราคา</Label>
-          <Select value={quotationType} onValueChange={(v) => setQuotationType(v as QuotationType)} items={QUOTATION_TYPE_ITEMS}>
+          <Select value={quotationType} onValueChange={(v) => handleQuotationTypeChange(v as QuotationType)} items={QUOTATION_TYPE_ITEMS}>
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
@@ -603,6 +666,55 @@ export function QuotationForm({
             </div>
           );
         })}
+      </div>
+
+      <div className="space-y-3 rounded-lg border p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <Label className="text-base">ข้อความมาตรฐาน (Remark ท้ายใบเสนอราคา)</Label>
+            <p className="text-xs text-muted-foreground">
+              {notesAreCustom
+                ? "แก้ไขเฉพาะใบนี้แล้ว — ไม่ตามข้อความมาตรฐานในตั้งค่าเอกสาร"
+                : "ตรงกับข้อความมาตรฐานของประเภทนี้ — แก้ไขได้เฉพาะใบนี้"}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            {notesAreCustom && (
+              <Button type="button" size="sm" variant="outline" onClick={() => resetNotes(quotationType)}>
+                ใช้ข้อความมาตรฐาน
+              </Button>
+            )}
+            <Button type="button" size="sm" variant="outline" onClick={addNote}>
+              <Plus className="h-4 w-4" /> เพิ่มข้อความ
+            </Button>
+          </div>
+        </div>
+        {notes.length === 0 && <p className="text-sm text-muted-foreground">ไม่มีข้อความมาตรฐาน — ใบนี้จะไม่พิมพ์ข้อความส่วนนี้</p>}
+        {notes.map((n) => (
+          <div key={n.key} className="flex items-start gap-2">
+            <Input
+              value={n.text}
+              onChange={(e) => updateNote(n.key, { text: e.target.value })}
+              placeholder="ข้อความที่จะพิมพ์"
+              className="flex-1"
+            />
+            <Select value={n.tone} onValueChange={(v) => updateNote(n.key, { tone: v as QuotationNoteTone })} items={NOTE_TONE_ITEMS}>
+              <SelectTrigger className="w-44 shrink-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {NOTE_TONE_ITEMS.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button type="button" size="icon-sm" variant="ghost" onClick={() => removeNote(n.key)}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

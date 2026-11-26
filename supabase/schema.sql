@@ -1334,6 +1334,9 @@ create table quotations (
   delivery_date date,
   price_validity text,
   remark text,
+  -- null = print the per-type template's standard Remark lines; otherwise this
+  -- quotation's own copy, [{ "text": "...", "tone": "normal|red|amber" }].
+  print_notes jsonb,
   payment_terms jsonb not null default '[]'::jsonb,
   pre_vat numeric(14,2) not null default 0,
   vat numeric(14,2) not null default 0,

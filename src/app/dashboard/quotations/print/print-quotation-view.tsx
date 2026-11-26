@@ -241,7 +241,7 @@ export function PrintQuotationView({
           <div className="space-y-0.5">
             <p className="font-medium">Remake : หมายเหตุ :</p>
             {quotation.remark && <p className="whitespace-pre-line font-bold">{quotation.remark}</p>}
-            {template.notes.map((line, i) => (
+            {(quotation.printNotes ?? template.notes).map((line, i) => (
               <p key={i} className={NOTE_TONE_CLASS[line.tone]}>
                 {line.text}
               </p>

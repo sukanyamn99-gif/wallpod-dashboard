@@ -6,9 +6,10 @@ import { getQuotationById } from "@/lib/data/quotations";
 import { getNextJobNo } from "@/lib/data/reference";
 import { logActivity } from "@/lib/activity-log";
 import { paymentTermAmount } from "@/lib/payment-term-amount";
-import type { QuotationPaymentTerm, QuotationType } from "@/lib/types";
+import type { QuotationNoteTone, QuotationPaymentTerm, QuotationPrintNote, QuotationType } from "@/lib/types";
 
 const QUOTATION_TYPES: QuotationType[] = ["ค่าของ", "ค่าติดตั้ง"];
+const NOTE_TONES: QuotationNoteTone[] = ["normal", "red", "amber"];
 
 const IMAGE_BUCKET = "quotation-item-images";
 
@@ -144,6 +145,27 @@ function parsePaymentTerms(formData: FormData, grandTotal: number): QuotationPay
   return terms;
 }
 
+// The quotation's own copy of the standard Remark lines. Empty / "null" means
+// "follow the per-type template", anything else is the list of lines to print.
+function parsePrintNotes(value: FormDataEntryValue | null): QuotationPrintNote[] | null {
+  const raw = String(value ?? "").trim();
+  if (!raw || raw === "null") return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    return parsed
+      .map((n) => ({
+        text: String((n as { text?: unknown })?.text ?? "").trim(),
+        tone: NOTE_TONES.includes((n as { tone?: QuotationNoteTone })?.tone as QuotationNoteTone)
+          ? ((n as { tone: QuotationNoteTone }).tone)
+          : ("normal" as QuotationNoteTone),
+      }))
+      .filter((n) => n.text);
+  } catch {
+    return null;
+  }
+}
+
 function parseHeader(formData: FormData) {
   return {
     quoteDate: str(formData.get("quote_date")) ?? new Date().toISOString().slice(0, 10),
@@ -158,6 +180,7 @@ function parseHeader(formData: FormData) {
     deliveryDate: str(formData.get("delivery_date")),
     priceValidity: str(formData.get("price_validity")),
     remark: str(formData.get("remark")),
+    printNotes: parsePrintNotes(formData.get("print_notes_json")),
     extraDiscountAmount: num(formData.get("extra_discount_amount")),
     salesRepId: str(formData.get("sales_rep_id")),
     quotationType: (QUOTATION_TYPES as string[]).includes(String(formData.get("quotation_type")))
@@ -267,6 +290,7 @@ export async function createQuotation(formData: FormData) {
       delivery_date: header.deliveryDate,
       price_validity: header.priceValidity,
       remark: header.remark,
+      print_notes: header.printNotes,
       payment_terms: paymentTerms,
       pre_vat: preVat,
       extra_discount_amount: header.extraDiscountAmount,
@@ -349,6 +373,7 @@ export async function updateQuotation(id: string, formData: FormData) {
       delivery_date: header.deliveryDate,
       price_validity: header.priceValidity,
       remark: header.remark,
+      print_notes: header.printNotes,
       payment_terms: paymentTerms,
       pre_vat: preVat,
       extra_discount_amount: header.extraDiscountAmount,

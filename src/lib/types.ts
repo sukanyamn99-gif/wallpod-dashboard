@@ -993,6 +993,9 @@ export interface Quotation {
   deliveryDate: string | null;
   priceValidity: string | null;
   remark: string | null;
+  // This quotation's own copy of the standard Remark lines. null = print the
+  // per-type template's lines as they are now.
+  printNotes: QuotationPrintNote[] | null;
   paymentTerms: QuotationPaymentTerm[];
   preVat: number;
   // Document-level discount applied before VAT (on top of each item's own

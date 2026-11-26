@@ -9,6 +9,7 @@ import type {
   QuotationItemDetail,
   QuotationForJob,
   QuotationPaymentTerm,
+  QuotationPrintNote,
   QuotationStatus,
 } from "@/lib/types";
 
@@ -16,7 +17,7 @@ const IMAGE_BUCKET = "quotation-item-images";
 
 const HEADER_COLUMNS =
   "id, doc_no, quote_date, project_name, attn, customer_name, customer_address, customer_tel, customer_tax_id, " +
-  "job_number, po_number, delivery_date, price_validity, remark, payment_terms, pre_vat, extra_discount_amount, vat, total, " +
+  "job_number, po_number, delivery_date, price_validity, remark, print_notes, payment_terms, pre_vat, extra_discount_amount, vat, total, " +
   "sales_rep_id, status, quotation_type, converted_project_id, is_cancelled, production_cancelled, created_at, sales_reps(name)";
 
 type HeaderRow = {
@@ -34,6 +35,7 @@ type HeaderRow = {
   delivery_date: string | null;
   price_validity: string | null;
   remark: string | null;
+  print_notes: QuotationPrintNote[] | null;
   payment_terms: QuotationPaymentTerm[];
   pre_vat: number;
   extra_discount_amount: number;
@@ -65,6 +67,7 @@ function mapHeader(row: HeaderRow): Quotation {
     deliveryDate: row.delivery_date,
     priceValidity: row.price_validity,
     remark: row.remark,
+    printNotes: Array.isArray(row.print_notes) ? row.print_notes : null,
     paymentTerms: withTermAmounts(row.payment_terms ?? [], Number(row.total)),
     preVat: Number(row.pre_vat),
     extraDiscountAmount: Number(row.extra_discount_amount),

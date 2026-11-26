@@ -3,6 +3,7 @@ import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
 import { getSalesReps, getCustomers } from "@/lib/data/reference";
 import { getDistinctQuotationItemFields, getQuotationById, getSignedQuotationImageUrls } from "@/lib/data/quotations";
+import { getQuotationPrintTemplates } from "@/lib/data/quotation-print-settings";
 import { QuotationForm } from "../quotation-form";
 
 export default async function NewQuotationPage({ searchParams }: { searchParams: Promise<{ copyFrom?: string }> }) {
@@ -11,10 +12,11 @@ export default async function NewQuotationPage({ searchParams }: { searchParams:
   if (!canAccessPage(profile.role, "/dashboard/quotations")) redirect("/dashboard/sales");
 
   const { copyFrom } = await searchParams;
-  const [salesReps, customers, itemFieldSuggestions, source] = await Promise.all([
+  const [salesReps, customers, itemFieldSuggestions, printTemplates, source] = await Promise.all([
     getSalesReps(),
     getCustomers(),
     getDistinctQuotationItemFields(),
+    getQuotationPrintTemplates(),
     copyFrom ? getQuotationById(copyFrom) : Promise.resolve(null),
   ]);
 
@@ -53,6 +55,7 @@ export default async function NewQuotationPage({ searchParams }: { searchParams:
         initialData={copied}
         imageUrlsByItemId={imageUrlsByItemId}
         itemFieldSuggestions={itemFieldSuggestions}
+        printTemplates={printTemplates}
       />
     </div>
   );
