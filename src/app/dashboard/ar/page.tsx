@@ -27,7 +27,7 @@ export default async function ArDashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">AR Dashboard</h1>
+        <h1 className="text-2xl font-semibold">แดชบอร์ดลูกหนี้</h1>
         <p className="text-sm text-muted-foreground">
           ลูกหนี้ค้างชำระ แยกตามอายุหนี้และสถานะการชำระ — นับอายุหนี้จากวันที่ของงาน (ไม่มีวันครบกำหนดชำระในระบบ)
         </p>
