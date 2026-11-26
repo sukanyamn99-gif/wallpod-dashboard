@@ -38,7 +38,10 @@ export function PrintFuelAllowanceView({
 
   return (
     <div>
-      <style>{`@media print { @page { size: landscape; } }`}</style>
+      {/* No @page size here on purpose: a fixed landscape size overrode the
+          orientation picked in the print dialog (portrait was ignored). The
+          wide detail tables wrap their text and use a smaller print font so
+          they fit either way. */}
       <div className="mb-4 flex justify-end gap-2 print:hidden">
         <Button variant="outline" onClick={() => router.back()}>
           ปิด
@@ -115,7 +118,7 @@ export function PrintFuelAllowanceView({
                 {r.visits.length === 0 ? (
                   <p className="text-xs text-gray-500">ไม่มีรายการ</p>
                 ) : (
-                  <table className="w-full border-collapse border border-black text-sm">
+                  <table className="w-full border-collapse border border-black text-sm print:text-xs">
                     <thead>
                       <tr>
                         <th className="border border-black p-1 font-medium">วันที่</th>
@@ -149,7 +152,7 @@ export function PrintFuelAllowanceView({
                 {r.sales.length === 0 ? (
                   <p className="text-xs text-gray-500">ไม่มีรายการ</p>
                 ) : (
-                  <table className="w-full border-collapse border border-black text-sm">
+                  <table className="w-full border-collapse border border-black text-sm print:text-xs">
                     <thead>
                       <tr>
                         <th className="border border-black p-1 font-medium">วันที่</th>
