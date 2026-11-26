@@ -16,8 +16,8 @@ export const FUEL_ALLOWANCE_TIERS: FuelAllowanceTier[] = [
   { amount: 4500, minSales: 80_000, minVisits: 22 },
   { amount: 5000, minSales: 90_000, minVisits: 25 },
   { amount: 6000, minSales: 100_000, minVisits: 30 },
-  { amount: 8000, minSales: 200_000, minVisits: 35 },
-  { amount: 9000, minSales: 300_000, minVisits: 40 },
+  { amount: 7000, minSales: 200_000, minVisits: 35 },
+  { amount: 8000, minSales: 300_000, minVisits: 40 },
   { amount: 9000, minSales: 400_000, minVisits: 45 },
   { amount: 10000, minSales: 500_000, minVisits: 50 },
 ];
