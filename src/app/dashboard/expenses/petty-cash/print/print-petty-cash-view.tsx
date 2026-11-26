@@ -41,19 +41,23 @@ export function PrintPettyCashView({
 
   return (
     <div className="mx-auto max-w-5xl bg-white p-6 text-black print:p-0">
+      {/* Margin only, no page size: the orientation stays whatever is picked in
+          the print dialog. A smaller margin plus tighter rows keep the table and
+          the signature lines on one page. */}
+      <style>{`@media print { @page { margin: 8mm; } }`}</style>
       <div className="mb-4 flex justify-end gap-2 print:hidden">
         <Button onClick={() => window.print()}>พิมพ์</Button>
         <DownloadPdfButton />
       </div>
 
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between print:mb-2">
         <p className="text-lg font-semibold">รายงานสรุปเงินสดย่อย</p>
         <p className="text-sm">
           {fromLabel} — {toLabel}
         </p>
       </div>
 
-      <table className="w-full border-collapse border border-black text-center text-[11px]">
+      <table className="w-full border-collapse border border-black text-center text-[11px] print:text-[10px] print:leading-tight">
         <thead>
           <tr>
             <th className="border border-black p-1 whitespace-nowrap" rowSpan={2}>
@@ -98,7 +102,7 @@ export function PrintPettyCashView({
         <tbody>
           {displayRows.map((r, i) => {
             return (
-              <tr key={r?.id ?? `blank-${i}`} className="h-6">
+              <tr key={r?.id ?? `blank-${i}`} className="h-6 print:h-5 print:break-inside-avoid">
                 <td className="border border-black p-1">{r ? formatTHB(r.balanceAfter) : ""}</td>
                 <td className="border border-black p-1">{i + 1}</td>
                 <td className="border border-black p-1">
@@ -149,7 +153,7 @@ export function PrintPettyCashView({
         </tbody>
       </table>
 
-      <div className="mt-10 flex justify-between px-8 text-center text-sm">
+      <div className="mt-10 flex justify-between px-8 text-center text-sm print:mt-4 print:break-inside-avoid">
         <div>
           <p>___________________________</p>
           <p>{preparerName || " "}</p>
