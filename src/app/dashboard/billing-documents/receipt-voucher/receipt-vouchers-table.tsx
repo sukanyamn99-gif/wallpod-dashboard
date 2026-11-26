@@ -61,6 +61,9 @@ export function ReceiptVouchersTable({ vouchers }: { vouchers: ReceiptVoucher[] 
   const [query, setQuery] = useState("");
   const [month, setMonth] = useDocMonth();
 
+  // The month total ignores the search box, like the other document lists.
+  const monthRows = useMemo(() => filterByMonth(vouchers, (row) => row.docDate, month), [vouchers, month]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     // Typing a search looks through every month; otherwise the chosen month applies.
@@ -75,7 +78,14 @@ export function ReceiptVouchersTable({ vouchers }: { vouchers: ReceiptVoucher[] 
 
   return (
     <div className="space-y-4">
-      <MonthTabs dates={vouchers.map((row) => row.docDate)} value={month} onChange={setMonth} />
+      <MonthTabs
+        dates={vouchers.map((row) => row.docDate)}
+        value={month}
+        onChange={setMonth}
+        total={monthRows.reduce((sum, row) => sum + row.amount, 0)}
+        count={monthRows.length}
+        totalLabel="ยอดรวมรับเงิน"
+      />
       <Input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
