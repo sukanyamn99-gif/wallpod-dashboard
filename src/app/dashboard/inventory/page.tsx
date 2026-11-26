@@ -28,7 +28,7 @@ export default async function StockDashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Stock Dashboard</h1>
+        <h1 className="text-2xl font-semibold">แดชบอร์ดสต๊อก</h1>
         <p className="text-sm text-muted-foreground">ภาพรวมสต๊อกคงเหลือ</p>
       </div>
 
