@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { MonthTabs, filterByMonth, useDocMonth } from "@/components/dashboard/month-tabs";
+import { ALL_MONTHS, MonthTabs, filterByMonth, useDocMonth } from "@/components/dashboard/month-tabs";
+import { MonthlyAmountDonut, buildMonthlySlices } from "@/components/dashboard/monthly-amount-donut";
 import Link from "next/link";
 import { Ban, Check, Copy, Eye, Factory, Pencil, Trash2, Undo2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -135,6 +136,16 @@ export function QuotationsTable({ quotations }: { quotations: Quotation[] }) {
   // A cancelled quotation is listed but left out of the totals.
   const activeMonthRows = useMemo(() => monthRows.filter((row) => !row.isCancelled), [monthRows]);
   const cancelledMonthRows = useMemo(() => monthRows.filter((row) => row.isCancelled), [monthRows]);
+  // The ring covers every month; cancelled quotations are left out of it like the totals.
+  const monthlySlices = useMemo(
+    () =>
+      buildMonthlySlices(
+        quotations.filter((row) => !row.isCancelled),
+        (row) => row.quoteDate,
+        (row) => row.preVat,
+      ),
+    [quotations],
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -198,6 +209,17 @@ export function QuotationsTable({ quotations }: { quotations: Quotation[] }) {
             : []),
         ]}
       />
+      {monthlySlices.length > 0 && (
+        <MonthlyAmountDonut
+          className="max-w-3xl"
+          title="ยอดใบเสนอราคาแต่ละเดือน (ก่อน VAT)"
+          countUnit="ใบ"
+          slices={monthlySlices}
+          selectedKey={month === ALL_MONTHS ? null : month}
+          clickable
+          onSelect={setMonth}
+        />
+      )}
       <Input
         value={query}
         onChange={(e) => setQuery(e.target.value)}

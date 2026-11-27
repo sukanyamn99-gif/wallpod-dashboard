@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MultiSelectFilter } from "@/components/dashboard/multi-select-filter";
-import { MonthlySalesDonut } from "./monthly-sales-donut";
+import { MonthlyAmountDonut } from "@/components/dashboard/monthly-amount-donut";
 import {
   Table,
   TableBody,
@@ -654,21 +654,21 @@ export function ProjectsTable({
         </SummaryGroup>
 
         {monthGroups.length > 0 && (
-          <MonthlySalesDonut
-            // Newest month first; each slice keeps the page index of its month.
+          <MonthlyAmountDonut
+            title="ยอดขายแต่ละเดือน (ก่อน VAT)"
+            countUnit="งาน"
+            // Newest month first.
             slices={monthGroups
-              .map((g, index) => ({
+              .map((g) => ({
                 key: g.key,
-                label: g.label,
-                year: g.key.split("-")[0],
+                label: `${g.label} ${g.key.split("-")[0]}`,
                 count: g.subtotal.count,
-                preVat: g.subtotal.preVat,
-                index,
+                amount: g.subtotal.preVat,
               }))
               .reverse()}
-            currentIndex={showEveryMonth ? null : clampedPageIndex}
+            selectedKey={showEveryMonth ? null : (currentGroup?.key ?? null)}
             clickable={!showEveryMonth}
-            onSelect={setPageIndex}
+            onSelect={(key) => setPageIndex(monthGroups.findIndex((g) => g.key === key))}
           />
         )}
       </div>

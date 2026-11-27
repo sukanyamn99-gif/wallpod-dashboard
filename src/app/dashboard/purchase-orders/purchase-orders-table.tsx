@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { MonthTabs, filterByMonth, useDocMonth } from "@/components/dashboard/month-tabs";
+import { ALL_MONTHS, MonthTabs, filterByMonth, useDocMonth } from "@/components/dashboard/month-tabs";
+import { MonthlyAmountDonut, buildMonthlySlices } from "@/components/dashboard/monthly-amount-donut";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Eye, PackageCheck, Printer, Trash2, X } from "lucide-react";
@@ -83,6 +84,10 @@ export function PurchaseOrdersTable({
   const [query, setQuery] = useState("");
   const [month, setMonth] = useDocMonth();
   const monthRows = useMemo(() => filterByMonth(orders, (row) => row.orderDate, month), [orders, month]);
+  const monthlySlices = useMemo(
+    () => buildMonthlySlices(orders, (row) => row.orderDate, (row) => row.totalAmount - row.discountAmount),
+    [orders],
+  );
   const TOTAL_COLUMNS = showAmount ? 8 : 7;
 
   const filtered = useMemo(() => {
@@ -106,6 +111,17 @@ export function PurchaseOrdersTable({
         total={showAmount ? monthRows.reduce((sum, row) => sum + (row.totalAmount - row.discountAmount), 0) : undefined}
         count={monthRows.length}
       />
+      {showAmount && monthlySlices.length > 0 && (
+        <MonthlyAmountDonut
+          className="max-w-3xl"
+          title="ยอดสั่งซื้อแต่ละเดือน"
+          countUnit="ใบ"
+          slices={monthlySlices}
+          selectedKey={month === ALL_MONTHS ? null : month}
+          clickable
+          onSelect={setMonth}
+        />
+      )}
       <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ค้นหาเลขที่เอกสาร, เลขที่ใบขอซื้อ, ผู้จำหน่าย..." className="max-w-sm" />
 
       <div className="overflow-x-auto rounded-md border">
