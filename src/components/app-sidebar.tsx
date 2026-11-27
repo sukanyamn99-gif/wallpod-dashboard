@@ -196,9 +196,14 @@ export function AppSidebar({ profile }: { profile: Profile }) {
 
   return (
     <Sidebar>
-      <SidebarHeader className="px-4 py-3">
-        <p className="text-sm font-semibold">Koonway Co.,Ltd.</p>
-        <p className="text-xs text-muted-foreground">คูนเว จำกัด</p>
+      <SidebarHeader className="flex-row items-center gap-3 px-4 py-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-400 to-blue-600 text-xl font-bold text-white shadow-[0_0_16px_rgb(56_189_248/0.5)]">
+          K
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-white">Koonway Co., Ltd.</p>
+          <p className="text-xs text-muted-foreground">คูนเวย์</p>
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -404,9 +409,11 @@ export function AppSidebar({ profile }: { profile: Profile }) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="gap-2 px-4 py-3">
-        <p className="text-sm font-medium">{profile.full_name}</p>
-        <p className="text-xs text-muted-foreground">{profile.role}</p>
+      <SidebarFooter className="gap-2 px-3 py-3">
+        <div className="rounded-xl border border-sky-400/20 bg-slate-950/40 px-3 py-2">
+          <p className="text-sm font-medium text-white">{profile.full_name}</p>
+          <p className="text-xs text-muted-foreground">{profile.role}</p>
+        </div>
         {profile.id !== "demo" && (
           <form action={signOut}>
             <SidebarMenuButton type="submit" className="w-full">

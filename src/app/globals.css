@@ -93,23 +93,23 @@
 
 .dark {
   /* WALLPOD "control room" palette — deep blue-charcoal ground, blue accent. */
-  --background: #0E1320;
+  --background: #070C1B;
   --foreground: #EAF0FF;
-  --card: #161D2E;
+  --card: #0E1832;
   --card-foreground: #EAF0FF;
-  --popover: #161D2E;
+  --popover: #0E1832;
   --popover-foreground: #EAF0FF;
   --primary: #4C7EF3;
   --primary-foreground: #FFFFFF;
-  --secondary: #1D2537;
+  --secondary: #14203D;
   --secondary-foreground: #EAF0FF;
-  --muted: #1D2537;
-  --muted-foreground: #93A0BE;
-  --accent: #1D2537;
+  --muted: #14203D;
+  --muted-foreground: #94A3C4;
+  --accent: #14203D;
   --accent-foreground: #EAF0FF;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: #262F45;
-  --input: #262F45;
+  --border: #1F2F55;
+  --input: #22345F;
   --ring: #4C7EF3;
   --chart-1: #4C7EF3;
   --chart-2: #199e70;
@@ -123,13 +123,13 @@
   --chart-seq-3: #184f95;
   --chart-seq-4: #0d366b;
   --status-critical: #e66767;
-  --sidebar: #0B0F1A;
+  --sidebar: #070C1B;
   --sidebar-foreground: #EAF0FF;
   --sidebar-primary: #4C7EF3;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #1D2537;
+  --sidebar-accent: #14274F;
   --sidebar-accent-foreground: #EAF0FF;
-  --sidebar-border: #1D2536;
+  --sidebar-border: #1B2B50;
   --sidebar-ring: #4C7EF3;
 }
 
@@ -143,6 +143,69 @@
   html {
     @apply font-sans;
   }
+}
+
+/* ===== Koonway "glass" look, shared by the whole app =====
+   Deep-navy ground, translucent navy panels with a soft blue glow, and a glowing
+   pill on the active menu item. Panels are the Card component (glass-card) and
+   any bordered table wrapper; the GP Dashboard sets its own accent per card. */
+body {
+  background-image:
+    radial-gradient(900px 480px at 12% -8%, rgb(37 99 235 / 0.16), transparent 60%),
+    radial-gradient(700px 420px at 100% 0%, rgb(56 189 248 / 0.08), transparent 55%);
+  background-attachment: fixed;
+}
+
+.glass-card {
+  --gp-accent: 96 165 250;
+  border: 1px solid rgb(var(--gp-accent) / 0.26);
+  border-radius: 1rem;
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgb(var(--gp-accent) / 0.12), transparent 58%),
+    linear-gradient(160deg, rgb(20 34 70 / 0.88), rgb(8 14 32 / 0.92));
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.03) inset,
+    0 8px 24px rgb(2 6 23 / 0.45),
+    0 0 18px rgb(var(--gp-accent) / 0.08);
+}
+
+/* Bordered wrappers around a table (every list page) get the same panel look. */
+.border:has(> [data-slot="table-container"]) {
+  border-color: rgb(96 165 250 / 0.24);
+  border-radius: 0.9rem;
+  background: linear-gradient(160deg, rgb(16 28 58 / 0.7), rgb(8 14 32 / 0.8));
+  box-shadow: 0 8px 24px rgb(2 6 23 / 0.4);
+}
+[data-slot="table-header"] {
+  background: rgb(37 99 235 / 0.1);
+}
+
+/* Sidebar: navy gradient with faint waves at the bottom, glowing active pill. */
+[data-slot="sidebar-inner"] {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 300 160%27 fill=%27none%27 stroke=%27%2338bdf8%27 stroke-opacity=%270.22%27%3E%3Cpath d=%27M0 120 C60 80 110 150 170 110 S260 70 300 100%27/%3E%3Cpath d=%27M0 134 C60 94 110 164 170 124 S260 84 300 114%27 stroke-opacity=%270.15%27/%3E%3Cpath d=%27M0 148 C60 108 110 178 170 138 S260 98 300 128%27 stroke-opacity=%270.1%27/%3E%3C/svg%3E")
+      bottom / 100% auto no-repeat,
+    linear-gradient(180deg, #0B1530 0%, #070C1B 70%);
+  border-right: 1px solid rgb(96 165 250 / 0.14);
+}
+[data-slot="sidebar-menu-button"],
+[data-slot="sidebar-menu-sub-button"] {
+  border-radius: 0.75rem;
+}
+[data-slot="sidebar-menu-button"] {
+  min-height: 2.4rem;
+}
+[data-slot="sidebar-menu-button"]:hover,
+[data-slot="sidebar-menu-sub-button"]:hover {
+  background: rgb(59 130 246 / 0.14);
+}
+[data-slot="sidebar-menu-button"][data-active],
+[data-slot="sidebar-menu-sub-button"][data-active] {
+  color: #fff;
+  background: linear-gradient(90deg, rgb(37 99 235 / 0.6), rgb(56 130 246 / 0.16));
+  box-shadow:
+    0 0 0 1px rgb(96 165 250 / 0.55) inset,
+    0 0 16px rgb(59 130 246 / 0.35);
 }
 
 /* GP Dashboard "glass" panels: a deep-navy gradient with a soft glow in the
@@ -188,5 +251,12 @@
   html,
   body {
     background: #fff !important;
+  }
+  .glass-card,
+  .gp-glass,
+  .border:has(> [data-slot="table-container"]) {
+    background: #fff !important;
+    box-shadow: none !important;
+    border-color: rgb(0 0 0 / 0.2) !important;
   }
 }
