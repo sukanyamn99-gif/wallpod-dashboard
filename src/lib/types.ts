@@ -1298,6 +1298,9 @@ export interface BillingDocument {
   // Always [] on BillingDocumentDetail (the view page shows each item's own
   // job directly, so computing a document-wide set serves no purpose there).
   jobNos: string[];
+  // The project name of each of those jobs (same order, jobs with no name on
+  // record left out), for the list's ชื่อโครงการ column. List views only.
+  projectNames?: string[];
   // The document's own net payable total (after discount/VAT/WHT/
   // retention/deposit deduction — see computeBillingDocumentSummary),
   // computed server-side from its items so list views can show an amount

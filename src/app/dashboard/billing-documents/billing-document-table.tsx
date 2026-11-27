@@ -20,7 +20,7 @@ import type { BillingDocument, BillingDocumentType, Profile } from "@/lib/types"
 import { formatTHB } from "@/lib/format";
 import { deleteBillingDocument } from "./actions";
 
-const TOTAL_COLUMNS = 8;
+const TOTAL_COLUMNS = 9;
 
 // Same blanket rule as each doc type's own canEdit (view/edit pages) —
 // owner/manager/account can edit or delete any document, anyone else only
@@ -96,6 +96,7 @@ export function BillingDocumentTable({
       (d) =>
         d.docNo.toLowerCase().includes(q) ||
         d.customerName.toLowerCase().includes(q) ||
+        (d.projectNames ?? []).some((n) => n.toLowerCase().includes(q)) ||
         d.jobNos.some((j) => j.toLowerCase().includes(q)),
     );
   }, [documents, query, month]);
@@ -113,7 +114,7 @@ export function BillingDocumentTable({
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="ค้นหาเลขที่เอกสาร, ลูกค้า, เลขที่ Job..."
+          placeholder="ค้นหาเลขที่เอกสาร, ลูกค้า, ชื่อโครงการ, เลขที่ Job..."
           className="max-w-sm"
         />
         <Button nativeButton={false} render={<Link href={`/dashboard/billing-documents/${routeSegment}/new`} />}>
@@ -129,6 +130,7 @@ export function BillingDocumentTable({
               <TableHead className="whitespace-nowrap">เลขที่เอกสาร</TableHead>
               <TableHead className="whitespace-nowrap">JOB</TableHead>
               <TableHead className="whitespace-nowrap">ลูกค้า</TableHead>
+              <TableHead className="whitespace-nowrap">ชื่อโครงการ</TableHead>
               <TableHead className="whitespace-nowrap">วันที่</TableHead>
               <TableHead className="whitespace-nowrap">ครบกำหนด</TableHead>
               <TableHead className="whitespace-nowrap">ผู้ขาย</TableHead>
@@ -153,6 +155,12 @@ export function BillingDocumentTable({
                 <TableCell className="font-medium whitespace-nowrap">{doc.docNo}</TableCell>
                 <TableCell className="whitespace-nowrap">{doc.jobNos.length > 0 ? doc.jobNos.join(", ") : "—"}</TableCell>
                 <TableCell className="whitespace-nowrap">{doc.customerName}</TableCell>
+                <TableCell
+                  className="max-w-xs truncate"
+                  title={doc.projectNames && doc.projectNames.length > 0 ? doc.projectNames.join(" / ") : undefined}
+                >
+                  {doc.projectNames && doc.projectNames.length > 0 ? doc.projectNames.join(" / ") : "—"}
+                </TableCell>
                 <TableCell className="whitespace-nowrap">{new Date(doc.docDate).toLocaleDateString("th-TH")}</TableCell>
                 <TableCell className="whitespace-nowrap">{new Date(doc.dueDate).toLocaleDateString("th-TH")}</TableCell>
                 <TableCell className="whitespace-nowrap">{doc.salesRepName ?? "—"}</TableCell>

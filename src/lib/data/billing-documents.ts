@@ -636,6 +636,41 @@ async function resolveJobNosBySourceChain(
   return result;
 }
 
+// JOB no. -> project name, for the lists' ชื่อโครงการ column: the job's own
+// record (WALLPOD Project Sales) first, and for a job that was never entered
+// there, the quotation that carries the same JOB number.
+async function resolveProjectNamesByJobNo(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  jobNos: string[],
+): Promise<Record<string, string>> {
+  const result: Record<string, string> = {};
+  const unique = [...new Set(jobNos.map((j) => j.trim()).filter(Boolean))];
+  if (unique.length === 0) return result;
+
+  const { data: projects, error: projectsErr } = await supabase
+    .from("projects")
+    .select("job_no, project_name")
+    .in("job_no", unique);
+  if (projectsErr) throw projectsErr;
+  for (const p of projects ?? []) {
+    if (p.job_no && p.project_name && !result[p.job_no]) result[p.job_no] = p.project_name;
+  }
+
+  const missing = unique.filter((j) => !result[j]);
+  if (missing.length > 0) {
+    const { data: quotations, error: quotationsErr } = await supabase
+      .from("quotations")
+      .select("job_number, project_name")
+      .in("job_number", missing)
+      .order("created_at", { ascending: false });
+    if (quotationsErr) throw quotationsErr;
+    for (const q of quotations ?? []) {
+      if (q.job_number && q.project_name && !result[q.job_number]) result[q.job_number] = q.project_name;
+    }
+  }
+  return result;
+}
+
 const HEADER_COLUMNS =
   "id, doc_no, doc_type, customer_id, doc_date, credit_days, due_date, sales_rep_id, discount_amount, wht_percent, retention_percent, deposit_deduction_amount, deposit_deduction_invoice_no, deposit_wht_amount, rounding_amount, note, job_no, created_by, created_at, payment_method, bank_name, payment_reference_no, payment_date, customers(name, address, phone, tax_id), sales_reps(name), profiles(full_name)";
 
@@ -750,7 +785,7 @@ export async function getBillingDocuments(docType: BillingDocumentType): Promise
     rows.flatMap((row) => (row.billing_note_items ?? []).flatMap((it) => [it.invoice_no_snapshot, it.manual_description])),
   );
 
-  return rows.map((row) => {
+  const documents = rows.map((row) => {
     const items = row.billing_note_items ?? [];
     const summary = computeBillingDocumentSummary(
       items.map((it) => ({ amount: Number(it.amount), applyWht: it.apply_wht })),
@@ -800,6 +835,16 @@ export async function getBillingDocuments(docType: BillingDocumentType): Promise
       preVat: summary.installmentPreVat ?? summary.afterDiscount,
     };
   });
+
+  // One batched lookup of the project name behind every JOB in the list.
+  const projectNameByJobNo = await resolveProjectNamesByJobNo(
+    supabase,
+    documents.flatMap((doc) => doc.jobNos),
+  );
+  return documents.map((doc) => ({
+    ...doc,
+    projectNames: [...new Set(doc.jobNos.map((j) => projectNameByJobNo[j.trim()]).filter((n): n is string => !!n))],
+  }));
 }
 
 export async function getBillingDocumentById(id: string): Promise<BillingDocumentDetail | null> {
