@@ -31,6 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { chartGradient } from "@/lib/chart-gradient";
 import { formatTHB } from "@/lib/format";
 import type { ArDashboardData, ReceivableRow } from "@/lib/data/ar";
 
@@ -92,9 +93,9 @@ export function AgingBucketChart({ data }: { data: ArDashboardData["agingBuckets
               width={90}
             />
             <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--muted)" }} />
-            <Bar dataKey="amount" radius={[4, 4, 0, 0]} maxBarSize={64}>
+            <Bar dataKey="amount" radius={[8, 8, 0, 0]} maxBarSize={64}>
               {data.map((entry, i) => (
-                <Cell key={entry.label} fill={AGING_COLORS[i % AGING_COLORS.length]} />
+                <Cell key={entry.label} fill={chartGradient(AGING_COLORS[i % AGING_COLORS.length], "v")} />
               ))}
             </Bar>
           </BarChart>
@@ -126,7 +127,7 @@ export function ByStatusChart({ data }: { data: ArDashboardData["byStatus"] }) {
               strokeWidth={2}
             >
               {data.map((entry, i) => (
-                <Cell key={entry.status} fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]} />
+                <Cell key={entry.status} fill={chartGradient(CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length], "d")} />
               ))}
             </Pie>
             <Tooltip content={<ChartTooltip />} />
@@ -255,7 +256,7 @@ export function TopDebtorsChart({
             <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--muted)" }} />
             <Bar
               dataKey="amount"
-              radius={[0, 4, 4, 0]}
+              radius={[0, 8, 8, 0]}
               maxBarSize={28}
               cursor="pointer"
               onClick={(entry) =>
@@ -263,7 +264,7 @@ export function TopDebtorsChart({
               }
             >
               {data.map((entry, i) => (
-                <Cell key={entry.customerName} fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]} />
+                <Cell key={entry.customerName} fill={chartGradient(CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length], "h")} />
               ))}
             </Bar>
           </BarChart>

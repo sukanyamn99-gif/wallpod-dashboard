@@ -14,6 +14,7 @@ import {
   YAxis,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { chartGradient } from "@/lib/chart-gradient";
 import { formatNumber, formatTHB } from "@/lib/format";
 import type { StockDashboardData } from "@/lib/types";
 
@@ -69,7 +70,7 @@ export function StockByCategoryChart({ data }: { data: StockDashboardData["categ
               strokeWidth={2}
             >
               {data.map((entry, i) => (
-                <Cell key={entry.category} fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]} />
+                <Cell key={entry.category} fill={chartGradient(CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length], "d")} />
               ))}
             </Pie>
             <Tooltip content={<StockChartTooltip />} />
@@ -151,7 +152,7 @@ export function MonthlyTrendChart({
               width={60}
             />
             <Tooltip content={<MonthlyTrendTooltip unitLabel={unitLabel} />} cursor={{ fill: "var(--muted)" }} />
-            <Bar dataKey="value" fill="var(--chart-1)" radius={[4, 4, 0, 0]} maxBarSize={48} />
+            <Bar dataKey="value" fill={chartGradient("var(--chart-1)", "v")} radius={[8, 8, 0, 0]} maxBarSize={48} />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>
@@ -200,7 +201,7 @@ export function TopRequisitionedProductsChart({
               }}
               cursor={{ fill: "var(--muted)" }}
             />
-            <Bar dataKey="quantity" fill="var(--chart-5)" radius={[0, 4, 4, 0]} maxBarSize={24} />
+            <Bar dataKey="quantity" fill={chartGradient("var(--chart-5)", "h")} radius={[0, 8, 8, 0]} maxBarSize={24} />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>
@@ -244,7 +245,7 @@ export function MovementSummaryChart({
               strokeWidth={2}
             >
               {chartData.map((entry) => (
-                <Cell key={entry.type} fill={MOVEMENT_COLORS[entry.type]} />
+                <Cell key={entry.type} fill={chartGradient(MOVEMENT_COLORS[entry.type], "d")} />
               ))}
             </Pie>
             <Tooltip

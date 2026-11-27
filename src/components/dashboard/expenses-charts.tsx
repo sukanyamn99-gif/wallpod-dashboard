@@ -13,6 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { chartGradient } from "@/lib/chart-gradient";
 import { formatTHB } from "@/lib/format";
 
 const CATEGORICAL_COLORS = [
@@ -68,7 +69,7 @@ export function MonthlyExpenseTrendChart({ data }: { data: { monthLabel: string;
               width={90}
             />
             <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--muted)" }} />
-            <Bar dataKey="value" fill="var(--chart-5)" radius={[4, 4, 0, 0]} maxBarSize={48} />
+            <Bar dataKey="value" fill={chartGradient("var(--chart-5)", "v")} radius={[8, 8, 0, 0]} maxBarSize={48} />
           </BarChart>
         </ResponsiveContainer>
       </CardContent>
@@ -102,7 +103,7 @@ export function ExpenseCategoryChart({ data }: { data: { category: string; value
                   strokeWidth={2}
                 >
                   {data.map((entry, i) => (
-                    <Cell key={entry.category} fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]} />
+                    <Cell key={entry.category} fill={chartGradient(CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length], "d")} />
                   ))}
                 </Pie>
                 <Tooltip content={<ChartTooltip />} />

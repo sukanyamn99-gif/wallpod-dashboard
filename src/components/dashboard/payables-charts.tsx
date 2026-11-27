@@ -28,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { chartGradient } from "@/lib/chart-gradient";
 import { formatTHB } from "@/lib/format";
 import type { PayableRow, PayablesDashboardData } from "@/lib/data/payables";
 
@@ -102,7 +103,7 @@ export function PayablesBySupplierChart({
             <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--muted)" }} />
             <Bar
               dataKey="amount"
-              radius={[0, 4, 4, 0]}
+              radius={[0, 8, 8, 0]}
               maxBarSize={28}
               cursor="pointer"
               onClick={(entry) =>
@@ -110,7 +111,7 @@ export function PayablesBySupplierChart({
               }
             >
               {data.map((entry, i) => (
-                <Cell key={entry.supplierName} fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]} />
+                <Cell key={entry.supplierName} fill={chartGradient(CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length], "h")} />
               ))}
             </Bar>
           </BarChart>

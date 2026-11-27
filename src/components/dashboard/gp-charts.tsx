@@ -19,6 +19,7 @@ import { BarChart3, CalendarDays, Layers, Users } from "lucide-react";
 import { Dialog, DialogBody, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { GpPanel } from "@/components/dashboard/gp-panel";
+import { chartGradient } from "@/lib/chart-gradient";
 import { cn } from "@/lib/utils";
 import { formatNumber, formatTHB } from "@/lib/format";
 import type { GpDashboardData } from "@/lib/data/gp";
@@ -160,7 +161,7 @@ export function GpByCustomerTypeChart({ data }: { data: GpDashboardData["byCusto
                   isAnimationActive={false}
                 >
                   {positive.map((entry) => (
-                    <Cell key={entry.type} fill={colorOf(entry.type)} />
+                    <Cell key={entry.type} fill={chartGradient(colorOf(entry.type), "d")} />
                   ))}
                 </Pie>
                 <Tooltip

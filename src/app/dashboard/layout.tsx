@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { ChartGradientDefs } from "@/components/dashboard/chart-gradient-defs";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { createClient } from "@/lib/supabase/server";
 
@@ -30,6 +31,7 @@ export default async function DashboardLayout({
 
   return (
     <SidebarProvider>
+      <ChartGradientDefs />
       <AppSidebar profile={profile} />
       <main className="min-w-0 flex-1">
         <div className="flex items-center gap-2 border-b p-3 print:hidden">

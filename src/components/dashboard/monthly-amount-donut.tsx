@@ -3,6 +3,7 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { cn } from "@/lib/utils";
 import { formatNumber, formatTHB } from "@/lib/format";
+import { chartGradient } from "@/lib/chart-gradient";
 import { monthKeyOf, monthLabel } from "@/components/dashboard/month-tabs";
 
 const COLORS = ["#3b82f6", "#10b981", "#f5b73c", "#a78bfa", "#f97316", "#6366f1", "#14b8a6", "#ec4899"];
@@ -89,7 +90,7 @@ export function MonthlyAmountDonut({
                 onClick={(slice) => clickable && onSelect((slice as unknown as MonthlyDonutSlice).key)}
               >
                 {drawn.map((s) => (
-                  <Cell key={s.key} fill={colorOf(s.key)} />
+                  <Cell key={s.key} fill={chartGradient(colorOf(s.key), "d")} />
                 ))}
               </Pie>
               <Tooltip

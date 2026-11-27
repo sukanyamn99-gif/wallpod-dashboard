@@ -14,6 +14,7 @@ import {
   YAxis,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { chartGradient } from "@/lib/chart-gradient";
 import { formatTHB } from "@/lib/format";
 import type { SalesDashboardData } from "@/lib/types";
 
@@ -89,7 +90,7 @@ export function PipelineByStageChart({
             <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--muted)" }} />
             <Bar
               dataKey="value"
-              radius={[4, 4, 0, 0]}
+              radius={[8, 8, 0, 0]}
               maxBarSize={64}
               onClick={
                 onBarClick
@@ -99,7 +100,7 @@ export function PipelineByStageChart({
               cursor={onBarClick ? "pointer" : undefined}
             >
               {data.map((entry) => (
-                <Cell key={entry.stage} fill={STAGE_COLOR_BY_PERCENT[entry.stage]} />
+                <Cell key={entry.stage} fill={chartGradient(STAGE_COLOR_BY_PERCENT[entry.stage], "v")} />
               ))}
             </Bar>
           </BarChart>
@@ -143,7 +144,7 @@ export function CustomerTypeChart({
               cursor={onSliceClick ? "pointer" : undefined}
             >
               {data.map((entry, i) => (
-                <Cell key={entry.type} fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]} />
+                <Cell key={entry.type} fill={chartGradient(CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length], "d")} />
               ))}
             </Pie>
             <Tooltip content={<ChartTooltip />} />
@@ -201,7 +202,7 @@ export function ProductCategoryChart({
               cursor={onSliceClick ? "pointer" : undefined}
             >
               {data.map((entry, i) => (
-                <Cell key={entry.category} fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]} />
+                <Cell key={entry.category} fill={chartGradient(CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length], "d")} />
               ))}
             </Pie>
             <Tooltip content={<ChartTooltip />} />
@@ -273,7 +274,7 @@ export function SalesRepPerformanceChart({
             />
             <Bar
               dataKey="totalValue"
-              radius={[0, 4, 4, 0]}
+              radius={[0, 8, 8, 0]}
               maxBarSize={28}
               onClick={
                 onBarClick
@@ -283,7 +284,7 @@ export function SalesRepPerformanceChart({
               cursor={onBarClick ? "pointer" : undefined}
             >
               {data.map((entry, i) => (
-                <Cell key={entry.salesRepId} fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]} />
+                <Cell key={entry.salesRepId} fill={chartGradient(CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length], "h")} />
               ))}
             </Bar>
           </BarChart>
@@ -371,8 +372,8 @@ export function RepMonthlyPerformanceChart({
                 key={row.salesRepId}
                 dataKey={row.salesRepId}
                 name={row.salesRepName}
-                fill={CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length]}
-                radius={[3, 3, 0, 0]}
+                fill={chartGradient(CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length], "v")}
+                radius={[6, 6, 0, 0]}
                 maxBarSize={16}
                 onClick={onBarClick ? (_entry, index) => onBarClick(row.salesRepId, index) : undefined}
                 cursor={onBarClick ? "pointer" : undefined}
@@ -417,8 +418,8 @@ export function MonthlySalesChart({
             <Tooltip content={<ChartTooltip />} cursor={{ fill: "var(--muted)" }} />
             <Bar
               dataKey="value"
-              fill="var(--chart-1)"
-              radius={[4, 4, 0, 0]}
+              fill={chartGradient("var(--chart-1)", "v")}
+              radius={[8, 8, 0, 0]}
               maxBarSize={48}
               onClick={onBarClick ? (_entry, index) => onBarClick(index) : undefined}
               cursor={onBarClick ? "pointer" : undefined}
