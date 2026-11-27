@@ -180,6 +180,17 @@ export function QuotationsTable({ quotations }: { quotations: Quotation[] }) {
 
   return (
     <div className="space-y-4">
+      {monthlySlices.length > 0 && (
+        <MonthlyAmountDonut
+          className="w-full max-w-3xl"
+          title="ยอดใบเสนอราคาแต่ละเดือน (ก่อน VAT)"
+          countUnit="ใบ"
+          slices={monthlySlices}
+          selectedKey={month === ALL_MONTHS ? null : month}
+          clickable
+          onSelect={setMonth}
+        />
+      )}
       <MonthTabs
         dates={quotations.map((row) => row.quoteDate)}
         value={month}
@@ -209,17 +220,6 @@ export function QuotationsTable({ quotations }: { quotations: Quotation[] }) {
             : []),
         ]}
       />
-      {monthlySlices.length > 0 && (
-        <MonthlyAmountDonut
-          className="mx-auto w-full max-w-3xl"
-          title="ยอดใบเสนอราคาแต่ละเดือน (ก่อน VAT)"
-          countUnit="ใบ"
-          slices={monthlySlices}
-          selectedKey={month === ALL_MONTHS ? null : month}
-          clickable
-          onSelect={setMonth}
-        />
-      )}
       <Input
         value={query}
         onChange={(e) => setQuery(e.target.value)}

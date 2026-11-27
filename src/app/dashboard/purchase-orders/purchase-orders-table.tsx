@@ -104,16 +104,9 @@ export function PurchaseOrdersTable({
 
   return (
     <div className="space-y-4">
-      <MonthTabs
-        dates={orders.map((row) => row.orderDate)}
-        value={month}
-        onChange={setMonth}
-        total={showAmount ? monthRows.reduce((sum, row) => sum + (row.totalAmount - row.discountAmount), 0) : undefined}
-        count={monthRows.length}
-      />
       {showAmount && monthlySlices.length > 0 && (
         <MonthlyAmountDonut
-          className="mx-auto w-full max-w-3xl"
+          className="w-full max-w-3xl"
           title="ยอดสั่งซื้อแต่ละเดือน"
           countUnit="ใบ"
           slices={monthlySlices}
@@ -122,6 +115,13 @@ export function PurchaseOrdersTable({
           onSelect={setMonth}
         />
       )}
+      <MonthTabs
+        dates={orders.map((row) => row.orderDate)}
+        value={month}
+        onChange={setMonth}
+        total={showAmount ? monthRows.reduce((sum, row) => sum + (row.totalAmount - row.discountAmount), 0) : undefined}
+        count={monthRows.length}
+      />
       <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="ค้นหาเลขที่เอกสาร, เลขที่ใบขอซื้อ, ผู้จำหน่าย..." className="max-w-sm" />
 
       <div className="overflow-x-auto rounded-md border">
