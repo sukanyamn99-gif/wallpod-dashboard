@@ -53,7 +53,15 @@ export function PrintPettyCashRequisitionView({ lines, autoPrint = false }: { li
     <div>
       <style>{`@media print { @page { margin: 10mm; } }`}</style>
       <div className="mb-4 flex justify-end gap-2 print:hidden">
-        <Button variant="outline" onClick={() => router.back()}>
+        {/* Opened in its own tab, so there is no page to go back to: close the tab, and
+            if the browser refuses, fall back to the petty cash list. */}
+        <Button
+          variant="outline"
+          onClick={() => {
+            window.close();
+            router.push("/dashboard/expenses/petty-cash");
+          }}
+        >
           ปิด
         </Button>
         <Button onClick={() => window.print()}>พิมพ์</Button>
