@@ -163,6 +163,10 @@ export function PettyCashTable({
   const selectedPrintHref = `/dashboard/expenses/petty-cash/print?docs=${encodeURIComponent(
     Array.from(selectedDocNos).join(","),
   )}`;
+  // ใบเบิกสดย่อย: filled in from the ticked expenses, or the blank form when none are.
+  const requisitionHref = `/dashboard/expenses/petty-cash/requisition${
+    selectedDocNos.size > 0 ? `?docs=${encodeURIComponent(Array.from(selectedDocNos).join(","))}` : ""
+  }`;
   function toggleDoc(docNo: string) {
     setSelectedDocNos((prev) => {
       const next = new Set(prev);
@@ -216,6 +220,19 @@ export function PettyCashTable({
             พิมพ์รายการที่เลือก (0)
           </Button>
         )}
+        <Button
+          variant="outline"
+          nativeButton={false}
+          render={<Link href={requisitionHref} target="_blank" />}
+          title={
+            selectedDocNos.size > 0
+              ? "พิมพ์ใบเบิกสดย่อยจากรายการที่ติ๊กเลือกไว้"
+              : "พิมพ์ฟอร์มใบเบิกสดย่อยเปล่า (ติ๊กเลือกรายการก่อนถ้าต้องการให้กรอกให้)"
+          }
+        >
+          <Printer className="h-3.5 w-3.5" />
+          {selectedDocNos.size > 0 ? `พิมพ์ใบเบิกสดย่อย (${selectedDocNos.size})` : "พิมพ์ใบเบิกสดย่อย (ฟอร์มเปล่า)"}
+        </Button>
         {selectedDocNos.size > 0 && (
           <Button variant="ghost" onClick={() => setSelectedDocNos(new Set())}>
             ล้างที่เลือก
