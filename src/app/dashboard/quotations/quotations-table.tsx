@@ -211,7 +211,7 @@ export function QuotationsTable({ quotations }: { quotations: Quotation[] }) {
       />
       {monthlySlices.length > 0 && (
         <MonthlyAmountDonut
-          className="max-w-3xl"
+          className="mx-auto w-full max-w-3xl"
           title="ยอดใบเสนอราคาแต่ละเดือน (ก่อน VAT)"
           countUnit="ใบ"
           slices={monthlySlices}

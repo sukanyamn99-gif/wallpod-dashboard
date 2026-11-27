@@ -113,7 +113,7 @@ export function PurchaseOrdersTable({
       />
       {showAmount && monthlySlices.length > 0 && (
         <MonthlyAmountDonut
-          className="max-w-3xl"
+          className="mx-auto w-full max-w-3xl"
           title="ยอดสั่งซื้อแต่ละเดือน"
           countUnit="ใบ"
           slices={monthlySlices}
