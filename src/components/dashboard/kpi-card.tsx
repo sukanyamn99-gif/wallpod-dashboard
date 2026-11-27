@@ -37,6 +37,8 @@ export function KpiCard({
   onClick,
   colorValue = false,
   spark,
+  className,
+  valueClassName,
 }: {
   label: string;
   value: string;
@@ -46,11 +48,14 @@ export function KpiCard({
   colorValue?: boolean;
   // A point per period for a little trend curve under the figure; left out when there is no history.
   spark?: number[];
+  // Extra classes for the card itself (e.g. how many grid columns it spans) and for its figure (e.g. a smaller size).
+  className?: string;
+  valueClassName?: string;
 }) {
   return (
     <Card
       onClick={onClick}
-      className={cn(onClick && "cursor-pointer transition-colors hover:bg-accent/40")}
+      className={cn(onClick && "cursor-pointer transition-colors hover:bg-accent/40", className)}
     >
       <CardContent className="space-y-1">
         <div className="flex items-center gap-3">
@@ -66,8 +71,9 @@ export function KpiCard({
             <p className="text-sm text-muted-foreground">{label}</p>
             <div
               className={cn(
-                "truncate text-2xl leading-tight font-semibold tabular-nums",
+                "text-2xl leading-tight font-semibold tabular-nums break-words",
                 colorValue ? VALUE_TONE_CLASSES[tone] : "text-foreground",
+                valueClassName,
               )}
             >
               {value}

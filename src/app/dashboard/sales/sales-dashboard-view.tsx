@@ -206,8 +206,11 @@ export function SalesDashboardView({
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Six columns: the first two cards take a third each (as wide as the
+          cards in the row below) and the last two share the final third. */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
         <KpiCard
+          className="lg:col-span-2"
           label="มูลค่ารวม (Pipeline)"
           value={formatTHB(agg.totalPipelineValue)}
           icon={CircleDollarSign}
@@ -215,6 +218,7 @@ export function SalesDashboardView({
           onClick={canDrillDown ? showAllFiltered : undefined}
         />
         <KpiCard
+          className="lg:col-span-2"
           label="จำนวนงานทั้งหมด"
           value={`รวม ${agg.totalProjectsCount + cancelledCount} · ปกติ ${agg.totalProjectsCount} · ยกเลิก ${cancelledCount}`}
           icon={Briefcase}
@@ -222,6 +226,8 @@ export function SalesDashboardView({
           onClick={canDrillDown ? showAllFiltered : undefined}
         />
         <KpiCard
+          className="lg:col-span-1"
+          valueClassName="text-base"
           label="สถานะงาน"
           value={`ปิดแล้ว ${agg.closedProjectsCount} · ยังไม่ปิด ${agg.openProjectsCount}`}
           icon={CheckCircle2}
@@ -229,6 +235,8 @@ export function SalesDashboardView({
           onClick={canDrillDown ? showAllFiltered : undefined}
         />
         <KpiCard
+          className="lg:col-span-1"
+          valueClassName="text-xl"
           label="ยอดปิดการขายเดือนนี้"
           value={formatTHB(agg.closedThisMonthValue)}
           icon={TrendingUp}
