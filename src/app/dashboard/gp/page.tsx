@@ -1,29 +1,32 @@
 import { redirect } from "next/navigation";
-import { CircleDollarSign, Percent, Receipt, TrendingUp } from "lucide-react";
-import { KpiCard } from "@/components/dashboard/kpi-card";
-import { GpBySalesRepChart, GpByCustomerTypeChart, MonthlyGpTrendChart } from "@/components/dashboard/gp-charts";
+import { BarChart3, CircleDollarSign, Percent, Receipt, TrendingDown, TrendingUp } from "lucide-react";
+import { GpKpiCard } from "@/components/dashboard/gp-kpi-card";
+import { GpPeriodSelect } from "@/components/dashboard/gp-period-select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getGpDashboardData } from "@/lib/data/gp";
+  GpBySalesRepChart,
+  GpByCustomerTypeChart,
+  GpByProductChart,
+  MonthlyGpTrendChart,
+} from "@/components/dashboard/gp-charts";
+import { GpPanel } from "@/components/dashboard/gp-panel";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getGpDashboardData, type GpYearParam } from "@/lib/data/gp";
 import { getCurrentProfile } from "@/lib/data/profile";
 import { canAccessPage } from "@/lib/permissions";
 import { formatTHB } from "@/lib/format";
 import type { FullProjectRow } from "@/lib/data/project-sales";
 
-function MarginTable({ title, rows }: { title: string; rows: FullProjectRow[] }) {
+function MarginTable({
+  title,
+  icon,
+  rows,
+}: {
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+  rows: FullProjectRow[];
+}) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <GpPanel title={title} icon={icon}>
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -61,49 +64,110 @@ function MarginTable({ title, rows }: { title: string; rows: FullProjectRow[] })
             </TableBody>
           </Table>
         </div>
-      </CardContent>
-    </Card>
+    </GpPanel>
   );
 }
 
-export default async function GpDashboardPage() {
+// Buddhist-year timestamp in Thai time, e.g. 27 พ.ย. 2569 14:32 น.
+function updatedAtLabel(): string {
+  const text = new Intl.DateTimeFormat("th-TH", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Bangkok",
+  }).format(new Date());
+  return `${text} น.`;
+}
+
+function parseYearParam(value: string | undefined): GpYearParam {
+  if (!value) return "auto";
+  if (value === "all") return "all";
+  const year = Number(value);
+  return Number.isInteger(year) && year > 1900 && year < 2200 ? year : "auto";
+}
+
+export default async function GpDashboardPage({ searchParams }: { searchParams: Promise<{ year?: string }> }) {
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
   if (!canAccessPage(profile.role, "/dashboard/gp")) redirect("/dashboard/sales");
 
-  const data = await getGpDashboardData();
+  const { year } = await searchParams;
+  const data = await getGpDashboardData(parseYearParam(year));
+  const { kpis, sparklines, period } = data;
+  const comparedWith = period.previousLabel;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">GP Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          กำไรขั้นต้นต่องาน แยกตามกลุ่มลูกค้า/เซลล์ — คำนวณจาก {data.kpis.costedJobCount} งานที่มีข้อมูลต้นทุนบันทึกไว้
-        </p>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <BarChart3 className="h-10 w-10 text-sky-400" />
+          <div>
+            <h1 className="text-3xl font-semibold text-white">GP Dashboard</h1>
+            <p className="text-sm text-slate-400">
+              กำไรขั้นต้นและภาพรวมผลการดำเนินงาน | {period.label} — คำนวณจาก {kpis.costedJobCount} งานที่มีข้อมูลต้นทุนบันทึกไว้ | อัปเดตล่าสุด:{" "}
+              {updatedAtLabel()}
+            </p>
+          </div>
+        </div>
+        <GpPeriodSelect years={data.availableYears} value={period.year} />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="มูลค่ารวม (Pre-VAT)" value={formatTHB(data.kpis.totalPreVat)} icon={CircleDollarSign} tone="blue" />
-        <KpiCard label="ต้นทุนรวม" value={formatTHB(data.kpis.totalCost)} icon={Receipt} tone="amber" />
-        <KpiCard label="กำไรขั้นต้นรวม" value={formatTHB(data.kpis.totalProfit)} icon={TrendingUp} tone="green" />
-        <KpiCard
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <GpKpiCard
+          label="มูลค่าขาย (ก่อน VAT)"
+          value={formatTHB(kpis.totalPreVat)}
+          icon={CircleDollarSign}
+          tone="blue"
+          delta={kpis.deltas.preVat}
+          comparedWith={comparedWith}
+          spark={sparklines.preVat}
+        />
+        <GpKpiCard
+          label="ต้นทุนขาย"
+          value={formatTHB(kpis.totalCost)}
+          icon={Receipt}
+          tone="amber"
+          delta={kpis.deltas.cost}
+          comparedWith={comparedWith}
+          upIsBad
+          spark={sparklines.cost}
+        />
+        <GpKpiCard
+          label="กำไรขั้นต้นรวม"
+          value={formatTHB(kpis.totalProfit)}
+          icon={TrendingUp}
+          tone="green"
+          delta={kpis.deltas.profit}
+          comparedWith={comparedWith}
+          spark={sparklines.profit}
+        />
+        <GpKpiCard
           label="อัตรากำไรขั้นต้นเฉลี่ย"
-          value={`${data.kpis.avgMarginPercent.toFixed(1)}%`}
+          value={`${kpis.avgMarginPercent.toFixed(1)}%`}
           icon={Percent}
           tone="violet"
+          delta={kpis.deltas.marginPoints}
+          deltaUnit="จุด"
+          comparedWith={comparedWith}
+          spark={sparklines.margin}
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <GpBySalesRepChart data={data.bySalesRep} list={data.list} />
+      <div className="grid gap-4 xl:grid-cols-2">
+        <GpByProductChart data={data.byProductCategory} />
         <GpByCustomerTypeChart data={data.byCustomerType} />
       </div>
 
       <MonthlyGpTrendChart data={data.monthlyTrend} />
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <MarginTable title="งานที่กำไรดีที่สุด (Top 10)" rows={data.marginExtremes.top} />
-        <MarginTable title="งานที่กำไรน้อยที่สุด (Bottom 10)" rows={data.marginExtremes.bottom} />
+      <GpBySalesRepChart data={data.bySalesRep} list={data.list} />
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <MarginTable title="งานที่กำไรดีที่สุด (Top 10)" icon={TrendingUp} rows={data.marginExtremes.top} />
+        <MarginTable title="งานที่กำไรน้อยที่สุด (Bottom 10)" icon={TrendingDown} rows={data.marginExtremes.bottom} />
       </div>
     </div>
   );

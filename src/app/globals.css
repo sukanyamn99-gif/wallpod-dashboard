@@ -145,6 +145,23 @@
   }
 }
 
+/* GP Dashboard "glass" panels: a deep-navy gradient with a soft glow in the
+   panel's accent colour (set per card through --gp-accent as "r g b"). Used
+   only by the GP Dashboard components. */
+.gp-glass {
+  --gp-accent: 96 165 250;
+  position: relative;
+  border-radius: 1rem;
+  border: 1px solid rgb(var(--gp-accent) / 0.32);
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgb(var(--gp-accent) / 0.16), transparent 58%),
+    linear-gradient(160deg, rgb(20 34 70 / 0.92), rgb(8 14 32 / 0.94));
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.03) inset,
+    0 10px 30px rgb(2 6 23 / 0.55),
+    0 0 22px rgb(var(--gp-accent) / 0.12);
+}
+
 /* App shell (sidebar, its layout gap) never belongs on a printed page — the
    app is forced dark-theme, so pages that support printing (e.g. the stock
    catalog report) also need their own print:text-black overrides since
