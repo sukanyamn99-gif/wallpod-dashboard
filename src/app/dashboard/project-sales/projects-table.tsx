@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MultiSelectFilter } from "@/components/dashboard/multi-select-filter";
+import { MonthlySalesDonut } from "./monthly-sales-donut";
 import {
   Table,
   TableBody,
@@ -653,38 +654,22 @@ export function ProjectsTable({
         </SummaryGroup>
 
         {monthGroups.length > 0 && (
-          <div className="min-w-[320px] flex-1 space-y-2 rounded-lg border p-3">
-            <div className="flex items-baseline justify-between gap-2">
-              <p className="text-xs font-semibold text-[var(--chart-1)]">ยอดขายแต่ละเดือน (ก่อน VAT)</p>
-              {!showEveryMonth && <p className="text-xs text-muted-foreground">คลิกเดือนเพื่อไปที่หน้านั้น</p>}
-            </div>
-            {/* Newest month first; each tile keeps the page index of its month. */}
-            <div className="grid max-h-[110px] grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2 overflow-y-auto">
-              {monthGroups
-                .map((group, index) => ({ group, index }))
-                .reverse()
-                .map(({ group, index }) => {
-                  const isCurrent = !showEveryMonth && index === clampedPageIndex;
-                  return (
-                    <button
-                      key={group.key}
-                      type="button"
-                      disabled={showEveryMonth}
-                      onClick={() => setPageIndex(index)}
-                      className={cn(
-                        "rounded-md border px-2.5 py-1.5 text-left transition-colors enabled:hover:bg-muted/60 disabled:cursor-default",
-                        isCurrent && "border-primary bg-primary/15",
-                      )}
-                    >
-                      <span className="block text-xs text-muted-foreground">
-                        {group.label} {group.key.split("-")[0]} · {group.subtotal.count} งาน
-                      </span>
-                      <span className="block text-sm font-semibold tabular-nums">{formatTHB(group.subtotal.preVat)}</span>
-                    </button>
-                  );
-                })}
-            </div>
-          </div>
+          <MonthlySalesDonut
+            // Newest month first; each slice keeps the page index of its month.
+            slices={monthGroups
+              .map((g, index) => ({
+                key: g.key,
+                label: g.label,
+                year: g.key.split("-")[0],
+                count: g.subtotal.count,
+                preVat: g.subtotal.preVat,
+                index,
+              }))
+              .reverse()}
+            currentIndex={showEveryMonth ? null : clampedPageIndex}
+            clickable={!showEveryMonth}
+            onSelect={setPageIndex}
+          />
         )}
       </div>
 
@@ -701,6 +686,11 @@ export function ProjectsTable({
           </Button>
           <span className="text-sm font-medium">
             {currentGroup?.label} {currentGroup?.key.split("-")[0]} — หน้า {clampedPageIndex + 1} จาก {monthGroups.length}
+            {currentGroup && (
+              <span className="ml-3 text-muted-foreground">
+                ยอดขายเดือนนี้ <span className="font-semibold text-foreground tabular-nums">{formatTHB(currentGroup.subtotal.preVat)}</span>
+              </span>
+            )}
           </span>
           <Button
             variant="outline"
@@ -791,7 +781,18 @@ export function ProjectsTable({
               <Fragment key={currentGroup.key}>
                 <TableRow className="bg-muted hover:bg-muted">
                   <TableCell colSpan={totalColumns} className="font-medium">
-                    {currentGroup.label} ({currentGroup.subtotal.count} งาน)
+                    {/* sticky so the month and its total stay in view while the wide table scrolls sideways */}
+                    <div className="sticky left-3 flex w-fit flex-wrap items-baseline gap-x-6 gap-y-1">
+                      <span>
+                        {currentGroup.label} ({currentGroup.subtotal.count} งาน)
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        ยอดขายเดือนนี้ (ก่อน VAT){" "}
+                        <span className="text-base font-semibold text-foreground tabular-nums">
+                          {formatTHB(currentGroup.subtotal.preVat)}
+                        </span>
+                      </span>
+                    </div>
                   </TableCell>
                 </TableRow>
                 {currentGroup.rows.map((p) => (
