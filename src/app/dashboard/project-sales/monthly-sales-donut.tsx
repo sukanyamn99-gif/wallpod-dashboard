@@ -94,7 +94,6 @@ export function MonthlySalesDonut({
 
         <ul className="max-h-32 min-w-0 flex-1 space-y-0.5 overflow-y-auto pr-1 text-sm">
           {slices.map((s) => {
-            const share = total > 0 && s.preVat > 0 ? Math.round((s.preVat / total) * 100) : null;
             return (
               <li key={s.key}>
                 <button
@@ -109,7 +108,7 @@ export function MonthlySalesDonut({
                   <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: colorOf(s.key) }} />
                   <span className="truncate text-muted-foreground">
                     {s.label} {s.year}
-                    <span className="text-xs"> · {s.count} งาน{share !== null ? ` · ${share}%` : ""}</span>
+                    <span className="text-xs"> · {s.count} งาน</span>
                   </span>
                   <span className="ml-auto font-medium tabular-nums">{formatTHB(s.preVat)}</span>
                 </button>
