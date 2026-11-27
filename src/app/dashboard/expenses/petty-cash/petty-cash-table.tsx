@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { Ban, Check, Pencil, Printer, Trash2, Undo2, X } from "lucide-react";
+import { Ban, Check, Eye, Pencil, Printer, Trash2, Undo2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -132,7 +132,8 @@ export function PettyCashTable({
   transactions: PettyCashTransaction[];
   canManage?: boolean;
 }) {
-  const totalColumns = TOTAL_COLUMNS_BASE + (canManage ? 1 : 0);
+  // The จัดการ column is always there now: view / print for everyone, edit / cancel / delete for those who manage.
+  const totalColumns = TOTAL_COLUMNS_BASE + 1;
   const [query, setQuery] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -264,7 +265,7 @@ export function PettyCashTable({
               <TableHead className="text-right whitespace-nowrap">จำนวนเงิน</TableHead>
               <TableHead className="text-right whitespace-nowrap">คงเหลือ</TableHead>
               <TableHead className="whitespace-nowrap">ผู้บันทึก</TableHead>
-              {canManage && <TableHead className="whitespace-nowrap">จัดการ</TableHead>}
+              <TableHead className="whitespace-nowrap">จัดการ</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -319,22 +320,57 @@ export function PettyCashTable({
                   {formatTHB(t.balanceAfter)}
                 </TableCell>
                 <TableCell className="whitespace-nowrap">{t.recordedByName || "—"}</TableCell>
-                {canManage && (
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button
-                        size="icon-sm"
-                        variant="outline"
-                        nativeButton={false}
-                        render={<Link href={`/dashboard/expenses/petty-cash/edit/${t.id}`} />}
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <CancelButton transaction={t} />
-                      <DeleteButton transaction={t} />
-                    </div>
-                  </TableCell>
-                )}
+                <TableCell>
+                  <div className="flex gap-1">
+                    {/* ดู / พิมพ์ = the ใบเบิกสดย่อย of this one entry (expenses that still count). */}
+                    {t.transactionType === "expense" && !t.isCancelled && (
+                      <>
+                        <Button
+                          size="icon-sm"
+                          variant="outline"
+                          nativeButton={false}
+                          render={
+                            <Link
+                              href={`/dashboard/expenses/petty-cash/requisition?docs=${encodeURIComponent(t.docNo)}`}
+                              target="_blank"
+                            />
+                          }
+                          title="ดูใบเบิกสดย่อย"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="icon-sm"
+                          variant="outline"
+                          nativeButton={false}
+                          render={
+                            <Link
+                              href={`/dashboard/expenses/petty-cash/requisition?docs=${encodeURIComponent(t.docNo)}&print=1`}
+                              target="_blank"
+                            />
+                          }
+                          title="พิมพ์ใบเบิกสดย่อย"
+                        >
+                          <Printer className="h-3.5 w-3.5" />
+                        </Button>
+                      </>
+                    )}
+                    {canManage && (
+                      <>
+                        <Button
+                          size="icon-sm"
+                          variant="outline"
+                          nativeButton={false}
+                          render={<Link href={`/dashboard/expenses/petty-cash/edit/${t.id}`} />}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <CancelButton transaction={t} />
+                        <DeleteButton transaction={t} />
+                      </>
+                    )}
+                  </div>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

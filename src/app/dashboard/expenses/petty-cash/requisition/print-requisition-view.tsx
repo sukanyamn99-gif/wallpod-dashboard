@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -31,8 +32,16 @@ function range(values: string[], format: (v: string) => string = (v) => v): stri
   return `${format(unique[0])} – ${format(unique[unique.length - 1])}`;
 }
 
-export function PrintPettyCashRequisitionView({ lines }: { lines: RequisitionLine[] }) {
+export function PrintPettyCashRequisitionView({ lines, autoPrint = false }: { lines: RequisitionLine[]; autoPrint?: boolean }) {
   const router = useRouter();
+
+  // Opened with the row's print button: bring up the print dialog straight away
+  // (a moment later, so the logo has loaded and is on the page).
+  useEffect(() => {
+    if (!autoPrint) return;
+    const timer = window.setTimeout(() => window.print(), 600);
+    return () => window.clearTimeout(timer);
+  }, [autoPrint]);
   const filled = lines.length > 0;
   const total = lines.reduce((sum, l) => sum + l.amount, 0);
   const rowCount = Math.max(MIN_ROWS, lines.length);

@@ -20,9 +20,9 @@ export async function generateMetadata({
 export default async function PettyCashRequisitionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ docs?: string }>;
+  searchParams: Promise<{ docs?: string; print?: string }>;
 }) {
-  const { docs } = await searchParams;
+  const { docs, print } = await searchParams;
   const profile = await getCurrentProfile();
   if (!profile) redirect("/login");
   if (!canAccessPage(profile.role, "/dashboard/expenses/petty-cash")) redirect("/dashboard/sales");
@@ -36,6 +36,7 @@ export default async function PettyCashRequisitionPage({
 
   return (
     <PrintPettyCashRequisitionView
+      autoPrint={print === "1"}
       lines={rows.map((t) => ({
         docNo: t.docNo,
         date: t.transactionDate,
