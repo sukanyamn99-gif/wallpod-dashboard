@@ -78,7 +78,7 @@ const navItems = [
   { title: "AR Dashboard (ลูกหนี้)", url: "/dashboard/ar", icon: Receipt },
   { title: "EX Dashboard (ค่าใช้จ่าย)", url: "/dashboard/expenses", icon: BarChart3 },
   { title: "Stock Dashboard (สต๊อก)", url: "/dashboard/inventory", icon: Boxes },
-  { title: "Koonway Project Sales", url: "/dashboard/project-sales", icon: ClipboardList },
+  { title: "Project Sales (สรุปยอดขาย)", url: "/dashboard/project-sales", icon: ClipboardList },
 ];
 
 const salesDocsGroup = {
